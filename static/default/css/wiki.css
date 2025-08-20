@@ -1579,6 +1579,21 @@ h6, .h6, h5, .h5, h4, .h4, h3, .h3, h2, .h2, h1, .h1 {
     text-decoration: none !important;
 }
 
+/* Specific override for sitemap links */
+.wiki-sitemap .text-decoration-none {
+    text-decoration: none !important;
+}
+
+.wiki-sitemap .card-title .text-decoration-none {
+    text-decoration: none !important;
+    color: #e6c77d !important;
+}
+
+.wiki-sitemap .card-title .text-decoration-none:hover {
+    text-decoration: none !important;
+    color: #d1a44f !important;
+}
+
 .h-100 {
     height: 100% !important;
 }
@@ -1596,4 +1611,329 @@ h6, .h6, h5, .h5, h4, .h4, h3, .h3, h2, .h2, h1, .h1 {
     .welcome-section .lead {
         font-size: 16px;
     }
+}
+
+/* Sitemap Specific Styles */
+.wiki-sitemap .sitemap-section {
+    border: 1px solid rgba(165, 144, 106, 0.2);
+    border-radius: 10px;
+    padding: 25px;
+    background-color: rgba(48, 42, 32, 0.95);
+    margin-bottom: 30px;
+    backdrop-filter: blur(15px);
+}
+
+.wiki-sitemap .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(165, 144, 106, 0.2);
+}
+
+.wiki-sitemap .section-title {
+    margin: 0;
+    color: #e6c77d;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.wiki-sitemap .page-count {
+    background-color: rgba(230, 199, 125, 0.2);
+    color: #e6c77d;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.wiki-sitemap .sitemap-item .card {
+    background-color: rgba(48, 42, 32, 0.95);
+    border: 1px solid rgba(165, 144, 106, 0.2);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(15px);
+}
+
+.wiki-sitemap .sitemap-item .card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(230, 199, 125, 0.4);
+    box-shadow: 0 8px 25px rgba(230, 199, 125, 0.2);
+}
+
+.wiki-sitemap .sitemap-item .card-body {
+    padding: 20px;
+}
+
+.wiki-sitemap .sitemap-item .card-title {
+    color: #e6c77d;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.wiki-sitemap .sitemap-item .card-title a {
+    color: #e6c77d !important;
+    text-decoration: none !important;
+    transition: all 0.3s ease;
+}
+
+.wiki-sitemap .sitemap-item .card-title a:hover {
+    color: #d1a44f !important;
+    text-shadow: 0px 0px 10px rgba(230, 199, 125, 0.3);
+}
+
+.wiki-sitemap .sitemap-item .card-subtitle {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.wiki-sitemap .sitemap-item .card-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 15px;
+}
+
+/* Rich Text Content Styles for Sitemap */
+.wiki-sitemap .sitemap-item .card-text p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+
+.wiki-sitemap .sitemap-item .card-text strong,
+.wiki-sitemap .sitemap-item .card-text b {
+    color: #e6c77d;
+    font-weight: 600;
+}
+
+.wiki-sitemap .sitemap-item .card-text em,
+.wiki-sitemap .sitemap-item .card-text i {
+    color: rgba(255, 255, 255, 0.9);
+    font-style: italic;
+}
+
+.wiki-sitemap .sitemap-item .card-text a {
+    color: #e6c77d;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.wiki-sitemap .sitemap-item .card-text a:hover {
+    color: #d1a44f;
+    text-shadow: 0px 0px 5px rgba(230, 199, 125, 0.3);
+}
+
+.wiki-sitemap .sitemap-item .card-text ul,
+.wiki-sitemap .sitemap-item .card-text ol {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.wiki-sitemap .sitemap-item .card-text li {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 4px;
+    font-size: 12px;
+}
+
+/* Additional content styles for any HTML content */
+.wiki-sitemap .sitemap-item .card-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 15px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.wiki-sitemap .sitemap-item .card-text * {
+    color: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+.wiki-sitemap .sitemap-item .card-text .small {
+    font-size: 12px;
+}
+
+/* Ensure proper display of any HTML content in sitemap */
+.wiki-sitemap .sitemap-item .card-text div,
+.wiki-sitemap .sitemap-item .card-text span,
+.wiki-sitemap .sitemap-item .card-text section,
+.wiki-sitemap .sitemap-item .card-text article {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 0;
+    padding: 0;
+}
+
+.wiki-sitemap .sitemap-item .card-text h1,
+.wiki-sitemap .sitemap-item .card-text h2,
+.wiki-sitemap .sitemap-item .card-text h3,
+.wiki-sitemap .sitemap-item .card-text h4,
+.wiki-sitemap .sitemap-item .card-text h5,
+.wiki-sitemap .sitemap-item .card-text h6 {
+    color: #e6c77d;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 5px 0;
+    line-height: 1.3;
+}
+
+.wiki-sitemap .sitemap-item .card-text blockquote {
+    border-left: 3px solid rgba(230, 199, 125, 0.3);
+    padding-left: 10px;
+    margin: 8px 0;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.wiki-sitemap .sitemap-item .card-text code {
+    background: rgba(230, 199, 125, 0.1);
+    color: #e6c77d;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+}
+
+.wiki-sitemap .sitemap-item .card-text pre {
+    background: rgba(48, 42, 32, 0.95);
+    border: 1px solid rgba(230, 199, 125, 0.2);
+    border-radius: 5px;
+    padding: 10px;
+    margin: 8px 0;
+    overflow-x: auto;
+    font-size: 12px;
+    color: #e6c77d;
+}
+
+/* Fix for rich text content display issues */
+.wiki-sitemap .sitemap-item .card-text {
+    /* Ensure proper text wrapping */
+    word-break: break-word;
+    hyphens: auto;
+    
+    /* Remove any unwanted styling */
+    text-decoration: none;
+    text-transform: none;
+    font-style: normal;
+    font-weight: normal;
+    
+    /* Ensure proper color inheritance */
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.wiki-sitemap .sitemap-item .card-text * {
+    /* Reset any inherited styles that might cause issues */
+    text-decoration: none;
+    text-transform: none;
+    font-style: normal;
+    font-weight: normal;
+    
+    /* Ensure proper color inheritance */
+    color: inherit !important;
+}
+
+.wiki-sitemap .sitemap-item .card-text strong,
+.wiki-sitemap .sitemap-item .card-text b {
+    font-weight: 600 !important;
+    color: #e6c77d !important;
+}
+
+.wiki-sitemap .sitemap-item .card-text em,
+.wiki-sitemap .sitemap-item .card-text i {
+    font-style: italic !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Additional fixes for rich text content */
+.wiki-sitemap .sitemap-item .card-text {
+    /* Remove any unwanted margins and padding */
+    margin: 0;
+    padding: 0;
+    
+    /* Ensure proper text flow */
+    white-space: normal;
+    overflow-wrap: break-word;
+    
+    /* Remove any unwanted decorations */
+    text-decoration: none !important;
+}
+
+.wiki-sitemap .sitemap-item .card-text p {
+    margin: 0 0 8px 0;
+    padding: 0;
+}
+
+.wiki-sitemap .sitemap-item .card-text p:last-child {
+    margin-bottom: 0;
+}
+
+/* Final fixes for rich text content display */
+.wiki-sitemap .sitemap-item .card-text {
+    /* Ensure no unwanted styling */
+    all: unset;
+    display: block;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 15px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.wiki-sitemap .sitemap-item .card-text * {
+    /* Reset all inherited styles */
+    all: unset;
+    display: inline;
+    color: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+.wiki-sitemap .sitemap-item .card-text strong,
+.wiki-sitemap .sitemap-item .card-text b {
+    font-weight: 600;
+    color: #e6c77d;
+}
+
+.wiki-sitemap .sitemap-item .card-text em,
+.wiki-sitemap .sitemap-item .card-text i {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.wiki-sitemap .item-meta {
+    margin-top: 10px;
+}
+
+.wiki-sitemap .item-meta .badge {
+    margin-right: 5px;
+    font-size: 11px;
+    padding: 4px 8px;
+}
+
+.wiki-sitemap .empty-sitemap {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.wiki-sitemap .empty-sitemap h4 {
+    color: #e6c77d;
+    margin-bottom: 15px;
+}
+
+.wiki-sitemap .empty-sitemap p {
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 30px;
+}
+
+.wiki-sitemap .empty-sitemap .fa-3x {
+    color: rgba(230, 199, 125, 0.3);
 }

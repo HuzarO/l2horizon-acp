@@ -51,7 +51,7 @@
                                         
                                         {% if page.translations.first.summary %}
                                             <p class="card-text small">
-                                                {{ page.translations.first.summary|truncatewords:15 }}
+                                                {{ page.translations.first.summary|striptags|truncatewords:15 }}
                                             </p>
                                         {% endif %}
                                         
@@ -92,52 +92,4 @@
         {% endif %}
     </div>
 </div>
-
-<style>
-.sitemap-section {
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 20px;
-    background: #f8f9fa;
-}
-
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.section-title {
-    margin: 0;
-    color: #495057;
-}
-
-.page-count {
-    background: #6c757d;
-    color: white;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.875rem;
-}
-
-.sitemap-item .card {
-    transition: transform 0.2s;
-}
-
-.sitemap-item .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.item-meta {
-    margin-top: 10px;
-}
-
-.item-meta .badge {
-    margin-right: 5px;
-}
-</style>
 {% endblock %}
