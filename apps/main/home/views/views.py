@@ -28,6 +28,7 @@ from apps.lineage.wallet.models import Wallet
 from apps.lineage.inventory.models import Inventory
 from apps.lineage.auction.models import Auction
 from apps.lineage.games.utils import verificar_recompensas_por_nivel
+from apps.main.news.models import News
 
 from utils.render_theme_page import render_theme_page
 from utils.services import verificar_conquistas
@@ -89,6 +90,20 @@ def index(request):
     # Buscar apoiadores ativos e aprovados
     apoiadores = Apoiador.objects.filter(ativo=True, status='aprovado')
 
+    # Buscar notícias públicas para o tema
+    latest_news_list = []
+    if hasattr(request, 'theme') and request.theme:
+        # Busca notícias públicas para o tema
+        all_news = News.objects.filter(is_published=True, is_private=False).order_by('-pub_date')[:10]
+        
+        for news in all_news:
+            translation = news.translations.filter(language=current_lang).first()
+            if translation:
+                latest_news_list.append({
+                    'news': news,
+                    'translation': translation
+                })
+
     # Verificar status do servidor
     server_status = check_server_status()
 
@@ -105,6 +120,7 @@ def index(request):
         'descricao_servidor': descricao_servidor,
         'jogadores_online_texto': jogadores_online_texto,
         'apoiadores': apoiadores,
+        'latest_news_list': latest_news_list,
         'server_status': server_status,
     }
 
