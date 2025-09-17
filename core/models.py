@@ -26,6 +26,46 @@ class BaseModel(models.Model):
         editable=False
     )
 
+    def delete_old_media_files(self):
+        """Remove arquivos de mídia antigos antes de salvar novos"""
+        from django.core.files.storage import default_storage
+        
+        try:
+            # Se já existe no banco (é uma edição), verificar arquivos antigos
+            if self.pk:
+                # Obter a classe atual para fazer a query
+                model_class = self.__class__
+                old_instance = model_class.objects.get(pk=self.pk)
+                
+                # Percorrer todos os campos do modelo
+                for field in self._meta.fields:
+                    # Verificar se é um campo de arquivo (ImageField ou FileField)
+                    if isinstance(field, (models.ImageField, models.FileField)):
+                        field_name = field.name
+                        old_file = getattr(old_instance, field_name, None)
+                        new_file = getattr(self, field_name, None)
+                        
+                        # Se o arquivo antigo existe e é diferente do novo
+                        if old_file and (not new_file or old_file.name != new_file.name):
+                            try:
+                                # Verificar se o arquivo existe no storage antes de tentar deletar
+                                if default_storage.exists(old_file.name):
+                                    default_storage.delete(old_file.name)
+                            except Exception:
+                                # Ignorar erros de remoção para não quebrar o fluxo principal
+                                pass
+        except Exception:
+            # Ignorar erros gerais para não quebrar o sistema
+            pass
+
+    def save(self, *args, **kwargs):
+        """Override save para remover arquivos antigos automaticamente"""
+        # Remover arquivos antigos antes de salvar
+        self.delete_old_media_files()
+        
+        # Chamar o save original
+        super().save(*args, **kwargs)
+
     class Meta:
         abstract = True
 
