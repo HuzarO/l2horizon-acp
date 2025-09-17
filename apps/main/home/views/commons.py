@@ -116,7 +116,7 @@ def custom_set_language(request):
 
 
 def registration_success_view(request):
-    return render(request, 'accounts_custom/registration_success.html')
+    return render_theme_page(request, 'accounts_custom', 'registration_success.html', {})
 
 
 def verify_2fa_view(request):
@@ -155,9 +155,12 @@ def verify_2fa_view(request):
                 return redirect('dashboard')
             else:
                 logger.warning(f"[verify_2fa_view] Código 2FA inválido para usuário: {user.username}")
-                return render(request, 'accounts_custom/verify-2fa.html', {'error': 'Código inválido.', 'user': user})
+                context = {'error': 'Código inválido.', 'user': user}
+                return render_theme_page(request, 'accounts_custom', 'verify-2fa.html', context)
         else:
             logger.error(f"[verify_2fa_view] Dispositivo 2FA não encontrado para usuário: {user.username}")
-            return render(request, 'accounts_custom/verify-2fa.html', {'error': 'Dispositivo 2FA não configurado ou não confirmado.', 'user': user})
+            context = {'error': 'Dispositivo 2FA não configurado ou não confirmado.', 'user': user}
+            return render_theme_page(request, 'accounts_custom', 'verify-2fa.html', context)
     
-    return render(request, 'accounts_custom/verify-2fa.html', {'user': request.user})
+    context = {'user': request.user}
+    return render_theme_page(request, 'accounts_custom', 'verify-2fa.html', context)

@@ -8,7 +8,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.shortcuts import render, redirect
 from django.urls import reverse
-from django.contrib.auth.views import LoginView, PasswordChangeView, PasswordResetView, PasswordResetConfirmView
+from django.contrib.auth.views import LoginView, PasswordChangeView, PasswordResetView, PasswordResetConfirmView, PasswordChangeDoneView, PasswordResetDoneView, PasswordResetCompleteView
 from django.contrib.auth import logout, login, authenticate
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
@@ -22,6 +22,7 @@ from datetime import timedelta
 from utils.notifications import send_notification
 from utils.dynamic_import import get_query_class
 from apps.main.home.tasks import send_email_task
+from utils.render_theme_page import render_theme_page
 
 LineageStats = get_query_class("LineageStats")
 logger = logging.getLogger(__name__)
@@ -95,15 +96,12 @@ def register_view(request):
         form = RegistrationForm()
 
     context = {'form': form, 'hcaptcha_site_key': settings.HCAPTCHA_SITE_KEY}
-    return render(request, 'accounts_custom/sign-up.html', context)
+    return render_theme_page(request, 'accounts_custom', 'sign-up.html', context)
 
 
 class UserLoginView(LoginView):
     form_class = LoginForm
-
-    def get_template_names(self):
-        # Aqui você retorna o caminho do template com base no tema ativo
-        return [resolve_templated_path(self.request, 'accounts_custom', 'sign-in.html')]
+    template_name = 'accounts_custom/sign-in.html'
     
     def get_form_kwargs(self):
         """Adiciona o request ao formulário para verificar captcha"""
@@ -126,6 +124,13 @@ class UserLoginView(LoginView):
             context['max_attempts'] = getattr(settings, 'LOGIN_MAX_ATTEMPTS', 3)
         
         return context
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da LoginView
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return render_theme_page(request, 'accounts_custom', 'sign-in.html', context)
 
     def form_valid(self, form):
         """
@@ -281,6 +286,13 @@ class UserPasswordChangeView(PasswordChangeView):
     template_name = 'accounts_custom/password-change.html'
     form_class = UserPasswordChangeForm
 
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da PasswordChangeView
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return render_theme_page(request, 'accounts_custom', 'password-change.html', context)
+
     def form_valid(self, form):
         print(_("Password changed successfully!"))
         return super().form_valid(form)
@@ -294,6 +306,13 @@ class UserPasswordResetView(PasswordResetView):
     template_name = 'accounts_custom/forgot-password.html'
     form_class = UserPasswordResetForm
 
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da PasswordResetView
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return render_theme_page(request, 'accounts_custom', 'forgot-password.html', context)
+
     def form_valid(self, form):
         print(_("Password reset email sent! (async)"))
         return super().form_valid(form)
@@ -306,6 +325,13 @@ class UserPasswordResetView(PasswordResetView):
 class UserPasswrodResetConfirmView(PasswordResetConfirmView):
     template_name = 'accounts_custom/reset-password.html'
     form_class = UserSetPasswordForm
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da PasswordResetConfirmView
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return render_theme_page(request, 'accounts_custom', 'reset-password.html', context)
 
     def form_valid(self, form):
         # Apenas atualiza a senha sem mexer em outros campos do modelo
@@ -389,4 +415,37 @@ def get_user_suspension_info(user):
             'created_at': None,
             'end_date': None,
             'is_permanent': True
-        }  
+        }
+
+
+class UserPasswordChangeDoneView(PasswordChangeDoneView):
+    template_name = 'accounts_custom/password-change-done.html'
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da PasswordChangeDoneView
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return render_theme_page(request, 'accounts_custom', 'password-change-done.html', context)
+
+
+class UserPasswordResetDoneView(PasswordResetDoneView):
+    template_name = 'accounts_custom/password-reset-done.html'
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da PasswordResetDoneView
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return render_theme_page(request, 'accounts_custom', 'password-reset-done.html', context)
+
+
+class UserPasswordResetCompleteView(PasswordResetCompleteView):
+    template_name = 'accounts_custom/password-reset-complete.html'
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da PasswordResetCompleteView
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return render_theme_page(request, 'accounts_custom', 'password-reset-complete.html', context)  

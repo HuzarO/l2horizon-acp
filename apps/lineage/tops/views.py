@@ -7,6 +7,7 @@ from apps.lineage.server.models import ActiveAdenaExchangeItem
 from datetime import datetime
 
 from utils.dynamic_import import get_query_class  # importa o helper
+from utils.render_theme_page import render_theme_page
 LineageStats = get_query_class("LineageStats")  # carrega a classe certa com base no .env
 
 
@@ -20,6 +21,13 @@ class TopsBaseView(TemplateView):
     
     def get_title(self):
         return _('Tops')
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da TemplateView
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return render_theme_page(request, 'tops', self.template_name.replace('tops/', ''), context)
 
 
 class TopsHomeView(TopsBaseView):

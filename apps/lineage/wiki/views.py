@@ -7,6 +7,7 @@ from .models import (
     WikiPage, WikiPageTranslation,
     WikiUpdate, WikiUpdateTranslation,
 )
+from utils.render_theme_page import render_theme_page
 
 
 class WikiPagesMixin:
@@ -37,6 +38,10 @@ class WikiPagesMixin:
         
         return context
 
+    def render_theme_page(self, request, template_name, context):
+        """Helper method to render with theme support"""
+        return render_theme_page(request, 'wiki', template_name, context)
+
 
 class WikiHomeView(WikiPagesMixin, ListView):
     model = WikiPage
@@ -50,6 +55,14 @@ class WikiHomeView(WikiPagesMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['updates'] = WikiUpdate.objects.filter(is_active=True).order_by('-release_date')[:5]
         return context
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da ListView
+        self.object_list = self.get_queryset()
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return self.render_theme_page(request, 'home.html', context)
 
 
 class WikiPageListView(WikiPagesMixin, ListView):
@@ -70,6 +83,14 @@ class WikiPageListView(WikiPagesMixin, ListView):
         context['content_type'] = content_type
         context['content_type_display'] = dict(WikiPage.CONTENT_TYPES).get(content_type, content_type)
         return context
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da ListView
+        self.object_list = self.get_queryset()
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return self.render_theme_page(request, 'pages.html', context)
 
 
 class WikiPageDetailView(WikiPagesMixin, DetailView):
@@ -92,6 +113,14 @@ class WikiPageDetailView(WikiPagesMixin, DetailView):
         
         return context
 
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da DetailView
+        self.object = self.get_object()
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return self.render_theme_page(request, 'page_detail.html', context)
+
 
 class WikiUpdateListView(WikiPagesMixin, ListView):
     model = WikiUpdate
@@ -106,6 +135,14 @@ class WikiUpdateListView(WikiPagesMixin, ListView):
         context['title'] = _('Server Updates')
         return context
 
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da ListView
+        self.object_list = self.get_queryset()
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return self.render_theme_page(request, 'updates.html', context)
+
 
 class WikiUpdateDetailView(WikiPagesMixin, DetailView):
     model = WikiUpdate
@@ -119,6 +156,14 @@ class WikiUpdateDetailView(WikiPagesMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context['title'] = f"v{self.object.version}"
         return context
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da DetailView
+        self.object = self.get_object()
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return self.render_theme_page(request, 'update_detail.html', context)
 
 
 class WikiSearchView(WikiPagesMixin, TemplateView):
@@ -159,6 +204,13 @@ class WikiSearchView(WikiPagesMixin, TemplateView):
         
         return context
 
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da TemplateView
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return self.render_theme_page(request, 'search.html', context)
+
 
 class WikiSitemapView(WikiPagesMixin, TemplateView):
     template_name = 'wiki/sitemap.html'
@@ -189,3 +241,10 @@ class WikiSitemapView(WikiPagesMixin, TemplateView):
         
         context['pages_by_type'] = pages_by_type
         return context
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da TemplateView
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return self.render_theme_page(request, 'sitemap.html', context)

@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import DownloadCategory, DownloadLink
+from utils.render_theme_page import render_theme_page
 
 class DownloadListView(ListView):
     model = DownloadCategory
@@ -20,6 +21,14 @@ class DownloadListView(ListView):
         context = super().get_context_data(**kwargs)
         context['title'] = _('Downloads')
         return context
+
+    def get(self, request, *args, **kwargs):
+        # Obter dados usando a lógica da ListView
+        self.object_list = self.get_queryset()
+        context = self.get_context_data()
+        
+        # Usar render_theme_page para renderizar com suporte a temas
+        return render_theme_page(request, 'public', 'downloads.html', context)
 
 class InternalDownloadListView(LoginRequiredMixin, ListView):
     model = DownloadCategory

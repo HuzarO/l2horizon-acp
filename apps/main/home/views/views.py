@@ -28,9 +28,8 @@ from apps.lineage.wallet.models import Wallet
 from apps.lineage.inventory.models import Inventory
 from apps.lineage.auction.models import Auction
 from apps.lineage.games.utils import verificar_recompensas_por_nivel
-from apps.main.news.models import News
-
 from utils.render_theme_page import render_theme_page
+from apps.main.news.models import News
 from utils.services import verificar_conquistas
 from utils.dynamic_import import get_query_class
 from apps.main.home.tasks import send_email_task
@@ -311,10 +310,11 @@ def lock(request):
             error = "Senha incorreta. Tente novamente."
             logger.info("Lock - Authentication failed")
 
-    return render(request, 'accounts_custom/lock.html', {
+    context = {
         'error': error,
         'user': request.user,
-    })
+    }
+    return render_theme_page(request, 'accounts_custom', 'lock.html', context)
 
 
 @conditional_otp_required
@@ -492,10 +492,11 @@ def ativar_2fa(request):
         else:
             messages.error(request, "Código inválido. Tente novamente.")
 
-    return render(request, 'accounts_custom/ativar-2fa.html', {
+    context = {
         'qr_png': qr_png,
         'otp_secret': base32_key,
-    })
+    }
+    return render_theme_page(request, 'accounts_custom', 'ativar-2fa.html', context)
 
 
 @conditional_otp_required
