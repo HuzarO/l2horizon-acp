@@ -51,3 +51,31 @@ def get_file_color(file_type):
         'other': 'text-muted'
     }
     return colors.get(file_type, 'text-muted')
+
+
+@register.filter
+def div(value, divisor):
+    """Divide um valor por outro"""
+    try:
+        return float(value) / float(divisor)
+    except (ValueError, ZeroDivisionError, TypeError):
+        return 0
+
+
+@register.filter
+def mul(value, multiplier):
+    """Multiplica um valor por outro"""
+    try:
+        return float(value) * float(multiplier)
+    except (ValueError, TypeError):
+        return 0
+
+
+@register.filter
+def calculate_total_size(files):
+    """Calcula o tamanho total de uma lista de arquivos MediaFile"""
+    total = 0
+    for file in files:
+        if hasattr(file, 'file_size') and file.file_size:
+            total += file.file_size
+    return total

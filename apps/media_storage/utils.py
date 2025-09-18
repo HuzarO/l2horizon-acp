@@ -157,20 +157,44 @@ def find_orphaned_files():
     if not os.path.exists(media_storage_path):
         return orphaned_files
     
+    # Normalizar o caminho da media_root para comparação
+    media_root_normalized = os.path.normpath(media_root)
+    
     # Obter todos os arquivos registrados no banco
     registered_files = set()
     for media_file in MediaFile.objects.all():
-        if media_file.file:
-            registered_files.add(os.path.join(media_root, media_file.file.name))
-        if media_file.thumbnail:
-            registered_files.add(os.path.join(media_root, media_file.thumbnail.name))
+        if media_file.file and media_file.file.name:
+            # Normalizar caminho do arquivo principal
+            file_path = os.path.normpath(os.path.join(media_root_normalized, media_file.file.name))
+            registered_files.add(file_path)
+            
+        if media_file.thumbnail and media_file.thumbnail.name:
+            # Normalizar caminho do thumbnail
+            thumb_path = os.path.normpath(os.path.join(media_root_normalized, media_file.thumbnail.name))
+            registered_files.add(thumb_path)
+    
+    # Debug: mostrar alguns arquivos registrados
+    print(f"DEBUG: Total arquivos registrados: {len(registered_files)}")
+    if registered_files:
+        sample_files = list(registered_files)[:3]
+        for sample in sample_files:
+            print(f"DEBUG: Arquivo registrado: {sample}")
     
     # Escanear diretório físico
     for root, dirs, files in os.walk(media_storage_path):
         for file in files:
-            file_path = os.path.join(root, file)
+            # Normalizar caminho do arquivo físico
+            file_path = os.path.normpath(os.path.join(root, file))
+            
+            # Debug: mostrar comparação para arquivos específicos
+            if 'builder' in file.lower():
+                print(f"DEBUG: Verificando arquivo físico: {file_path}")
+                print(f"DEBUG: Está nos registrados? {file_path in registered_files}")
+            
             if file_path not in registered_files:
                 orphaned_files.append(file_path)
+    
+    print(f"DEBUG: Total arquivos órfãos encontrados: {len(orphaned_files)}")
     
     return orphaned_files
 

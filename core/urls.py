@@ -8,10 +8,22 @@ from django.shortcuts import redirect
 from django.http import FileResponse, Http404
 from django.views.decorators.cache import cache_control
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from apps.media_storage.views import serve_media
 import os
 
 def admin_login_redirect(request):
     return redirect('login')
+
+def serve_static_media(request, path, folder):
+    """Serve static media files (avatars, banners, etc.) - sempre públicos"""
+    try:
+        file_path = os.path.join(settings.MEDIA_ROOT, folder, path)
+        if os.path.exists(file_path):
+            return FileResponse(open(file_path, 'rb'))
+        else:
+            raise Http404("Arquivo não encontrado")
+    except Exception:
+        raise Http404("Arquivo não encontrado")
 
 @cache_control(max_age=86400)  # Cache por 24 horas
 def favicon_view(request):
@@ -56,6 +68,21 @@ urlpatterns = [
 
     # media storage
     path('app/media/', include('apps.media_storage.urls')),
+    
+    # Media files with access control (apenas media_storage)
+    path('media/media_storage/<path:path>/', serve_media, name='media_file'),
+    
+    # Outros arquivos de mídia (públicos)
+    path('media/avatars/<path:path>/', serve_static_media, {'folder': 'avatars'}, name='media_avatars'),
+    path('media/banners/<path:path>/', serve_static_media, {'folder': 'banners'}, name='media_banners'),
+    path('media/backgrounds/<path:path>/', serve_static_media, {'folder': 'backgrounds'}, name='media_backgrounds'),
+    path('media/items/<path:path>/', serve_static_media, {'folder': 'items'}, name='media_items'),
+    path('media/itens_customizados/<path:path>/', serve_static_media, {'folder': 'itens_customizados'}, name='media_custom_items'),
+    path('media/monsters/<path:path>/', serve_static_media, {'folder': 'monsters'}, name='media_monsters'),
+    path('media/news/<path:path>/', serve_static_media, {'folder': 'news'}, name='media_news'),
+    path('media/prizes/<path:path>/', serve_static_media, {'folder': 'prizes'}, name='media_prizes'),
+    path('media/social/<path:path>/', serve_static_media, {'folder': 'social'}, name='media_social'),
+    path('media/verification/<path:path>/', serve_static_media, {'folder': 'verification'}, name='media_verification'),
 
     # apps lineage
     path('app/wallet/', include('apps.lineage.wallet.urls')),
@@ -89,7 +116,7 @@ urlpatterns = [
 ]
 
 # Static/media routes
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)  # Removido para controle de acesso
 urlpatterns += static('/themes/', document_root=os.path.join(settings.BASE_DIR, 'themes'))
 
 # Error handlers

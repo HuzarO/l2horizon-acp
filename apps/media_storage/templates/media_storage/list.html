@@ -163,7 +163,7 @@
                             </a>
                             <button type="button" 
                                     class="btn btn-sm btn-outline-info" 
-                                    onclick="copyToClipboard('{{ media_file.file.url }}')"
+                                    onclick="copyToClipboard('{{ request.scheme }}://{{ request.get_host }}{{ media_file.file.url }}')"
                                     title="Copiar URL">
                                 <i class="fas fa-copy"></i>
                             </button>

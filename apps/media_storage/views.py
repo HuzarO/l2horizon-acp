@@ -388,7 +388,8 @@ def serve_media(request, path):
         media_file = MediaFile.objects.get(file=f'media_storage/{path}', is_active=True)
         
         # Verificar permissões
-        if not media_file.is_public and not request.user.is_staff:
+        # Se não é público E (usuário não está autenticado OU não é staff)
+        if not media_file.is_public and (not request.user.is_authenticated or not request.user.is_staff):
             raise Http404("Arquivo não encontrado")
         
         # Servir o arquivo

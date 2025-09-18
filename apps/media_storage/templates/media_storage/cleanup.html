@@ -1,6 +1,7 @@
 {% extends 'media_storage/base.html' %}
 {% load static %}
 
+
 {% block content %}
 <div class="container">
     <div class="row justify-content-center">
@@ -61,8 +62,8 @@
                                 </div>
                                 <div class="card-body text-center">
                                     <div class="progress mb-3" style="height: 30px;">
-                                        <div class="progress-bar bg-success" style="width: {{ stats.usage_percentage }}%">
-                                            {{ stats.usage_percentage|floatformat:1 }}%
+                                        <div id="progress-bar" class="progress-bar bg-success" style="min-width: 2em;">
+                                            <!-- Valor será inserido via JS -->
                                         </div>
                                     </div>
                                     <p class="text-muted">
@@ -227,4 +228,21 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Pegar o valor do Django e inserir diretamente na barra
+    const progressBar = document.getElementById('progress-bar');
+    
+    // Converter vírgula para ponto se necessário
+    const rawPercentage = "{{ stats.usage_percentage|floatformat:1 }}";
+    const percentage = parseFloat(rawPercentage.replace(',', '.'));
+    
+    // Definir largura e texto
+    progressBar.style.width = percentage + '%';
+    progressBar.textContent = percentage + '%';
+    
+    console.log('Barra configurada com:', percentage + '%');
+});
+</script>
 {% endblock %}

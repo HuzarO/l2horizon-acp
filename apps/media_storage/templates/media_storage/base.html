@@ -346,6 +346,31 @@
         width: 100%;
     }
 }
+
+/* Correção para barra de progresso - garantir que 100% seja visualmente 100% */
+.progress .progress-bar {
+  transition: width 0.6s ease;
+  border-radius: inherit;
+}
+
+/* Força 100% visual - funciona com ponto ou vírgula como separador decimal */
+.progress .progress-bar[style*="width: 100%"],
+.progress .progress-bar[style*="width: 100,0%"],
+.progress .progress-bar[style*="width: 100.0%"] {
+  width: 100% !important;
+}
+
+/* Garantir que barras de progresso pequenas sejam visíveis */
+.progress .progress-bar {
+  min-width: 0.5em;
+}
+
+/* Melhorar aparência da barra de progresso */
+.progress {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+}
 </style>
 {% endblock %}
 
@@ -430,10 +455,23 @@ function confirmDelete(event) {
     return true;
 }
 
+// Função para corrigir barras de progresso com 100%
+function fixProgressBars() {
+    document.querySelectorAll('.progress-bar').forEach(bar => {
+        const width = bar.style.width;
+        // Converte vírgula para ponto e verifica se é 100%
+        const normalizedWidth = width ? width.replace(',', '.') : '';
+        if (normalizedWidth && (normalizedWidth.includes('100%') || normalizedWidth.includes('100.0%'))) {
+            bar.style.width = '100%';
+        }
+    });
+}
+
 // Inicializar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
     setupDragAndDrop();
     setupFilePreview();
+    fixProgressBars(); // Corrigir barras de progresso
     
     // Adicionar confirmação aos botões de delete
     document.querySelectorAll('.btn-delete').forEach(btn => {

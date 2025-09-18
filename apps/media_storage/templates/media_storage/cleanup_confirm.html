@@ -1,5 +1,6 @@
 {% extends 'media_storage/base.html' %}
 {% load static %}
+{% load media_filters %}
 
 {% block content %}
 <div class="container">
@@ -79,7 +80,7 @@
                         <div class="col-md-4">
                             <div class="card bg-info text-white">
                                 <div class="card-body text-center">
-                                    <h3>{{ unused_files|length|filesizeformat }}</h3>
+                                    <h3>{{ unused_files|calculate_total_size|filesizeformat }}</h3>
                                     <p class="mb-0">Espaço a Liberar</p>
                                 </div>
                             </div>
@@ -87,8 +88,8 @@
                         <div class="col-md-4">
                             <div class="card bg-secondary text-white">
                                 <div class="card-body text-center">
-                                    <h3>{{ unused_files|length|div:count|mul:100|floatformat:1 }}%</h3>
-                                    <p class="mb-0">dos Arquivos</p>
+                                    <h3>{{ count }}</h3>
+                                    <p class="mb-0">Arquivos Total</p>
                                 </div>
                             </div>
                         </div>
