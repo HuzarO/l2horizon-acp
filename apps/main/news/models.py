@@ -53,15 +53,14 @@ class News(BaseModel):
         ]
 
     def save(self, *args, **kwargs):
-        if not self.slug:
-            pt_translation = self.translations.filter(language='pt').first()
-            if pt_translation:
-                self.slug = slugify(pt_translation.title)
+        # Slug generation moved to admin save_formset to avoid primary key issue
         super(News, self).save(*args, **kwargs)
 
     def __str__(self):
-        pt_translation = self.translations.filter(language='pt').first()
-        return pt_translation.title if pt_translation else f"{_('Notícia')} {self.pk}"
+        if self.pk:
+            pt_translation = self.translations.filter(language='pt').first()
+            return pt_translation.title if pt_translation else f"{_('Notícia')} {self.pk}"
+        return f"{_('Nova Notícia')}"
 
 
 class NewsTranslation(BaseModel):

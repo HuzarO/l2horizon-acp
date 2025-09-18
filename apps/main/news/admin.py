@@ -124,6 +124,15 @@ class NewsAdmin(BaseModelAdmin):
             instance.news = form.instance
             instance.save()
         formset.save_m2m()
+        
+        # Generate slug after translations are saved
+        news_obj = form.instance
+        if not news_obj.slug:
+            from django.utils.text import slugify
+            pt_translation = news_obj.translations.filter(language='pt').first()
+            if pt_translation:
+                news_obj.slug = slugify(pt_translation.title)
+                news_obj.save()
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related('translations')
