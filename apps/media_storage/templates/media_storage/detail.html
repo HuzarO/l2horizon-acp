@@ -1,0 +1,216 @@
+{% extends 'media_storage/base.html' %}
+{% load static %}
+{% load media_filters %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3><i class="fas fa-file"></i> {{ media_file.title }}</h3>
+                    <div class="btn-group">
+                        <a href="{% url 'media_storage:edit' media_file.pk %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        <form method="post" action="{% url 'media_storage:delete' media_file.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger btn-sm btn-delete">
+                                <i class="fas fa-trash"></i> Deletar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Preview do arquivo -->
+                    <div class="text-center mb-4">
+                        {% if media_file.is_image %}
+                            <img src="{{ media_file.file.url }}" 
+                                 alt="{{ media_file.title }}" 
+                                 class="img-fluid rounded shadow"
+                                 style="max-height: 400px;">
+                        {% elif media_file.is_video %}
+                            <video controls class="w-100 rounded shadow" style="max-height: 400px;">
+                                <source src="{{ media_file.file.url }}" type="{{ media_file.mime_type }}">
+                                Seu navegador não suporta o elemento de vídeo.
+                            </video>
+                        {% elif media_file.is_audio %}
+                            <div class="p-5 bg-light rounded mb-3">
+                                <i class="fas fa-music fa-4x text-muted mb-3"></i>
+                                <h4>{{ media_file.title }}</h4>
+                            </div>
+                            <audio controls class="w-100">
+                                <source src="{{ media_file.file.url }}" type="{{ media_file.mime_type }}">
+                                Seu navegador não suporta o elemento de áudio.
+                            </audio>
+                        {% else %}
+                            <div class="p-5 bg-light rounded text-center">
+                                {% if media_file.is_document %}
+                                    <i class="fas fa-file-pdf fa-4x text-danger mb-3"></i>
+                                {% else %}
+                                    <i class="fas fa-file fa-4x text-muted mb-3"></i>
+                                {% endif %}
+                                <h4>{{ media_file.title }}</h4>
+                                <a href="{{ media_file.file.url }}" target="_blank" class="btn btn-primary">
+                                    <i class="fas fa-download"></i> Baixar Arquivo
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Descrição -->
+                    {% if media_file.description %}
+                        <div class="mb-3">
+                            <h5>Descrição</h5>
+                            <p class="text-muted">{{ media_file.description|linebreaks }}</p>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Tags -->
+                    {% if media_file.tags_list %}
+                        <div class="mb-3">
+                            <h6>Tags</h6>
+                            {% for tag in media_file.tags_list %}
+                                <span class="badge badge-secondary me-1">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    
+                    <!-- URL para copiar -->
+                    <div class="mb-3">
+                        <h6>URL do Arquivo</h6>
+                        <div class="input-group">
+                            <input type="text" class="form-control" value="{{ request.scheme }}://{{ request.get_host }}{{ media_file.file.url }}" readonly id="file-url">
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyFileUrl()">
+                                <i class="fas fa-copy"></i> Copiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Informações do arquivo -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Informações</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Tipo:</strong></td>
+                            <td>
+                                <span class="file-type-badge file-type-{{ media_file.file_type }}">
+                                    {{ media_file.get_file_type_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tamanho:</strong></td>
+                            <td>{{ media_file.file_size_human }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tipo MIME:</strong></td>
+                            <td><code>{{ media_file.mime_type }}</code></td>
+                        </tr>
+                        {% if media_file.width and media_file.height %}
+                        <tr>
+                            <td><strong>Dimensões:</strong></td>
+                            <td>{{ media_file.width }}x{{ media_file.height }}px</td>
+                        </tr>
+                        {% endif %}
+                        {% if media_file.duration %}
+                        <tr>
+                            <td><strong>Duração:</strong></td>
+                            <td>{{ media_file.duration }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <td><strong>Visibilidade:</strong></td>
+                            <td>
+                                {% if media_file.is_public %}
+                                    <span class="badge badge-success">Público</span>
+                                {% else %}
+                                    <span class="badge badge-warning">Privado</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if media_file.category %}
+                        <tr>
+                            <td><strong>Categoria:</strong></td>
+                            <td>{{ media_file.category.name }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <td><strong>Enviado em:</strong></td>
+                            <td>{{ media_file.uploaded_at|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        {% if media_file.uploaded_by %}
+                        <tr>
+                            <td><strong>Enviado por:</strong></td>
+                            <td>{{ media_file.uploaded_by.get_full_name|default:media_file.uploaded_by.username }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <td><strong>Atualizado:</strong></td>
+                            <td>{{ media_file.updated_at|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Usos do arquivo -->
+            {% if media_file.usages.all %}
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-link"></i> Onde é usado</h5>
+                </div>
+                <div class="card-body">
+                    {% for usage in media_file.usages.all %}
+                        <div class="mb-2">
+                            <strong>{{ usage.content_type|title }}</strong><br>
+                            <small class="text-muted">
+                                Campo: {{ usage.field_name }}<br>
+                                ID: {{ usage.object_id }}<br>
+                                Desde: {{ usage.created_at|date:"d/m/Y" }}
+                            </small>
+                        </div>
+                        {% if not forloop.last %}<hr>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Botão Voltar -->
+    <div class="text-center mt-4">
+        <a href="{% url 'media_storage:list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Voltar à Lista
+        </a>
+    </div>
+</div>
+
+<script>
+function copyFileUrl() {
+    const urlInput = document.getElementById('file-url');
+    urlInput.select();
+    urlInput.setSelectionRange(0, 99999);
+    
+    navigator.clipboard.writeText(urlInput.value).then(function() {
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-success');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

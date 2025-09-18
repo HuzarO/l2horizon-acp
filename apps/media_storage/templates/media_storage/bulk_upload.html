@@ -1,0 +1,226 @@
+{% extends 'media_storage/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-layer-group"></i> Upload em Lote</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Mensagens de erro/sucesso -->
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <form method="post" enctype="multipart/form-data" id="bulk-upload-form">
+                        {% csrf_token %}
+                        
+                        <!-- Upload Zone -->
+                        <div class="upload-zone mb-4">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                            <h5>Arraste e solte múltiplos arquivos aqui</h5>
+                            <p class="text-muted">ou clique no botão abaixo para selecionar</p>
+                            {{ form.files }}
+                            {% if form.files.errors %}
+                                <div class="invalid-feedback d-block mt-2">
+                                    {{ form.files.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Configurações globais -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.category.id_for_label }}" class="form-label">
+                                        {{ form.category.label }}
+                                    </label>
+                                    {{ form.category }}
+                                    <small class="form-text text-muted">
+                                        Esta categoria será aplicada a todos os arquivos.
+                                    </small>
+                                    {% if form.category.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.category.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    {{ form.is_public }}
+                                    <label class="form-check-label" for="{{ form.is_public.id_for_label }}">
+                                        {{ form.is_public.label }}
+                                    </label>
+                                    <small class="form-text text-muted d-block">
+                                        Todos os arquivos serão marcados com esta configuração.
+                                    </small>
+                                    {% if form.is_public.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.is_public.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Preview dos arquivos selecionados -->
+                        <div id="files-preview" class="mb-4" style="display: none;">
+                            <h5>Arquivos Selecionados</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Preview</th>
+                                            <th>Nome</th>
+                                            <th>Tamanho</th>
+                                            <th>Tipo</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="files-list">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div id="upload-progress" class="mb-3" style="display: none;">
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'media_storage:list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="upload-btn">
+                                <i class="fas fa-upload"></i> Fazer Upload em Lote
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Informações -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Dicas para Upload em Lote</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li>Você pode selecionar múltiplos arquivos de uma vez</li>
+                        <li>O título será gerado automaticamente baseado no nome do arquivo</li>
+                        <li>Todos os arquivos receberão a mesma categoria e configuração de visibilidade</li>
+                        <li>Arquivos com problemas serão ignorados e você será notificado</li>
+                        <li>Tamanho máximo por arquivo: 100MB</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filesInput = document.querySelector('#id_files');
+    const previewContainer = document.querySelector('#files-preview');
+    const filesList = document.querySelector('#files-list');
+    const uploadBtn = document.querySelector('#upload-btn');
+    const form = document.querySelector('#bulk-upload-form');
+    const progressContainer = document.querySelector('#upload-progress');
+    const progressBar = document.querySelector('.progress-bar');
+    
+    if (filesInput) {
+        filesInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                showFilePreview(files);
+            } else {
+                previewContainer.style.display = 'none';
+            }
+        });
+    }
+    
+    function showFilePreview(files) {
+        filesList.innerHTML = '';
+        
+        files.forEach((file, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    ${getFilePreview(file)}
+                </td>
+                <td>${file.name}</td>
+                <td>${formatFileSize(file.size)}</td>
+                <td>${getFileType(file)}</td>
+                <td>
+                    <span class="badge badge-secondary">Aguardando</span>
+                </td>
+            `;
+            filesList.appendChild(row);
+        });
+        
+        previewContainer.style.display = 'block';
+    }
+    
+    function getFilePreview(file) {
+        if (file.type.startsWith('image/')) {
+            const url = URL.createObjectURL(file);
+            return `<img src="${url}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">`;
+        } else if (file.type.startsWith('video/')) {
+            return '<i class="fas fa-video text-purple"></i>';
+        } else if (file.type.startsWith('audio/')) {
+            return '<i class="fas fa-music text-success"></i>';
+        } else if (file.type.includes('pdf')) {
+            return '<i class="fas fa-file-pdf text-danger"></i>';
+        } else {
+            return '<i class="fas fa-file text-muted"></i>';
+        }
+    }
+    
+    function getFileType(file) {
+        if (file.type.startsWith('image/')) return 'Imagem';
+        if (file.type.startsWith('video/')) return 'Vídeo';
+        if (file.type.startsWith('audio/')) return 'Áudio';
+        if (file.type.includes('pdf') || file.type.includes('document')) return 'Documento';
+        return 'Arquivo';
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+    
+    // Validar antes do envio
+    form.addEventListener('submit', function(e) {
+        const files = filesInput.files;
+        if (files.length === 0) {
+            e.preventDefault();
+            alert('Por favor, selecione pelo menos um arquivo.');
+            return false;
+        }
+        
+        // Mostrar indicador de carregamento
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+        
+        // Não simular progresso, deixar o formulário enviar normalmente
+        return true;
+    });
+});
+</script>
+{% endblock %}

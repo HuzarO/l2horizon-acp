@@ -1,0 +1,260 @@
+{% extends 'media_storage/base.html' %}
+{% load static %}
+{% load media_filters %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h1 class="mb-2" style="color: #2c3e50; font-weight: 700;">
+                <i class="fas fa-images me-3" style="color: #667eea;"></i>Gerenciamento de Mídia
+            </h1>
+            <p class="text-muted mb-0">Organize e gerencie todos os seus arquivos de mídia</p>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{% url 'media_storage:upload' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-upload me-2"></i>Upload
+            </a>
+            <a href="{% url 'media_storage:bulk_upload' %}" class="btn btn-outline-primary btn-lg">
+                <i class="fas fa-layer-group me-2"></i>Upload em Lote
+            </a>
+            <a href="{% url 'media_storage:cleanup' %}" class="btn btn-outline-warning btn-lg">
+                <i class="fas fa-broom me-2"></i>Limpeza
+            </a>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3>{{ stats.total_files }}</h3>
+                <p class="mb-0">Total de Arquivos</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3>{{ stats.total_size|filesizeformat }}</h3>
+                <p class="mb-0">Espaço Utilizado</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3>{{ stats.by_type.image|default:0 }}</h3>
+                <p class="mb-0">Imagens</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h3>{{ stats.by_type.video|default:0 }}</h3>
+                <p class="mb-0">Vídeos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filter-section">
+        <h5><i class="fas fa-filter me-2"></i>Filtros de Busca</h5>
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label text-muted small">Buscar</label>
+                {{ filter_form.search }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-muted small">Categoria</label>
+                {{ filter_form.category }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-muted small">Tipo</label>
+                {{ filter_form.file_type }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-muted small">Visibilidade</label>
+                {{ filter_form.is_public }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-muted small">&nbsp;</label>
+                <button type="submit" class="btn btn-primary w-100 d-block">
+                    <i class="fas fa-search me-2"></i>Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Lista de Arquivos -->
+    {% if media_files %}
+        <div class="media-grid">
+            {% for media_file in media_files %}
+                <div class="media-card">
+                    <div class="media-preview">
+                        {% if media_file.is_image %}
+                            <img src="{{ media_file.get_display_image }}" alt="{{ media_file.title }}" loading="lazy">
+                        {% elif media_file.is_video %}
+                            <div class="file-icon" style="color: #7b1fa2;">
+                                <i class="fas fa-video fa-3x"></i>
+                                <div style="font-size: 0.8rem; margin-top: 5px;">Vídeo</div>
+                            </div>
+                        {% elif media_file.is_audio %}
+                            <div class="file-icon" style="color: #388e3c;">
+                                <i class="fas fa-music fa-3x"></i>
+                                <div style="font-size: 0.8rem; margin-top: 5px;">Áudio</div>
+                            </div>
+                        {% elif media_file.is_document %}
+                            <div class="file-icon" style="color: #f57c00;">
+                                <i class="fas fa-file-pdf fa-3x"></i>
+                                <div style="font-size: 0.8rem; margin-top: 5px;">Documento</div>
+                            </div>
+                        {% else %}
+                            <div class="file-icon" style="color: #616161;">
+                                <i class="fas fa-file fa-3x"></i>
+                                <div style="font-size: 0.8rem; margin-top: 5px;">Arquivo</div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if not media_file.is_public %}
+                            <span class="badge badge-warning position-absolute" style="top: 8px; left: 8px;">
+                                <i class="fas fa-lock"></i> Privado
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="media-info">
+                        <div class="media-title">{{ media_file.title|truncatechars:35 }}</div>
+                        
+                        <div class="media-meta">
+                            <i class="fas fa-tag"></i>
+                            <span class="file-type-badge file-type-{{ media_file.file_type }}">
+                                {{ media_file.get_file_type_display }}
+                            </span>
+                        </div>
+                        
+                        <div class="media-meta">
+                            <i class="fas fa-weight-hanging"></i>
+                            <span>{{ media_file.file_size_human }}</span>
+                        </div>
+                        
+                        <div class="media-meta">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>{{ media_file.uploaded_at|date:"d/m/Y H:i" }}</span>
+                        </div>
+                        
+                        {% if media_file.category %}
+                            <div class="media-meta">
+                                <i class="fas fa-folder"></i>
+                                <span>{{ media_file.category.name }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="media-actions">
+                        <div class="btn-group" role="group">
+                            <a href="{{ media_file.get_absolute_url }}" 
+                               class="btn btn-sm btn-outline-primary" 
+                               title="Visualizar detalhes">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'media_storage:edit' media_file.pk %}" 
+                               class="btn btn-sm btn-outline-secondary"
+                               title="Editar arquivo">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-info" 
+                                    onclick="copyToClipboard('{{ media_file.file.url }}')"
+                                    title="Copiar URL">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        
+                        <form method="post" action="{% url 'media_storage:delete' media_file.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" 
+                                    class="btn btn-sm btn-outline-danger btn-delete"
+                                    title="Deletar arquivo">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Paginação -->
+        {% if is_paginated %}
+            <nav aria-label="Navegação de páginas" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.file_type %}&file_type={{ request.GET.file_type }}{% endif %}{% if request.GET.is_public %}&is_public={{ request.GET.is_public }}{% endif %}">
+                                &laquo; Primeira
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.file_type %}&file_type={{ request.GET.file_type }}{% endif %}{% if request.GET.is_public %}&is_public={{ request.GET.is_public }}{% endif %}">
+                                &lsaquo; Anterior
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.file_type %}&file_type={{ request.GET.file_type }}{% endif %}{% if request.GET.is_public %}&is_public={{ request.GET.is_public }}{% endif %}">
+                                Próxima &rsaquo;
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.file_type %}&file_type={{ request.GET.file_type }}{% endif %}{% if request.GET.is_public %}&is_public={{ request.GET.is_public }}{% endif %}">
+                                Última &raquo;
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <div class="text-center py-5" style="margin-top: 3rem;">
+            <div class="mb-4">
+                <i class="fas fa-images" style="font-size: 4rem; color: #dee2e6;"></i>
+            </div>
+            <h3 class="mb-3" style="color: #6c757d; font-weight: 600;">Nenhum arquivo encontrado</h3>
+            <p class="text-muted mb-4">Comece fazendo upload de seus primeiros arquivos ou ajuste os filtros de busca.</p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="{% url 'media_storage:upload' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-upload me-2"></i>Fazer Upload
+                </a>
+                <a href="{% url 'media_storage:bulk_upload' %}" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-layer-group me-2"></i>Upload em Lote
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Mostrar feedback visual
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        btn.classList.remove('btn-outline-info');
+        btn.classList.add('btn-success');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-info');
+        }, 1000);
+    });
+}
+</script>
+{% endblock %}

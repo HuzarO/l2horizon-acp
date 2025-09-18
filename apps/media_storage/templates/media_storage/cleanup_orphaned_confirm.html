@@ -1,0 +1,179 @@
+{% extends 'media_storage/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-ghost text-danger"></i> Confirmar Limpeza de Arquivos Órfãos</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Atenção!</strong> Você está prestes a deletar {{ count }} arquivos físicos órfãos. 
+                        Estes arquivos existem no sistema de arquivos mas não têm registro no banco de dados.
+                        Esta ação não pode ser desfeita!
+                    </div>
+                    
+                    <!-- Explicação sobre arquivos órfãos -->
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> O que são arquivos órfãos?</h5>
+                        <p class="mb-2">Arquivos órfãos são arquivos físicos que existem na pasta de mídia mas não possuem registro correspondente no banco de dados. Isso pode acontecer quando:</p>
+                        <ul class="mb-0">
+                            <li>Registros do banco foram deletados mas os arquivos físicos permaneceram</li>
+                            <li>Uploads foram interrompidos deixando arquivos parciais</li>
+                            <li>Migrações ou importações não sincronizaram corretamente</li>
+                            <li>Arquivos foram copiados manualmente para a pasta de mídia</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Lista de arquivos que serão deletados -->
+                    <div class="mb-4">
+                        <h5>Arquivos órfãos que serão removidos:</h5>
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-sm table-striped">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>Caminho do Arquivo</th>
+                                        <th>Tamanho</th>
+                                        <th>Última Modificação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for file_path in orphaned_files %}
+                                        <tr>
+                                            <td>
+                                                <code>{{ file_path|truncatechars:80 }}</code>
+                                            </td>
+                                            <td>
+                                                {% load humanize %}
+                                                <span class="text-muted">
+                                                    {% with file_path|filesizeformat as size %}
+                                                        {{ size|default:"N/A" }}
+                                                    {% endwith %}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="text-muted">
+                                                    {% comment %}
+                                                    Aqui poderia mostrar a data de modificação se necessário
+                                                    {% endcomment %}
+                                                    Arquivo físico
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Resumo -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body text-center">
+                                    <h3>{{ count }}</h3>
+                                    <p class="mb-0">Arquivos Órfãos a Remover</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h3><i class="fas fa-hdd"></i></h3>
+                                    <p class="mb-0">Espaço em Disco a Liberar</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Formulário de confirmação -->
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="cleanup_orphaned">
+                        <input type="hidden" name="confirm" value="yes">
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="confirm-delete" required>
+                            <label class="form-check-label" for="confirm-delete">
+                                <strong>Eu entendo que esta ação é irreversível e confirmo a remoção destes arquivos órfãos.</strong>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="confirm-backup" required>
+                            <label class="form-check-label" for="confirm-backup">
+                                <strong>Eu confirmo que fiz backup dos arquivos importantes (se necessário).</strong>
+                            </label>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'media_storage:cleanup' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger" id="confirm-btn" disabled>
+                                <i class="fas fa-ghost"></i> Confirmar Remoção de Órfãos
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Informações adicionais -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-lightbulb"></i> Dicas de Segurança</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-shield-alt text-success"></i> Seguro para Deletar:</h6>
+                            <ul class="text-muted">
+                                <li>Arquivos temporários de upload</li>
+                                <li>Thumbnails de arquivos deletados</li>
+                                <li>Duplicatas sem referência</li>
+                                <li>Arquivos de cache antigos</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-exclamation-triangle text-warning"></i> Verificar Antes:</h6>
+                            <ul class="text-muted">
+                                <li>Arquivos importantes copiados manualmente</li>
+                                <li>Backups armazenados na pasta de mídia</li>
+                                <li>Arquivos de configuração</li>
+                                <li>Recursos usados por código personalizado</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkbox1 = document.getElementById('confirm-delete');
+    const checkbox2 = document.getElementById('confirm-backup');
+    const confirmBtn = document.getElementById('confirm-btn');
+    
+    function updateButton() {
+        confirmBtn.disabled = !(checkbox1.checked && checkbox2.checked);
+    }
+    
+    checkbox1.addEventListener('change', updateButton);
+    checkbox2.addEventListener('change', updateButton);
+    
+    // Adicionar confirmação extra
+    confirmBtn.addEventListener('click', function(e) {
+        if (!confirm('Tem CERTEZA ABSOLUTA que deseja deletar estes {{ count }} arquivos órfãos? Esta ação NÃO PODE ser desfeita!')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

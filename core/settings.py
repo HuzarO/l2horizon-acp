@@ -20,7 +20,7 @@ load_dotenv()  # take environment variables from .env.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # System Version
-VERSION = '1.14.25'
+VERSION = '1.14.30'
 
 # =========================== THEME CONFIGURATION ===========================
 
@@ -154,6 +154,8 @@ INSTALLED_APPS = [
     "apps.main.solicitation",
     "apps.main.downloads",
     "apps.main.calendary",
+
+    "apps.media_storage",
 
     "apps.lineage.server",
     "apps.lineage.wallet",

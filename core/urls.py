@@ -54,6 +54,9 @@ urlpatterns = [
     path('app/calendary/', include('apps.main.calendary.urls')),
     path('', include('apps.main.downloads.urls')),
 
+    # media storage
+    path('app/media/', include('apps.media_storage.urls')),
+
     # apps lineage
     path('app/wallet/', include('apps.lineage.wallet.urls')),
     path('app/payment/', include('apps.lineage.payment.urls')),

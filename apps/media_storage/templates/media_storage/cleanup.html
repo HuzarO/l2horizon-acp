@@ -1,0 +1,230 @@
+{% extends 'media_storage/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-broom"></i> Limpeza de Arquivos</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Limpeza de Arquivos Não Utilizados</strong><br>
+                        Esta ferramenta ajuda a identificar e remover arquivos de mídia que não estão sendo utilizados em nenhum lugar do sistema.
+                    </div>
+                    
+                    <!-- Estatísticas -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h2>{{ stats.total_files }}</h2>
+                                    <p class="mb-0">Total de Arquivos</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h2>{{ stats.used_files }}</h2>
+                                    <p class="mb-0">Arquivos Utilizados</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h2>{{ stats.unused_files }}</h2>
+                                    <p class="mb-0">Não Utilizados</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body text-center">
+                                    <h2>{{ orphaned_count }}</h2>
+                                    <p class="mb-0">Arquivos Órfãos</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gráfico de uso -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-chart-pie"></i> Percentual de Uso</h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <div class="progress mb-3" style="height: 30px;">
+                                        <div class="progress-bar bg-success" style="width: {{ stats.usage_percentage }}%">
+                                            {{ stats.usage_percentage|floatformat:1 }}%
+                                        </div>
+                                    </div>
+                                    <p class="text-muted">
+                                        {{ stats.used_files }} de {{ stats.total_files }} arquivos estão sendo utilizados
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-list"></i> Uso por Tipo de Conteúdo</h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if stats.usage_by_type %}
+                                        {% for content_type, count in stats.usage_by_type.items %}
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span>{{ content_type|title }}</span>
+                                                <span class="badge badge-primary">{{ count }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-muted">Nenhum uso registrado ainda.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Ações de Limpeza -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-search"></i> Escanear Uso Automático</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="text-muted">
+                                        Escaneia automaticamente todos os modelos do projeto em busca de 
+                                        referências aos arquivos de mídia.
+                                    </p>
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="scan_usage">
+                                        <button type="submit" class="btn btn-info btn-block">
+                                            <i class="fas fa-search"></i> Escanear e Registrar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-broom"></i> Arquivos Não Utilizados</h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if stats.unused_files > 0 %}
+                                        <p class="text-warning">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            {{ stats.unused_files }} arquivos não utilizados encontrados.
+                                        </p>
+                                        <form method="post">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete_unused">
+                                            <button type="submit" class="btn btn-warning btn-block">
+                                                <i class="fas fa-trash"></i> Visualizar e Remover
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <p class="text-success">
+                                            <i class="fas fa-check-circle"></i> 
+                                            Todos os arquivos registrados estão sendo utilizados!
+                                        </p>
+                                        <button type="button" class="btn btn-outline-secondary btn-block" disabled>
+                                            <i class="fas fa-check"></i> Nada para Limpar
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><i class="fas fa-ghost"></i> Arquivos Órfãos</h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if orphaned_count > 0 %}
+                                        <p class="text-danger">
+                                            <i class="fas fa-exclamation-circle"></i>
+                                            {{ orphaned_count }} arquivos físicos sem registro no banco.
+                                        </p>
+                                        <form method="post">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="cleanup_orphaned">
+                                            <button type="submit" class="btn btn-danger btn-block">
+                                                <i class="fas fa-ghost"></i> Visualizar Órfãos
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <p class="text-success">
+                                            <i class="fas fa-check-circle"></i> 
+                                            Nenhum arquivo órfão encontrado!
+                                        </p>
+                                        <button type="button" class="btn btn-outline-secondary btn-block" disabled>
+                                            <i class="fas fa-check"></i> Tudo Sincronizado
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Top arquivos mais utilizados -->
+                    {% if stats.top_used_files %}
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-trophy"></i> Arquivos Mais Utilizados</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for file in stats.top_used_files %}
+                                    <div class="col-md-6 mb-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>{{ file.title|truncatechars:30 }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ file.file_type|title }}</small>
+                                            </div>
+                                            <span class="badge badge-success">{{ file.usage_count }} usos</span>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Informações sobre a limpeza -->
+                    <div class="mt-4">
+                        <h5>Como funciona a limpeza?</h5>
+                        <ul class="text-muted">
+                            <li>O sistema verifica todos os arquivos de mídia cadastrados</li>
+                            <li>Identifica quais arquivos não possuem referências em outros modelos</li>
+                            <li>Lista os arquivos que podem ser removidos com segurança</li>
+                            <li>Permite a remoção em lote dos arquivos não utilizados</li>
+                        </ul>
+                        
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Importante:</strong> A remoção de arquivos é irreversível. Certifique-se de que os arquivos listados realmente não são necessários antes de prosseguir.
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="{% url 'media_storage:list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar à Lista
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
