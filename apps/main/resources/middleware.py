@@ -3,7 +3,9 @@ from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
 from django.http import Http404
+from django.core.cache import cache
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +17,30 @@ class ResourceAccessMiddleware:
     
     def __init__(self, get_response):
         self.get_response = get_response
+        
+        # Import do modelo uma vez só na inicialização
+        try:
+            from .models import SystemResource
+            self.SystemResource = SystemResource
+        except ImportError:
+            logger.warning("SystemResource model not found, disabling resource checks")
+            self.SystemResource = None
+        
+        # Cache de recursos ativos (evita queries repetidas)
+        self.resource_cache_timeout = 300  # 5 minutos
+        
+        # Caminhos que não precisam de verificação (para performance)
+        self.skip_paths = [
+            '/static/',
+            '/media/',
+            '/admin/',
+            '/decrypted-file/',
+            '/favicon.ico',
+            '/robots.txt',
+            '/sitemap.xml',
+            '/health/',
+            '/api/',  # APIs geralmente não precisam de verificação de recursos
+        ]
         
         # Mapeamento de caminhos de URL para recursos
         self.path_mapping = {
@@ -61,10 +87,21 @@ class ResourceAccessMiddleware:
         }
 
     def __call__(self, request):
-        # Log para debug
-        logger.info(f"Middleware executando para caminho: {request.path}")
+        # Skip verificação para caminhos que não precisam (performance)
+        if self._should_skip_check(request.path):
+            return self.get_response(request)
         
-        # Verifica se o recurso está ativo
+        # Log apenas para caminhos que realmente precisam de verificação
+        # E apenas em DEBUG para evitar spam de logs
+        from django.conf import settings
+        if settings.DEBUG:
+            logger.debug(f"ResourceMiddleware verificando: {request.path}")
+        
+        # Verifica se o SystemResource está disponível
+        if not self.SystemResource:
+            return self.get_response(request)
+        
+        # Verifica se o recurso está ativo (com cache)
         if not self._check_resource_access(request):
             logger.warning(f"Recurso inativo detectado para caminho: {request.path}")
             return self._handle_inactive_resource(request)
@@ -72,13 +109,17 @@ class ResourceAccessMiddleware:
         response = self.get_response(request)
         return response
 
+    def _should_skip_check(self, path):
+        """
+        Verifica se deve pular a verificação para este caminho (performance)
+        """
+        return any(path.startswith(skip_path) for skip_path in self.skip_paths)
+
     def _check_resource_access(self, request):
         """
         Verifica se o usuário pode acessar o recurso solicitado
         """
         try:
-            from .models import SystemResource
-            
             # Pega o caminho da requisição
             path = request.path
             
@@ -95,11 +136,11 @@ class ResourceAccessMiddleware:
                         resource_name = mapped_resource
                         break
             
-            # Se encontrou um recurso, verifica se está ativo
+            # Se encontrou um recurso, verifica se está ativo (com cache)
             if resource_name:
-                # Verifica hierarquia de recursos
-                is_active = self._check_resource_hierarchy(resource_name)
-                logger.info(f"Verificando recurso '{resource_name}' para caminho '{path}': {'ATIVO' if is_active else 'INATIVO'}")
+                is_active = self._check_resource_hierarchy_cached(resource_name)
+                if not is_active:
+                    logger.info(f"Recurso '{resource_name}' está INATIVO para caminho '{path}'")
                 return is_active
             
             return True  # Se não há recurso mapeado, permite acesso
@@ -108,11 +149,39 @@ class ResourceAccessMiddleware:
             logger.error(f"Erro ao verificar acesso ao recurso: {e}")
             return True  # Em caso de erro, permite acesso por segurança
 
+    def _check_resource_hierarchy_cached(self, resource_name):
+        """
+        Verifica se um recurso está ativo considerando a hierarquia COM CACHE
+        """
+        cache_key = f"resource_active:{resource_name}"
+        
+        # Tenta pegar do cache primeiro
+        try:
+            cached_result = cache.get(cache_key)
+            if cached_result is not None:
+                return cached_result
+        except Exception as e:
+            logger.warning(f"Erro ao acessar cache de recursos: {e}")
+        
+        # Se não está no cache, verifica e salva
+        try:
+            is_active = self._check_resource_hierarchy(resource_name)
+            
+            # Salva no cache por 5 minutos
+            try:
+                cache.set(cache_key, is_active, self.resource_cache_timeout)
+            except Exception as e:
+                logger.warning(f"Erro ao salvar no cache de recursos: {e}")
+            
+            return is_active
+        except Exception as e:
+            logger.error(f"Erro ao verificar hierarquia de recursos: {e}")
+            return True  # Em caso de erro, permite acesso
+
     def _check_resource_hierarchy(self, resource_name):
         """
         Verifica se um recurso está ativo considerando a hierarquia
         """
-        from .models import SystemResource
         
         # Define a hierarquia de recursos
         hierarchy = {
@@ -156,17 +225,17 @@ class ResourceAccessMiddleware:
             parent_module = hierarchy[resource_name]
             
             # Primeiro verifica se o módulo pai está ativo
-            parent_active = SystemResource.is_resource_active(parent_module)
+            parent_active = self.SystemResource.is_resource_active(parent_module)
             if not parent_active:
-                logger.info(f"Módulo pai '{parent_module}' está inativo, bloqueando '{resource_name}'")
+                logger.debug(f"Módulo pai '{parent_module}' está inativo, bloqueando '{resource_name}'")
                 return False
             
             # Se o módulo pai está ativo, verifica o recurso específico
-            resource_active = SystemResource.is_resource_active(resource_name)
+            resource_active = self.SystemResource.is_resource_active(resource_name)
             return resource_active
         else:
             # Se não tem módulo pai, verifica apenas o recurso
-            return SystemResource.is_resource_active(resource_name)
+            return self.SystemResource.is_resource_active(resource_name)
 
     def _handle_inactive_resource(self, request):
         """
