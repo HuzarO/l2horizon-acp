@@ -122,10 +122,16 @@ def index(request):
     # Classes info (ajustando a descrição conforme a linguagem)
     classes_info = []
     for c in data_index.get('classes', []):
-        descricao = c['descricao'].get(current_lang, c['descricao'].get('pt'))  # fallback para 'pt'
+        descricao = c['descricao']  # já é string
         classes_info.append({
             'name': c['name'],
-            'descricao': descricao
+            'slug': c['slug'],  # necessário para o template
+            'badge': c['badge'],
+            'difficulty': c['difficulty'],
+            'stats': c['stats'],
+            'skills': c['skills'],
+            'descricao': descricao,
+            'image': c['image'],  # se você quiser usar
         })
 
     # Buscar apoiadores ativos e aprovados
