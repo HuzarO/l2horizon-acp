@@ -58,8 +58,7 @@ class LineageStats:
             LEFT JOIN character_subclasses CS ON CS.charId = C.charId AND CS.class_index = 0
         """
         return LineageStats._run_query(sql, {"limit": limit})
-            INNER JOIN agathion_data A ON A.owner_id = C.charId
-            WHERE C.accessLevel = '0' 
+        
     @cache_lineage_result(timeout=300)
     def top_pk(limit=10):
         sql = """
