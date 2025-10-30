@@ -256,16 +256,24 @@ class DashboardContentAdmin(BaseModelAdmin):
 
 @admin.register(SiteLogo)
 class SiteLogoAdmin(BaseModelAdmin):
-    list_display = ('name', 'is_active', 'created_at')
+    list_display = ('name', 'image_preview', 'is_active', 'created_at')
     list_filter = ('is_active', 'created_at')
     search_fields = ('name',)
     ordering = ('-created_at',)
+    readonly_fields = ('image_preview',)
     
     fieldsets = (
         (_('Informações do Logo'), {
-            'fields': ('name', 'is_active')
+            'fields': ('name', 'image', 'image_preview', 'is_active')
         }),
     )
+    
+    def image_preview(self, obj):
+        if obj.image:
+            return f'<img src="{obj.image.url}" width="200" style="object-fit: cover; border-radius: 8px;" />'
+        return "(Sem imagem)"
+    image_preview.allow_tags = True
+    image_preview.short_description = "Preview"
 
 
 @admin.register(Conquista)
