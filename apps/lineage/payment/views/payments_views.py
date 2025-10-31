@@ -165,6 +165,7 @@ def confirmar_pagamento(request, pedido_id):
                         "unit_price": float(pedido.valor_pago),
                     }],
                     "external_reference": str(pagamento.id),
+                    "notification_url": getattr(settings, 'MERCADO_PAGO_NOTIFICATION_URL', request.build_absolute_uri(reverse('payment:notificacao_mercado_pago'))),
                     "back_urls": {
                         "success": settings.MERCADO_PAGO_SUCCESS_URL,
                         "failure": settings.MERCADO_PAGO_FAILURE_URL,
@@ -260,7 +261,9 @@ def status_pagamento_ajax(request):
                                     valor_total, valor_bonus, descricao_bonus = aplicar_compra_com_bonus(
                                         wallet, Decimal(str(pagamento.valor)), 'MercadoPago'
                                     )
+                                    from django.utils import timezone
                                     pagamento.status = 'paid'
+                                    pagamento.processado_em = timezone.now()
                                     pagamento.save()
                                     if pedido:
                                         pedido.bonus_aplicado = valor_bonus

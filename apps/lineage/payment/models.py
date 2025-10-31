@@ -46,7 +46,7 @@ class PedidoPagamento(BaseModel):
 class Pagamento(BaseModel):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
     valor = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_("Value"))
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending', verbose_name=_("Status"))
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending', verbose_name=_("Status"), db_index=True)
     transaction_code = models.CharField(max_length=100, null=True, blank=True, verbose_name=_("Transaction Code"))
     pedido_pagamento = models.OneToOneField(
         PedidoPagamento,
@@ -56,6 +56,7 @@ class Pagamento(BaseModel):
         verbose_name=_("Linked Payment Request")
     )
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name=_("Created At"))
+    processado_em = models.DateTimeField(null=True, blank=True, verbose_name=_("Processed At"))
 
     def __str__(self):
         return f"Pagamento {self.id} - {self.status}"
@@ -74,6 +75,9 @@ class WebhookLog(BaseModel):
     class Meta:
         verbose_name = _("Webhook Log")
         verbose_name_plural = _("Webhook Logs")
+        indexes = [
+            models.Index(fields=['tipo', 'data_id']),
+        ]
 
     def __str__(self):
         return f"{self.tipo} - {self.data_id}"

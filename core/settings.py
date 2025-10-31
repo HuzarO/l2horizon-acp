@@ -20,7 +20,7 @@ load_dotenv()  # take environment variables from .env.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # System Version
-VERSION = '1.14.40'
+VERSION = '1.14.50'
 
 # =========================== THEME CONFIGURATION ===========================
 
@@ -545,6 +545,12 @@ else:
         'encerrar-apoiadores-expirados-cada-minuto': {
             'task': 'apps.lineage.server.tasks.verificar_cupons_expirados',
             'schedule': crontab(minute='*/1'),
+        },
+        'reconciliar-pagamentos-mercadopago-cada-minuto': {
+            'task': 'apps.lineage.payment.tasks.reconciliar_pendentes_mp',
+            'schedule': crontab(minute='*/1'),
+            'options': {'queue': 'default'},
+            'args': (5,),
         },
     }
 

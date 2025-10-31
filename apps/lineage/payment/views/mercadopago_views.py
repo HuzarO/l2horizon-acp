@@ -14,6 +14,7 @@ import hmac
 import hashlib
 import urllib.parse
 from utils.notifications import send_notification
+from django.utils import timezone
 
 
 logger = logging.getLogger(__name__)
@@ -122,6 +123,7 @@ def pagamento_sucesso(request):
                     )
 
                     pagamento.status = "paid"
+                    pagamento.processado_em = timezone.now()
                     pagamento.save()
 
                     if pedido:
@@ -130,12 +132,13 @@ def pagamento_sucesso(request):
                         pedido.status = 'CONCLUÍDO'
                         pedido.save()
 
-                    # Registro do fallback para auditoria
-                    WebhookLog.objects.create(
-                        tipo="payment_fallback",
-                        data_id=str(payment_id),
-                        payload=pagamento_info
-                    )
+                    # Registro do fallback para auditoria (de-duplicado)
+                    if not WebhookLog.objects.filter(tipo="payment_fallback", data_id=str(payment_id)).exists():
+                        WebhookLog.objects.create(
+                            tipo="payment_fallback",
+                            data_id=str(payment_id),
+                            payload=pagamento_info
+                        )
 
         return render(request, 'mp/pagamento_sucesso.html')
 
@@ -190,11 +193,13 @@ def notificacao_mercado_pago(request):
 
     logger.info(f"Webhook recebido | Tipo: {tipo} | ID: {data_id}")
 
-    WebhookLog.objects.create(
-        tipo=tipo,
-        data_id=str(data_id),
-        payload=body
-    )
+    # Evita log duplicado do mesmo evento
+    if not WebhookLog.objects.filter(tipo=tipo, data_id=str(data_id)).exists():
+        WebhookLog.objects.create(
+            tipo=tipo,
+            data_id=str(data_id),
+            payload=body
+        )
 
     sdk = mercadopago.SDK(settings.MERCADO_PAGO_ACCESS_TOKEN)
 
@@ -227,6 +232,7 @@ def notificacao_mercado_pago(request):
                                 )
                                 
                                 pagamento.status = "paid"
+                                pagamento.processado_em = timezone.now()
                                 pagamento.save()
 
                                 pedido = pagamento.pedido_pagamento
