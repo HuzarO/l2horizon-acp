@@ -75,8 +75,8 @@ function appendMessage(message, sender, avatarUrl, isSent, timestamp = null) {
     messageDiv.style.animation = 'fadeInUp 0.3s ease-out';
 
     messageDiv.innerHTML = `
-        <div class="avatar-container">
-            <img src="${avatarUrl}" alt="${senderName}" />
+        <div class="admin-avatar-container">
+            <img src="${avatarUrl}" alt="${senderName}" loading="lazy" />
         </div>
         <div class="message-content">
             <div class="message-header">
