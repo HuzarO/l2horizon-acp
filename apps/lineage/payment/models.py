@@ -16,7 +16,7 @@ class PedidoPagamento(BaseModel):
     status = models.CharField(max_length=20, default='PENDENTE', verbose_name=_("Status"))  # CONFIRMADO, FALHOU...
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name=_("Created At"))
 
-    def confirmar_pagamento(self):
+    def confirmar_pagamento(self, actor=None):
         if self.status != 'CONFIRMADO':
             self.status = 'CONFIRMADO'
             self.save()
@@ -25,8 +25,16 @@ class PedidoPagamento(BaseModel):
 
             # Usa a função centralizada que mantém consistência
             from apps.lineage.wallet.utils import aplicar_compra_com_bonus
+            descricao_extra = None
+            if actor is not None:
+                try:
+                    username = getattr(actor, 'username', None) or str(actor)
+                except Exception:
+                    username = 'admin'
+                descricao_extra = f"(confirmação manual por admin: {username})"
+
             valor_total, valor_bonus, descricao_bonus = aplicar_compra_com_bonus(
-                wallet, self.valor_pago, self.metodo
+                wallet, self.valor_pago, self.metodo, descricao_extra=descricao_extra
             )
             
             # Atualiza os campos de bônus
@@ -46,7 +54,7 @@ class PedidoPagamento(BaseModel):
 class Pagamento(BaseModel):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
     valor = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_("Value"))
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending', verbose_name=_("Status"))
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending', verbose_name=_("Status"), db_index=True)
     transaction_code = models.CharField(max_length=100, null=True, blank=True, verbose_name=_("Transaction Code"))
     pedido_pagamento = models.OneToOneField(
         PedidoPagamento,
@@ -56,6 +64,7 @@ class Pagamento(BaseModel):
         verbose_name=_("Linked Payment Request")
     )
     data_criacao = models.DateTimeField(auto_now_add=True, verbose_name=_("Created At"))
+    processado_em = models.DateTimeField(null=True, blank=True, verbose_name=_("Processed At"))
 
     def __str__(self):
         return f"Pagamento {self.id} - {self.status}"
@@ -74,6 +83,9 @@ class WebhookLog(BaseModel):
     class Meta:
         verbose_name = _("Webhook Log")
         verbose_name_plural = _("Webhook Logs")
+        indexes = [
+            models.Index(fields=['tipo', 'data_id']),
+        ]
 
     def __str__(self):
         return f"{self.tipo} - {self.data_id}"
