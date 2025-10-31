@@ -74,7 +74,7 @@ def verificar_email(request, uidb64, token):
             user.save(update_fields=['is_email_verified'])
 
             # Adiciona XP
-            perfil = PerfilGamer.objects.get(user=user)
+            perfil, _ = PerfilGamer.objects.get_or_create(user=user)
             perfil.adicionar_xp(40)  # valor de XP por verificar e-mail
 
             # Opcional: Armazena mensagem para exibir no template
@@ -103,7 +103,7 @@ def custom_set_language(request):
 
             # Verifica se o usuário já trocou de idioma antes
             if request.user.is_authenticated:
-                perfil = PerfilGamer.objects.get(user=request.user)
+                perfil, _ = PerfilGamer.objects.get_or_create(user=request.user)
                 
                 # Usa uma conquista para marcar se já fez isso antes
                 if not ConquistaUsuario.objects.filter(usuario=request.user, conquista__codigo='idioma_trocado').exists():
