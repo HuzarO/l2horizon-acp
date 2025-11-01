@@ -41,7 +41,33 @@ def spin_ajax(request):
 
     prizes = list(Prize.objects.all())
     if not prizes:
-        return JsonResponse({'error': _('Nenhum prêmio disponível.')}, status=400)
+        # Auto-popula a tabela de prêmios a partir dos Itens de caixas
+        weight_by_rarity = {
+            'COMUM': 60,
+            'RARE': 25,
+            'RARA': 25,
+            'EPIC': 10,
+            'EPICA': 10,
+            'LEGENDARY': 5,
+            'LENDARIA': 5,
+        }
+        items = Item.objects.filter(can_be_populated=True)
+        created_any = False
+        for it in items:
+            Prize.objects.get_or_create(
+                item=it,
+                defaults={
+                    'name': it.name,
+                    'legacy_item_code': it.item_id,
+                    'enchant': it.enchant,
+                    'rarity': it.rarity,
+                    'weight': weight_by_rarity.get(str(it.rarity).upper(), 10),
+                }
+            )
+            created_any = True
+        prizes = list(Prize.objects.all())
+        if not prizes:
+            return JsonResponse({'error': _('Nenhum prêmio disponível.')}, status=400)
 
     # Configurável via GameConfig
     from ..models import GameConfig
@@ -95,12 +121,15 @@ def spin_ajax(request):
     bag, created = Bag.objects.get_or_create(user=user)
 
     # Verifica se o item já existe na bag (mesma id + enchant)
+    resolved_item_id = chosen.item.item_id if getattr(chosen, 'item', None) else chosen.item_id
+    resolved_enchant = chosen.item.enchant if getattr(chosen, 'item', None) else chosen.enchant
+    resolved_name = chosen.item.name if getattr(chosen, 'item', None) else chosen.name
     bag_item, created = BagItem.objects.get_or_create(
         bag=bag,
-        item_id=chosen.item_id,
-        enchant=chosen.enchant,
+        item_id=resolved_item_id,
+        enchant=resolved_enchant,
         defaults={
-            'item_name': chosen.name,
+            'item_name': resolved_name,
             'quantity': 1,
         }
     )
@@ -109,11 +138,15 @@ def spin_ajax(request):
         bag_item.quantity += 1
         bag_item.save(update_fields=["quantity"])
 
+    # Campos via Item quando disponível
+    resp_name = chosen.item.name if getattr(chosen, 'item_id', None) and chosen.item_id and hasattr(chosen, 'item') and chosen.item else chosen.name
+    resp_item_id = chosen.item.item_id if getattr(chosen, 'item', None) else chosen.legacy_item_code
+    resp_enchant = chosen.item.enchant if getattr(chosen, 'item', None) else chosen.enchant
     return JsonResponse({
         'id': chosen.id,
-        'name': chosen.name,
-        'item_id': chosen.item_id,
-        'enchant': chosen.enchant,
+        'name': resp_name,
+        'item_id': resp_item_id,
+        'enchant': resp_enchant,
         'rarity': chosen.rarity,
         'image_url': chosen.get_image_url()
     })
@@ -121,14 +154,19 @@ def spin_ajax(request):
 
 @conditional_otp_required
 def roulette_page(request):
-    prizes = Prize.objects.all()
-    prize_data = [{
-        'name': prize.name,
-        'image_url': prize.get_image_url(),
-        'item_id': prize.item_id,
-        'enchant': prize.enchant,
-        'rarity': prize.rarity
-    } for prize in prizes]
+    prizes = Prize.objects.select_related('item').all()
+    prize_data = []
+    for prize in prizes:
+        name = prize.item.name if prize.item else prize.name
+        item_id = prize.item.item_id if prize.item else prize.legacy_item_code
+        enchant = prize.item.enchant if prize.item else prize.enchant
+        prize_data.append({
+            'name': name,
+            'image_url': prize.get_image_url(),
+            'item_id': item_id,
+            'enchant': enchant,
+            'rarity': prize.rarity
+        })
 
     total_spins = SpinHistory.objects.filter(user=request.user).count()
     fichas = request.user.fichas

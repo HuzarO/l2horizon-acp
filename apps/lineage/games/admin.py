@@ -8,15 +8,15 @@ from .forms import BoxTypeAdminForm
 
 @admin.register(Prize)
 class PrizeAdmin(BaseModelAdmin):
-    list_display = ('name', 'image_preview', 'weight', 'item_id', 'enchant', 'rarity', 'created_at', 'updated_at')
-    search_fields = ('name', 'item_id')
+    list_display = ('display_name', 'image_preview', 'weight', 'display_item_id', 'display_enchant', 'rarity', 'created_at', 'updated_at')
+    search_fields = ('name', 'item__name', 'legacy_item_code')
     list_filter = ('created_at', 'rarity', 'enchant')
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('name',)
     
     fieldsets = (
         (_('Informações do Prêmio'), {
-            'fields': ('name', 'item_id', 'image', 'weight', 'enchant', 'rarity')
+            'fields': ('item', 'name', 'image', 'weight', 'enchant', 'rarity', 'legacy_item_code')
         }),
         (_('Datas'), {
             'fields': ('created_at', 'updated_at'),
@@ -30,6 +30,18 @@ class PrizeAdmin(BaseModelAdmin):
             obj.get_image_url()
         )
     image_preview.short_description = _('Imagem')
+
+    def display_name(self, obj):
+        return obj.item.name if obj.item else obj.name
+    display_name.short_description = _('Nome')
+
+    def display_item_id(self, obj):
+        return obj.item.item_id if obj.item else obj.legacy_item_code
+    display_item_id.short_description = _('Item ID')
+
+    def display_enchant(self, obj):
+        return obj.item.enchant if obj.item else obj.enchant
+    display_enchant.short_description = _('Enchant')
 
 
 @admin.register(SpinHistory)
@@ -126,7 +138,7 @@ class ItemAdmin(BaseModelAdmin):
     
     fieldsets = (
         (_('Informações do Item'), {
-            'fields': ('name', 'item_id', 'enchant', 'rarity', 'description')
+            'fields': ('name', 'item_id', 'enchant', 'rarity', 'description', 'image')
         }),
         (_('Configurações'), {
             'fields': ('can_be_populated',),
@@ -352,14 +364,14 @@ class MonsterAdmin(BaseModelAdmin):
 
 @admin.register(RewardItem)
 class RewardItemAdmin(BaseModelAdmin):
-    list_display = ('name', 'item_id', 'enchant', 'description', 'amount', 'created_at')
-    search_fields = ('name', 'item_id', 'description')
-    list_filter = ('enchant', 'created_at')
-    ordering = ('name',)
+    list_display = ('item', 'amount', 'created_at')
+    search_fields = ('item__name', 'item__item_id')
+    list_filter = ('created_at',)
+    ordering = ('-created_at',)
 
     fieldsets = (
         (_('Informações do Item'), {
-            'fields': ('name', 'item_id', 'enchant', 'description', 'amount')
+            'fields': ('item', 'amount')
         }),
     )
 

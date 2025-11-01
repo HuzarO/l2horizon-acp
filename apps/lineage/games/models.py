@@ -10,22 +10,25 @@ from .choices import *
 
 
 class Prize(BaseModel):    
-    # Campos básicos do prêmio
+    # Novo: vínculo com Item para evitar duplicidade (fase de migração: manter campos legados por enquanto)
+    item = models.ForeignKey('Item', on_delete=models.CASCADE, null=True, blank=True, verbose_name=_("Item"))
+    # Legado
     name = models.CharField(max_length=255, verbose_name=_("Prize Name"))
     image = models.ImageField(upload_to='prizes/', null=True, blank=True, verbose_name=_("Image"))
     weight = models.PositiveIntegerField(default=1, help_text=_("Quanto maior o peso, maior a chance de ser sorteado."), verbose_name=_("Weight"))
-    
-    # Campos adicionais
-    item_id = models.IntegerField(verbose_name=_("Item ID"))
+    legacy_item_code = models.IntegerField(verbose_name=_("Item ID"))
     enchant = models.IntegerField(default=0, verbose_name=_("Enchant Level"))
     rarity = models.CharField(max_length=15, choices=RARITY_CHOICES, default='COMUM', verbose_name=_("Rarity"))
     
     # Método para retornar a URL da imagem
     def get_image_url(self):
+        if self.item and self.item.image:
+            return self.item.image.url
         return self.image.url if self.image else static("roulette/images/default.png")
 
     def __str__(self):
-        return f'{self.name} ({self.rarity})'
+        display_name = self.item.name if self.item else self.name
+        return f'{display_name} ({self.rarity})'
 
     class Meta:
         verbose_name = _("Prize")
@@ -279,18 +282,23 @@ class Monster(BaseModel):
 
 
 class RewardItem(BaseModel):
+    # Transição: manter campos legados e adicionar FK opcional para Item
     name = models.CharField(max_length=100, verbose_name=_("Name"))
-    item_id = models.PositiveIntegerField(verbose_name=_("Item ID"))
+    legacy_item_code = models.PositiveIntegerField(verbose_name=_("Item ID"))
     enchant = models.PositiveIntegerField(default=0, verbose_name=_("Enchant"))
     amount = models.PositiveIntegerField(default=1, verbose_name=_("Amount"))
     description = models.TextField(blank=True, null=True, verbose_name=_("Description"))
+    # Novo
+    item = models.ForeignKey('Item', on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Item"))
 
     class Meta:
         verbose_name = _("Reward Item")
         verbose_name_plural = _("Reward Items")
 
     def __str__(self):
-        return f"{self.name} +{self.enchant}"
+        base = self.item.name if self.item else self.name
+        ench = self.item.enchant if self.item else self.enchant
+        return f"{base} +{ench}"
 
 
 # ==============================

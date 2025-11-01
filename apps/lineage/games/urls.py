@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import views, manager_box_views, battle_pass, economy_game_view, daily_bonus_manager
+from .views import views, manager_box_views, battle_pass, economy_game_view, daily_bonus_manager, roulette_manager, economy_manager
 
 
 app_name = "games"
@@ -38,8 +38,10 @@ urlpatterns = [
     path('daily-bonus/', views.daily_bonus_dashboard, name='daily_bonus_dashboard'),
     path('daily-bonus/claim/', views.daily_bonus_claim, name='daily_bonus_claim'),
     path('daily-bonus/manager/', daily_bonus_manager.manager_dashboard, name='daily_bonus_manager'),
+    path('roulette/manager/', roulette_manager.dashboard, name='roulette_manager'),
 
     path("economy-game/", economy_game_view.economy_game, name="economy-game"),
+    path('economy-game/manager/', economy_manager.dashboard, name='economy_manager'),
     path("economy-game/fight/<int:monster_id>/", economy_game_view.fight_monster, name="fight-monster"),
     path("economy-game/enchant/", economy_game_view.enchant_weapon, name="enchant-weapon"),
     path("economy-game/monster/<int:monster_id>/is_alive/", economy_game_view.is_monster_alive, name="monster-is-alive"),

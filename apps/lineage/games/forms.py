@@ -121,6 +121,53 @@ class ItemForm(forms.ModelForm):
         }
 
 
+# Roulette Manager Form
+class PrizeManagerForm(forms.ModelForm):
+    class Meta:
+        model = Prize
+        fields = ['item', 'weight']
+        widgets = {
+            'item': forms.Select(attrs={'class': 'form-control'}),
+            'weight': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+        }
+        labels = {
+            'item': _('Item'),
+            'weight': _('Peso'),
+        }
+
+
+# Economy Manager Forms
+class MonsterManagerForm(forms.ModelForm):
+    class Meta:
+        model = Monster
+        fields = ['name', 'level', 'required_weapon_level', 'fragment_reward', 'respawn_seconds', 'image', 'attack', 'defense', 'hp']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'level': forms.NumberInput(attrs={'class': 'form-control'}),
+            'required_weapon_level': forms.NumberInput(attrs={'class': 'form-control'}),
+            'fragment_reward': forms.NumberInput(attrs={'class': 'form-control'}),
+            'respawn_seconds': forms.NumberInput(attrs={'class': 'form-control'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'attack': forms.NumberInput(attrs={'class': 'form-control'}),
+            'defense': forms.NumberInput(attrs={'class': 'form-control'}),
+            'hp': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+
+class RewardItemManagerForm(forms.ModelForm):
+    class Meta:
+        model = RewardItem
+        fields = ['item', 'amount']
+        widgets = {
+            'item': forms.Select(attrs={'class': 'form-control'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+        }
+        labels = {
+            'item': _('Item (recompensa +10)'),
+            'amount': _('Quantidade'),
+        }
+
+
 # ==============================
 # Daily Bonus Manager Forms
 # ==============================
