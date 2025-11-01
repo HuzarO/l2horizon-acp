@@ -426,32 +426,16 @@
 <!-- JavaScript para interações -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado, inicializando botões de seguir...');
-    
-    // Teste para verificar se o botão existe
+    // Follow/Unfollow (anexar somente se existir botão)
     const followButtons = document.querySelectorAll('.follow-btn');
-    console.log('Número de botões de seguir encontrados:', followButtons.length);
-    
-    if (followButtons.length === 0) {
-        console.error('Nenhum botão de seguir encontrado!');
-        return;
-    }
-    
-    // Follow/Unfollow
-    followButtons.forEach((btn, index) => {
-        console.log(`Botão de seguir ${index + 1} encontrado:`, btn);
-        console.log('ID do usuário:', btn.dataset.userId);
-        console.log('Classes do botão:', btn.className);
-        
+    if (followButtons.length > 0) {
+      followButtons.forEach((btn) => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             
             const userId = parseInt(this.dataset.userId);
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-            
-            console.log('Clicou no botão de seguir para usuário:', userId);
-            console.log('Token CSRF encontrado:', !!csrfToken);
             
             if (!userId || isNaN(userId)) {
                 console.error('ID do usuário inválido:', this.dataset.userId);
@@ -475,25 +459,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .then(response => {
-                console.log('Resposta recebida:', response.status);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 return response.json();
             })
             .then(data => {
-                console.log('Dados recebidos:', data);
                 if (data.following !== undefined) {
                     if (data.following) {
                         this.innerHTML = '<i class="bi bi-person-check"></i> {% trans "Seguindo" %}';
                         this.classList.remove('btn-primary');
                         this.classList.add('btn-success');
-                        console.log('Agora seguindo o usuário');
                     } else {
                         this.innerHTML = '<i class="bi bi-person-plus"></i> {% trans "Seguir" %}';
                         this.classList.remove('btn-success');
                         this.classList.add('btn-primary');
-                        console.log('Deixou de seguir o usuário');
                     }
                     
                     // Atualizar contadores se existirem
@@ -502,11 +482,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     if (followersCount && data.followers_count !== undefined) {
                         followersCount.textContent = data.followers_count;
-                        console.log('Contador de seguidores atualizado:', data.followers_count);
                     }
                     if (followingCount && data.following_count !== undefined) {
                         followingCount.textContent = data.following_count;
-                        console.log('Contador de seguindo atualizado:', data.following_count);
                     }
                 } else {
                     console.error('Resposta não contém campo "following":', data);
@@ -522,18 +500,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.style.opacity = '1';
             });
         });
-        
-        // Adicionar evento de teste para verificar se o botão responde
-        btn.addEventListener('mouseenter', function() {
-            console.log('Mouse entrou no botão de seguir');
-        });
-        
-        btn.addEventListener('mouseleave', function() {
-            console.log('Mouse saiu do botão de seguir');
-        });
-    });
+      });
+    }
     
-    // Like/Unlike
+    // Like/Unlike (compatível com feed)
     document.querySelectorAll('.like-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const postId = this.dataset.postId;
@@ -545,18 +515,21 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    const icon = this.querySelector('i');
-                    const count = this.querySelector('.like-count');
-                    
-                    if (data.is_liked) {
-                        icon.className = 'bi bi-heart-fill text-danger';
-                    } else {
-                        icon.className = 'bi bi-heart';
-                    }
-                    
+                const icon = this.querySelector('i');
+                const count = this.querySelector('.like-count');
+                // Suporta ambas respostas: { liked } e { is_liked }
+                const isLiked = typeof data.liked !== 'undefined' ? data.liked : data.is_liked;
+                if (isLiked) {
+                    if (icon) icon.className = 'bi bi-heart-fill text-danger';
+                } else {
+                    if (icon) icon.className = 'bi bi-heart';
+                }
+                if (typeof data.likes_count !== 'undefined' && count) {
                     count.textContent = data.likes_count;
                 }
+            })
+            .catch(() => {
+                // silencioso
             });
         });
     });
