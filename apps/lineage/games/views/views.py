@@ -17,6 +17,8 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
 import json
 import time
+from datetime import datetime, timezone as dt_timezone
+import calendar
 
 
 def parse_int(value, default=0):
@@ -379,3 +381,118 @@ def esvaziar_bag_para_inventario(request):
         bag.items.all().delete()
         messages.success(request, _('Todos os itens foram transferidos para o inventário.'))
         return redirect('games:bag_dashboard')
+
+
+# ==============================
+# Daily Bonus Views
+# ==============================
+
+def _now_utc():
+    return datetime.now(dt_timezone.utc)
+
+
+def _current_bonus_day(reset_hour_utc: int):
+    now = _now_utc()
+    anchor = now
+    if now.hour < reset_hour_utc:
+        # Antes do reset, considerar o dia anterior
+        anchor = now.replace(day=now.day - 1 if now.day > 1 else 1)
+    return anchor.day
+
+
+@conditional_otp_required
+def daily_bonus_dashboard(request):
+    from ..models import DailyBonusSeason, DailyBonusDay, DailyBonusClaim
+
+    season = DailyBonusSeason.objects.filter(is_active=True).first()
+    if not season:
+        return render(request, 'daily_bonus/dashboard.html', {
+            'season': None,
+            'days': [],
+            'today': None,
+            'can_claim': False,
+        })
+
+    today_day = _current_bonus_day(season.reset_hour_utc)
+    # Quantidade de dias do mês atual (UTC)
+    now = _now_utc()
+    days_in_month = calendar.monthrange(now.year, now.month)[1]
+    month_days = range(1, days_in_month + 1)
+    day_defs = {d.day_of_month: d for d in DailyBonusDay.objects.filter(season=season)}
+    claims = DailyBonusClaim.objects.filter(user=request.user, season=season)
+    claimed_days = set(c.day_of_month for c in claims)
+
+    context_days = []
+    for d in month_days:
+        dd = day_defs.get(d)
+        context_days.append({
+            'day': d,
+            'mode': dd.mode if dd else 'RANDOM',
+            'fixed_item': dd.fixed_item if dd else None,
+            'claimed': d in claimed_days,
+            'is_today': d == today_day,
+        })
+
+    # Só permite claim se o dia existe no mês corrente
+    can_claim = (today_day not in claimed_days) and (1 <= today_day <= days_in_month)
+
+    return render(request, 'daily_bonus/dashboard.html', {
+        'season': season,
+        'days': context_days,
+        'today': today_day,
+        'can_claim': can_claim,
+    })
+
+
+@conditional_otp_required
+@transaction.atomic
+def daily_bonus_claim(request):
+    from ..models import DailyBonusSeason, DailyBonusDay, DailyBonusClaim, DailyBonusPoolEntry, Item
+
+    season = DailyBonusSeason.objects.filter(is_active=True).select_for_update().first()
+    if not season:
+        messages.error(request, _('Nenhuma temporada de bônus diária ativa.'))
+        return redirect('games:daily_bonus_dashboard')
+
+    today_day = _current_bonus_day(season.reset_hour_utc)
+    # Validar contra o número de dias do mês corrente (UTC)
+    now = _now_utc()
+    days_in_month = calendar.monthrange(now.year, now.month)[1]
+    if not (1 <= today_day <= days_in_month):
+        messages.error(request, _('Fora da janela de dias válidos.'))
+        return redirect('games:daily_bonus_dashboard')
+
+    if DailyBonusClaim.objects.filter(user=request.user, season=season, day_of_month=today_day).exists():
+        messages.info(request, _('Você já resgatou o prêmio de hoje.'))
+        return redirect('games:daily_bonus_dashboard')
+
+    # Resolver prêmio do dia
+    day_def = DailyBonusDay.objects.filter(season=season, day_of_month=today_day).first()
+    chosen_item = None
+    if day_def and day_def.mode == 'FIXED' and day_def.fixed_item:
+        chosen_item = day_def.fixed_item
+    else:
+        pool = list(DailyBonusPoolEntry.objects.filter(season=season))
+        if not pool:
+            messages.error(request, _('Pool de itens da temporada está vazio.'))
+            return redirect('games:daily_bonus_dashboard')
+        choices = [p.item for p in pool]
+        weights = [p.weight for p in pool]
+        chosen_item = random.choices(choices, weights=weights, k=1)[0]
+
+    # Enviar para a Bag
+    bag, created = Bag.objects.get_or_create(user=request.user)
+    bag_item, created = BagItem.objects.get_or_create(
+        bag=bag,
+        item_id=chosen_item.item_id,
+        enchant=chosen_item.enchant,
+        defaults={'item_name': chosen_item.name, 'quantity': 1}
+    )
+    if not created:
+        bag_item.quantity += 1
+        bag_item.save(update_fields=['quantity'])
+
+    DailyBonusClaim.objects.create(user=request.user, season=season, day_of_month=today_day)
+
+    messages.success(request, _('Prêmio diário resgatado com sucesso!'))
+    return redirect('games:daily_bonus_dashboard')

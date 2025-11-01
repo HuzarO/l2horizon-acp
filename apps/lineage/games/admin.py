@@ -364,6 +364,50 @@ class RewardItemAdmin(BaseModelAdmin):
     )
 
 
+# ==============================
+# Daily Bonus Admin
+# ==============================
+
+@admin.register(DailyBonusSeason)
+class DailyBonusSeasonAdmin(BaseModelAdmin):
+    list_display = ('name', 'is_active', 'start_date', 'end_date', 'reset_hour_utc', 'created_at')
+    list_filter = ('is_active', 'start_date', 'end_date')
+    search_fields = ('name',)
+    ordering = ('-is_active', '-start_date')
+    fieldsets = (
+        (_('Informações'), {'fields': ('name', 'is_active', 'start_date', 'end_date', 'reset_hour_utc')}),
+        (_('Datas'), {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
+    )
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(DailyBonusPoolEntry)
+class DailyBonusPoolEntryAdmin(BaseModelAdmin):
+    list_display = ('season', 'item', 'weight', 'created_at')
+    list_filter = ('season', 'item__rarity')
+    search_fields = ('item__name', 'season__name')
+    ordering = ('season', '-weight')
+
+
+@admin.register(DailyBonusDay)
+class DailyBonusDayAdmin(BaseModelAdmin):
+    list_display = ('season', 'day_of_month', 'mode', 'fixed_item')
+    list_filter = ('season', 'mode')
+    search_fields = ('season__name', 'fixed_item__name')
+    ordering = ('season', 'day_of_month')
+    fieldsets = (
+        (_('Dia do Mês'), {'fields': ('season', 'day_of_month', 'mode', 'fixed_item')}),
+    )
+
+
+@admin.register(DailyBonusClaim)
+class DailyBonusClaimAdmin(BaseModelAdmin):
+    list_display = ('user', 'season', 'day_of_month', 'claimed_at')
+    list_filter = ('season', 'claimed_at')
+    search_fields = ('user__username', 'season__name')
+    ordering = ('-claimed_at',)
+
+
 @admin.register(BattlePassSeason)
 class BattlePassSeasonAdmin(BaseModelAdmin):
     list_display = ('name', 'start_date', 'end_date', 'is_active', 'get_duration')
@@ -482,6 +526,27 @@ class UserBattlePassProgressAdmin(BaseModelAdmin):
                 break
         return level
     get_level.short_description = _('Nível')
+
+
+# Mensagem na área administrativa para o Daily Bonus
+from django.contrib.auth.signals import user_logged_in
+from django.dispatch import receiver
+from django.contrib import messages as dj_messages
+
+@receiver(user_logged_in)
+def notify_daily_bonus(sender, request, user, **kwargs):
+    try:
+        from .models import DailyBonusSeason, DailyBonusClaim
+        from .views.views import _current_bonus_day
+        season = DailyBonusSeason.objects.filter(is_active=True).first()
+        if not season:
+            return
+        today_day = _current_bonus_day(season.reset_hour_utc)
+        if 1 <= today_day <= 31 and not DailyBonusClaim.objects.filter(user=user, season=season, day_of_month=today_day).exists():
+            dj_messages.info(request, _('Você tem um bônus diário disponível!'))
+    except Exception:
+        # nunca quebrar o login por causa de notificação
+        pass
 
 
 @admin.register(BattlePassItemExchange)

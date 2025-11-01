@@ -293,6 +293,76 @@ class RewardItem(BaseModel):
         return f"{self.name} +{self.enchant}"
 
 
+# ==============================
+# Daily Bonus System
+# ==============================
+
+class DailyBonusSeason(BaseModel):
+    name = models.CharField(max_length=100, verbose_name=_("Name"))
+    start_date = models.DateField(verbose_name=_("Start Date"))
+    end_date = models.DateField(verbose_name=_("End Date"))
+    is_active = models.BooleanField(default=False, verbose_name=_("Is Active"))
+    reset_hour_utc = models.PositiveSmallIntegerField(default=3, verbose_name=_("Reset Hour (UTC)"))
+
+    class Meta:
+        verbose_name = _("Daily Bonus Season")
+        verbose_name_plural = _("Daily Bonus Seasons")
+
+    def __str__(self):
+        return f"{self.name} ({'active' if self.is_active else 'inactive'})"
+
+    def save(self, *args, **kwargs):
+        if self.is_active:
+            DailyBonusSeason.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
+        super().save(*args, **kwargs)
+
+
+class DailyBonusPoolEntry(BaseModel):
+    season = models.ForeignKey(DailyBonusSeason, on_delete=models.CASCADE, related_name='pool_entries', verbose_name=_("Season"))
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, verbose_name=_("Item"))
+    weight = models.PositiveIntegerField(default=1, verbose_name=_("Weight"))
+
+    class Meta:
+        verbose_name = _("Daily Bonus Pool Entry")
+        verbose_name_plural = _("Daily Bonus Pool Entries")
+
+    def __str__(self):
+        return f"{self.item.name} (w={self.weight})"
+
+
+class DailyBonusDay(BaseModel):
+    MODE_CHOICES = (
+        ('FIXED', _("Fixed Item")),
+        ('RANDOM', _("Random from Pool")),
+    )
+    season = models.ForeignKey(DailyBonusSeason, on_delete=models.CASCADE, related_name='days', verbose_name=_("Season"))
+    day_of_month = models.PositiveSmallIntegerField(verbose_name=_("Day of Month"))
+    mode = models.CharField(max_length=10, choices=MODE_CHOICES, default='RANDOM', verbose_name=_("Mode"))
+    fixed_item = models.ForeignKey(Item, null=True, blank=True, on_delete=models.SET_NULL, verbose_name=_("Fixed Item"))
+
+    class Meta:
+        unique_together = ('season', 'day_of_month')
+        verbose_name = _("Daily Bonus Day")
+        verbose_name_plural = _("Daily Bonus Days")
+
+    def __str__(self):
+        return f"{self.season.name} - Day {self.day_of_month} ({self.mode})"
+
+
+class DailyBonusClaim(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='daily_bonus_claims', verbose_name=_("User"))
+    season = models.ForeignKey(DailyBonusSeason, on_delete=models.CASCADE, related_name='claims', verbose_name=_("Season"))
+    day_of_month = models.PositiveSmallIntegerField(verbose_name=_("Day of Month"))
+    claimed_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Claimed At"))
+
+    class Meta:
+        unique_together = ('user', 'season', 'day_of_month')
+        verbose_name = _("Daily Bonus Claim")
+        verbose_name_plural = _("Daily Bonus Claims")
+
+    def __str__(self):
+        return f"{self.user.username} claimed day {self.day_of_month} of {self.season.name}"
+
 class BattlePassSeason(BaseModel):
     name = models.CharField(max_length=100)
     start_date = models.DateTimeField(verbose_name=_("Start Date"))
