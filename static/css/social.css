@@ -2648,3 +2648,289 @@ MENU SUSPENSO ESTILO WHATSAPP
     font-size: 0.9em !important;
   }
 }
+
+/* ============================================================================
+TEMA GAMER SUTIL PARA FEED/POSTS
+============================================================================ */
+
+/* Cards de posts com vibe gamer sutil (escuro + acento neon) */
+.post-card {
+  background: linear-gradient(145deg, #0b0f1a, #0e1422) !important;
+  border: 1px solid rgba(0, 255, 204, 0.12) !important; /* ciano neon suave */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 255, 204, 0.05) inset !important;
+}
+
+.post-card .card-header {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)) !important;
+  border-bottom: 1px solid rgba(0, 255, 204, 0.12) !important;
+}
+
+.post-card .post-content {
+  color: #d9e1ee !important;
+}
+
+.post-card .post-media img,
+.post-card .post-media video {
+  border: 1px solid rgba(0, 255, 204, 0.12) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Estatísticas e badges com contraste no escuro */
+.post-stats {
+  color: #9fb3c8 !important;
+}
+
+.post-stats i {
+  color: #66ffe0 !important;
+  opacity: 0.85 !important;
+}
+
+/* Botões outline com acentos neon discretos */
+.post-actions .btn.btn-outline-primary,
+.post-actions .btn.btn-outline-secondary,
+.post-actions .btn.btn-outline-success {
+  background-color: rgba(10, 14, 25, 0.6) !important;
+  border-color: rgba(0, 255, 204, 0.28) !important;
+  color: #cfe6ff !important;
+  box-shadow: 0 0 0 0 rgba(0, 255, 204, 0) !important;
+}
+
+.post-actions .btn:hover {
+  border-color: rgba(0, 255, 204, 0.6) !important;
+  box-shadow: 0 0 14px rgba(0, 255, 204, 0.18), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+.post-actions .btn:active {
+  transform: translateY(0);
+}
+
+/* Like com brilho quando ativo */
+.post-actions .like-btn i {
+  transition: all 0.2s ease !important;
+}
+
+.post-actions .like-btn .bi-heart-fill {
+  color: #ff3b81 !important;
+  filter: drop-shadow(0 0 6px rgba(255, 59, 129, 0.45));
+}
+
+.post-actions .like-btn:hover .bi-heart {
+  color: #ff3b81 !important;
+  text-shadow: 0 0 8px rgba(255, 59, 129, 0.35);
+}
+
+/* Barra de ações do formulário com visual gamer leve */
+.post-actions-bar {
+  background: linear-gradient(145deg, rgba(11,15,26,0.85), rgba(14,20,34,0.85)) !important;
+  border: 1px solid rgba(0, 255, 204, 0.16) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important;
+}
+
+/* Dropdown mais escuro, mantendo legibilidade */
+.dropdown-menu {
+  background: #0f1626 !important;
+  border: 1px solid rgba(0, 255, 204, 0.12) !important;
+}
+
+.dropdown-item {
+  color: #cfe6ff !important;
+}
+
+.dropdown-item:hover {
+  background: rgba(0, 255, 204, 0.08) !important;
+}
+
+/* List groups e headers na sidebar com sutilidade escura */
+.list-group-item {
+  background: linear-gradient(145deg, #0b0f1a, #0e1422) !important;
+  color: #cfe6ff !important;
+  border-color: rgba(0, 255, 204, 0.08) !important;
+}
+
+.card-header {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)) !important;
+  border-bottom: 1px solid rgba(0, 255, 204, 0.12) !important;
+}
+
+.card {
+  background: linear-gradient(145deg, #0b0f1a, #0e1422) !important;
+  border: 1px solid rgba(0, 255, 204, 0.08) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Campos de contagem e metas no topo */
+#char-count, #char-count-mobile, #hashtag-count {
+  color: #66ffe0 !important;
+}
+
+/* Links dentro do card escuros, mantendo cor/hover */
+.post-card a.text-decoration-none {
+  color: #e0eeff !important;
+}
+
+.post-card a.text-decoration-none:hover {
+  color: #66ffe0 !important;
+}
+
+/* Nome do usuário no header do post bem claro */
+.post-card .card-header h6 a.text-decoration-none {
+  color: #eaf2ff !important;
+}
+
+.post-card .card-header h6 a.text-decoration-none:hover {
+  color: #9fffe8 !important;
+}
+
+/* Ajustes de inputs no tema escuro do card de criação */
+textarea.form-control {
+  background: #0f1626 !important;
+  color: #e0eeff !important;
+  border: 1px solid rgba(0, 255, 204, 0.14) !important;
+}
+
+textarea.form-control::placeholder {
+  color: #8aa0b8 !important;
+}
+
+/* Badges / chips de hashtag em tom neon sutil */
+.hashtags .badge.bg-primary {
+  background: linear-gradient(145deg, #13233a, #0f1d31) !important;
+  border: 1px solid rgba(0, 255, 204, 0.18) !important;
+  color: #aee !important;
+}
+
+/* Paginação com contorno neon leve */
+.pagination .page-link {
+  background: #0f1626 !important;
+  color: #cfe6ff !important;
+  border: 1px solid rgba(0, 255, 204, 0.14) !important;
+}
+
+.pagination .page-item.active .page-link {
+  background: #0ff0cc !important; /* ciano claro para destaque */
+  color: #071018 !important;
+  border-color: #0ff0cc !important;
+  box-shadow: 0 0 14px rgba(0, 255, 204, 0.35) inset, 0 0 10px rgba(0, 255, 204, 0.25) !important;
+}
+
+/* Fundo geral do social com gradiente escuro e leve textura */
+body {
+  background: radial-gradient(1200px 600px at 20% 0%, #0d1322 0%, #0a0f1c 40%, #080c16 100%) !important;
+  background-attachment: fixed !important;
+}
+
+/* Textos escurecidos no tema escuro -> clarear */
+.card-body,
+.card-body.text-center,
+.card .card-body,
+.list-group-item,
+.list-group-item .small,
+.card .small,
+.text-muted {
+  color: #d9e1ee !important;
+}
+
+/* Ajustes de listas e hover */
+.list-group-item:hover {
+  background: linear-gradient(145deg, #0e1422, #10182a) !important;
+  border-color: rgba(0, 255, 204, 0.22) !important;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.35) !important;
+}
+
+/* Cores utilitárias mais claras para fundo escuro */
+.text-primary { color: #66ffe0 !important; }
+.text-success { color: #63ffa3 !important; }
+.text-info    { color: #7dd3ff !important; }
+.text-warning { color: #ffd166 !important; }
+.text-danger  { color: #ff7b8a !important; }
+
+/* Foco acessível com cor temática */
+.btn:focus, .form-control:focus, .page-link:focus, .dropdown-toggle:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 255, 204, 0.25) !important;
+  border-color: rgba(0, 255, 204, 0.6) !important;
+}
+
+/* Alertas no tema escuro */
+.alert-warning, .alert-dark, .alert-info {
+  background: #0f1626 !important;
+  color: #cfe6ff !important;
+  border: 1px solid rgba(0, 255, 204, 0.16) !important;
+}
+
+/* Modal escuro alinhado ao tema */
+.modal-content {
+  background: linear-gradient(145deg, #0b0f1a, #0e1422) !important;
+  border: 1px solid rgba(0, 255, 204, 0.16) !important;
+  color: #d9e1ee !important;
+}
+
+.modal-header, .modal-footer {
+  border-color: rgba(0, 255, 204, 0.12) !important;
+}
+
+/* Scrollbar temática (WebKit) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0a0f1c; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #0fd, #0aa);
+  border-radius: 10px;
+  border: 2px solid #0a0f1c;
+}
+
+/* Títulos e pequenos textos com contraste adequado */
+.card h6, .card .small, .text-muted {
+  color: #a9bed4 !important;
+}
+
+/* Ícones da barra de navegação mobile */
+.d-lg-none .btn.btn-outline-secondary, .d-lg-none .btn.btn-outline-primary {
+  background: rgba(10, 14, 25, 0.6) !important;
+  border-color: rgba(0, 255, 204, 0.28) !important;
+  color: #cfe6ff !important;
+}
+
+/* Links de ação secundária */
+.btn.btn-outline-secondary, .btn.btn-outline-success {
+  color: #cfe6ff !important;
+}
+
+/* Divider do dropdown mais sutil no escuro */
+.dropdown-divider {
+  border-top: 1px solid rgba(0, 255, 204, 0.12) !important;
+}
+
+/* Botão "Ver Perfil" (outline primary) claro e legível no fundo escuro */
+.btn.btn-outline-primary {
+  background-color: rgba(10, 14, 25, 0.6) !important;
+  color: #eaf2ff !important;
+  border-color: rgba(0, 255, 204, 0.42) !important;
+  box-shadow: 0 0 0 0 rgba(0, 255, 204, 0) !important;
+}
+
+.btn.btn-outline-primary:hover {
+  border-color: rgba(0, 255, 204, 0.75) !important;
+  color: #081119 !important;
+  background: #0ff0cc !important;
+  box-shadow: 0 0 14px rgba(0, 255, 204, 0.18), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Título do nome do usuário (h5) no sidebar do feed */
+.user-name-title {
+  color: #f0f5ff !important;
+  text-shadow: 0 0 10px rgba(0, 255, 204, 0.12);
+}
+
+/* Campos de checkbox/switch e labels no escuro */
+.form-check-label { color: #cfe6ff !important; }
+.form-check-input:checked {
+  background-color: #0fd !important;
+  border-color: #0fd !important;
+}
+
+/* Share/link cards escuros */
+.shared-link .card {
+  background: linear-gradient(145deg, #0b0f1a, #0e1422) !important;
+  border: 1px solid rgba(0, 255, 204, 0.12) !important;
+}

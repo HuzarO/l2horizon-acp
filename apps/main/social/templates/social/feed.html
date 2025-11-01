@@ -66,7 +66,7 @@
                    alt="Avatar" class="w-100 h-100" style="object-fit: cover;">
             {% endif %}
           </div>
-                  <h5 class="mb-1">{{ user.get_full_name|default:user.username }}{% verified_badge user "18px" %}</h5>
+                  <h5 class="mb-1 user-name-title">{{ user.get_full_name|default:user.username }}{% verified_badge user "18px" %}</h5>
         <p class="text-muted small mb-3">@{{ user.username }}{% verified_badge user "14px" %}</p>
           
           <!-- Estatísticas do usuário -->
@@ -567,44 +567,13 @@
               <!-- Ações do post -->
               <div class="post-actions d-flex justify-content-between align-items-center">
                 <div class="d-flex gap-2">
-                  <!-- Botão de curtir com reações -->
-                  <div class="dropdown">
-                    <button class="btn btn-outline-primary btn-sm like-btn dropdown-toggle" 
-                            type="button"
-                            data-bs-toggle="dropdown"
-                            data-post-id="{{ post.id }}"
-                            data-liked="{% if post.is_liked_by_current_user %}true{% else %}false{% endif %}"
-                            data-current-reaction="{% if post.current_user_reaction %}{{ post.current_user_reaction }}{% endif %}">
-                      {% if post.current_user_reaction %}
-                        <span class="reaction-emoji">
-                          {% if post.current_user_reaction == 'like' %}👍{% elif post.current_user_reaction == 'love' %}❤️{% elif post.current_user_reaction == 'haha' %}😂{% elif post.current_user_reaction == 'wow' %}😮{% elif post.current_user_reaction == 'sad' %}😢{% elif post.current_user_reaction == 'angry' %}😠{% endif %}
-                        </span>
-                      {% else %}
-                        <i class="bi bi-heart" id="heart-{{ post.id }}"></i>
-                      {% endif %}
-                      <span class="likes-count">{{ post.likes_count }}</span>
-                    </button>
-                    <ul class="dropdown-menu">
-                      <li><a class="dropdown-item reaction-btn" href="#" data-reaction="like" data-post-id="{{ post.id }}">
-                        👍 {% trans "Curtir" %}
-                      </a></li>
-                      <li><a class="dropdown-item reaction-btn" href="#" data-reaction="love" data-post-id="{{ post.id }}">
-                        ❤️ {% trans "Amar" %}
-                      </a></li>
-                      <li><a class="dropdown-item reaction-btn" href="#" data-reaction="haha" data-post-id="{{ post.id }}">
-                        😂 {% trans "Haha" %}
-                      </a></li>
-                      <li><a class="dropdown-item reaction-btn" href="#" data-reaction="wow" data-post-id="{{ post.id }}">
-                        😮 {% trans "Uau" %}
-                      </a></li>
-                      <li><a class="dropdown-item reaction-btn" href="#" data-reaction="sad" data-post-id="{{ post.id }}">
-                        😢 {% trans "Triste" %}
-                      </a></li>
-                      <li><a class="dropdown-item reaction-btn" href="#" data-reaction="angry" data-post-id="{{ post.id }}">
-                        😠 {% trans "Bravo" %}
-                      </a></li>
-                    </ul>
-                  </div>
+                  <!-- Botão de curtir padrão (sem reações) -->
+                  <button class="btn btn-outline-primary btn-sm like-btn" 
+                          type="button"
+                          data-post-id="{{ post.id }}">
+                    <i class="bi bi-heart{% if post.is_liked_by_current_user %}-fill text-danger{% endif %}"></i>
+                    <span class="like-count">{{ post.likes_count }}</span>
+                  </button>
                   
                   <!-- Botão de comentar -->
                   <a href="{% url 'social:post_detail' post.id %}" class="btn btn-outline-secondary btn-sm" title="{% trans 'Ver comentários' %}">
@@ -900,7 +869,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const postForm = document.getElementById('post-form');
   if (postForm) {
     postForm.addEventListener('submit', function(e) {
-      const contentField = document.querySelector('#{{ form.content.id_for_label }}');
+      const contentField = document.getElementById('{{ form.content.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.content.name }}"]');
       const content = contentField ? contentField.value.trim() : '';
       
       if (!content) {
@@ -922,9 +891,9 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       
                    // Verificar se pelo menos uma mídia foi selecionada ou há conteúdo
-             const imageField = document.querySelector('#{{ form.image.id_for_label }}');
-             const videoField = document.querySelector('#{{ form.video.id_for_label }}');
-             const linkField = document.querySelector('#{{ form.link.id_for_label }}');
+             const imageField = document.getElementById('{{ form.image.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.image.name }}"]');
+             const videoField = document.getElementById('{{ form.video.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.video.name }}"]');
+             const linkField = document.getElementById('{{ form.link.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.link.name }}"]');
              
              const hasImage = imageField && imageField.files.length > 0;
              const hasVideo = videoField && videoField.files.length > 0;
@@ -957,7 +926,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Contador de caracteres
-  const contentField = document.querySelector('#{{ form.content.id_for_label }}');
+  const contentField = document.getElementById('{{ form.content.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.content.name }}"]');
   const charCount = document.getElementById('char-count');
   const charCountMobile = document.getElementById('char-count-mobile');
   
@@ -974,7 +943,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Contador de hashtags
-  const hashtagsField = document.querySelector('#{{ form.hashtags.id_for_label }}');
+  const hashtagsField = document.getElementById('{{ form.hashtags.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.hashtags.name }}"]');
   const hashtagCount = document.getElementById('hashtag-count');
   
   if (hashtagsField && hashtagCount) {
@@ -985,8 +954,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Preview de mídia
-  const imageField = document.querySelector('#{{ form.image.id_for_label }}');
-  const videoField = document.querySelector('#{{ form.video.id_for_label }}');
+  const imageField = document.getElementById('{{ form.image.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.image.name }}"]');
+  const videoField = document.getElementById('{{ form.video.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.video.name }}"]');
   const mediaPreview = document.getElementById('media-preview');
   const previewContent = document.getElementById('preview-content');
   
@@ -1021,7 +990,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Preview de link
-  const linkField = document.querySelector('#{{ form.link.id_for_label }}');
+  const linkField = document.getElementById('{{ form.link.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.link.name }}"]');
   const linkPreview = document.getElementById('link-preview');
   const linkContent = document.getElementById('link-content');
   
@@ -1069,82 +1038,42 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-     // Like buttons agora apenas controlam dropdown - reações fazem o trabalho real
-   // O event listener de like foi removido para evitar conflito com as reações
-  
-     // Reações
-   const reactionBtns = document.querySelectorAll('.reaction-btn');
-   if (reactionBtns.length > 0) {
-     reactionBtns.forEach(btn => {
-       btn.addEventListener('click', function(e) {
-         e.preventDefault();
-         const postId = this.dataset.postId;
-         const reaction = this.dataset.reaction;
-         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-         
-         if (!postId || !reaction || !csrfToken) {
-           console.error('Elementos necessários não encontrados para reação');
-           return;
-         }
-         
-         fetch(`/social/post/${postId}/react/`, {
-           method: 'POST',
-           headers: {
-             'Content-Type': 'application/x-www-form-urlencoded',
-             'X-CSRFToken': csrfToken.value
-           },
-           body: `reaction_type=${reaction}`
-         })
-         .then(response => response.json())
-         .then(data => {
-           if (data.success) {
-             // Mapeamento de reações para emojis
-             const reactionEmojis = {
-               'like': '👍',
-               'love': '❤️',
-               'haha': '😂',
-               'wow': '😮',
-               'sad': '😢',
-               'angry': '😠'
-             };
-             
-             // Atualizar contador de likes e ícone
-             const likeBtn = document.querySelector(`[data-post-id="${postId}"].like-btn`);
-             if (likeBtn) {
-               const likesCount = likeBtn.querySelector('.likes-count');
-               const iconElement = likeBtn.querySelector('i, .reaction-emoji');
-               
-               if (likesCount && iconElement) {
-                 likesCount.textContent = data.likes_count;
-                 
-                 if (data.removed) {
-                   // Reação removida - voltar ao coração vazio
-                   iconElement.outerHTML = `<i class="bi bi-heart"></i>`;
-                   likeBtn.dataset.liked = 'false';
-                   likeBtn.dataset.currentReaction = '';
-                 } else {
-                   // Reação adicionada/alterada - mostrar emoji
-                   const emoji = reactionEmojis[data.reaction_type] || '👍';
-                   iconElement.outerHTML = `<span class="reaction-emoji">${emoji}</span>`;
-                   likeBtn.dataset.liked = 'true';
-                   likeBtn.dataset.currentReaction = data.reaction_type;
-                 }
-                 
-                 // Fechar o dropdown após a seleção
-                 const dropdownElement = bootstrap.Dropdown.getInstance(likeBtn);
-                 if (dropdownElement) {
-                   dropdownElement.hide();
-                 }
-               }
-             }
-           }
-         })
-         .catch(error => {
-           console.error('Erro:', error);
-         });
-       });
-     });
-   }
+  // Like padrão (igual ao do perfil)
+  const likeBtns = document.querySelectorAll('.like-btn');
+  if (likeBtns.length > 0) {
+    likeBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const postId = this.dataset.postId;
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!postId || !csrfToken) {
+          console.error('Elementos necessários não encontrados para like');
+          return;
+        }
+        fetch(`/social/post/${postId}/like/`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken.value
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          const icon = this.querySelector('i');
+          const count = this.querySelector('.like-count');
+          if (data.liked) {
+            if (icon) icon.className = 'bi bi-heart-fill text-danger';
+          } else {
+            if (icon) icon.className = 'bi bi-heart';
+          }
+          if (typeof data.likes_count !== 'undefined' && count) {
+            count.textContent = data.likes_count;
+          }
+        })
+        .catch(error => {
+          console.error('Erro:', error);
+        });
+      });
+    });
+  }
   
      // Fixar/desfixar posts
    const pinBtns = document.querySelectorAll('.pin-btn');
@@ -1332,8 +1261,8 @@ document.addEventListener('DOMContentLoaded', function() {
 function clearMedia() {
   const mediaPreview = document.getElementById('media-preview');
   const previewContent = document.getElementById('preview-content');
-  const imageField = document.querySelector('#{{ form.image.id_for_label }}');
-  const videoField = document.querySelector('#{{ form.video.id_for_label }}');
+  const imageField = document.getElementById('{{ form.image.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.image.name }}"]');
+  const videoField = document.getElementById('{{ form.video.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.video.name }}"]');
   
   if (mediaPreview) {
     mediaPreview.style.display = 'none';
@@ -1352,7 +1281,7 @@ function clearMedia() {
 function clearLink() {
   const linkPreview = document.getElementById('link-preview');
   const linkContent = document.getElementById('link-content');
-  const linkField = document.querySelector('#{{ form.link.id_for_label }}');
+  const linkField = document.getElementById('{{ form.link.id_for_label|default:"" }}') || document.querySelector('[name="{{ form.link.name }}"]');
   
   if (linkPreview) {
     linkPreview.style.display = 'none';
