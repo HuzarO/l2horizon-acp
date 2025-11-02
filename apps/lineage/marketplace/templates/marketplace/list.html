@@ -105,8 +105,8 @@
           <div class="character-card">
             <div class="character-card-header">
               <div class="character-badge">
-                <span class="character-level">Lv. {{ transfer.char_level }}</span>
-                <span class="character-class">{{ transfer.get_char_class_display|default:"Warrior" }}</span>
+                <span class="character-level">LVL {{ transfer.char_level }}</span>
+                <span class="character-class">{{ transfer.class_name }}</span>
               </div>
               {% if transfer.status == 'for_sale' %}
               <span class="status-badge status-sale">{% trans "À Venda" %}</span>

@@ -16,7 +16,7 @@
       </div>
       <h1 class="marketplace-title">{{ transfer.char_name }}</h1>
       <p class="marketplace-subtitle">
-        {% trans "Level" %} {{ transfer.char_level }} • {{ transfer.get_char_class_display }}
+        {% trans "Level" %} {{ transfer.char_level }} • {{ transfer.class_name }}
       </p>
     </div>
 
@@ -55,7 +55,7 @@
               </div>
               <div class="detail-item">
                 <span class="detail-label">{% trans "Classe" %}:</span>
-                <span class="detail-value">{{ transfer.get_char_class_display }}</span>
+                <span class="detail-value">{{ transfer.class_name }}</span>
               </div>
               <div class="detail-item">
                 <span class="detail-label">{% trans "PvP" %}:</span>

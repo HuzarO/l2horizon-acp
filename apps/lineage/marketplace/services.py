@@ -46,7 +46,14 @@ class MarketplaceService:
         if not char_details:
             raise ValidationError(_("Personagem não encontrado."))
         
-        # 3. Verificar se o personagem já está à venda
+        # 3. Verificar se o personagem está OFFLINE
+        if char_details.get('online', 0) == 1:
+            raise ValidationError(
+                _("O personagem {} está online! Deslogue do jogo antes de listá-lo para venda.").format(
+                    char_details['char_name']
+                )
+            )
+        
         existing_transfer = CharacterTransfer.objects.filter(
             char_id=char_id,
             status__in=['pending', 'for_sale']
@@ -55,7 +62,7 @@ class MarketplaceService:
         if existing_transfer:
             raise ValidationError(_("Este personagem já está listado para venda."))
         
-        # 4. Criar a transferência
+        # 5. Criar a transferência
         transfer = CharacterTransfer.objects.create(
             char_id=char_id,
             char_name=char_details['char_name'],
@@ -95,13 +102,21 @@ class MarketplaceService:
         if transfer.seller == buyer:
             raise ValidationError(_("Você não pode comprar seu próprio personagem."))
         
-        # 3. Buscar wallet do comprador (obrigatório ter wallet)
+        # 3. Verificar se o personagem está OFFLINE antes de comprar
+        char_details = LineageMarketplace.get_character_details(transfer.char_id)
+        if char_details and char_details.get('online', 0) == 1:
+            raise ValidationError(
+                _("O personagem {} está online! Aguarde o vendedor deslogar antes de comprar.").format(
+                    transfer.char_name
+                )
+            )
+        
         try:
             buyer_wallet = Wallet.objects.select_for_update().get(usuario=buyer)
         except Wallet.DoesNotExist:
             raise ValidationError(_("Você não possui uma carteira. Entre em contato com o suporte."))
         
-        # 4. Verificar se o comprador tem saldo suficiente
+        # 5. Verificar se o comprador tem saldo suficiente
         valor_compra = Decimal(str(transfer.price))
         if buyer_wallet.saldo < valor_compra:
             raise ValidationError(
@@ -110,13 +125,12 @@ class MarketplaceService:
                 )
             )
         
-        # 5. Buscar ou criar wallet do vendedor
+        # 6. Buscar ou criar wallet do vendedor
         seller_wallet, created = Wallet.objects.select_for_update().get_or_create(
             usuario=transfer.seller,
             defaults={'saldo': Decimal('0.00'), 'saldo_bonus': Decimal('0.00')}
         )
         
-        # 6. Processar pagamento na wallet
         try:
             # Debitar do comprador
             aplicar_transacao(
@@ -141,7 +155,7 @@ class MarketplaceService:
         except ValueError as e:
             raise ValidationError(str(e))
         
-        # 7. Criar transação de compra no marketplace
+        # 8. Criar transação de compra no marketplace
         MarketplaceTransaction.objects.create(
             transfer=transfer,
             transaction_type='purchase',
@@ -152,7 +166,7 @@ class MarketplaceService:
             completed_at=timezone.now()
         )
         
-        # 8. Criar transação de venda no marketplace
+        # 9. Criar transação de venda no marketplace
         MarketplaceTransaction.objects.create(
             transfer=transfer,
             transaction_type='sale',
@@ -163,14 +177,13 @@ class MarketplaceService:
             completed_at=timezone.now()
         )
         
-        # 9. Atualizar transferência
         transfer.buyer = buyer
         transfer.status = 'sold'
         transfer.sold_at = timezone.now()
         transfer.new_account = buyer.username  # Registra a nova conta
         transfer.save()
         
-        # 10. TRANSFERIR PERSONAGEM AUTOMATICAMENTE no banco L2
+        # 11. TRANSFERIR PERSONAGEM AUTOMATICAMENTE no banco L2
         try:
             success = LineageMarketplace.transfer_character_to_account(
                 transfer.char_id,

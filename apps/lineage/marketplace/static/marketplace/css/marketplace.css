@@ -1073,6 +1073,112 @@
   text-shadow: 0 0 15px rgba(111, 66, 193, 0.5);
 }
 
+/* Purchase Detail Info - Compacto */
+.purchase-detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(111, 66, 193, 0.15);
+  border-radius: 8px;
+  border: 1px solid rgba(111, 66, 193, 0.3);
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.info-row:hover {
+  background: rgba(111, 66, 193, 0.25);
+  border-color: rgba(111, 66, 193, 0.5);
+  transform: translateX(3px);
+}
+
+.info-row i {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.info-label {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 600;
+  color: #a8a8a8;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.info-value {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  color: #ffffff;
+  flex: 1;
+  text-align: right;
+  text-shadow: 0 0 10px rgba(111, 66, 193, 0.4);
+}
+
+/* Character Actions - Botões */
+.character-actions {
+  padding: 0 1.25rem 1.25rem;
+}
+
+.character-actions .btn {
+  width: 100%;
+  padding: 0.85rem 1.5rem;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.9rem;
+  border-radius: 10px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px rgba(111, 66, 193, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.character-actions .btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.character-actions .btn:hover::before {
+  left: 100%;
+}
+
+.character-actions .btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 0 30px rgba(111, 66, 193, 0.6), 0 5px 20px rgba(0, 0, 0, 0.4);
+}
+
+.character-actions .btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.character-actions .btn-danger:hover {
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.6), 0 5px 20px rgba(0, 0, 0, 0.4);
+  border-color: rgba(239, 68, 68, 0.7);
+}
+
+.character-actions .btn.mb-2 {
+  margin-bottom: 0.65rem !important;
+}
+
 /* Character Notes - Compacto */
 .character-notes {
   padding: 1.25rem;
@@ -1925,6 +2031,37 @@
   
   .seller-details h4 {
     font-size: 1.1rem;
+  }
+  
+  .purchase-detail-info {
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+  }
+  
+  .info-row {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.8rem;
+  }
+  
+  .info-row i {
+    font-size: 0.85rem;
+  }
+  
+  .info-label {
+    font-size: 0.65rem;
+  }
+  
+  .info-value {
+    font-size: 0.8rem;
+  }
+  
+  .character-actions {
+    padding: 0 1rem 1rem;
+  }
+  
+  .character-actions .btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.85rem;
   }
 
   .form-actions {

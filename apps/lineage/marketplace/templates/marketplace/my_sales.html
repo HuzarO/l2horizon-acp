@@ -8,13 +8,14 @@
 {% block content %}
 <div class="reports-container">
   <div class="container">
-    <!-- Header -->
-    <div class="reports-header">
-      <h1 class="reports-title">
-        <i class="fas fa-list me-3"></i>{% trans "Minhas Vendas" %}
-      </h1>
-      <p class="reports-subtitle">
-        {% trans "Personagens que você colocou à venda" %}
+    <!-- Header Compacto -->
+    <div class="marketplace-header">
+      <div class="marketplace-header-icon">
+        <i class="fas fa-tags"></i>
+      </div>
+      <h1 class="marketplace-title">{% trans "Minhas Vendas" %}</h1>
+      <p class="marketplace-subtitle">
+        <i class="fas fa-store-alt me-2"></i>{% trans "Personagens que você está vendendo no marketplace" %}
       </p>
     </div>
 
@@ -40,60 +41,73 @@
       </div>
       <div class="reports-card-body">
         {% if sales %}
-        <div class="table-responsive">
-          <table class="table table-hover marketplace-table">
-            <thead>
-              <tr>
-                <th>{% trans "Personagem" %}</th>
-                <th>{% trans "Level" %}</th>
-                <th>{% trans "Preço" %}</th>
-                <th>{% trans "Status" %}</th>
-                <th>{% trans "Data" %}</th>
-                <th>{% trans "Ações" %}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for sale in sales %}
-              <tr>
-                <td>
-                  <strong>{{ sale.char_name }}</strong>
-                </td>
-                <td>
-                  <span class="badge bg-info">Lv. {{ sale.char_level }}</span>
-                </td>
-                <td>
-                  <span class="price-display-small">
-                    R$ {{ sale.price }}
-                  </span>
-                </td>
-                <td>
-                  <span class="status-badge status-{{ sale.status }}">
-                    {{ sale.get_status_display }}
-                  </span>
-                </td>
-                <td>{{ sale.listed_at|date:"d/m/Y H:i" }}</td>
-                <td>
-                  <div class="btn-group btn-group-sm">
-                    <a href="{% url 'marketplace:character_detail' sale.id %}" 
-                       class="btn btn-outline-primary" title="{% trans 'Ver Detalhes' %}">
-                      <i class="fas fa-eye"></i>
-                    </a>
-                    {% if sale.status == 'for_sale' %}
-                    <form method="post" action="{% url 'marketplace:cancel' sale.id %}" 
-                          style="display:inline;" 
-                          onsubmit="return confirm('{% trans 'Deseja realmente cancelar esta venda?' %}');">
-                      {% csrf_token %}
-                      <button type="submit" class="btn btn-outline-danger" title="{% trans 'Cancelar Venda' %}">
-                        <i class="fas fa-times"></i>
-                      </button>
-                    </form>
-                    {% endif %}
-                  </div>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <div class="marketplace-grid">
+          {% for sale in sales %}
+          <div class="character-card">
+            <!-- Header -->
+            <div class="character-card-header">
+              <div class="character-badge">
+                <span class="character-level">LVL {{ sale.char_level }}</span>
+                <span class="character-class">{{ sale.class_name }}</span>
+              </div>
+              <span class="status-badge status-{{ sale.status }}">
+                {{ sale.get_status_display }}
+              </span>
+            </div>
+
+            <!-- Info -->
+            <div class="character-info">
+              <h3 class="character-name">{{ sale.char_name }}</h3>
+              
+              <div class="purchase-detail-info">
+                {% if sale.buyer %}
+                <div class="info-row">
+                  <i class="fas fa-user-check text-success me-2"></i>
+                  <span class="info-label">{% trans "Comprador" %}:</span>
+                  <span class="info-value">{{ sale.buyer.username }}</span>
+                </div>
+                {% endif %}
+                <div class="info-row">
+                  <i class="fas fa-calendar text-info me-2"></i>
+                  <span class="info-label">{% trans "Listado em" %}:</span>
+                  <span class="info-value">{{ sale.listed_at|date:"d/m/Y H:i" }}</span>
+                </div>
+                {% if sale.sold_at %}
+                <div class="info-row">
+                  <i class="fas fa-check text-success me-2"></i>
+                  <span class="info-label">{% trans "Vendido em" %}:</span>
+                  <span class="info-value">{{ sale.sold_at|date:"d/m/Y H:i" }}</span>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Price -->
+            <div class="character-price">
+              <span class="price-label">{% trans "Preço" %}</span>
+              <div class="price-value">
+                <span class="currency">R$</span>
+                <span class="amount">{{ sale.price }}</span>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="character-actions">
+              <a href="{% url 'marketplace:character_detail' sale.id %}" class="btn btn-primary btn-block mb-2">
+                <i class="fas fa-eye me-2"></i>{% trans "Ver Detalhes" %}
+              </a>
+              {% if sale.status == 'for_sale' %}
+              <form method="post" action="{% url 'marketplace:cancel' sale.id %}" 
+                    onsubmit="return confirm('{% trans 'Deseja realmente cancelar esta venda?' %}');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-block">
+                  <i class="fas fa-times-circle me-2"></i>{% trans "Cancelar Venda" %}
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
         </div>
         {% else %}
         <div class="empty-state">

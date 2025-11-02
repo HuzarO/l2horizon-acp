@@ -7,6 +7,7 @@ from .models import CharacterTransfer
 from .services import MarketplaceService
 from apps.lineage.server.database import LineageDB
 from utils.dynamic_import import get_query_class
+from utils.resources import get_class_name
 
 # Importa classes de query dinamicamente
 LineageMarketplace = get_query_class("LineageMarketplace")
@@ -17,6 +18,14 @@ def marketplace_list(request):
     Lista todos os personagens disponíveis para venda.
     """
     transfers = CharacterTransfer.objects.filter(status='for_sale').select_related('seller')
+    
+    # Adicionar nome da classe para cada personagem
+    for transfer in transfers:
+        if transfer.char_class is not None:
+            transfer.class_name = get_class_name(transfer.char_class)
+        else:
+            transfer.class_name = '-'
+    
     return render(request, 'marketplace/list.html', {'transfers': transfers})
 
 
@@ -25,6 +34,13 @@ def character_detail(request, transfer_id):
     Mostra detalhes de um personagem à venda.
     """
     transfer = get_object_or_404(CharacterTransfer, id=transfer_id)
+    
+    # Adicionar nome da classe
+    if transfer.char_class is not None:
+        transfer.class_name = get_class_name(transfer.char_class)
+    else:
+        transfer.class_name = '-'
+    
     return render(request, 'marketplace/character_detail.html', {'transfer': transfer})
 
 
@@ -145,6 +161,14 @@ def my_sales(request):
     Lista as vendas do usuário.
     """
     sales = CharacterTransfer.objects.filter(seller=request.user).order_by('-listed_at')
+    
+    # Adicionar nome da classe para cada personagem
+    for sale in sales:
+        if sale.char_class is not None:
+            sale.class_name = get_class_name(sale.char_class)
+        else:
+            sale.class_name = '-'
+    
     return render(request, 'marketplace/my_sales.html', {'sales': sales})
 
 
@@ -154,5 +178,13 @@ def my_purchases(request):
     Lista as compras do usuário.
     """
     purchases = CharacterTransfer.objects.filter(buyer=request.user).order_by('-sold_at')
+    
+    # Adicionar nome da classe para cada personagem
+    for purchase in purchases:
+        if purchase.char_class is not None:
+            purchase.class_name = get_class_name(purchase.char_class)
+        else:
+            purchase.class_name = '-'
+    
     return render(request, 'marketplace/my_purchases.html', {'purchases': purchases})
 
