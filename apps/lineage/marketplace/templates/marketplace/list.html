@@ -1,0 +1,132 @@
+{% extends "layouts/base.html" %}
+{% load i18n static l10n %}
+{% load itens_extras %}
+
+{% block extrastyle %}
+<link rel="stylesheet" href="{% static 'marketplace/css/marketplace.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<div class="reports-container">
+  <div class="container">
+    <!-- Header -->
+    <div class="reports-header">
+      <h1 class="reports-title">
+        <i class="fas fa-exchange-alt me-3"></i>{% trans "Marketplace de Personagens" %}
+      </h1>
+      <p class="reports-subtitle">
+        {% trans "Compre e venda personagens com segurança" %}
+      </p>
+    </div>
+
+    <!-- Breadcrumbs -->
+    <nav aria-label="breadcrumb" class="mb-4">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="{% url 'dashboard' %}">{% trans "Dashboard" %}</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans "Marketplace" %}</li>
+      </ol>
+    </nav>
+
+    <!-- Action Buttons -->
+    <div class="marketplace-actions mb-4">
+      <a href="{% url 'marketplace:sell' %}" class="reports-button">
+        <i class="fas fa-plus-circle me-2"></i>{% trans "Vender Personagem" %}
+      </a>
+      <a href="{% url 'marketplace:my_sales' %}" class="reports-button">
+        <i class="fas fa-list me-2"></i>{% trans "Minhas Vendas" %}
+      </a>
+      <a href="{% url 'marketplace:my_purchases' %}" class="reports-button">
+        <i class="fas fa-shopping-bag me-2"></i>{% trans "Minhas Compras" %}
+      </a>
+    </div>
+
+    <!-- Characters for Sale -->
+    <div class="reports-card">
+      <div class="reports-card-header">
+        <i class="fas fa-users reports-icon"></i>
+        <h2 class="reports-card-title">{% trans "Personagens à Venda" %}</h2>
+        <p class="reports-card-description">{% trans "Personagens disponíveis no marketplace" %}</p>
+      </div>
+      <div class="reports-card-body">
+        {% if transfers %}
+        <div class="marketplace-grid">
+          {% for transfer in transfers %}
+          <div class="character-card">
+            <div class="character-card-header">
+              <div class="character-badge">
+                <span class="character-level">Lv. {{ transfer.char_level }}</span>
+                <span class="character-class">{{ transfer.get_char_class_display|default:"Warrior" }}</span>
+              </div>
+              {% if transfer.status == 'for_sale' %}
+              <span class="status-badge status-sale">{% trans "À Venda" %}</span>
+              {% endif %}
+            </div>
+
+            <div class="character-info">
+              <h3 class="character-name">{{ transfer.char_name }}</h3>
+              <div class="character-stats">
+                <div class="stat-item">
+                  <i class="fas fa-sword"></i>
+                  <span>PvP: {{ transfer.pvp_kills|default:"0" }}</span>
+                </div>
+                <div class="stat-item">
+                  <i class="fas fa-skull"></i>
+                  <span>PK: {{ transfer.pk_count|default:"0" }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="character-price">
+              <span class="price-label">{% trans "Preço" %}</span>
+              <div class="price-value">
+                <span class="currency">{{ transfer.currency }}</span>
+                <span class="amount">{{ transfer.price }}</span>
+              </div>
+            </div>
+
+            <div class="character-seller">
+              <i class="fas fa-user me-2"></i>
+              <span>{% trans "Vendedor" %}: {{ transfer.seller.username }}</span>
+            </div>
+
+            <div class="character-date">
+              <i class="far fa-clock me-2"></i>
+              <span>{{ transfer.listed_at|date:"d/m/Y H:i" }}</span>
+            </div>
+
+            <div class="character-actions">
+              <a href="{% url 'marketplace:character_detail' transfer.id %}" class="btn btn-primary btn-block">
+                <i class="fas fa-eye me-2"></i>{% trans "Ver Detalhes" %}
+              </a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <i class="fas fa-user-slash fa-3x mb-3"></i>
+          <p>{% trans "Nenhum personagem disponível no marketplace no momento." %}</p>
+          <a href="{% url 'marketplace:sell' %}" class="btn btn-primary mt-3">
+            <i class="fas fa-plus-circle me-2"></i>{% trans "Vender Primeiro Personagem" %}
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Return Button -->
+    <div class="text-center mt-4">
+      <a href="{% url 'dashboard' %}" class="report-back-button">
+        <i class="fas fa-arrow-left me-2"></i>{% trans "Voltar ao Dashboard Principal" %}
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script src="{% static 'marketplace/js/marketplace.js' %}?v=1.0"></script>
+{% endblock %}
+

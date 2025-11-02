@@ -1,0 +1,140 @@
+{% extends "layouts/base.html" %}
+{% load i18n static l10n %}
+
+{% block extrastyle %}
+<link rel="stylesheet" href="{% static 'marketplace/css/marketplace.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<div class="reports-container">
+  <div class="container">
+    <!-- Header -->
+    <div class="reports-header">
+      <h1 class="reports-title">
+        <i class="fas fa-plus-circle me-3"></i>{% trans "Vender Personagem" %}
+      </h1>
+      <p class="reports-subtitle">
+        {% trans "Liste seu personagem no marketplace" %}
+      </p>
+    </div>
+
+    <!-- Breadcrumbs -->
+    <nav aria-label="breadcrumb" class="mb-4">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="{% url 'dashboard' %}">{% trans "Dashboard" %}</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'marketplace:list' %}">{% trans "Marketplace" %}</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans "Vender" %}</li>
+      </ol>
+    </nav>
+
+    <!-- Sell Form -->
+    <div class="reports-card">
+      <div class="reports-card-header">
+        <i class="fas fa-edit reports-icon"></i>
+        <h2 class="reports-card-title">{% trans "Informações da Venda" %}</h2>
+        <p class="reports-card-description">{% trans "Preencha os dados para listar seu personagem" %}</p>
+      </div>
+      <div class="reports-card-body">
+        <form method="post" id="sellForm">
+          {% csrf_token %}
+          
+          <div class="form-section">
+            <h4><i class="fas fa-user me-2"></i>{% trans "Selecione o Personagem" %}</h4>
+            
+            <div class="form-group">
+              <label for="character_select">{% trans "Personagem" %} *</label>
+              <select class="form-control" id="character_select" name="char_id" required>
+                <option value="">{% trans "Selecione um personagem" %}</option>
+                <!-- Populated by JavaScript -->
+              </select>
+              <small class="form-text text-muted">
+                {% trans "Selecione qual personagem deseja vender" %}
+              </small>
+            </div>
+
+            <div id="character_preview" class="character-preview" style="display:none;">
+              <!-- Character details will be shown here -->
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h4><i class="fas fa-dollar-sign me-2"></i>{% trans "Preço" %}</h4>
+            
+            <div class="row">
+              <div class="col-md-8">
+                <div class="form-group">
+                  <label for="price">{% trans "Preço" %} *</label>
+                  <input type="number" class="form-control" id="price" name="price" 
+                         min="0" step="0.01" required>
+                  <small class="form-text text-muted">
+                    {% trans "Defina o preço do seu personagem" %}
+                  </small>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-group">
+                  <label for="currency">{% trans "Moeda" %} *</label>
+                  <select class="form-control" id="currency" name="currency" required>
+                    <option value="BRL">BRL (R$)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h4><i class="fas fa-sticky-note me-2"></i>{% trans "Observações" %}</h4>
+            
+            <div class="form-group">
+              <label for="notes">{% trans "Observações" %} ({% trans "Opcional" %})</label>
+              <textarea class="form-control" id="notes" name="notes" rows="4" 
+                        placeholder="{% trans 'Adicione informações adicionais sobre o personagem (itens especiais, conquistas, etc.)' %}"></textarea>
+              <small class="form-text text-muted">
+                {% trans "Máximo 500 caracteres" %}
+              </small>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="fas fa-check-circle me-2"></i>{% trans "Listar Personagem" %}
+            </button>
+            <a href="{% url 'marketplace:list' %}" class="btn btn-secondary btn-lg">
+              <i class="fas fa-times me-2"></i>{% trans "Cancelar" %}
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Return Button -->
+    <div class="text-center mt-4">
+      <a href="{% url 'marketplace:list' %}" class="report-back-button">
+        <i class="fas fa-arrow-left me-2"></i>{% trans "Voltar ao Marketplace" %}
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script src="{% static 'marketplace/js/marketplace.js' %}?v=1.0"></script>
+<script>
+  // Load user characters
+  document.addEventListener('DOMContentLoaded', function() {
+    loadUserCharacters();
+  });
+
+  function loadUserCharacters() {
+    // TODO: Implement AJAX call to load user characters
+    console.log('Loading user characters...');
+  }
+</script>
+{% endblock %}
+

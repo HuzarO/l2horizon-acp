@@ -163,6 +163,7 @@ INSTALLED_APPS = [
     "apps.lineage.accountancy",
     "apps.lineage.inventory",
     "apps.lineage.shop",
+    "apps.lineage.marketplace",
     "apps.lineage.auction",
     "apps.lineage.games",
     "apps.lineage.reports",
