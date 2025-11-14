@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from apps.main.home.decorator import conditional_otp_required
 from apps.lineage.server.utils.crest import attach_crests_to_clans
-from apps.lineage.server.utils.bosses import enrich_grandboss_status
+from apps.lineage.server.utils.bosses import enrich_raidboss_status
 from apps.lineage.server.database import LineageDB
 from ..models import ActiveAdenaExchangeItem
 
@@ -71,14 +71,14 @@ def top_online_view(request):
 
 
 @conditional_otp_required
-def top_grandboss_view(request):
+def top_raidboss_view(request):
     db = LineageDB()
 
     if not db.is_connected():
         bosses = []
     else:
-        raw_bosses = LineageStats.grandboss_status()
-        bosses = enrich_grandboss_status(raw_bosses)
+        raw_bosses = LineageStats.raidboss_status()
+        bosses = enrich_raidboss_status(raw_bosses)
 
         dead = [boss for boss in bosses if boss.get('is_alive') is False]
         alive = [boss for boss in bosses if boss.get('is_alive')]

@@ -1,13 +1,13 @@
 {% extends 'tops/base.html' %}
 {% load static i18n %}
 
-{% block title %}{% trans "Grand Boss Status" %}{% endblock %}
+{% block title %}{% trans "Raid Boss Status" %}{% endblock %}
 
 {% block tops_content %}
 <div class="tops-grandboss">
     <div class="tops-header-section">
-        <h1>{% trans "Grand Boss Status" %}</h1>
-        <p class="lead">{% trans "Acompanhe o status dos grand bosses em tempo real e planeje sua próxima ofensiva." %}</p>
+        <h1>{% trans "Raid Boss Status" %}</h1>
+        <p class="lead">{% trans "Acompanhe o status dos raid bosses em tempo real e prepare sua próxima investida." %}</p>
     </div>
 
     <div class="tops-grandboss-summary">
@@ -49,7 +49,7 @@
                     <span class="info-label">{% trans "Respawn" %}</span>
                     <span class="info-value">
                         {% if boss.is_alive %}
-                        {% trans "Disponível agora" %}
+                            {% trans "Disponível agora" %}
                         {% elif boss.respawn_human %}
                             {{ boss.respawn_human }}
                         {% else %}
@@ -69,7 +69,7 @@
     <div class="tops-empty-state">
         <i class="fas fa-exclamation-triangle"></i>
         <h3>{% trans "Nenhum dado disponível" %}</h3>
-        <p>{% trans "Não foi possível carregar o status dos grand bosses no momento." %}</p>
+        <p>{% trans "Não foi possível carregar o status dos raid bosses no momento." %}</p>
     </div>
     {% endif %}
 </div>
@@ -256,4 +256,5 @@
 }
 </style>
 {% endblock %}
+
 

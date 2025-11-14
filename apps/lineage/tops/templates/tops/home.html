@@ -172,13 +172,32 @@
             <div class="category-card" data-aos="zoom-in" data-aos-duration="800" data-aos-delay="800">
                 <a href="{% url 'tops:grandboss' %}" class="category-link">
                     <div class="category-icon grandboss-icon">
-                        <i class="fas fa-dragon"></i>
+                        <i class="fas fa-crown"></i>
                     </div>
                     <div class="category-content">
                         <h3 class="category-title">{% trans "Grand Boss Status" %}</h3>
-                        <p class="category-description">{% trans "Monitore os chefes lendários do servidor" %}</p>
+                        <p class="category-description">{% trans "Monitore os grand bosses lendários do servidor" %}</p>
                         <div class="category-meta">
-                            <span class="category-badge grandboss-badge">{% trans "Boss" %}</span>
+                            <span class="category-badge grandboss-badge">{% trans "Grand" %}</span>
+                        </div>
+                    </div>
+                    <div class="category-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Raid Boss Status -->
+            <div class="category-card" data-aos="zoom-in" data-aos-duration="800" data-aos-delay="900">
+                <a href="{% url 'tops:raidboss' %}" class="category-link">
+                    <div class="category-icon raidboss-icon">
+                        <i class="fas fa-dragon"></i>
+                    </div>
+                    <div class="category-content">
+                        <h3 class="category-title">{% trans "Raid Boss Status" %}</h3>
+                        <p class="category-description">{% trans "Monitore os raid bosses lendários do servidor" %}</p>
+                        <div class="category-meta">
+                            <span class="category-badge raidboss-badge">{% trans "Raid" %}</span>
                         </div>
                     </div>
                     <div class="category-arrow">
@@ -188,7 +207,7 @@
             </div>
 
             <!-- Castle & Siege -->
-            <div class="category-card" data-aos="zoom-in" data-aos-duration="800" data-aos-delay="900">
+            <div class="category-card" data-aos="zoom-in" data-aos-duration="800" data-aos-delay="1000">
                 <a href="{% url 'tops:siege' %}" class="category-link">
                     <div class="category-icon siege-icon">
                         <i class="fas fa-chess-rook"></i>
@@ -454,11 +473,20 @@
 }
 
 .grandboss-icon {
+    background: linear-gradient(135deg, rgba(230, 199, 125, 0.2), rgba(209, 164, 79, 0.2));
+    border-color: rgba(230, 199, 125, 0.3);
+}
+
+.grandboss-icon i {
+    color: #e6c77d;
+}
+
+.raidboss-icon {
     background: linear-gradient(135deg, rgba(233, 30, 99, 0.2), rgba(194, 24, 91, 0.2));
     border-color: rgba(233, 30, 99, 0.3);
 }
 
-.grandboss-icon i {
+.raidboss-icon i {
     color: #e91e63;
 }
 
@@ -544,6 +572,12 @@
 }
 
 .grandboss-badge {
+    background: rgba(230, 199, 125, 0.1);
+    color: #e6c77d;
+    border-color: rgba(230, 199, 125, 0.2);
+}
+
+.raidboss-badge {
     background: rgba(233, 30, 99, 0.1);
     color: #e91e63;
     border-color: rgba(233, 30, 99, 0.2);
