@@ -37,6 +37,7 @@ urlpatterns = [
     path('account/manage/', manage_lineage_accounts, name='manage_lineage_accounts'),
     path('account/manage/add/', add_contra_mestre, name='add_contra_mestre'),
     path('account/manage/remove/<int:link_id>/', remove_contra_mestre, name='remove_contra_mestre'),
+    path('account/manage/unlink/', unlink_lineage_account, name='unlink_lineage_account'),
     path('account/set-active/', set_active_lineage_account, name='set_active_lineage_account'),
 
     path('supporter/panel/', painel_apoiador, name='painel_apoiador'),

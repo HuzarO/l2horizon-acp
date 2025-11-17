@@ -205,22 +205,340 @@ def index(request):
 
 @conditional_otp_required
 def profile(request):
+    # Informações sobre o email master owner
+    email_master_owner = None
+    is_email_master_owner = True
+    
+    if request.user.email:
+        email_master_owner = request.user.get_email_master_owner()
+        is_email_master_owner = request.user.is_email_master_owner
+    
     context = {
         'segment': 'profile',
         'parent': 'home',
+        'email_master_owner': email_master_owner,
+        'is_email_master_owner': is_email_master_owner,
     }
     return render(request, 'pages/profile.html', context)
 
 
 @conditional_otp_required
 def edit_profile(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if request.method == 'POST':
         form = UserProfileForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
+            # Verifica se o e-mail foi alterado
+            old_email = request.user.email
+            new_email = form.cleaned_data.get('email')
+            email_changed = old_email != new_email
+            
+            logger.info(f"[edit_profile] POST recebido - Usuário: {request.user.username}")
+            logger.info(f"[edit_profile] E-mail antigo: {old_email}, E-mail novo: {new_email}, Alterado: {email_changed}")
+            
             # Verifica se o perfil estava incompleto antes da edição
             perfil_incompleto_antes = not (request.user.first_name and request.user.last_name and request.user.bio)
             
             form.save()
+            
+            # Recarrega o usuário para ter os dados atualizados
+            request.user.refresh_from_db()
+            
+            # Se o e-mail foi alterado, atualiza o email nas contas do Lineage vinculadas
+            if email_changed and new_email:
+                try:
+                    from utils.dynamic_import import get_query_class
+                    LineageDBClass = get_query_class("LineageDB")
+                    
+                    if LineageDBClass:
+                        lineage_db = LineageDBClass()
+                        if lineage_db and getattr(lineage_db, 'enabled', False):
+                            user_uuid = str(request.user.uuid) if hasattr(request.user, 'uuid') else None
+                            if user_uuid:
+                                # Atualiza o email de todas as contas vinculadas ao UUID do usuário
+                                sql = """
+                                    UPDATE accounts
+                                    SET email = :new_email
+                                    WHERE linked_uuid = :uuid
+                                """
+                                params = {
+                                    "new_email": new_email,
+                                    "uuid": user_uuid
+                                }
+                                result = lineage_db.update(sql, params)
+                                logger.info(f"[edit_profile] Atualizado email para {result} conta(s) do Lineage vinculadas ao UUID {user_uuid}")
+                                
+                                # Verifica se a atualização funcionou
+                                if result and result > 0:
+                                    # Busca uma conta para verificar se o email foi atualizado
+                                    verify_sql = """
+                                        SELECT login, email, linked_uuid
+                                        FROM accounts
+                                        WHERE linked_uuid = :uuid
+                                        LIMIT 1
+                                    """
+                                    verify_result = lineage_db.select(verify_sql, {"uuid": user_uuid})
+                                    if verify_result:
+                                        verify_email = verify_result[0].get("email") if isinstance(verify_result[0], dict) else getattr(verify_result[0], 'email', None)
+                                        logger.info(f"[edit_profile] Verificação: Email no banco após UPDATE: {verify_email}, Email esperado: {new_email}")
+                except Exception as e:
+                    logger.warning(f"Erro ao atualizar email nas contas do Lineage: {e}", exc_info=True)
+            
+            # Se o e-mail foi alterado e está verificado, garante que existe EmailOwnership
+            if email_changed and new_email and request.user.is_email_verified:
+                request.user.ensure_email_master_owner()
+            
+            # SEMPRE tenta vincular contas do Lineage à conta mestre
+            # Isso garante que mesmo se o e-mail não foi alterado agora,
+            # contas do Lineage que foram criadas depois serão vinculadas
+            user_email = request.user.email
+            if user_email:
+                try:
+                    from apps.main.home.models import EmailOwnership
+                    from utils.dynamic_import import get_query_class
+                    
+                    logger.info(f"[edit_profile] Verificando vinculação de contas Lineage para e-mail: {user_email}")
+                    
+                    # Verifica se existe uma conta mestre para este e-mail
+                    email_ownership = EmailOwnership.objects.filter(email=user_email).first()
+                    logger.info(f"[edit_profile] EmailOwnership encontrado: {email_ownership}")
+                    
+                    # Se não existe EmailOwnership mas o e-mail está verificado, cria
+                    if not email_ownership and request.user.is_email_verified:
+                        request.user.ensure_email_master_owner()
+                        email_ownership = EmailOwnership.objects.filter(email=user_email).first()
+                        logger.info(f"[edit_profile] EmailOwnership criado: {email_ownership}")
+                    
+                    # Se existe uma conta mestre para este e-mail, vincula as contas do Lineage
+                    if email_ownership:
+                        master_user = email_ownership.owner
+                        master_uuid = str(master_user.uuid) if hasattr(master_user, 'uuid') else None
+                        logger.info(f"[edit_profile] Conta mestre: {master_user.username}, UUID: {master_uuid}")
+                        
+                        if master_uuid:
+                            # Busca contas do Lineage com este e-mail
+                            LineageAccount = get_query_class("LineageAccount")
+                            LineageDBClass = get_query_class("LineageDB")
+                            
+                            if LineageAccount and hasattr(LineageAccount, 'find_accounts_by_email'):
+                                logger.info(f"[edit_profile] Buscando TODAS as contas do Lineage com e-mail: {user_email}")
+                                
+                                # Busca contas usando find_accounts_by_email
+                                contas = LineageAccount.find_accounts_by_email(user_email)
+                                logger.info(f"[edit_profile] Contas encontradas via find_accounts_by_email: {len(contas) if contas else 0}")
+                                
+                                # Se não encontrou contas, tenta buscar diretamente no banco
+                                if not contas and LineageDBClass:
+                                    try:
+                                        lineage_db = LineageDBClass()
+                                        if lineage_db and getattr(lineage_db, 'enabled', False):
+                                            sql = """
+                                                SELECT login, linked_uuid, email
+                                                FROM accounts
+                                                WHERE email = :email
+                                            """
+                                            result = lineage_db.select(sql, {"email": user_email})
+                                            if result:
+                                                contas = result
+                                                logger.info(f"[edit_profile] Contas encontradas via SQL direto: {len(contas)}")
+                                    except Exception as e:
+                                        logger.warning(f"Erro ao buscar contas via SQL direto: {e}", exc_info=True)
+                                
+                                linked_count = 0
+                                updated_count = 0
+                                skipped_count = 0
+                                
+                                if contas:
+                                    for conta in contas:
+                                        # Tenta extrair login e linked_uuid de diferentes formas
+                                        login = None
+                                        current_linked_uuid = None
+                                        
+                                        if isinstance(conta, dict):
+                                            login = conta.get("login")
+                                            current_linked_uuid = conta.get("linked_uuid")
+                                        elif hasattr(conta, 'login'):
+                                            login = getattr(conta, 'login', None)
+                                            current_linked_uuid = getattr(conta, 'linked_uuid', None)
+                                        elif hasattr(conta, '__getitem__'):
+                                            try:
+                                                login = conta['login']
+                                                current_linked_uuid = conta.get('linked_uuid')
+                                            except (KeyError, TypeError):
+                                                pass
+                                        
+                                        logger.info(f"[edit_profile] Processando conta: {login}, linked_uuid atual: {current_linked_uuid}, master_uuid: {master_uuid}")
+                                        
+                                        if not login:
+                                            logger.warning(f"[edit_profile] Conta sem login: {conta}")
+                                            continue
+                                        
+                                        # Normaliza linked_uuid (pode ser None, string vazia, etc)
+                                        if current_linked_uuid:
+                                            current_linked_uuid = str(current_linked_uuid).strip()
+                                            if not current_linked_uuid:
+                                                current_linked_uuid = None
+                                        
+                                        # Se a conta já está vinculada ao UUID correto, SEMPRE atualiza o email para garantir sincronização
+                                        if current_linked_uuid == master_uuid:
+                                            logger.info(f"[edit_profile] Conta {login} já está vinculada ao UUID correto")
+                                            # Verifica o email atual
+                                            current_email = None
+                                            if isinstance(conta, dict):
+                                                current_email = conta.get("email")
+                                            elif hasattr(conta, 'email'):
+                                                current_email = getattr(conta, 'email', None)
+                                            
+                                            logger.info(f"[edit_profile] Email atual da conta {login}: {current_email}, Email desejado: {user_email}")
+                                            
+                                            # SEMPRE atualiza o email para garantir sincronização (mesmo que pareça igual)
+                                            logger.info(f"[edit_profile] Atualizando email da conta {login} para {user_email}")
+                                            if LineageDBClass:
+                                                try:
+                                                    lineage_db = LineageDBClass()
+                                                    if lineage_db and getattr(lineage_db, 'enabled', False):
+                                                        sql = """
+                                                            UPDATE accounts
+                                                            SET email = :email
+                                                            WHERE login = :login
+                                                        """
+                                                        params = {
+                                                            "email": user_email,
+                                                            "login": login
+                                                        }
+                                                        result = lineage_db.update(sql, params)
+                                                        logger.info(f"[edit_profile] Resultado do UPDATE de email: {result}")
+                                                        if result and result > 0:
+                                                            # Verifica se realmente atualizou
+                                                            verify_sql = """
+                                                                SELECT email
+                                                                FROM accounts
+                                                                WHERE login = :login
+                                                                LIMIT 1
+                                                            """
+                                                            verify_result = lineage_db.select(verify_sql, {"login": login})
+                                                            if verify_result:
+                                                                verify_email = verify_result[0].get("email") if isinstance(verify_result[0], dict) else getattr(verify_result[0], 'email', None)
+                                                                logger.info(f"[edit_profile] Verificação pós-UPDATE: Email no banco: {verify_email}, Esperado: {user_email}")
+                                                                if verify_email == user_email:
+                                                                    updated_count += 1
+                                                                    logger.info(f"[edit_profile] ✅ Email da conta {login} atualizado com sucesso e confirmado")
+                                                                else:
+                                                                    logger.error(f"[edit_profile] ❌ Email não foi atualizado! Esperado: {user_email}, Encontrado: {verify_email}")
+                                                            else:
+                                                                logger.warning(f"[edit_profile] ⚠️ Não foi possível verificar o email após UPDATE")
+                                                        else:
+                                                            logger.warning(f"[edit_profile] ⚠️ UPDATE de email não afetou nenhuma linha para conta {login}")
+                                                    else:
+                                                        logger.warning(f"[edit_profile] LineageDB não está habilitado")
+                                                except Exception as e:
+                                                    logger.error(f"Erro ao atualizar email da conta {login}: {e}", exc_info=True)
+                                            else:
+                                                logger.warning(f"[edit_profile] LineageDBClass não disponível")
+                                            
+                                            # Se o email já estava correto, conta como skipped
+                                            if current_email == user_email:
+                                                skipped_count += 1
+                                            continue
+                                        
+                                        # Se a conta não está vinculada, tenta vincular normalmente
+                                        if not current_linked_uuid:
+                                            if hasattr(LineageAccount, 'link_account_to_user'):
+                                                logger.info(f"[edit_profile] Tentando vincular conta {login} ao UUID {master_uuid}")
+                                                success = LineageAccount.link_account_to_user(login, master_uuid)
+                                                logger.info(f"[edit_profile] Resultado do link: {success}")
+                                                if success:
+                                                    # Atualiza também o email na conta
+                                                    if LineageDBClass:
+                                                        try:
+                                                            lineage_db = LineageDBClass()
+                                                            if lineage_db and getattr(lineage_db, 'enabled', False):
+                                                                sql = """
+                                                                    UPDATE accounts
+                                                                    SET email = :email
+                                                                    WHERE login = :login
+                                                                """
+                                                                params = {
+                                                                    "email": user_email,
+                                                                    "login": login
+                                                                }
+                                                                result = lineage_db.update(sql, params)
+                                                                logger.info(f"[edit_profile] Email atualizado para conta {login}, resultado: {result}")
+                                                        except Exception as e:
+                                                            logger.warning(f"Erro ao atualizar email da conta {login}: {e}", exc_info=True)
+                                                    linked_count += 1
+                                                else:
+                                                    # Se link_account_to_user falhou (pode ser por cache), tenta UPDATE direto
+                                                    logger.info(f"[edit_profile] link_account_to_user falhou, tentando UPDATE direto")
+                                                    if LineageDBClass:
+                                                        try:
+                                                            lineage_db = LineageDBClass()
+                                                            if lineage_db and getattr(lineage_db, 'enabled', False):
+                                                                sql = """
+                                                                    UPDATE accounts
+                                                                    SET linked_uuid = :uuid, email = :email
+                                                                    WHERE login = :login AND (linked_uuid IS NULL OR linked_uuid = '')
+                                                                """
+                                                                params = {
+                                                                    "uuid": master_uuid,
+                                                                    "email": user_email,
+                                                                    "login": login
+                                                                }
+                                                                result = lineage_db.update(sql, params)
+                                                                logger.info(f"[edit_profile] Resultado do UPDATE (sem linked_uuid): {result}")
+                                                                if result:
+                                                                    linked_count += 1
+                                                        except Exception as e:
+                                                            logger.warning(f"Erro ao atualizar conta {login} sem linked_uuid: {e}", exc_info=True)
+                                        # Se a conta já está vinculada a outro UUID, força a atualização
+                                        else:
+                                            logger.info(f"[edit_profile] Atualizando linked_uuid da conta {login} de {current_linked_uuid} para {master_uuid}")
+                                            # Atualiza diretamente no banco, removendo a restrição de linked_uuid IS NULL
+                                            if LineageDBClass:
+                                                try:
+                                                    lineage_db = LineageDBClass()
+                                                    if lineage_db and getattr(lineage_db, 'enabled', False):
+                                                        sql = """
+                                                            UPDATE accounts
+                                                            SET linked_uuid = :uuid, email = :email
+                                                            WHERE login = :login
+                                                        """
+                                                        params = {
+                                                            "uuid": master_uuid,
+                                                            "email": user_email,
+                                                            "login": login
+                                                        }
+                                                        result = lineage_db.update(sql, params)
+                                                        logger.info(f"[edit_profile] Resultado do UPDATE (com linked_uuid diferente): {result}")
+                                                        if result:
+                                                            updated_count += 1
+                                                        else:
+                                                            logger.warning(f"[edit_profile] UPDATE não afetou nenhuma linha para conta {login}")
+                                                except Exception as e:
+                                                    logger.warning(f"Erro ao atualizar linked_uuid da conta {login}: {e}", exc_info=True)
+                                
+                                logger.info(f"[edit_profile] Total vinculadas: {linked_count}, Total atualizadas: {updated_count}, Total já corretas: {skipped_count}")
+                                
+                                if linked_count > 0 or updated_count > 0:
+                                    total = linked_count + updated_count
+                                    messages.info(
+                                        request, 
+                                        f"✅ {total} conta(s) do Lineage foram automaticamente vinculadas à conta mestre {master_user.username}."
+                                    )
+                                elif skipped_count > 0:
+                                    messages.info(
+                                        request,
+                                        f"ℹ️ {skipped_count} conta(s) do Lineage já estavam vinculadas corretamente à conta mestre {master_user.username}."
+                                    )
+                            else:
+                                logger.warning(f"[edit_profile] LineageAccount ou find_accounts_by_email não disponível")
+                    else:
+                        logger.info(f"[edit_profile] Não existe EmailOwnership para o e-mail {user_email}")
+                except Exception as e:
+                    # Se houver erro, não bloqueia o salvamento do perfil
+                    logger.error(f"Erro ao vincular contas do Lineage: {e}", exc_info=True)
             
             # Verifica se o perfil ficou completo após a edição
             if perfil_incompleto_antes and (request.user.first_name and request.user.last_name and request.user.bio):

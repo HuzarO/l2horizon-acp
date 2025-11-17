@@ -17,6 +17,7 @@ from apps.lineage.server.lineage_account_manager import LineageAccount
 from apps.lineage.server.models import ManagedLineageAccount
 from apps.lineage.server.services.account_context import (
     get_active_login,
+    get_available_accounts,
     get_lineage_template_context,
     set_active_login,
     user_has_access,
@@ -313,20 +314,52 @@ def link_by_email_token(request, token):
 @conditional_otp_required
 @require_lineage_connection
 def manage_lineage_accounts(request):
+    # Contas delegadas pelo usuário atual (delegações explícitas)
     delegated_links = ManagedLineageAccount.objects.filter(
         created_by=request.user
     ).select_related("manager_user").order_by("account_login")
 
+    # Contas delegadas para o usuário atual (delegações explícitas)
     links_as_manager = ManagedLineageAccount.objects.filter(
         manager_user=request.user,
         status=ManagedLineageAccount.Status.ACTIVE,
     ).select_related("created_by").order_by("account_login")
+
+    # Busca contas vinculadas automaticamente (via linked_uuid ou e-mail)
+    # que não estão em ManagedLineageAccount
+    linked_accounts_info = []
+    available_accounts = get_available_accounts(request.user)
+    
+    # Lista de logins que já estão em links_as_manager para evitar duplicatas
+    delegated_logins = {link.account_login for link in links_as_manager}
+    
+    for account in available_accounts:
+        # Se a conta não é a principal e não tem created_by (não foi delegada explicitamente)
+        if not account.get("is_primary") and not account.get("created_by"):
+            login = account.get("login")
+            role_label = account.get("role_label", "")
+            
+            # Verifica se já existe um ManagedLineageAccount para esta conta
+            existing_link = ManagedLineageAccount.objects.filter(
+                account_login=login,
+                created_by=request.user
+            ).first()
+            
+            # Se não existe delegação explícita e não está na lista de delegadas, adiciona
+            if not existing_link and login and login not in delegated_logins:
+                linked_accounts_info.append({
+                    "account_login": login,
+                    "role_label": role_label,
+                    "is_linked": True,  # Marca como vinculada automaticamente
+                })
 
     context = get_lineage_template_context(request)
     context.update(
         {
             "delegated_links": delegated_links,
             "links_as_manager": links_as_manager,
+            "linked_accounts_info": linked_accounts_info,  # Contas vinculadas automaticamente
+            "total_delegated_accounts": len(links_as_manager) + len(linked_accounts_info),
         }
     )
     return render(request, "l2_accounts/manage_accounts.html", context)
@@ -441,3 +474,66 @@ def set_active_lineage_account(request):
         messages.error(request, "Você não tem permissão para usar essa conta.")
 
     return redirect(next_url)
+
+
+@conditional_otp_required
+@require_lineage_connection
+@require_POST
+def unlink_lineage_account(request):
+    """
+    Desvincula uma conta do Lineage do UUID do usuário atual.
+    Remove o linked_uuid e o email da conta no banco do jogo.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    account_login = (request.POST.get("account_login") or "").strip()
+    
+    if not account_login:
+        messages.error(request, _("Informe o login da conta para desvincular."))
+        return redirect("server:manage_lineage_accounts")
+    
+    # Verifica se o usuário tem acesso a esta conta
+    if not user_has_access(request.user, account_login):
+        messages.error(request, _("Você não tem permissão para desvincular esta conta."))
+        return redirect("server:manage_lineage_accounts")
+    
+    # Não permite desvincular a conta principal (username)
+    if account_login == request.user.username:
+        messages.error(request, _("Você não pode desvincular sua conta principal."))
+        return redirect("server:manage_lineage_accounts")
+    
+    try:
+        from utils.dynamic_import import get_query_class
+        LineageAccount = get_query_class("LineageAccount")
+        
+        if not LineageAccount or not hasattr(LineageAccount, 'unlink_account_from_user'):
+            messages.error(request, _("Funcionalidade de desvinculação não disponível."))
+            return redirect("server:manage_lineage_accounts")
+        
+        user_uuid = str(request.user.uuid) if hasattr(request.user, 'uuid') else None
+        if not user_uuid:
+            messages.error(request, _("UUID do usuário não encontrado."))
+            return redirect("server:manage_lineage_accounts")
+        
+        logger.info(f"[unlink_lineage_account] Desvinculando conta {account_login} do UUID {user_uuid}")
+        
+        success = LineageAccount.unlink_account_from_user(account_login, user_uuid)
+        
+        if success:
+            # Se a conta desvinculada era a ativa, redefine para a conta principal
+            active_login = get_active_login(request)
+            if active_login == account_login:
+                set_active_login(request, request.user.username)
+            
+            messages.success(request, _("Conta %(account)s desvinculada com sucesso.") % {"account": account_login})
+            logger.info(f"[unlink_lineage_account] Conta {account_login} desvinculada com sucesso")
+        else:
+            messages.error(request, _("Não foi possível desvincular a conta. Verifique se ela está vinculada ao seu usuário."))
+            logger.warning(f"[unlink_lineage_account] Falha ao desvincular conta {account_login}")
+            
+    except Exception as e:
+        logger.error(f"[unlink_lineage_account] Erro ao desvincular conta: {e}", exc_info=True)
+        messages.error(request, _("Erro ao desvincular a conta: %(error)s") % {"error": str(e)})
+    
+    return redirect("server:manage_lineage_accounts")

@@ -606,6 +606,29 @@
               </div>
             </div>
 
+            <!-- Email Master Owner Warning -->
+            {% if not is_email_master_owner and email_master_owner %}
+              <div class="info-section">
+                <div class="alert alert-warning" style="background: linear-gradient(135deg, #fff3cd, #ffeaa7); border: 2px solid #ffc107; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
+                  <h6 style="color: #856404; font-weight: 600; margin-bottom: 0.75rem;">
+                    <i class="fas fa-exclamation-triangle me-2"></i>{% trans "Conta Associada a Conta Mestre" %}
+                  </h6>
+                  <p style="color: #856404; font-size: 0.95rem; margin-bottom: 0.5rem; font-weight: 500;">
+                    {% trans "Esta conta está associada à Conta Mestre" %} <strong>{{ email_master_owner.username }}</strong>.
+                  </p>
+                  <p style="color: #856404; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                    {% trans "O e-mail" %} <strong>{{ user.email }}</strong> {% trans "foi verificado primeiro pela conta" %} <strong>{{ email_master_owner.username }}</strong>, 
+                    {% trans "que se tornou a Conta Mestre deste e-mail." %}
+                  </p>
+                  <ul style="margin-bottom: 0; padding-left: 1.5rem; color: #856404; font-size: 0.85rem;">
+                    <li>{% trans "A Conta Mestre pode delegar acesso de contra mestres para outras contas do Lineage." %}</li>
+                    <li>{% trans "Você pode receber acesso a contas do Lineage se a Conta Mestre delegar permissões para você." %}</li>
+                    <li>{% trans "Para se tornar a Conta Mestre, você precisaria alterar seu e-mail para um que ainda não tenha uma conta mestre." %}</li>
+                  </ul>
+                </div>
+              </div>
+            {% endif %}
+
             <!-- Email Warning Section -->
             <div class="info-section">
               <div class="alert alert-info" style="background: linear-gradient(135deg, #d1ecf1, #bee5eb); border: 2px solid #0dcaf0; border-radius: 12px; padding: 1.25rem; margin-bottom: 0;">

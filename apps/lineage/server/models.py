@@ -357,7 +357,7 @@ class ManagedLineageAccount(BaseModel):
     class Meta:
         verbose_name = _("Conta Delegada do Lineage")
         verbose_name_plural = _("Contas Delegadas do Lineage")
-        unique_together = ('account_login', 'manager_user')
+        unique_together = [('account_login', 'manager_user')]
         ordering = ['account_login']
 
     def __str__(self):

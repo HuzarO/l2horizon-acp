@@ -598,6 +598,29 @@ class LineageAccount:
             return None
 
     @staticmethod
+    @cache_lineage_result(timeout=60, use_cache=False)
+    def unlink_account_from_user(login, user_uuid):
+        """
+        Desvincula uma conta do Lineage de um UUID de usuário.
+        Remove o linked_uuid e o email da conta.
+        """
+        try:
+            sql = """
+                UPDATE accounts
+                SET linked_uuid = NULL, email = NULL
+                WHERE login = :login AND linked_uuid = :uuid
+            """
+            params = {
+                "uuid": str(user_uuid),
+                "login": login
+            }
+            result = LineageDB().update(sql, params)
+            return result is not None and result > 0
+        except Exception as e:
+            print(f"Erro ao desvincular conta Lineage do UUID: {e}")
+            return False
+
+    @staticmethod
     @cache_lineage_result(timeout=300)
     def ensure_columns():
         if LineageAccount._checked_columns:

@@ -146,7 +146,23 @@ class ManagedLineageAccountAdmin(BaseModelAdmin):
         "role",
         "status",
         "created_by",
+        "notes",
         "created_at",
     )
-    list_filter = ("role", "status")
-    search_fields = ("account_login", "manager_user__username")
+    list_filter = ("role", "status", "created_at")
+    search_fields = ("account_login", "manager_user__username", "created_by__username", "notes")
+    list_editable = ("status",)  # Permite editar o status diretamente na lista
+    readonly_fields = ("created_at", "updated_at")
+    
+    fieldsets = (
+        ("Informações da Conta", {
+            "fields": ("account_login", "manager_user", "role", "status")
+        }),
+        ("Delegação", {
+            "fields": ("created_by", "notes")
+        }),
+        ("Datas", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",)
+        }),
+    )

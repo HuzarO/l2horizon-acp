@@ -5,6 +5,9 @@ from typing import Dict, List
 from django.utils.translation import gettext_lazy as _
 
 from apps.lineage.server.models import ManagedLineageAccount
+from utils.dynamic_import import get_query_class
+
+LineageAccount = get_query_class("LineageAccount")
 
 SESSION_KEY = "lineage_active_login"
 
@@ -28,14 +31,72 @@ def user_has_access(user, account_login: str) -> bool:
     if not normalized_login:
         return False
 
+    # Sempre permite acesso à conta principal
     if normalized_login == _default_login(user):
         return True
 
-    return ManagedLineageAccount.objects.filter(
+    # Verifica se existe delegação explícita via ManagedLineageAccount
+    if ManagedLineageAccount.objects.filter(
         manager_user=user,
         account_login=normalized_login,
         status=ManagedLineageAccount.Status.ACTIVE,
-    ).exists()
+    ).exists():
+        return True
+
+    # Verifica se a conta está vinculada ao UUID do usuário no banco do Lineage
+    user_uuid = str(user.uuid) if hasattr(user, 'uuid') else None
+    if user_uuid:
+        try:
+            from utils.dynamic_import import get_query_class
+            LineageDBClass = get_query_class("LineageDB")
+            
+            if LineageDBClass:
+                lineage_db = LineageDBClass()
+                if lineage_db and getattr(lineage_db, 'enabled', False):
+                    sql = """
+                        SELECT login
+                        FROM accounts
+                        WHERE login = :login AND linked_uuid = :uuid
+                        LIMIT 1
+                    """
+                    try:
+                        result = lineage_db.select(sql, {"login": normalized_login, "uuid": user_uuid})
+                        if result and len(result) > 0:
+                            return True
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Erro ao verificar acesso via linked_uuid: {e}")
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Erro ao verificar acesso: {e}")
+
+    # Verifica se o usuário é a conta mestre do e-mail e a conta tem o mesmo e-mail
+    user_email = getattr(user, 'email', None)
+    if user_email:
+        try:
+            from apps.main.home.models import EmailOwnership
+            email_ownership = EmailOwnership.objects.filter(email=user_email).first()
+            if email_ownership and email_ownership.owner == user:
+                # Se for conta mestre, verifica se a conta do Lineage tem o mesmo e-mail
+                try:
+                    from utils.dynamic_import import get_query_class
+                    LineageAccount = get_query_class("LineageAccount")
+                    if LineageAccount and hasattr(LineageAccount, 'find_accounts_by_email'):
+                        contas_por_email = LineageAccount.find_accounts_by_email(user_email)
+                        for conta in contas_por_email:
+                            login = conta.get("login") if isinstance(conta, dict) else getattr(conta, 'login', None)
+                            if login == normalized_login:
+                                return True
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Erro ao verificar acesso via e-mail: {e}")
+        except Exception:
+            pass
+
+    return False
 
 
 def get_available_accounts(user) -> List[Dict[str, str]]:
@@ -47,32 +108,129 @@ def get_available_accounts(user) -> List[Dict[str, str]]:
     if not user or not user.is_authenticated:
         return accounts
 
-    accounts.append(
-        {
-            "login": _default_login(user),
-            "role": ManagedLineageAccount.Role.OWNER,
-            "role_label": _("Conta principal"),
-            "status": ManagedLineageAccount.Status.ACTIVE,
-            "is_primary": True,
-            "created_by": None,
-        }
-    )
-
-    links = ManagedLineageAccount.objects.filter(
-        manager_user=user, status=ManagedLineageAccount.Status.ACTIVE
-    ).select_related("created_by")
-
-    for link in links:
+    # SEMPRE adiciona a conta principal primeiro (username)
+    default_login = _default_login(user)
+    if default_login:
         accounts.append(
             {
-                "login": link.account_login,
-                "role": link.role,
-                "role_label": link.get_role_display(),
-                "status": link.status,
-                "is_primary": False,
-                "created_by": link.created_by.username if link.created_by else None,
+                "login": default_login,
+                "role": ManagedLineageAccount.Role.OWNER,
+                "role_label": _("Conta principal"),
+                "status": ManagedLineageAccount.Status.ACTIVE,
+                "is_primary": True,
+                "created_by": None,
             }
         )
+
+    # Busca contas do Lineage vinculadas ao UUID do usuário
+    user_uuid = str(user.uuid) if hasattr(user, 'uuid') else None
+    linked_accounts = set()  # Para evitar duplicatas
+    
+    # Verifica se o usuário é a conta mestre do e-mail
+    is_master = False
+    user_email = getattr(user, 'email', None)
+    if user_email:
+        try:
+            from apps.main.home.models import EmailOwnership
+            email_ownership = EmailOwnership.objects.filter(email=user_email).first()
+            if email_ownership and email_ownership.owner == user:
+                is_master = True
+        except Exception:
+            pass
+    
+    if user_uuid:
+        try:
+            # Busca todas as contas do Lineage vinculadas ao UUID do usuário
+            from utils.dynamic_import import get_query_class
+            LineageDBClass = get_query_class("LineageDB")
+            LineageAccount = get_query_class("LineageAccount")
+            
+            if LineageDBClass:
+                lineage_db = LineageDBClass()
+                if lineage_db and getattr(lineage_db, 'enabled', False):
+                    # Se for conta mestre, busca contas por e-mail também
+                    if is_master and user_email and LineageAccount and hasattr(LineageAccount, 'find_accounts_by_email'):
+                        try:
+                            # Busca todas as contas do Lineage com o mesmo e-mail
+                            contas_por_email = LineageAccount.find_accounts_by_email(user_email)
+                            for conta in contas_por_email:
+                                login = conta.get("login") if isinstance(conta, dict) else getattr(conta, 'login', None)
+                                if login and login != default_login:
+                                    linked_accounts.add(login)
+                        except Exception as e:
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.warning(f"Erro ao buscar contas por e-mail: {e}")
+                    
+                    # Busca contas vinculadas ao UUID do usuário
+                    sql = """
+                        SELECT login
+                        FROM accounts
+                        WHERE linked_uuid = :uuid
+                    """
+                    try:
+                        result = lineage_db.select(sql, {"uuid": user_uuid})
+                        if result:
+                            for row in result:
+                                # Tenta diferentes formas de acessar o login
+                                login = None
+                                if isinstance(row, dict):
+                                    login = row.get("login")
+                                elif hasattr(row, 'login'):
+                                    login = getattr(row, 'login', None)
+                                elif hasattr(row, '__getitem__'):
+                                    try:
+                                        login = row['login']
+                                    except (KeyError, TypeError):
+                                        pass
+                                
+                                if login and login != default_login:  # Evita duplicar a conta principal
+                                    linked_accounts.add(login)
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Erro ao buscar contas vinculadas por UUID: {e}")
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Erro ao inicializar LineageDB: {e}")
+
+    # Adiciona contas do Lineage vinculadas ao UUID do usuário
+    for login in linked_accounts:
+        accounts.append(
+            {
+                "login": login,
+                "role": ManagedLineageAccount.Role.OWNER,
+                "role_label": _("Conta vinculada"),
+                "status": ManagedLineageAccount.Status.ACTIVE,
+                "is_primary": False,
+                "created_by": None,
+            }
+        )
+
+    # Adiciona contas delegadas via ManagedLineageAccount
+    try:
+        links = ManagedLineageAccount.objects.filter(
+            manager_user=user, status=ManagedLineageAccount.Status.ACTIVE
+        ).select_related("created_by")
+
+        for link in links:
+            # Evita adicionar se já estiver na lista
+            if not any(acc["login"] == link.account_login for acc in accounts):
+                accounts.append(
+                    {
+                        "login": link.account_login,
+                        "role": link.role,
+                        "role_label": link.get_role_display(),
+                        "status": link.status,
+                        "is_primary": False,
+                        "created_by": link.created_by.username if link.created_by else None,
+                    }
+                )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Erro ao buscar contas delegadas: {e}")
 
     return accounts
 
