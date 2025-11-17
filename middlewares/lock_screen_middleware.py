@@ -1,6 +1,9 @@
+import logging
 from django.conf import settings
 from django.shortcuts import redirect
 from django.urls import reverse
+
+logger = logging.getLogger(__name__)
 
 
 class SessionLockMiddleware:
@@ -13,7 +16,7 @@ class SessionLockMiddleware:
             '/decrypted-file/',
             '/public/',
             '/wiki/',
-            '/pages/',
+            # '/pages/',  # Removido - dashboard requer autenticação
             '/set-language/',
             '/verify/',
             '/components/',
@@ -22,13 +25,15 @@ class SessionLockMiddleware:
 
     def __call__(self, request):
         path = request.path
+        
+        # Log para debug do dashboard
+        if path == reverse('dashboard'):
+            logger.info(f"[SessionLockMiddleware] Dashboard access - User authenticated: {request.user.is_authenticated}")
+            logger.info(f"[SessionLockMiddleware] Session key: {request.session.session_key if hasattr(request, 'session') else 'No session'}")
 
         # Verifica se o caminho está na lista de caminhos permitidos
         if any(path.startswith(allowed_path) for allowed_path in self.allowed_paths):
-            if path == reverse('dashboard'):
-                pass
-            else:
-                return self.get_response(request)
+            return self.get_response(request)
         
         if path == reverse('index'):
             return self.get_response(request)

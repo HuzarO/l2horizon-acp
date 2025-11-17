@@ -409,6 +409,11 @@ def activate_lock(request):
 
 @conditional_otp_required
 def dashboard(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"[dashboard view] Executando view dashboard - User authenticated: {request.user.is_authenticated}")
+    logger.info(f"[dashboard view] User: {request.user}")
+    
     if request.user.is_authenticated:
         language = translation.get_language()
         dashboard = DashboardContent.objects.filter(is_active=True).first()
