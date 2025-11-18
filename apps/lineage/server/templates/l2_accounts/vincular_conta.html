@@ -201,8 +201,21 @@
             </h2>
           </div>
 
-          <form method="post">
+          {% if has_pending_code %}
+          <div class="alert alert-info" style="background: rgba(13, 202, 240, 0.2); border: 1px solid rgba(13, 202, 240, 0.5); border-radius: 10px; padding: 1rem; margin-bottom: 1.5rem;">
+            <i class="fas fa-envelope me-2"></i>
+            <strong>{% trans "Código enviado!" %}</strong>
+            <p class="mb-0 mt-2" style="font-size: 0.9rem;">
+              {% blocktrans with email=code_email %}Um código de verificação foi enviado para <strong>{{ email }}</strong>.{% endblocktrans %}
+              <br>
+              <small>{% trans "O código é válido por 10 minutos." %}</small>
+            </p>
+          </div>
+          {% endif %}
+
+          <form method="post" id="linkForm">
             {% csrf_token %}
+            <input type="hidden" name="action" value="link">
 
             <div class="form-group">
               <label class="form-label">
@@ -225,6 +238,19 @@
               </div>
             </div>
 
+            {% if has_pending_code %}
+            <div class="form-group">
+              <label class="form-label">
+                <i class="fas fa-key me-2"></i>
+                {% trans "Código de Verificação" %}
+              </label>
+              <input type="text" name="verification_code" class="form-control" id="verification_code" placeholder="{% trans 'Digite o código de 6 dígitos' %}" maxlength="6" pattern="[0-9]{6}" required>
+              <small class="text-muted mt-1 d-block">
+                {% trans "Digite o código de 6 dígitos enviado para seu e-mail." %}
+              </small>
+            </div>
+            {% endif %}
+
             <div class="d-grid">
               <button type="submit" class="btn btn-primary btn-lg">
                 <i class="fas fa-link me-2"></i>
@@ -232,6 +258,17 @@
               </button>
             </div>
           </form>
+
+          <div class="text-center mt-3">
+            <form method="post" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="request_code">
+              <button type="submit" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-envelope me-2"></i>
+                {% trans "Enviar código por e-mail" %}
+              </button>
+            </form>
+          </div>
 
           <div class="info-text">
             <small>
@@ -264,5 +301,34 @@ function togglePassword(inputId) {
     icon.classList.add('fa-eye');
   }
 }
+
+// Validação antes de enviar
+document.addEventListener('DOMContentLoaded', function() {
+  const linkForm = document.getElementById('linkForm');
+  const passwordInput = document.getElementById('senha');
+  {% if has_pending_code %}
+  const codeInput = document.getElementById('verification_code');
+  {% endif %}
+
+  linkForm.addEventListener('submit', function(e) {
+    if (!passwordInput.value.trim()) {
+      e.preventDefault();
+      alert('{% trans "Por favor, digite a senha da conta." %}');
+      return false;
+    }
+    {% if has_pending_code %}
+    if (!codeInput.value.trim()) {
+      e.preventDefault();
+      alert('{% trans "Por favor, digite o código de verificação." %}');
+      return false;
+    }
+    if (codeInput.value.length !== 6) {
+      e.preventDefault();
+      alert('{% trans "O código deve ter 6 dígitos." %}');
+      return false;
+    }
+    {% endif %}
+  });
+});
 </script>
 {% endblock %}

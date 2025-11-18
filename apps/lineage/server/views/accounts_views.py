@@ -120,17 +120,29 @@ def account_dashboard(request):
 @conditional_otp_required
 @require_lineage_connection
 def update_password(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Usa a conta ativa selecionada pelo usuário
+    active_login = get_active_login(request)
     user = request.user
 
+    # Verifica se o usuário tem acesso à conta ativa
+    if not user_has_access(request.user, active_login):
+        messages.error(request, _("Você não tem permissão para alterar a senha desta conta."))
+        return redirect('server:manage_lineage_accounts')
+
     # Verifica se a conta Lineage está vinculada
-    account_data = LineageAccount.check_login_exists(user.username)
-    if not account_data or len(account_data) == 0 or not account_data[0].get("linked_uuid"):
-        messages.error(request, "Sua conta Lineage não está vinculada. Por favor, vincule sua conta antes de atualizar a senha.")
-        return redirect('server:link_lineage_account')
+    account_data = LineageAccount.check_login_exists(active_login)
+    if not account_data or len(account_data) == 0:
+        messages.error(request, _("Conta do Lineage não encontrada."))
+        return redirect('server:account_dashboard')
     
-    user_uuid = str(request.user.uuid)
-    if account_data[0].get("linked_uuid") != user_uuid:
-        messages.error(request, "Sua conta Lineage está vinculada a outro usuário. Por favor, vincule novamente sua conta corretamente.")
+    account = account_data[0]
+    linked_uuid = account.get("linked_uuid")
+    
+    if not linked_uuid:
+        messages.error(request, _("Esta conta não está vinculada. Por favor, vincule sua conta antes de atualizar a senha."))
         return redirect('server:link_lineage_account')
 
     if request.method == "POST":
@@ -138,24 +150,29 @@ def update_password(request):
         confirmar = request.POST.get("confirmar_senha")
 
         if not senha or not confirmar:
-            messages.error(request, "Por favor, preencha todos os campos.")
+            messages.error(request, _("Por favor, preencha todos os campos."))
             return redirect('server:update_password')
 
         if senha != confirmar:
-            messages.error(request, "As senhas não coincidem.")
+            messages.error(request, _("As senhas não coincidem."))
             return redirect('server:update_password')
 
-        success = LineageAccount.update_password(senha, user.username)
+        logger.info(f"[update_password] Atualizando senha da conta {active_login} pelo usuário {user.username}")
+        success = LineageAccount.update_password(senha, active_login)
 
         if success:
-            messages.success(request, "Senha atualizada com sucesso!")
+            messages.success(request, _("Senha da conta %(account)s atualizada com sucesso!") % {"account": active_login})
+            logger.info(f"[update_password] Senha atualizada com sucesso para conta {active_login}")
             return redirect('server:account_dashboard')
         else:
-            messages.error(request, "Erro ao atualizar senha.")
+            messages.error(request, _("Erro ao atualizar senha."))
+            logger.error(f"[update_password] Erro ao atualizar senha para conta {active_login}")
             return redirect('server:update_password')
 
     # GET request — exibe o formulário
-    return render(request, "l2_accounts/update_password.html")
+    return render(request, "l2_accounts/update_password.html", {
+        'active_account_login': active_login,
+    })
 
 
 @conditional_otp_required
@@ -214,35 +231,164 @@ def register_success(request):
 @conditional_otp_required
 @require_lineage_connection
 def link_lineage_account(request):
-    if request.method == "POST":
-        login_jogo = request.user.username
-        senha_jogo = request.POST.get("senha")
+    import random
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Verifica se é uma solicitação de código por email
+    if request.method == "POST" and request.POST.get("action") == "request_code":
+        if not request.user.email:
+            messages.error(request, _("Você precisa ter um e-mail cadastrado para receber o código."))
+            return redirect("server:link_lineage_account")
+        
+        # Gera código de 6 dígitos
+        verification_code = str(random.randint(100000, 999999))
+        
+        # Armazena na sessão com timestamp (expira em 10 minutos)
+        from django.utils import timezone
+        request.session['link_account_code'] = verification_code
+        request.session['link_account_code_time'] = timezone.now().timestamp()
+        request.session['link_account_email'] = request.user.email
+        request.session.modified = True
+        
+        # Envia email com o código
+        try:
+            send_email_task.delay(
+                _("Código de Verificação - Vincular Conta Lineage"),
+                _("""Olá {username},
 
-        # Verifica se login + senha são válidos
+Você solicitou um código para vincular sua conta do Lineage 2.
+
+Seu código de verificação é: {code}
+
+Este código é válido por 10 minutos.
+
+Se você não solicitou este código, ignore este e-mail.
+
+Atenciosamente,
+Equipe PDL""").format(username=request.user.username, code=verification_code),
+                settings.DEFAULT_FROM_EMAIL,
+                [request.user.email]
+            )
+            messages.success(request, _("Código de verificação enviado para %(email)s") % {"email": request.user.email})
+            logger.info(f"[link_lineage_account] Código enviado para {request.user.email}")
+        except Exception as e:
+            logger.error(f"[link_lineage_account] Erro ao enviar email: {e}", exc_info=True)
+            messages.error(request, _("Erro ao enviar e-mail. Tente novamente."))
+        
+        return redirect("server:link_lineage_account")
+    
+    # Processa vinculação com código E senha (ambos obrigatórios se código foi solicitado)
+    if request.method == "POST" and request.POST.get("action") == "link":
+        login_jogo = request.user.username
+        senha_jogo = request.POST.get("senha", "").strip()
+        verification_code = request.POST.get("verification_code", "").strip()
+        
+        # Verifica se há código pendente na sessão
+        has_pending_code = bool(request.session.get('link_account_code'))
+        
+        # Se há código pendente, ambos são obrigatórios
+        if has_pending_code:
+            if not verification_code:
+                messages.error(request, _("Informe o código de verificação enviado por e-mail."))
+                return redirect("server:link_lineage_account")
+            
+            if not senha_jogo:
+                messages.error(request, _("Informe a senha da conta."))
+                return redirect("server:link_lineage_account")
+            
+            # Valida o código
+            stored_code = request.session.get('link_account_code')
+            code_time = request.session.get('link_account_code_time')
+            stored_email = request.session.get('link_account_email')
+            
+            # Verifica se o código existe e não expirou (10 minutos)
+            from django.utils import timezone
+            if not stored_code or not code_time:
+                messages.error(request, _("Código não encontrado. Solicite um novo código."))
+                return redirect("server:link_lineage_account")
+            
+            if timezone.now().timestamp() - code_time > 600:  # 10 minutos
+                messages.error(request, _("Código expirado. Solicite um novo código."))
+                # Limpa a sessão
+                request.session.pop('link_account_code', None)
+                request.session.pop('link_account_code_time', None)
+                request.session.pop('link_account_email', None)
+                return redirect("server:link_lineage_account")
+            
+            if stored_code != verification_code:
+                messages.error(request, _("Código inválido. Verifique e tente novamente."))
+                return redirect("server:link_lineage_account")
+            
+            if stored_email != request.user.email:
+                messages.error(request, _("O código foi enviado para outro e-mail."))
+                return redirect("server:link_lineage_account")
+            
+            logger.info(f"[link_lineage_account] Código válido para {request.user.username}")
+        
+        # Valida senha (sempre obrigatória)
+        if not senha_jogo:
+            messages.error(request, _("Informe a senha da conta."))
+            return redirect("server:link_lineage_account")
+        
         is_valided = LineageAccount.validate_credentials(login_jogo, senha_jogo)
         if not is_valided:
-            messages.error(request, "Login ou senha incorretos.")
+            messages.error(request, _("Login ou senha incorretos."))
             return redirect("server:link_lineage_account")
         
         conta = LineageAccount.get_account_by_login(login_jogo)
 
         # Já está vinculada?
         if conta.get("linked_uuid"):
-            messages.warning(request, "Essa conta já está vinculada a outro usuário.")
+            messages.warning(request, _("Essa conta já está vinculada a outro usuário."))
             return redirect("server:link_lineage_account")
 
         # Vincula a conta
-        user_uuid = str(request.user.uuid)  # Certifique-se de que o User tem um campo `uuid`
+        user_uuid = str(request.user.uuid)
         success = LineageAccount.link_account_to_user(login_jogo, user_uuid)
+        
+        # Atualiza também o email na conta
+        if success and request.user.email:
+            try:
+                from utils.dynamic_import import get_query_class
+                LineageDBClass = get_query_class("LineageDB")
+                if LineageDBClass:
+                    lineage_db = LineageDBClass()
+                    if lineage_db and getattr(lineage_db, 'enabled', False):
+                        sql = """
+                            UPDATE accounts
+                            SET email = :email
+                            WHERE login = :login
+                        """
+                        params = {
+                            "email": request.user.email,
+                            "login": login_jogo
+                        }
+                        lineage_db.update(sql, params)
+            except Exception as e:
+                logger.warning(f"Erro ao atualizar email na conta: {e}")
 
         if success:
-            messages.success(request, "Conta vinculada com sucesso!")
+            # Limpa o código da sessão se foi usado
+            if verification_code:
+                request.session.pop('link_account_code', None)
+                request.session.pop('link_account_code_time', None)
+                request.session.pop('link_account_email', None)
+            
+            messages.success(request, _("Conta vinculada com sucesso!"))
             return redirect("server:account_dashboard")
         else:
-            messages.error(request, "Erro ao vincular conta.")
+            messages.error(request, _("Erro ao vincular conta."))
             return redirect("server:link_lineage_account")
 
-    return render(request, "l2_accounts/vincular_conta.html")
+    # Verifica se há código pendente na sessão
+    has_pending_code = bool(request.session.get('link_account_code'))
+    code_email = request.session.get('link_account_email')
+    
+    return render(request, "l2_accounts/vincular_conta.html", {
+        'has_pending_code': has_pending_code,
+        'code_email': code_email,
+    })
 
 
 @conditional_otp_required
@@ -517,6 +663,33 @@ def unlink_lineage_account(request):
             return redirect("server:manage_lineage_accounts")
         
         logger.info(f"[unlink_lineage_account] Desvinculando conta {account_login} do UUID {user_uuid}")
+        
+        # Verifica se a conta realmente está vinculada ao UUID do usuário antes de tentar desvincular
+        account_data = LineageAccount.check_login_exists(account_login)
+        if not account_data or len(account_data) == 0:
+            messages.error(request, _("Conta do Lineage não encontrada."))
+            logger.warning(f"[unlink_lineage_account] Conta {account_login} não encontrada no banco")
+            return redirect("server:manage_lineage_accounts")
+        
+        account = account_data[0]
+        current_linked_uuid = account.get("linked_uuid")
+        
+        logger.info(f"[unlink_lineage_account] Conta {account_login} - linked_uuid atual: {current_linked_uuid}, user_uuid: {user_uuid}")
+        
+        # Verifica se a conta está vinculada ao UUID do usuário
+        if not current_linked_uuid:
+            messages.error(request, _("Esta conta não está vinculada a nenhum usuário."))
+            logger.warning(f"[unlink_lineage_account] Conta {account_login} não está vinculada (linked_uuid é None)")
+            return redirect("server:manage_lineage_accounts")
+        
+        # Normaliza os UUIDs para comparação (remove espaços, converte para string)
+        current_linked_uuid_str = str(current_linked_uuid).strip()
+        user_uuid_str = str(user_uuid).strip()
+        
+        if current_linked_uuid_str != user_uuid_str:
+            messages.error(request, _("Esta conta está vinculada a outro usuário (UUID: %(uuid)s).") % {"uuid": current_linked_uuid_str})
+            logger.warning(f"[unlink_lineage_account] Conta {account_login} está vinculada a outro UUID: {current_linked_uuid_str} != {user_uuid_str}")
+            return redirect("server:manage_lineage_accounts")
         
         # Verifica se a conta que está sendo desvinculada é a conta ativa
         active_login = get_active_login(request)
