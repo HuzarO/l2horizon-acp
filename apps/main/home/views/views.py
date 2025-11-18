@@ -340,8 +340,13 @@ def edit_profile(request):
                     
                     # Se existe uma conta mestre para este e-mail, vincula as contas do Lineage
                     if email_ownership:
+                        # Se o email foi alterado, FORÇA a vinculação de todas as contas com aquele email
+                        # Isso garante que contas não vinculadas ou vinculadas a outros UUIDs sejam atualizadas
+                        force_link = email_changed
+                        logger.info(f"[edit_profile] Modo de vinculação: force={force_link} (email_changed={email_changed})")
+                        
                         # Usa a classe LineageAccountLinker para gerenciar a vinculação
-                        counters = LineageAccountLinker.link_accounts_for_email(user_email, request)
+                        counters = LineageAccountLinker.link_accounts_for_email(user_email, request, force=force_link)
                         logger.info(f"[edit_profile] Resultado da vinculação: {counters}")
                     else:
                         logger.info(f"[edit_profile] Não existe EmailOwnership para o e-mail {user_email}")

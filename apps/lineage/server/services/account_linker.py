@@ -170,12 +170,13 @@ class LineageAccountLinker:
             logger.error(f"[LineageAccountLinker] Erro ao atualizar email da conta {login}: {e}", exc_info=True)
             return False
     
-    def _link_account(self, login: str) -> bool:
+    def _link_account(self, login: str, force: bool = False) -> bool:
         """
         Vincula uma conta do Lineage ao UUID da conta mestre.
         
         Args:
             login: Login da conta a vincular
+            force: Se True, força a vinculação mesmo se já estiver vinculada a outro UUID
             
         Returns:
             True se vinculou com sucesso, False caso contrário
@@ -184,7 +185,36 @@ class LineageAccountLinker:
             logger.warning("[LineageAccountLinker] master_uuid não disponível")
             return False
         
-        # Tenta usar link_account_to_user primeiro
+        # Se force=True, usa UPDATE direto sem restrições
+        if force:
+            logger.info(f"[LineageAccountLinker] Forçando vinculação de {login} ao UUID {self.master_uuid}")
+            if not self.lineage_db:
+                return False
+            
+            try:
+                sql = """
+                    UPDATE accounts
+                    SET linked_uuid = :uuid, email = :email
+                    WHERE login = :login
+                """
+                params = {
+                    "uuid": self.master_uuid,
+                    "email": self.user_email,
+                    "login": login
+                }
+                result = self.lineage_db.update(sql, params)
+                
+                if result and result > 0:
+                    logger.info(f"[LineageAccountLinker] ✅ Conta {login} vinculada com sucesso (FORÇADO)")
+                    return True
+                else:
+                    logger.warning(f"[LineageAccountLinker] ⚠️ UPDATE não afetou nenhuma linha para conta {login}")
+                    return False
+            except Exception as e:
+                logger.error(f"[LineageAccountLinker] Erro ao forçar vinculação de conta {login}: {e}", exc_info=True)
+                return False
+        
+        # Tenta usar link_account_to_user primeiro (comportamento normal)
         if self.LineageAccount and hasattr(self.LineageAccount, 'link_account_to_user'):
             logger.info(f"[LineageAccountLinker] Tentando vincular {login} via link_account_to_user")
             success = self.LineageAccount.link_account_to_user(login, self.master_uuid)
@@ -262,12 +292,13 @@ class LineageAccountLinker:
             logger.error(f"[LineageAccountLinker] Erro ao re-vincular conta {login}: {e}", exc_info=True)
             return False
     
-    def process_account(self, conta: Dict) -> Tuple[str, bool]:
+    def process_account(self, conta: Dict, force: bool = False) -> Tuple[str, bool]:
         """
         Processa uma conta individual, decidindo se deve vincular, atualizar ou pular.
         
         Args:
             conta: Dicionário com informações da conta
+            force: Se True, força a vinculação mesmo se já estiver vinculada a outro UUID
             
         Returns:
             Tupla (action, success) onde action é 'linked', 'updated', 'skipped' ou 'relinked'
@@ -280,7 +311,21 @@ class LineageAccountLinker:
         current_linked_uuid = self._normalize_uuid(self._extract_field(conta, 'linked_uuid'))
         current_email = self._extract_field(conta, 'email')
         
-        logger.info(f"[LineageAccountLinker] Processando conta: {login}, linked_uuid={current_linked_uuid}, master_uuid={self.master_uuid}")
+        logger.info(f"[LineageAccountLinker] Processando conta: {login}, linked_uuid={current_linked_uuid}, master_uuid={self.master_uuid}, force={force}")
+        
+        # Se force=True, sempre força a vinculação e atualização do email
+        if force:
+            logger.info(f"[LineageAccountLinker] Modo FORÇADO: vinculando {login} independente do estado atual")
+            if self._link_account(login, force=True):
+                # Sempre atualiza o email também
+                self._update_account_email(login)
+                if current_linked_uuid == self.master_uuid:
+                    return ('updated', True)
+                elif not current_linked_uuid:
+                    return ('linked', True)
+                else:
+                    return ('relinked', True)
+            return ('skipped', False)
         
         # Se já está vinculada ao UUID correto, apenas atualiza o email
         if current_linked_uuid == self.master_uuid:
@@ -294,7 +339,7 @@ class LineageAccountLinker:
         
         # Se não está vinculada, tenta vincular
         if not current_linked_uuid:
-            if self._link_account(login):
+            if self._link_account(login, force=False):
                 return ('linked', True)
             return ('skipped', False)
         
@@ -306,9 +351,12 @@ class LineageAccountLinker:
         
         return ('skipped', False)
     
-    def link_all_accounts(self) -> Dict[str, int]:
+    def link_all_accounts(self, force: bool = False) -> Dict[str, int]:
         """
         Busca e vincula todas as contas do Lineage com o e-mail especificado.
+        
+        Args:
+            force: Se True, força a vinculação de todas as contas, mesmo que já estejam vinculadas a outro UUID
         
         Returns:
             Dicionário com contadores: linked, updated, relinked, skipped
@@ -325,21 +373,22 @@ class LineageAccountLinker:
         counters = {'linked': 0, 'updated': 0, 'relinked': 0, 'skipped': 0}
         
         for conta in contas:
-            action, success = self.process_account(conta)
+            action, success = self.process_account(conta, force=force)
             if success:
                 counters[action] = counters.get(action, 0) + 1
         
-        logger.info(f"[LineageAccountLinker] Resultado: {counters}")
+        logger.info(f"[LineageAccountLinker] Resultado (force={force}): {counters}")
         return counters
     
     @classmethod
-    def link_accounts_for_email(cls, user_email: str, request: Optional[HttpRequest] = None) -> Dict[str, int]:
+    def link_accounts_for_email(cls, user_email: str, request: Optional[HttpRequest] = None, force: bool = False) -> Dict[str, int]:
         """
         Método de conveniência para vincular contas de um e-mail.
         
         Args:
             user_email: E-mail para buscar contas
             request: Request opcional para adicionar mensagens
+            force: Se True, força a vinculação de todas as contas, mesmo que já estejam vinculadas a outro UUID
             
         Returns:
             Dicionário com contadores de ações realizadas
@@ -356,14 +405,21 @@ class LineageAccountLinker:
             
             master_user = email_ownership.owner
             linker = cls(user_email, master_user)
-            counters = linker.link_all_accounts()
+            counters = linker.link_all_accounts(force=force)
             
-            # Adiciona mensagem se houver vinculações novas
-            if request and counters.get('linked', 0) > 0:
-                messages.info(
-                    request,
-                    f"✅ {counters['linked']} conta(s) do Lineage foram automaticamente vinculadas à conta mestre {master_user.username}."
-                )
+            # Adiciona mensagem se houver vinculações novas ou re-vinculações
+            total_changes = counters.get('linked', 0) + counters.get('relinked', 0)
+            if request and total_changes > 0:
+                if force:
+                    messages.info(
+                        request,
+                        f"✅ {total_changes} conta(s) do Lineage foram vinculadas/atualizadas à conta mestre {master_user.username}."
+                    )
+                else:
+                    messages.info(
+                        request,
+                        f"✅ {counters.get('linked', 0)} conta(s) do Lineage foram automaticamente vinculadas à conta mestre {master_user.username}."
+                    )
             
             return counters
         except Exception as e:
