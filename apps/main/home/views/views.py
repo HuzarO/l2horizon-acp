@@ -317,42 +317,60 @@ def edit_profile(request):
             if email_changed and new_email and request.user.is_email_verified:
                 request.user.ensure_email_master_owner()
             
-            # SEMPRE tenta vincular contas do Lineage à conta mestre
-            # Isso garante que mesmo se o e-mail não foi alterado agora,
-            # contas do Lineage que foram criadas depois serão vinculadas
+            # INDEPENDENTE de ter alterado o email ou não:
+            # Se a conta atual tem um email que já está validado por uma conta mestre,
+            # vincula APENAS a conta atual (username) ao UUID da conta mestre
+            # NÃO vincula outras contas com o mesmo email
             user_email = request.user.email
             if user_email:
                 try:
                     from apps.main.home.models import EmailOwnership
-                    from apps.lineage.server.services.account_linker import LineageAccountLinker
+                    from utils.dynamic_import import get_query_class
                     
-                    logger.info(f"[edit_profile] Verificando vinculação de contas Lineage para e-mail: {user_email}")
+                    logger.info(f"[edit_profile] Verificando se email {user_email} tem conta mestre")
                     
                     # Verifica se existe uma conta mestre para este e-mail
                     email_ownership = EmailOwnership.objects.filter(email=user_email).first()
-                    logger.info(f"[edit_profile] EmailOwnership encontrado: {email_ownership}")
                     
-                    # Se não existe EmailOwnership mas o e-mail está verificado, cria
-                    if not email_ownership and request.user.is_email_verified:
-                        request.user.ensure_email_master_owner()
-                        email_ownership = EmailOwnership.objects.filter(email=user_email).first()
-                        logger.info(f"[edit_profile] EmailOwnership criado: {email_ownership}")
-                    
-                    # Se existe uma conta mestre para este e-mail, vincula as contas do Lineage
                     if email_ownership:
-                        # Se o email foi alterado, FORÇA a vinculação de todas as contas com aquele email
-                        # Isso garante que contas não vinculadas ou vinculadas a outros UUIDs sejam atualizadas
-                        force_link = email_changed
-                        logger.info(f"[edit_profile] Modo de vinculação: force={force_link} (email_changed={email_changed})")
+                        master_user = email_ownership.owner
+                        master_uuid = str(master_user.uuid) if hasattr(master_user, 'uuid') else None
+                        user_login = request.user.username
                         
-                        # Usa a classe LineageAccountLinker para gerenciar a vinculação
-                        counters = LineageAccountLinker.link_accounts_for_email(user_email, request, force=force_link)
-                        logger.info(f"[edit_profile] Resultado da vinculação: {counters}")
+                        logger.info(f"[edit_profile] Email {user_email} tem conta mestre: {master_user.username}")
+                        logger.info(f"[edit_profile] Vinculando APENAS a conta atual '{user_login}' ao UUID {master_uuid}")
+                        
+                        if master_uuid and user_login:
+                            LineageDBClass = get_query_class("LineageDB")
+                            
+                            if LineageDBClass:
+                                lineage_db = LineageDBClass()
+                                if lineage_db and getattr(lineage_db, 'enabled', False):
+                                    # Vincula APENAS a conta atual (username) ao UUID da conta mestre
+                                    sql = """
+                                        UPDATE accounts
+                                        SET linked_uuid = :uuid, email = :email
+                                        WHERE login = :login
+                                    """
+                                    params = {
+                                        "uuid": master_uuid,
+                                        "email": user_email,
+                                        "login": user_login
+                                    }
+                                    result = lineage_db.update(sql, params)
+                                    
+                                    if result and result > 0:
+                                        logger.info(f"[edit_profile] ✅ Conta '{user_login}' vinculada ao mestre {master_user.username} com sucesso")
+                                        messages.info(
+                                            request,
+                                            f"✅ Conta do Lineage '{user_login}' foi vinculada à conta mestre {master_user.username}."
+                                        )
+                                    else:
+                                        logger.warning(f"[edit_profile] ⚠️ Conta '{user_login}' não encontrada no banco do Lineage")
                     else:
-                        logger.info(f"[edit_profile] Não existe EmailOwnership para o e-mail {user_email}")
+                        logger.info(f"[edit_profile] Email {user_email} não tem conta mestre, nenhuma vinculação automática")
                 except Exception as e:
-                    # Se houver erro, não bloqueia o salvamento do perfil
-                    logger.error(f"Erro ao vincular contas do Lineage: {e}", exc_info=True)
+                    logger.error(f"Erro ao vincular conta atual do Lineage: {e}", exc_info=True)
             
             # Verifica se o perfil ficou completo após a edição
             if perfil_incompleto_antes and (request.user.first_name and request.user.last_name and request.user.bio):
