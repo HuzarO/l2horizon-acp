@@ -593,6 +593,10 @@ def manage_lineage_accounts(request):
         context['is_email_master_owner'] = True
         # Não limpa email_master_owner, apenas marca que não está vinculada
     
+    # Busca contas que o usuário pode delegar (apenas as que ele é proprietário)
+    from apps.lineage.server.services.account_context import get_ownable_accounts
+    ownable_accounts, primary_excluded = get_ownable_accounts(request.user)
+    
     context.update(
         {
             "delegated_links": delegated_links,
@@ -601,6 +605,8 @@ def manage_lineage_accounts(request):
             "total_delegated_accounts": len(links_as_manager) + len(linked_accounts_info),
             "account_is_linked": account_is_linked,  # Flag para verificar se conta está vinculada
             "original_email_master_owner": original_email_master_owner,  # Para mostrar mensagem de desvinculação
+            "ownable_lineage_accounts": ownable_accounts,  # Contas que o usuário pode delegar
+            "primary_account_excluded": primary_excluded,  # Flag indicando se conta principal foi excluída
         }
     )
     return render(request, "l2_accounts/manage_accounts.html", context)

@@ -233,11 +233,28 @@
         </div>
         <div class="card-body">
           {% if account_is_linked and is_email_master_owner %}
+          {% if primary_account_excluded %}
+          <div class="alert alert-info mb-3">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>{% trans "Atenção" %}:</strong>
+            {% blocktrans with account=request.user.username %}
+            A conta principal <strong>{{ account }}</strong> não pode ser delegada porque você já é o mestre e possui outras contas vinculadas a ela. Apenas as contas vinculadas podem ser delegadas.
+            {% endblocktrans %}
+          </div>
+          {% endif %}
           <form method="post" action="{% url 'server:add_contra_mestre' %}" class="row g-3">
             {% csrf_token %}
             <div class="col-12">
               <label class="form-label">{% trans "Conta do jogo" %}</label>
-              <input type="text" name="account_login" class="form-control" value="{{ active_account_login }}" required>
+              <select class="form-select" name="account_login" required>
+                {% for account in ownable_lineage_accounts %}
+                  <option value="{{ account.login }}" {% if account.login == active_account_login %}selected{% endif %}>
+                    {{ account.login }} — {{ account.role_label }}
+                  </option>
+                {% empty %}
+                  <option disabled>{% trans "Nenhuma conta disponível para delegação" %}</option>
+                {% endfor %}
+              </select>
               <small class="text-muted">{% trans "Somente contas vinculadas ao seu usuário podem ser delegadas." %}</small>
             </div>
             <div class="col-12">
@@ -249,7 +266,7 @@
               <textarea name="notes" class="form-control" rows="2" placeholder="{% trans 'Ex: funções que o contra mestre poderá executar' %}"></textarea>
             </div>
             <div class="col-12 text-end">
-              <button type="submit" class="btn btn-success">
+              <button type="submit" class="btn btn-success" {% if not ownable_lineage_accounts %}disabled{% endif %}>
                 <i class="bi bi-person-plus-fill me-2"></i>{% trans "Adicionar contra mestre" %}
               </button>
             </div>

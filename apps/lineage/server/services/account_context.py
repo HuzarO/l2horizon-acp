@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from django.utils.translation import gettext_lazy as _
 
@@ -311,6 +311,125 @@ def clear_active_login(request):
         request.session.modified = True
 
 
+def get_ownable_accounts(user) -> Tuple[List[Dict[str, str]], bool]:
+    """
+    Retorna apenas as contas que o usuário é proprietário e pode delegar.
+    Inclui contas vinculadas ao UUID do usuário (linked_uuid).
+    Se o usuário for conta mestre do e-mail, também inclui contas com o mesmo e-mail que estão vinculadas.
+    NÃO inclui contas que foram delegadas para o usuário.
+    NÃO inclui a conta principal se ela tiver outras contas vinculadas (pois você já é o mestre).
+    
+    Returns:
+        tuple: (lista de contas, flag indicando se a conta principal foi excluída por ter contas vinculadas)
+    """
+    accounts: List[Dict[str, str]] = []
+    primary_excluded = False
+
+    if not user or not user.is_authenticated:
+        return accounts, primary_excluded
+
+    default_login = _default_login(user)
+    user_uuid = str(user.uuid) if hasattr(user, 'uuid') else None
+    
+    # Verifica se o usuário é a conta mestre do e-mail
+    is_master = False
+    user_email = getattr(user, 'email', None)
+    if user_email:
+        try:
+            from apps.main.home.models import EmailOwnership
+            email_ownership = EmailOwnership.objects.filter(email=user_email).first()
+            if email_ownership and email_ownership.owner == user:
+                is_master = True
+        except Exception:
+            pass
+
+    # Busca contas vinculadas ao UUID do usuário (proprietário)
+    linked_accounts = set()  # Para evitar duplicatas
+    
+    if user_uuid:
+        try:
+            from utils.dynamic_import import get_query_class
+            LineageDBClass = get_query_class("LineageDB")
+            
+            if LineageDBClass:
+                lineage_db = LineageDBClass()
+                if lineage_db and getattr(lineage_db, 'enabled', False):
+                    # Se for conta mestre, busca contas por e-mail também (mas apenas as vinculadas)
+                    if is_master and user_email:
+                        try:
+                            sql = """
+                                SELECT login, linked_uuid, email
+                                FROM accounts
+                                WHERE email = :email AND linked_uuid IS NOT NULL
+                            """
+                            contas_por_email = lineage_db.select(sql, {"email": user_email})
+                            if contas_por_email:
+                                for conta in contas_por_email:
+                                    login = conta.get("login") if isinstance(conta, dict) else getattr(conta, 'login', None)
+                                    linked_uuid = conta.get("linked_uuid") if isinstance(conta, dict) else getattr(conta, 'linked_uuid', None)
+                                    
+                                    # Só adiciona se tiver linked_uuid e não for a conta principal
+                                    if login and login != default_login and linked_uuid:
+                                        linked_accounts.add(login)
+                        except Exception as e:
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.warning(f"Erro ao buscar contas por e-mail: {e}")
+                    
+                    # Busca contas vinculadas ao UUID do usuário
+                    sql = """
+                        SELECT login, linked_uuid, email
+                        FROM accounts
+                        WHERE linked_uuid = :uuid
+                    """
+                    try:
+                        result = lineage_db.select(sql, {"uuid": user_uuid})
+                        if result:
+                            for row in result:
+                                login = None
+                                if isinstance(row, dict):
+                                    login = row.get("login")
+                                elif hasattr(row, 'login'):
+                                    login = getattr(row, 'login', None)
+                                
+                                # Adiciona se não for a conta principal
+                                if login and login != default_login:
+                                    linked_accounts.add(login)
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Erro ao buscar contas próprias: {e}")
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Erro ao inicializar LineageDB para buscar contas próprias: {e}")
+
+    # Se a conta principal tem outras contas vinculadas, não inclui ela na lista
+    # (porque você já é o mestre e não faz sentido delegar a conta principal)
+    if default_login and linked_accounts:
+        primary_excluded = True
+    elif default_login and not linked_accounts:
+        # Só adiciona a conta principal se ela não tiver outras contas vinculadas
+        accounts.append(
+            {
+                "login": default_login,
+                "role_label": _("Conta principal"),
+            }
+        )
+
+    # Adiciona todas as contas vinculadas encontradas
+    for login in linked_accounts:
+        if not any(acc["login"] == login for acc in accounts):
+            accounts.append(
+                {
+                    "login": login,
+                    "role_label": _("Conta vinculada"),
+                }
+            )
+
+    return accounts, primary_excluded
+
+
 def get_lineage_template_context(request) -> Dict[str, object]:
     """
     Constrói um dicionário padrão para ser usado nos templates com informações
@@ -323,9 +442,13 @@ def get_lineage_template_context(request) -> Dict[str, object]:
         email_master_owner = user.get_email_master_owner()
         is_email_master_owner = (email_master_owner is None) or (email_master_owner == user)
 
+    ownable_accounts, primary_excluded = get_ownable_accounts(request.user)
+    
     return {
         "active_account_login": get_active_login(request),
         "available_lineage_accounts": get_available_accounts(request.user),
+        "ownable_lineage_accounts": ownable_accounts,
+        "primary_account_excluded": primary_excluded,
         "email_master_owner": email_master_owner,
         "is_email_master_owner": is_email_master_owner,
     }
