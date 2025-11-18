@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from apps.lineage.server.models import ManagedLineageAccount
@@ -428,6 +429,96 @@ def get_ownable_accounts(user) -> Tuple[List[Dict[str, str]], bool]:
             )
 
     return accounts, primary_excluded
+
+
+def count_linked_accounts(user) -> int:
+    """
+    Conta quantas contas estão vinculadas ao UUID do usuário (excluindo a conta principal).
+    """
+    if not user or not user.is_authenticated:
+        return 0
+    
+    user_uuid = str(user.uuid) if hasattr(user, 'uuid') else None
+    if not user_uuid:
+        return 0
+    
+    default_login = _default_login(user)
+    count = 0
+    
+    try:
+        from utils.dynamic_import import get_query_class
+        LineageDBClass = get_query_class("LineageDB")
+        
+        if LineageDBClass:
+            lineage_db = LineageDBClass()
+            if lineage_db and getattr(lineage_db, 'enabled', False):
+                sql = """
+                    SELECT COUNT(*) as total
+                    FROM accounts
+                    WHERE linked_uuid = :uuid AND login != :login
+                """
+                try:
+                    result = lineage_db.select(sql, {"uuid": user_uuid, "login": default_login})
+                    if result and len(result) > 0:
+                        row = result[0]
+                        if isinstance(row, dict):
+                            count = row.get("total", 0)
+                        elif hasattr(row, 'total'):
+                            count = getattr(row, 'total', 0)
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Erro ao contar contas vinculadas: {e}")
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Erro ao inicializar LineageDB para contar contas: {e}")
+    
+    return count
+
+
+def get_total_link_slots(user) -> int:
+    """
+    Retorna o total de slots de vinculação disponíveis para o usuário.
+    Padrão: 3 slots gratuitos + slots comprados.
+    """
+    DEFAULT_FREE_SLOTS = 3
+    
+    if not user or not user.is_authenticated:
+        return DEFAULT_FREE_SLOTS
+    
+    from apps.lineage.server.models import AccountLinkSlot
+    purchased_slots = AccountLinkSlot.objects.filter(user=user).aggregate(
+        total=models.Sum('slots_purchased')
+    )['total'] or 0
+    
+    return DEFAULT_FREE_SLOTS + purchased_slots
+
+
+def get_used_link_slots(user) -> int:
+    """
+    Retorna quantos slots estão sendo usados (contas vinculadas).
+    """
+    return count_linked_accounts(user)
+
+
+def can_link_account(user) -> tuple[bool, str]:
+    """
+    Verifica se o usuário pode vincular mais uma conta.
+    
+    Returns:
+        tuple: (pode_vincular, mensagem_erro)
+    """
+    if not user or not user.is_authenticated:
+        return False, "Usuário não autenticado."
+    
+    used_slots = get_used_link_slots(user)
+    total_slots = get_total_link_slots(user)
+    
+    if used_slots >= total_slots:
+        return False, f"Você atingiu o limite de {total_slots} conta(s) vinculada(s). Compre mais slots para vincular contas adicionais."
+    
+    return True, ""
 
 
 def get_lineage_template_context(request) -> Dict[str, object]:

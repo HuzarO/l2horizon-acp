@@ -343,6 +343,13 @@ Equipe PDL""").format(username=request.user.username, code=verification_code),
             messages.warning(request, _("Essa conta já está vinculada a outro usuário."))
             return redirect("server:link_lineage_account")
 
+        # Verifica limite de slots antes de vincular
+        from apps.lineage.server.services.account_context import can_link_account
+        can_link, error_message = can_link_account(request.user)
+        if not can_link:
+            messages.error(request, error_message)
+            return redirect("server:link_lineage_account")
+
         # Vincula a conta
         user_uuid = str(request.user.uuid)
         success = LineageAccount.link_account_to_user(login_jogo, user_uuid)
@@ -446,6 +453,13 @@ def link_by_email_token(request, token):
     conta = LineageAccount.get_account_by_login_and_email(login, email)
     if not conta or conta.get("linked_uuid"):
         messages.error(request, "Conta inválida ou já vinculada.")
+        return redirect("server:link_lineage_account")
+    
+    # Verifica limite de slots antes de vincular
+    from apps.lineage.server.services.account_context import can_link_account
+    can_link, error_message = can_link_account(request.user)
+    if not can_link:
+        messages.error(request, error_message)
         return redirect("server:link_lineage_account")
     
     success = LineageAccount.link_account_to_user(login, str(request.user.uuid))
@@ -701,6 +715,118 @@ def remove_contra_mestre(request, link_id):
     link.delete()
     messages.success(request, "Contra mestre removido com sucesso.")
     return redirect("server:manage_lineage_accounts")
+
+
+@conditional_otp_required
+def purchase_link_slot(request):
+    """
+    View para comprar slots de vinculação de contas.
+    """
+    from decimal import Decimal
+    from django.db import transaction
+    from apps.lineage.wallet.models import Wallet
+    from apps.lineage.wallet.signals import aplicar_transacao
+    from apps.lineage.server.models import AccountLinkSlot
+    from apps.lineage.server.services.account_context import get_total_link_slots, get_used_link_slots
+    
+    # Preço padrão de um slot (pode ser configurável depois)
+    SLOT_PRICE = Decimal('10.00')  # R$ 10,00 por slot
+    
+    if request.method == 'POST':
+        quantity = int(request.POST.get('quantity', 1))
+        
+        if quantity < 1:
+            messages.error(request, "Quantidade inválida.")
+            return redirect('server:purchase_link_slot')
+        
+        if quantity > 10:
+            messages.error(request, "Você pode comprar no máximo 10 slots por vez.")
+            return redirect('server:purchase_link_slot')
+        
+        total_price = SLOT_PRICE * quantity
+        
+        # Verifica saldo na carteira
+        try:
+            wallet = Wallet.objects.select_for_update().get(usuario=request.user)
+        except Wallet.DoesNotExist:
+            messages.error(request, "Você não possui uma carteira. Entre em contato com o suporte.")
+            return redirect('server:purchase_link_slot')
+        
+        if wallet.saldo < total_price:
+            messages.error(
+                request,
+                f"Saldo insuficiente. Você precisa de R$ {total_price:.2f} mas tem apenas R$ {wallet.saldo:.2f}."
+            )
+            return redirect('server:purchase_link_slot')
+        
+        # Processa a compra
+        try:
+            with transaction.atomic():
+                # Debita da carteira
+                aplicar_transacao(
+                    wallet=wallet,
+                    tipo='SAIDA',
+                    valor=total_price,
+                    descricao=f"Compra de {quantity} slot(s) de vinculação de contas",
+                    origem="Sistema de Slots",
+                    destino=request.user.username
+                )
+                
+                # Cria o registro de slots comprados
+                AccountLinkSlot.objects.create(
+                    user=request.user,
+                    slots_purchased=quantity,
+                    purchase_price=total_price,
+                    notes=f"Compra de {quantity} slot(s) de vinculação"
+                )
+                
+                messages.success(
+                    request,
+                    f"✅ {quantity} slot(s) de vinculação comprado(s) com sucesso! Você agora pode vincular mais contas."
+                )
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Erro ao comprar slots: {e}", exc_info=True)
+            messages.error(request, "Erro ao processar a compra. Tente novamente.")
+        
+        return redirect('server:purchase_link_slot')
+    
+    # GET - mostra a página de compra
+    try:
+        wallet = Wallet.objects.get(usuario=request.user)
+    except Wallet.DoesNotExist:
+        wallet = None
+    
+    total_slots = get_total_link_slots(request.user)
+    used_slots = get_used_link_slots(request.user)
+    available_slots = total_slots - used_slots
+    
+    # Calcula preços para diferentes quantidades
+    prices = {
+        1: SLOT_PRICE,
+        2: SLOT_PRICE * 2,
+        3: SLOT_PRICE * 3,
+        5: SLOT_PRICE * 5,
+        10: SLOT_PRICE * 10,
+    }
+    
+    # Busca histórico de compras
+    purchase_history = AccountLinkSlot.objects.filter(user=request.user).order_by('-purchase_date')[:10]
+    
+    context = {
+        'slot_price': SLOT_PRICE,
+        'prices': prices,
+        'wallet': wallet,
+        'total_slots': total_slots,
+        'used_slots': used_slots,
+        'available_slots': available_slots,
+        'purchase_history': purchase_history,
+    }
+    
+    return render(request, 'l2_accounts/purchase_link_slot.html', context)
 
 
 @conditional_otp_required

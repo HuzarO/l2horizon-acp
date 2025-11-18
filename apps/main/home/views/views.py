@@ -341,32 +341,42 @@ def edit_profile(request):
                         logger.info(f"[edit_profile] Vinculando APENAS a conta atual '{user_login}' ao UUID {master_uuid}")
                         
                         if master_uuid and user_login:
-                            LineageDBClass = get_query_class("LineageDB")
-                            
-                            if LineageDBClass:
-                                lineage_db = LineageDBClass()
-                                if lineage_db and getattr(lineage_db, 'enabled', False):
-                                    # Vincula APENAS a conta atual (username) ao UUID da conta mestre
-                                    sql = """
-                                        UPDATE accounts
-                                        SET linked_uuid = :uuid, email = :email
-                                        WHERE login = :login
-                                    """
-                                    params = {
-                                        "uuid": master_uuid,
-                                        "email": user_email,
-                                        "login": user_login
-                                    }
-                                    result = lineage_db.update(sql, params)
-                                    
-                                    if result and result > 0:
-                                        logger.info(f"[edit_profile] ✅ Conta '{user_login}' vinculada ao mestre {master_user.username} com sucesso")
-                                        messages.info(
-                                            request,
-                                            f"✅ Conta do Lineage '{user_login}' foi vinculada à conta mestre {master_user.username}."
-                                        )
-                                    else:
-                                        logger.warning(f"[edit_profile] ⚠️ Conta '{user_login}' não encontrada no banco do Lineage")
+                            # Verifica limite de slots antes de vincular
+                            from apps.lineage.server.services.account_context import can_link_account
+                            can_link, error_message = can_link_account(master_user)
+                            if not can_link:
+                                logger.warning(f"[edit_profile] ⚠️ Limite de slots atingido para {master_user.username}: {error_message}")
+                                messages.warning(
+                                    request,
+                                    f"⚠️ Não foi possível vincular a conta '{user_login}'. {error_message}"
+                                )
+                            else:
+                                LineageDBClass = get_query_class("LineageDB")
+                                
+                                if LineageDBClass:
+                                    lineage_db = LineageDBClass()
+                                    if lineage_db and getattr(lineage_db, 'enabled', False):
+                                        # Vincula APENAS a conta atual (username) ao UUID da conta mestre
+                                        sql = """
+                                            UPDATE accounts
+                                            SET linked_uuid = :uuid, email = :email
+                                            WHERE login = :login
+                                        """
+                                        params = {
+                                            "uuid": master_uuid,
+                                            "email": user_email,
+                                            "login": user_login
+                                        }
+                                        result = lineage_db.update(sql, params)
+                                        
+                                        if result and result > 0:
+                                            logger.info(f"[edit_profile] ✅ Conta '{user_login}' vinculada ao mestre {master_user.username} com sucesso")
+                                            messages.info(
+                                                request,
+                                                f"✅ Conta do Lineage '{user_login}' foi vinculada à conta mestre {master_user.username}."
+                                            )
+                                        else:
+                                            logger.warning(f"[edit_profile] ⚠️ Conta '{user_login}' não encontrada no banco do Lineage")
                     else:
                         logger.info(f"[edit_profile] Email {user_email} não tem conta mestre, nenhuma vinculação automática")
                 except Exception as e:

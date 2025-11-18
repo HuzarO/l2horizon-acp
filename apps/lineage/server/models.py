@@ -362,3 +362,43 @@ class ManagedLineageAccount(BaseModel):
 
     def __str__(self):
         return f"{self.account_login} → {self.manager_user.username}"
+
+
+class AccountLinkSlot(BaseModel):
+    """
+    Armazena slots de vinculação de contas comprados pelos usuários.
+    Cada slot permite vincular uma conta adicional ao UUID do usuário.
+    """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='link_slots',
+        verbose_name=_("Usuário")
+    )
+    slots_purchased = models.PositiveIntegerField(
+        default=1,
+        verbose_name=_("Slots Comprados")
+    )
+    purchase_date = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_("Data da Compra")
+    )
+    purchase_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        verbose_name=_("Preço Pago")
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name=_("Observações")
+    )
+
+    class Meta:
+        verbose_name = _("Slot de Vinculação")
+        verbose_name_plural = _("Slots de Vinculação")
+        ordering = ['-purchase_date']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.slots_purchased} slot(s) - {self.purchase_date.strftime('%d/%m/%Y')}"

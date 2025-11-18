@@ -166,3 +166,37 @@ class ManagedLineageAccountAdmin(BaseModelAdmin):
             "classes": ("collapse",)
         }),
     )
+
+
+@admin.register(AccountLinkSlot)
+class AccountLinkSlotAdmin(BaseModelAdmin):
+    list_display = (
+        "user",
+        "slots_purchased",
+        "purchase_price",
+        "purchase_date",
+        "created_at",
+    )
+    list_filter = ("purchase_date", "created_at")
+    search_fields = ("user__username", "user__email", "notes")
+    readonly_fields = ("created_at", "updated_at")
+    date_hierarchy = "purchase_date"
+    
+    fieldsets = (
+        ("Informações da Compra", {
+            "fields": ("user", "slots_purchased", "purchase_price", "purchase_date")
+        }),
+        ("Observações", {
+            "fields": ("notes",),
+            "classes": ("collapse",)
+        }),
+        ("Datas", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        """Otimiza a query incluindo o user"""
+        qs = super().get_queryset(request)
+        return qs.select_related("user")
