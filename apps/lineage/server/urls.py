@@ -40,6 +40,7 @@ urlpatterns = [
     path('account/manage/unlink/', unlink_lineage_account, name='unlink_lineage_account'),
     path('account/set-active/', set_active_lineage_account, name='set_active_lineage_account'),
     path('account/purchase-slot/', purchase_link_slot, name='purchase_link_slot'),
+    path('account/create-master-account/', create_master_account, name='create_master_account'),
 
     path('supporter/panel/', painel_apoiador, name='painel_apoiador'),
     path('supporter/request/', formulario_apoiador, name='formulario_apoiador'),

@@ -12,7 +12,10 @@ from django.urls import reverse
 from django.conf import settings
 from django.views.decorators.http import require_POST
 from apps.main.home.tasks import send_email_task
-from apps.main.home.models import User
+from apps.main.home.models import User, EmailOwnership
+from apps.main.home.validators import validate_lineage_password
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from apps.lineage.server.lineage_account_manager import LineageAccount
 from apps.lineage.server.models import ManagedLineageAccount
 from apps.lineage.server.services.account_context import (
@@ -1113,3 +1116,196 @@ def unlink_lineage_account(request):
         messages.error(request, _("Erro ao desvincular a conta: %(error)s") % {"error": str(e)})
     
     return redirect("server:manage_lineage_accounts")
+
+
+@conditional_otp_required
+@require_lineage_connection
+def create_master_account(request):
+    """
+    Cria uma nova conta no portal (PDL) e no Lineage (L2) e vincula automaticamente à conta mestre.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Verifica se o usuário é mestre do email
+    user_email = request.user.email
+    if not user_email or not request.user.is_email_verified:
+        messages.error(request, "Você precisa ter um email verificado para criar contas vinculadas.")
+        return redirect('server:account_dashboard')
+    
+    # Verifica se é mestre do email
+    email_ownership = EmailOwnership.objects.filter(email=user_email).first()
+    if not email_ownership or email_ownership.owner != request.user:
+        messages.error(request, "Apenas a conta mestre do email pode criar novas contas vinculadas.")
+        return redirect('server:account_dashboard')
+    
+    master_user = request.user
+    master_uuid = str(master_user.uuid) if hasattr(master_user, 'uuid') else None
+    
+    if not master_uuid:
+        messages.error(request, "Erro ao obter UUID da conta mestre.")
+        return redirect('server:account_dashboard')
+    
+    # Verifica limite de slots antes de criar
+    from apps.lineage.server.services.account_context import can_link_account
+    can_link, error_message = can_link_account(master_user)
+    if not can_link:
+        messages.error(request, error_message)
+        return redirect('server:account_dashboard')
+    
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password_pdl = request.POST.get('password_pdl', '')
+        confirm_password_pdl = request.POST.get('confirm_password_pdl', '')
+        password_l2 = request.POST.get('password_l2', '')
+        confirm_password_l2 = request.POST.get('confirm_password_l2', '')
+        
+        # Validações
+        if not username:
+            messages.error(request, "O nome de usuário é obrigatório.")
+            return redirect('server:create_master_account')
+        
+        if len(username) < 3 or len(username) > 16:
+            messages.error(request, "O nome de usuário deve ter entre 3 e 16 caracteres.")
+            return redirect('server:create_master_account')
+        
+        # Validações senha PDL usando validadores do Django
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+        
+        if not password_pdl:
+            messages.error(request, "A senha do portal (PDL) é obrigatória.")
+            return redirect('server:create_master_account')
+        
+        # Valida senha PDL usando os validadores configurados em AUTH_PASSWORD_VALIDATORS
+        try:
+            # Cria um usuário temporário para validação (UserAttributeSimilarityValidator precisa)
+            temp_user = User(username=username, email=user_email)
+            validate_password(password_pdl, user=temp_user)
+        except ValidationError as e:
+            error_messages = e.messages if hasattr(e, 'messages') else [str(e)]
+            for error_msg in error_messages:
+                messages.error(request, f"Senha do portal (PDL): {error_msg}")
+            return redirect('server:create_master_account')
+        
+        if password_pdl != confirm_password_pdl:
+            messages.error(request, "As senhas do portal (PDL) não coincidem.")
+            return redirect('server:create_master_account')
+        
+        # Validações senha L2
+        if not password_l2:
+            messages.error(request, "A senha do jogo (L2) é obrigatória.")
+            return redirect('server:create_master_account')
+        
+        # Valida formato da senha L2 (apenas letras e números, mínimo 6 caracteres)
+        # Mesma regra apresentada na tela oficial de registro do Lineage
+        try:
+            validate_lineage_password(password_l2)
+        except ValidationError as e:
+            error_message = e.messages[0] if hasattr(e, 'messages') and e.messages else str(e)
+            messages.error(request, f"Senha do jogo (L2) inválida: {error_message}")
+            return redirect('server:create_master_account')
+        
+        if password_l2 != confirm_password_l2:
+            messages.error(request, "As senhas do jogo (L2) não coincidem.")
+            return redirect('server:create_master_account')
+        
+        # Verifica se o username já existe no portal
+        if User.objects.filter(username=username).exists():
+            messages.error(request, f"O nome de usuário '{username}' já está em uso no portal.")
+            return redirect('server:create_master_account')
+        
+        # Verifica se o username já existe no Lineage
+        try:
+            existing_account = LineageAccount.check_login_exists(username)
+            if existing_account and len(existing_account) > 0:
+                messages.error(request, f"O nome de usuário '{username}' já está em uso no jogo.")
+                return redirect('server:create_master_account')
+        except Exception as e:
+            logger.error(f"[create_master_account] Erro ao verificar conta no Lineage: {e}", exc_info=True)
+            messages.error(request, "Erro ao verificar disponibilidade do nome de usuário. Tente novamente.")
+            return redirect('server:create_master_account')
+        
+        # Cria a conta no portal e no Lineage
+        try:
+            with transaction.atomic():
+                # 1. Cria usuário no portal (PDL)
+                new_user = User.objects.create_user(
+                    username=username,
+                    email=user_email,  # Usa o mesmo email do mestre
+                    password=password_pdl,  # Senha do portal
+                    is_active=True,
+                    is_email_verified=False,  # Não precisa verificar, já está vinculado ao mestre
+                    is_2fa_enabled=False,
+                )
+                
+                logger.info(f"[create_master_account] Usuário {username} criado no portal")
+                
+                # 2. Cria conta no Lineage (L2)
+                try:
+                    success = LineageAccount.register(
+                        login=username,
+                        password=password_l2,  # Senha do Lineage
+                        access_level=0,
+                        email=user_email
+                    )
+                except Exception as e:
+                    logger.error(f"[create_master_account] Erro ao criar conta no Lineage: {e}", exc_info=True)
+                    # Rollback: remove o usuário criado no portal
+                    new_user.delete()
+                    messages.error(request, "Erro ao criar conta no jogo. O banco de dados do Lineage pode estar indisponível.")
+                    return redirect('server:create_master_account')
+                
+                if not success:
+                    # Rollback: remove o usuário criado no portal
+                    new_user.delete()
+                    messages.error(request, "Erro ao criar conta no jogo.")
+                    return redirect('server:create_master_account')
+                
+                logger.info(f"[create_master_account] Conta {username} criada no Lineage")
+                
+                # 3. Vincula ao UUID da conta mestre
+                try:
+                    success_link = LineageAccount.link_account_to_user(username, master_uuid)
+                except Exception as e:
+                    logger.error(f"[create_master_account] Erro ao vincular conta: {e}", exc_info=True)
+                    messages.warning(
+                        request,
+                        f"Conta '{username}' criada, mas houve um problema ao vincular automaticamente. Você pode vincular manualmente depois."
+                    )
+                    return redirect('server:account_dashboard')
+                
+                if success_link and success_link is not None:
+                    logger.info(f"[create_master_account] Conta {username} vinculada ao mestre {master_user.username} com sucesso")
+                    messages.success(
+                        request,
+                        f"✅ Conta '{username}' criada com sucesso no portal e no jogo, e vinculada à conta mestre {master_user.username}!"
+                    )
+                else:
+                    messages.warning(
+                        request,
+                        f"Conta '{username}' criada, mas houve um problema ao vincular automaticamente. Você pode vincular manualmente depois."
+                    )
+                
+        except Exception as e:
+            logger.error(f"[create_master_account] Erro ao criar conta: {e}", exc_info=True)
+            messages.error(request, f"Erro ao criar conta: {str(e)}")
+            return redirect('server:create_master_account')
+        
+        return redirect('server:account_dashboard')
+    
+    # GET - mostra o formulário
+    from apps.lineage.server.services.account_context import get_total_link_slots, get_used_link_slots
+    
+    total_slots = get_total_link_slots(master_user)
+    used_slots = get_used_link_slots(master_user)
+    available_slots = total_slots - used_slots
+    
+    context = {
+        'master_user': master_user,
+        'total_slots': total_slots,
+        'used_slots': used_slots,
+        'available_slots': available_slots,
+    }
+    
+    return render(request, 'l2_accounts/create_master_account.html', context)

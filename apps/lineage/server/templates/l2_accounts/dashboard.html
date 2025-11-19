@@ -401,6 +401,19 @@
     text-decoration: none;
   }
 
+  .service-btn-create {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  }
+
+  .service-btn-create:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.5);
+    background: linear-gradient(135deg, #218838 0%, #1aa179 100%);
+    color: #ffffff;
+    text-decoration: none;
+  }
+
   .change-account-btn {
     background: linear-gradient(135deg, #0dcaf0 0%, #17a2b8 100%) !important;
     border: none !important;
@@ -679,6 +692,12 @@
             <i class="fas fa-link me-2"></i>
             {% trans "Comprar Slots de Vinculação" %}
           </a>
+          {% if is_email_master_owner and request.user.is_email_verified %}
+          <a href="{% url 'server:create_master_account' %}" class="service-btn service-btn-create">
+            <i class="fas fa-plus-circle me-2"></i>
+            {% trans "Criar Nova Conta Vinculada" %}
+          </a>
+          {% endif %}
         </div>
       </div>
 
