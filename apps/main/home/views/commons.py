@@ -77,6 +77,9 @@ def verificar_email(request, uidb64, token):
             perfil, _ = PerfilGamer.objects.get_or_create(user=user)
             perfil.adicionar_xp(40)  # valor de XP por verificar e-mail
 
+            # Define a conta mestre do e-mail (primeira verificação vira dona)
+            user.ensure_email_master_owner()
+
             # Opcional: Armazena mensagem para exibir no template
             context = {
                 'sucesso': True,
@@ -120,20 +123,30 @@ def registration_success_view(request):
 
 
 def verify_2fa_view(request):
+    # Pega a URL de retorno (next) se existir
+    next_url = request.GET.get('next', 'dashboard')
+    
     if request.method == 'POST':
-        user_id = request.session.get('pre_2fa_user_id')
-        if not user_id:
-            logger.warning("[verify_2fa_view] Nenhum user_id encontrado na sessão")
-            return redirect('login')
+        # Tenta pegar o usuário de duas formas:
+        # 1. Se já estiver autenticado (caso do decorator)
+        # 2. Se tiver pre_2fa_user_id na sessão (caso do login inicial)
+        if request.user.is_authenticated:
+            user = request.user
+            logger.info(f"[verify_2fa_view] Usuário já autenticado: {user.username}")
+        else:
+            user_id = request.session.get('pre_2fa_user_id')
+            if not user_id:
+                logger.warning("[verify_2fa_view] Nenhum user_id encontrado na sessão e usuário não autenticado")
+                return redirect('login')
 
-        User = get_user_model()
-        try:
-            user = User.objects.get(pk=user_id)
-            # Define o backend no usuário para que o Django saiba qual backend foi usado
-            user.backend = 'core.backends.LicenseBackend'
-        except User.DoesNotExist:
-            logger.error(f"[verify_2fa_view] Usuário {user_id} não encontrado")
-            return redirect('login')
+            User = get_user_model()
+            try:
+                user = User.objects.get(pk=user_id)
+                # Define o backend no usuário para que o Django saiba qual backend foi usado
+                user.backend = 'core.backends.LicenseBackend'
+            except User.DoesNotExist:
+                logger.error(f"[verify_2fa_view] Usuário {user_id} não encontrado")
+                return redirect('login')
             
         token = request.POST.get('token')
         device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
@@ -142,27 +155,31 @@ def verify_2fa_view(request):
             if device.verify_token(token):
                 logger.info(f"[verify_2fa_view] 2FA verificado com sucesso para usuário: {user.username}")
                 
-                # Marca o 2FA como verificado
-                request.user = user
+                # Marca o 2FA como verificado usando otp_login
                 otp_login(request, device)
                 
-                # Faz o login usando o sistema padrão do Django
-                # O LicenseBackend será executado automaticamente
-                logger.info(f"[verify_2fa_view] Fazendo login do usuário {user.username}")
-                login(request, user)
+                # Se o usuário não estava autenticado, faz o login
+                if not request.user.is_authenticated:
+                    logger.info(f"[verify_2fa_view] Fazendo login do usuário {user.username}")
+                    login(request, user)
+                    if 'pre_2fa_user_id' in request.session:
+                        del request.session['pre_2fa_user_id']
                 
-                del request.session['pre_2fa_user_id']
-                return redirect('dashboard')
+                # Redireciona para a URL de retorno ou dashboard
+                logger.info(f"[verify_2fa_view] Redirecionando para: {next_url}")
+                return redirect(next_url)
             else:
                 logger.warning(f"[verify_2fa_view] Código 2FA inválido para usuário: {user.username}")
-                context = {'error': 'Código inválido.', 'user': user}
+                context = {'error': 'Código inválido.', 'user': user, 'next': next_url}
                 return render_theme_page(request, 'accounts_custom', 'verify-2fa.html', context)
         else:
             logger.error(f"[verify_2fa_view] Dispositivo 2FA não encontrado para usuário: {user.username}")
-            context = {'error': 'Dispositivo 2FA não configurado ou não confirmado.', 'user': user}
+            context = {'error': 'Dispositivo 2FA não configurado ou não confirmado.', 'user': user, 'next': next_url}
             return render_theme_page(request, 'accounts_custom', 'verify-2fa.html', context)
     
-    context = {'user': request.user}
+    # GET request - mostra o formulário
+    user = request.user if request.user.is_authenticated else None
+    context = {'user': user, 'next': next_url}
     return render_theme_page(request, 'accounts_custom', 'verify-2fa.html', context)
 
 

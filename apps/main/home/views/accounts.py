@@ -276,6 +276,15 @@ class UserLoginView(LoginView):
         LoginAttemptsMiddleware.reset_attempts(self.request)
         
         login(self.request, user)
+        
+        # Força o salvamento da sessão antes do redirect
+        self.request.session.save()
+        
+        # Log para debug
+        logger.info(f"[UserLoginView] Sessão salva. Usuário autenticado: {self.request.user.is_authenticated}")
+        logger.info(f"[UserLoginView] Session key: {self.request.session.session_key}")
+        logger.info(f"[UserLoginView] Redirecting to: {self.get_success_url()}")
+        
         return redirect(self.get_success_url())
     
     def form_invalid(self, form):

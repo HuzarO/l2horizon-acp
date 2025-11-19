@@ -312,3 +312,93 @@ class ApoiadorDefault(BaseModel):
 
     def __str__(self):
         return f"Imagem Default #{self.pk}"
+
+
+class ManagedLineageAccount(BaseModel):
+    class Role(models.TextChoices):
+        OWNER = 'owner', _('Proprietário')
+        CONTRA_MESTRE = 'contra_mestre', _('Contra Mestre')
+        VIEWER = 'viewer', _('Visualizador')
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('Pendente')
+        ACTIVE = 'active', _('Ativo')
+        REVOKED = 'revoked', _('Revogado')
+
+    account_login = models.CharField(max_length=64, verbose_name=_("Login da Conta"))
+    manager_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='managed_lineage_accounts',
+        verbose_name=_("Usuário Gestor")
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='delegated_lineage_accounts',
+        verbose_name=_("Delegado por")
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        default=Role.CONTRA_MESTRE,
+        verbose_name=_("Papel")
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        verbose_name=_("Status")
+    )
+    notes = models.CharField(max_length=255, blank=True, verbose_name=_("Observações"))
+
+    class Meta:
+        verbose_name = _("Conta Delegada do Lineage")
+        verbose_name_plural = _("Contas Delegadas do Lineage")
+        unique_together = [('account_login', 'manager_user')]
+        ordering = ['account_login']
+
+    def __str__(self):
+        return f"{self.account_login} → {self.manager_user.username}"
+
+
+class AccountLinkSlot(BaseModel):
+    """
+    Armazena slots de vinculação de contas comprados pelos usuários.
+    Cada slot permite vincular uma conta adicional ao UUID do usuário.
+    """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='link_slots',
+        verbose_name=_("Usuário")
+    )
+    slots_purchased = models.PositiveIntegerField(
+        default=1,
+        verbose_name=_("Slots Comprados")
+    )
+    purchase_date = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_("Data da Compra")
+    )
+    purchase_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        verbose_name=_("Preço Pago")
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name=_("Observações")
+    )
+
+    class Meta:
+        verbose_name = _("Slot de Vinculação")
+        verbose_name_plural = _("Slots de Vinculação")
+        ordering = ['-purchase_date']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.slots_purchased} slot(s) - {self.purchase_date.strftime('%d/%m/%Y')}"

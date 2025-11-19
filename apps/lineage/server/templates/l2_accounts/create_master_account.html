@@ -1,0 +1,541 @@
+{% extends "layouts/base.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+<style>
+  .create-account-container {
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    padding: 2rem 0;
+    color: #ffffff;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .create-account-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    padding: 2rem;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .card-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  }
+
+  .card-header h3 {
+    color: #ffffff;
+    margin: 0;
+    font-weight: 700;
+    font-size: 1.5rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+
+  .form-control {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    color: #ffffff;
+    width: 100%;
+    transition: all 0.3s ease;
+  }
+
+  .form-control:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    color: #ffffff;
+    outline: none;
+  }
+
+  .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .btn-submit {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    border-radius: 12px;
+    padding: 1rem 2rem;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1.1rem;
+    width: 100%;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  }
+
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.5);
+    background: linear-gradient(135deg, #218838 0%, #1aa179 100%);
+  }
+
+  .info-box {
+    background: rgba(23, 162, 184, 0.1);
+    border: 1px solid rgba(23, 162, 184, 0.3);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .info-box p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+  }
+
+  .slots-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .slots-info-item {
+    text-align: center;
+  }
+
+  .slots-info-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .slots-info-value {
+    color: #ffffff;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .slots-info-value.available {
+    color: #28a745;
+  }
+
+  .slots-info-value.used {
+    color: #ffc107;
+  }
+
+  /* Estilos para o ícone de olho */
+  .password-field {
+    position: relative;
+  }
+
+  .password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.3s ease;
+    z-index: 10;
+  }
+
+  .password-toggle:hover {
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .password-toggle:focus {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .password-field .form-control {
+    padding-right: 40px; /* Espaço para o ícone */
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="create-account-container">
+  <div class="container">
+    <div class="create-account-card">
+      <div class="card-header">
+        <h3>
+          <i class="fas fa-plus-circle me-2"></i>
+          {% trans "Criar Nova Conta Vinculada" %}
+        </h3>
+      </div>
+
+      <div class="info-box">
+        <p>
+          <i class="fas fa-info-circle me-2"></i>
+          {% trans "Esta ação criará uma nova conta no portal (PDL) e no jogo (L2) e a vinculará automaticamente à sua conta mestre." %}
+        </p>
+      </div>
+
+      <div class="slots-info">
+        <div class="slots-info-item">
+          <div class="slots-info-label">{% trans "Slots Totais" %}</div>
+          <div class="slots-info-value">{{ total_slots }}</div>
+        </div>
+        <div class="slots-info-item">
+          <div class="slots-info-label">{% trans "Slots Usados" %}</div>
+          <div class="slots-info-value used">{{ used_slots }}</div>
+        </div>
+        <div class="slots-info-item">
+          <div class="slots-info-label">{% trans "Slots Disponíveis" %}</div>
+          <div class="slots-info-value available">{{ available_slots }}</div>
+        </div>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+          <label for="username" class="form-label">
+            <i class="fas fa-user me-2"></i>
+            {% trans "Nome de Usuário" %}
+          </label>
+          <input 
+            type="text" 
+            class="form-control" 
+            id="username" 
+            name="username" 
+            placeholder="{% trans 'Digite o nome de usuário (3-16 caracteres)' %}"
+            required
+            minlength="3"
+            maxlength="16"
+            pattern="[a-zA-Z0-9]+"
+            title="{% trans 'Apenas letras e números são permitidos' %}"
+          >
+          <small class="text-muted" style="color: rgba(255,255,255,0.6);">
+            {% trans "Apenas letras e números. Sem espaços ou símbolos." %}
+          </small>
+        </div>
+
+        <div class="info-box" style="background: rgba(23, 162, 184, 0.1); border-color: rgba(23, 162, 184, 0.3);">
+          <p style="margin: 0; color: rgba(255, 255, 255, 0.9);">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>{% trans "Senhas separadas:" %}</strong> {% trans "O portal (PDL) e o jogo (L2) têm senhas independentes." %}
+          </p>
+        </div>
+
+        <h5 style="color: rgba(255, 255, 255, 0.9); margin-top: 1.5rem; margin-bottom: 1rem;">
+          <i class="fas fa-globe me-2"></i>
+          {% trans "Senha do Portal (PDL)" %}
+        </h5>
+
+        <div class="form-group">
+          <label for="password_pdl" class="form-label">
+            <i class="fas fa-lock me-2"></i>
+            {% trans "Senha do Portal" %}
+          </label>
+          <div class="password-field">
+            <input 
+              type="password" 
+              class="form-control" 
+              id="password_pdl" 
+              name="password_pdl" 
+              placeholder="{% trans 'Digite a senha do portal (mínimo 12 caracteres)' %}"
+              required
+              minlength="12"
+            >
+            <button type="button" class="password-toggle" onclick="togglePassword('password_pdl')">
+              <i class="fas fa-eye" id="eye-icon-password_pdl"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm_password_pdl" class="form-label">
+            <i class="fas fa-lock me-2"></i>
+            {% trans "Confirmar Senha do Portal" %}
+          </label>
+          <div class="password-field">
+            <input 
+              type="password" 
+              class="form-control" 
+              id="confirm_password_pdl" 
+              name="confirm_password_pdl" 
+              placeholder="{% trans 'Confirme a senha do portal' %}"
+              required
+              minlength="12"
+            >
+            <button type="button" class="password-toggle" onclick="togglePassword('confirm_password_pdl')">
+              <i class="fas fa-eye" id="eye-icon-confirm_password_pdl"></i>
+            </button>
+          </div>
+        </div>
+
+        <h5 style="color: rgba(255, 255, 255, 0.9); margin-top: 1.5rem; margin-bottom: 1rem;">
+          <i class="fas fa-gamepad me-2"></i>
+          {% trans "Senha do Jogo (L2)" %}
+        </h5>
+
+        <div class="form-group">
+          <label for="password_l2" class="form-label">
+            <i class="fas fa-lock me-2"></i>
+            {% trans "Senha do Jogo" %}
+          </label>
+          <div class="password-field">
+            <input 
+              type="password" 
+              class="form-control" 
+              id="password_l2" 
+              name="password_l2" 
+              placeholder="{% trans 'Digite a senha do jogo (mínimo 6 caracteres)' %}"
+              required
+              minlength="6"
+              pattern="[A-Za-z0-9]+"
+              title="{% trans 'Apenas letras e números são permitidos.' %}"
+            >
+            <button type="button" class="password-toggle" onclick="togglePassword('password_l2')">
+              <i class="fas fa-eye" id="eye-icon-password_l2"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm_password_l2" class="form-label">
+            <i class="fas fa-lock me-2"></i>
+            {% trans "Confirmar Senha do Jogo" %}
+          </label>
+          <div class="password-field">
+            <input 
+              type="password" 
+              class="form-control" 
+              id="confirm_password_l2" 
+              name="confirm_password_l2" 
+              placeholder="{% trans 'Confirme a senha do jogo' %}"
+              required
+              minlength="6"
+              pattern="[A-Za-z0-9]+"
+              title="{% trans 'Apenas letras e números são permitidos.' %}"
+            >
+            <button type="button" class="password-toggle" onclick="togglePassword('confirm_password_l2')">
+              <i class="fas fa-eye" id="eye-icon-confirm_password_l2"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <p>
+            <i class="fas fa-envelope me-2"></i>
+            <strong>{% trans "Email:" %}</strong> {{ master_user.email }}
+            <br>
+            <small>{% trans "A nova conta usará o mesmo email da conta mestre." %}</small>
+          </p>
+        </div>
+
+        <button type="submit" class="btn-submit">
+          <i class="fas fa-check me-2"></i>
+          {% trans "Criar Conta" %}
+        </button>
+
+        <a href="{% url 'server:account_dashboard' %}" class="btn btn-secondary mt-3" style="width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #ffffff; border-radius: 12px; padding: 0.75rem;">
+          <i class="fas fa-arrow-left me-2"></i>
+          {% trans "Voltar" %}
+        </a>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Função para alternar visibilidade da senha
+function togglePassword(inputId) {
+  const input = document.getElementById(inputId);
+  const icon = document.getElementById('eye-icon-' + inputId);
+  
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.classList.remove('fa-eye');
+    icon.classList.add('fa-eye-slash');
+  } else {
+    input.type = 'password';
+    icon.classList.remove('fa-eye-slash');
+    icon.classList.add('fa-eye');
+  }
+}
+
+// Mensagens de erro
+const ERROR_MESSAGES = {
+  minLength: "{% trans 'A senha deve ter no mínimo 12 caracteres.' %}",
+  noMatch: "{% trans 'As senhas não coincidem.' %}"
+};
+
+// Função para validar formato da senha PDL (Django)
+// Segue as regras dos AUTH_PASSWORD_VALIDATORS do Django
+function validatePasswordFormatPDL(password) {
+  // Mínimo 12 caracteres (conforme AUTH_PASSWORD_VALIDATORS)
+  if (password.length < 12) {
+    return { valid: false, message: "{% trans 'A senha deve ter no mínimo 12 caracteres.' %}" };
+  }
+  // Os validadores do Django permitem caracteres especiais, então não restringimos aqui
+  // A validação completa será feita no backend pelos AUTH_PASSWORD_VALIDATORS
+  return { valid: true, message: "" };
+}
+
+// Função para validar formato da senha L2 (Lineage)
+function validatePasswordFormatL2(password) {
+  const asciiRegex = /^[A-Za-z0-9]+$/;
+
+  if (password && !asciiRegex.test(password)) {
+    return { valid: false, message: "{% trans 'A senha deve conter apenas letras e números (sem espaços ou símbolos).' %}" };
+  }
+
+  // Mínimo 6 caracteres para o Lineage
+  if (password.length < 6) {
+    return { valid: false, message: "{% trans 'A senha deve ter no mínimo 6 caracteres.' %}" };
+  }
+
+  // O Lineage exige apenas caracteres ASCII alfanuméricos
+  return { valid: true, message: "" };
+}
+
+// Função para mostrar erro no campo
+function showFieldError(inputId, message) {
+  const input = document.getElementById(inputId);
+  const formGroup = input.closest('.form-group');
+  
+  // Remove erro anterior
+  const existingError = formGroup.querySelector('.field-error');
+  if (existingError) {
+    existingError.remove();
+  }
+  
+  // Remove classe de erro do input
+  input.classList.remove('is-invalid');
+  
+  if (message) {
+    // Adiciona classe de erro
+    input.classList.add('is-invalid');
+    
+    // Cria elemento de erro
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'field-error';
+    errorDiv.style.color = '#dc3545';
+    errorDiv.style.fontSize = '0.875rem';
+    errorDiv.style.marginTop = '0.25rem';
+    errorDiv.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>' + message;
+    formGroup.appendChild(errorDiv);
+  }
+}
+
+// Função para validar senhas iguais
+function validatePasswordMatch(password, confirmPassword, passwordId, confirmId) {
+  if (confirmPassword && password !== confirmPassword) {
+    showFieldError(confirmId, ERROR_MESSAGES.noMatch);
+    return false;
+  } else {
+    showFieldError(confirmId, "");
+    return true;
+  }
+}
+
+// Validação em tempo real para senha PDL
+document.getElementById('password_pdl').addEventListener('blur', function() {
+  const password = this.value;
+  const result = validatePasswordFormatPDL(password);
+  showFieldError('password_pdl', result.message);
+  
+  // Valida se as senhas coincidem
+  const confirmPassword = document.getElementById('confirm_password_pdl').value;
+  if (confirmPassword) {
+    validatePasswordMatch(password, confirmPassword, 'password_pdl', 'confirm_password_pdl');
+  }
+});
+
+document.getElementById('confirm_password_pdl').addEventListener('blur', function() {
+  const password = document.getElementById('password_pdl').value;
+  const confirmPassword = this.value;
+  validatePasswordMatch(password, confirmPassword, 'password_pdl', 'confirm_password_pdl');
+});
+
+// Validação em tempo real para senha L2
+document.getElementById('password_l2').addEventListener('blur', function() {
+  const password = this.value;
+  const result = validatePasswordFormatL2(password);
+  showFieldError('password_l2', result.message);
+  
+  // Valida se as senhas coincidem
+  const confirmPassword = document.getElementById('confirm_password_l2').value;
+  if (confirmPassword) {
+    validatePasswordMatch(password, confirmPassword, 'password_l2', 'confirm_password_l2');
+  }
+});
+
+document.getElementById('confirm_password_l2').addEventListener('blur', function() {
+  const password = document.getElementById('password_l2').value;
+  const confirmPassword = this.value;
+  validatePasswordMatch(password, confirmPassword, 'password_l2', 'confirm_password_l2');
+});
+
+// Validação antes de enviar o formulário
+document.querySelector('form').addEventListener('submit', function(e) {
+  let isValid = true;
+  
+  // Valida senha PDL
+  const passwordPdl = document.getElementById('password_pdl').value;
+  const confirmPasswordPdl = document.getElementById('confirm_password_pdl').value;
+  
+  const pdlFormat = validatePasswordFormatPDL(passwordPdl);
+  if (!pdlFormat.valid) {
+    showFieldError('password_pdl', pdlFormat.message);
+    isValid = false;
+  }
+  
+  if (!validatePasswordMatch(passwordPdl, confirmPasswordPdl, 'password_pdl', 'confirm_password_pdl')) {
+    isValid = false;
+  }
+  
+  // Valida senha L2
+  const passwordL2 = document.getElementById('password_l2').value;
+  const confirmPasswordL2 = document.getElementById('confirm_password_l2').value;
+  
+  const l2Format = validatePasswordFormatL2(passwordL2);
+  if (!l2Format.valid) {
+    showFieldError('password_l2', l2Format.message);
+    isValid = false;
+  }
+  
+  if (!validatePasswordMatch(passwordL2, confirmPasswordL2, 'password_l2', 'confirm_password_l2')) {
+    isValid = false;
+  }
+  
+  if (!isValid) {
+    e.preventDefault();
+    return false;
+  }
+});
+
+// Estilo para campos com erro
+const style = document.createElement('style');
+style.textContent = `
+  .form-control.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+  }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}
+

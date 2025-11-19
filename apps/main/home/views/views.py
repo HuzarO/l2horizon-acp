@@ -3,6 +3,7 @@ import json, base64, logging, pyotp, os
 from ..models import *
 from ..forms import *
 from ..resource.twofa import gerar_qr_png
+from ..services.profile_rewards import build_profile_rewards_context
 
 from django.core.paginator import Paginator
 from django.core.mail import send_mail
@@ -205,22 +206,200 @@ def index(request):
 
 @conditional_otp_required
 def profile(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Informações sobre o email master owner
+    email_master_owner = None
+    is_email_master_owner = True
+    
+    if request.user.email:
+        email_master_owner = request.user.get_email_master_owner()
+        is_email_master_owner = request.user.is_email_master_owner
+    
+    # Verifica se a conta principal do usuário está realmente vinculada
+    account_is_linked = False
+    original_email_master_owner = email_master_owner
+    
+    try:
+        from utils.dynamic_import import get_query_class
+        LineageAccount = get_query_class("LineageAccount")
+        
+        if LineageAccount and request.user.username:
+            conta_data = LineageAccount.check_login_exists(request.user.username)
+            if conta_data and len(conta_data) > 0:
+                conta = conta_data[0]
+                linked_uuid = conta.get("linked_uuid") if isinstance(conta, dict) else getattr(conta, 'linked_uuid', None)
+                account_is_linked = bool(linked_uuid)
+    except Exception as e:
+        logger.warning(f"Erro ao verificar se conta principal está vinculada: {e}")
+    
+    # Se a conta não está vinculada, não mostra informações de conta mestre
+    # mas mantém a referência para mostrar mensagem de desvinculação
+    if not account_is_linked:
+        is_email_master_owner = True
+    
+    reward_context = build_profile_rewards_context(request.user)
+
     context = {
         'segment': 'profile',
         'parent': 'home',
+        'email_master_owner': email_master_owner if account_is_linked else None,
+        'is_email_master_owner': is_email_master_owner,
+        'account_is_linked': account_is_linked,
+        'original_email_master_owner': original_email_master_owner,  # Para mostrar mensagem de desvinculação
     }
+    context.update(reward_context)
     return render(request, 'pages/profile.html', context)
 
 
 @conditional_otp_required
 def edit_profile(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if request.method == 'POST':
         form = UserProfileForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
+            # Verifica se o e-mail foi alterado
+            old_email = request.user.email
+            new_email = form.cleaned_data.get('email')
+            email_changed = old_email != new_email
+            
+            logger.info(f"[edit_profile] POST recebido - Usuário: {request.user.username}")
+            logger.info(f"[edit_profile] E-mail antigo: {old_email}, E-mail novo: {new_email}, Alterado: {email_changed}")
+            
             # Verifica se o perfil estava incompleto antes da edição
             perfil_incompleto_antes = not (request.user.first_name and request.user.last_name and request.user.bio)
             
             form.save()
+            
+            # Recarrega o usuário para ter os dados atualizados
+            request.user.refresh_from_db()
+            
+            # Se o e-mail foi alterado, atualiza o email nas contas do Lineage vinculadas
+            if email_changed and new_email:
+                try:
+                    from utils.dynamic_import import get_query_class
+                    LineageDBClass = get_query_class("LineageDB")
+                    
+                    if LineageDBClass:
+                        lineage_db = LineageDBClass()
+                        if lineage_db and getattr(lineage_db, 'enabled', False):
+                            user_uuid = str(request.user.uuid) if hasattr(request.user, 'uuid') else None
+                            if user_uuid:
+                                # Atualiza o email de todas as contas vinculadas ao UUID do usuário
+                                sql = """
+                                    UPDATE accounts
+                                    SET email = :new_email
+                                    WHERE linked_uuid = :uuid
+                                """
+                                params = {
+                                    "new_email": new_email,
+                                    "uuid": user_uuid
+                                }
+                                result = lineage_db.update(sql, params)
+                                logger.info(f"[edit_profile] Atualizado email para {result} conta(s) do Lineage vinculadas ao UUID {user_uuid}")
+                                
+                                # Verifica se a atualização funcionou
+                                if result and result > 0:
+                                    # Busca uma conta para verificar se o email foi atualizado
+                                    verify_sql = """
+                                        SELECT login, email, linked_uuid
+                                        FROM accounts
+                                        WHERE linked_uuid = :uuid
+                                        LIMIT 1
+                                    """
+                                    verify_result = lineage_db.select(verify_sql, {"uuid": user_uuid})
+                                    if verify_result:
+                                        verify_email = verify_result[0].get("email") if isinstance(verify_result[0], dict) else getattr(verify_result[0], 'email', None)
+                                        logger.info(f"[edit_profile] Verificação: Email no banco após UPDATE: {verify_email}, Email esperado: {new_email}")
+                except Exception as e:
+                    logger.warning(f"Erro ao atualizar email nas contas do Lineage: {e}", exc_info=True)
+            
+            # Se o e-mail foi alterado e está verificado, garante que existe EmailOwnership
+            if email_changed and new_email and request.user.is_email_verified:
+                request.user.ensure_email_master_owner()
+            
+            # INDEPENDENTE de ter alterado o email ou não:
+            # Se a conta atual tem um email que já está validado por uma conta mestre,
+            # vincula APENAS a conta atual (username) ao UUID da conta mestre
+            # NÃO vincula outras contas com o mesmo email
+            user_email = request.user.email
+            if user_email:
+                try:
+                    from apps.main.home.models import EmailOwnership
+                    from utils.dynamic_import import get_query_class
+                    
+                    logger.info(f"[edit_profile] Verificando se email {user_email} tem conta mestre")
+                    
+                    # Verifica se existe uma conta mestre para este e-mail
+                    email_ownership = EmailOwnership.objects.filter(email=user_email).first()
+                    
+                    if email_ownership:
+                        master_user = email_ownership.owner
+                        master_uuid = str(master_user.uuid) if hasattr(master_user, 'uuid') else None
+                        user_login = request.user.username
+                        
+                        logger.info(f"[edit_profile] Email {user_email} tem conta mestre: {master_user.username}")
+                        logger.info(f"[edit_profile] Vinculando APENAS a conta atual '{user_login}' ao UUID {master_uuid}")
+                        
+                        if master_uuid and user_login:
+                            # Verifica limite de slots antes de vincular
+                            from apps.lineage.server.services.account_context import can_link_account
+                            can_link, error_message = can_link_account(master_user)
+                            if not can_link:
+                                logger.warning(f"[edit_profile] ⚠️ Limite de slots atingido para {master_user.username}: {error_message}")
+                                messages.warning(
+                                    request,
+                                    f"⚠️ Não foi possível vincular a conta '{user_login}'. {error_message}"
+                                )
+                            else:
+                                LineageDBClass = get_query_class("LineageDB")
+                                
+                                if LineageDBClass:
+                                    try:
+                                        lineage_db = LineageDBClass()
+                                        if lineage_db and getattr(lineage_db, 'enabled', False):
+                                            # Verifica se o banco está conectado antes de tentar atualizar
+                                            if hasattr(lineage_db, 'is_connected') and not lineage_db.is_connected():
+                                                logger.warning(f"[edit_profile] ⚠️ Banco do Lineage indisponível para vincular conta '{user_login}'")
+                                                messages.warning(
+                                                    request,
+                                                    f"⚠️ Não foi possível vincular a conta '{user_login}' automaticamente. O banco de dados do Lineage está indisponível."
+                                                )
+                                            else:
+                                                # Vincula APENAS a conta atual (username) ao UUID da conta mestre
+                                                sql = """
+                                                    UPDATE accounts
+                                                    SET linked_uuid = :uuid, email = :email
+                                                    WHERE login = :login
+                                                """
+                                                params = {
+                                                    "uuid": master_uuid,
+                                                    "email": user_email,
+                                                    "login": user_login
+                                                }
+                                                result = lineage_db.update(sql, params)
+                                                
+                                                if result and result > 0:
+                                                    logger.info(f"[edit_profile] ✅ Conta '{user_login}' vinculada ao mestre {master_user.username} com sucesso")
+                                                    messages.info(
+                                                        request,
+                                                        f"✅ Conta do Lineage '{user_login}' foi vinculada à conta mestre {master_user.username}."
+                                                    )
+                                                else:
+                                                    logger.warning(f"[edit_profile] ⚠️ Conta '{user_login}' não encontrada no banco do Lineage ou já está vinculada")
+                                    except Exception as db_error:
+                                        logger.error(f"[edit_profile] Erro ao acessar banco do Lineage para vincular conta '{user_login}': {db_error}", exc_info=True)
+                                        messages.warning(
+                                            request,
+                                            f"⚠️ Não foi possível vincular a conta '{user_login}' automaticamente. O banco de dados do Lineage pode estar indisponível."
+                                        )
+                    else:
+                        logger.info(f"[edit_profile] Email {user_email} não tem conta mestre, nenhuma vinculação automática")
+                except Exception as e:
+                    logger.error(f"Erro ao vincular conta atual do Lineage: {e}", exc_info=True)
             
             # Verifica se o perfil ficou completo após a edição
             if perfil_incompleto_antes and (request.user.first_name and request.user.last_name and request.user.bio):
@@ -409,6 +588,11 @@ def activate_lock(request):
 
 @conditional_otp_required
 def dashboard(request):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"[dashboard view] Executando view dashboard - User authenticated: {request.user.is_authenticated}")
+    logger.info(f"[dashboard view] User: {request.user}")
+    
     if request.user.is_authenticated:
         language = translation.get_language()
         dashboard = DashboardContent.objects.filter(is_active=True).first()

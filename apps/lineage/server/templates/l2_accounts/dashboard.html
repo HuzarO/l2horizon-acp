@@ -355,8 +355,13 @@
     border: 1px solid rgba(220, 53, 69, 0.3);
   }
 
+  .service-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
   .service-btn {
-    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
     border: none;
     border-radius: 15px;
     padding: 1rem 2rem;
@@ -365,16 +370,68 @@
     font-weight: 700;
     font-size: 1.1rem;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
     text-align: center;
     display: block;
+    width: 100%;
   }
 
-  .service-btn:hover {
+  .service-btn-password {
+    background: linear-gradient(135deg, #17a2b8 0%, #0dcaf0 100%);
+    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
+  }
+
+  .service-btn-password:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(23, 162, 184, 0.5);
+    background: linear-gradient(135deg, #138496 0%, #0aa2c0 100%);
+    color: #ffffff;
+    text-decoration: none;
+  }
+
+  .service-btn-slots {
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+  }
+
+  .service-btn-slots:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
     background: linear-gradient(135deg, #c82333 0%, #e55a00 100%);
     color: #ffffff;
+    text-decoration: none;
+  }
+
+  .service-btn-create {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  }
+
+  .service-btn-create:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.5);
+    background: linear-gradient(135deg, #218838 0%, #1aa179 100%);
+    color: #ffffff;
+    text-decoration: none;
+  }
+
+  .change-account-btn {
+    background: linear-gradient(135deg, #0dcaf0 0%, #17a2b8 100%) !important;
+    border: none !important;
+    border-radius: 12px;
+    padding: 0.5rem 1.5rem;
+    color: #ffffff !important;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(13, 202, 240, 0.3);
+    display: inline-block;
+  }
+
+  .change-account-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 202, 240, 0.4);
+    background: linear-gradient(135deg, #0aa2c0 0%, #138496 100%) !important;
+    color: #ffffff !important;
     text-decoration: none;
   }
 
@@ -441,6 +498,22 @@
           <i class="fas fa-star me-2"></i>
           {% trans "Bem-vindo ao seu centro de controle do jogo" %}
         </p>
+        <div class="mt-3 d-flex justify-content-center align-items-center flex-wrap gap-2">
+          <span class="badge bg-dark fs-6 px-4 py-2">
+            {% trans "Conta ativa" %}: {{ active_account_login }}
+          </span>
+          <a href="{% url 'server:manage_lineage_accounts' %}" class="change-account-btn">
+            <i class="bi bi-arrow-repeat me-1"></i>{% trans "Alterar conta" %}
+          </a>
+        </div>
+        {% if email_master_owner and email_master_owner.username != request.user.username %}
+        <div class="alert alert-warning mt-3 mb-0">
+          <i class="bi bi-link-45deg me-2"></i>
+          {% blocktrans with master=email_master_owner.username %}
+          Conta vinculada à conta mestre {{ master }}.
+          {% endblocktrans %}
+        </div>
+        {% endif %}
       </div>
 
       <!-- Informações da Conta -->
@@ -610,11 +683,21 @@
           </h5>
         </div>
         
-        <div class="d-grid">
-          <a href="{% url 'server:update_password' %}" class="service-btn">
+        <div class="service-buttons-container">
+          <a href="{% url 'server:update_password' %}" class="service-btn service-btn-password">
             <i class="fas fa-lock me-2"></i>
             {% trans "Alterar Senha" %}
           </a>
+          <a href="{% url 'server:purchase_link_slot' %}" class="service-btn service-btn-slots">
+            <i class="fas fa-link me-2"></i>
+            {% trans "Comprar Slots de Vinculação" %}
+          </a>
+          {% if is_email_master_owner and request.user.is_email_verified %}
+          <a href="{% url 'server:create_master_account' %}" class="service-btn service-btn-create">
+            <i class="fas fa-plus-circle me-2"></i>
+            {% trans "Criar Nova Conta Vinculada" %}
+          </a>
+          {% endif %}
         </div>
       </div>
 

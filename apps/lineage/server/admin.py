@@ -136,3 +136,67 @@ class ComissaoAdmin(BaseModelAdmin):
 class ApoiadorDefaultAdmin(BaseModelAdmin):
     list_display = ("id", "ordem", "imagem")
     ordering = ("ordem",)
+
+
+@admin.register(ManagedLineageAccount)
+class ManagedLineageAccountAdmin(BaseModelAdmin):
+    list_display = (
+        "account_login",
+        "manager_user",
+        "role",
+        "status",
+        "created_by",
+        "notes",
+        "created_at",
+    )
+    list_filter = ("role", "status", "created_at")
+    search_fields = ("account_login", "manager_user__username", "created_by__username", "notes")
+    list_editable = ("status",)  # Permite editar o status diretamente na lista
+    readonly_fields = ("created_at", "updated_at")
+    
+    fieldsets = (
+        ("Informações da Conta", {
+            "fields": ("account_login", "manager_user", "role", "status")
+        }),
+        ("Delegação", {
+            "fields": ("created_by", "notes")
+        }),
+        ("Datas", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",)
+        }),
+    )
+
+
+@admin.register(AccountLinkSlot)
+class AccountLinkSlotAdmin(BaseModelAdmin):
+    list_display = (
+        "user",
+        "slots_purchased",
+        "purchase_price",
+        "purchase_date",
+        "created_at",
+    )
+    list_filter = ("purchase_date", "created_at")
+    search_fields = ("user__username", "user__email", "notes")
+    readonly_fields = ("created_at", "updated_at")
+    date_hierarchy = "purchase_date"
+    
+    fieldsets = (
+        ("Informações da Compra", {
+            "fields": ("user", "slots_purchased", "purchase_price", "purchase_date")
+        }),
+        ("Observações", {
+            "fields": ("notes",),
+            "classes": ("collapse",)
+        }),
+        ("Datas", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        """Otimiza a query incluindo o user"""
+        qs = super().get_queryset(request)
+        return qs.select_related("user")
