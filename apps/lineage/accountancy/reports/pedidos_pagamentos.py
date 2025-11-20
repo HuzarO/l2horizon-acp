@@ -1,11 +1,17 @@
 from apps.lineage.payment.models import PedidoPagamento, Pagamento
-from django.db.models import Sum, Count, Avg
+from django.db.models import Sum, Count
 from decimal import Decimal
 
 
-def pedidos_pagamentos_resumo():
-    pedidos = PedidoPagamento.objects.all().order_by('-data_criacao')
-    relatorio = []
+def pedidos_pagamentos_resumo(pedidos=None):
+    # Se não foi passado um queryset, busca todos os pedidos
+    if pedidos is None:
+        pedidos = PedidoPagamento.objects.all().select_related('usuario').order_by('-data_criacao')
+
+    # FILTRO IMPORTANTE: Para cálculos financeiros, consideramos apenas pedidos CONFIRMADOS
+    # Isso garante que os totais representem apenas faturamento real
+    # Aplica o filtro de CONFIRMADO sobre o queryset passado (que pode já estar filtrado)
+    pedidos_confirmados = pedidos.filter(status='CONFIRMADO')
 
     # Mapeamento de status do modelo para o template
     status_mapping = {
@@ -15,75 +21,72 @@ def pedidos_pagamentos_resumo():
         'PROCESSANDO': 'processando',
     }
 
-    # Mapeamento de métodos de pagamento
+    # Mapeamento de métodos de pagamento para exibição
+    # Não assumimos qual método específico foi usado (PIX, cartão, boleto)
+    # Apenas formatamos o nome para exibição amigável
     metodo_mapping = {
-        'MercadoPago': 'pix',  # MercadoPago geralmente usa PIX
-        'Stripe': 'cartao',    # Stripe geralmente usa cartão
-        'PIX': 'pix',
-        'CARTAO': 'cartao',
-        'BOLETO': 'boleto',
+        'MercadoPago': 'Mercado Pago',
+        'Stripe': 'Stripe',
+        'PIX': 'PIX',
+        'CARTAO': 'Cartão',
+        'BOLETO': 'Boleto',
     }
 
-    total_valor_pago = Decimal('0.00')
-    total_bonus = Decimal('0.00')
-    total_creditado = Decimal('0.00')
-    total_moedas = Decimal('0.00')
+    # Calcula contadores de status para TODOS os pedidos (sem filtros)
+    # IMPORTANTE: Sempre conta todos os pedidos, independente dos filtros aplicados
+    # Isso permite ver o resumo geral mesmo quando há filtros aplicados
+    todos_pedidos = PedidoPagamento.objects.all()
+    contador_status_raw = todos_pedidos.values('status').annotate(count=Count('id'))
     contador_status = {'aprovado': 0, 'pendente': 0, 'cancelado': 0, 'processando': 0}
+    
+    for item in contador_status_raw:
+        status_original = item['status']
+        status_mapeado = status_mapping.get(status_original, status_original.lower())
+        if status_mapeado in contador_status:
+            contador_status[status_mapeado] = item['count']
 
-    for pedido in pedidos:
-        pagamento = Pagamento.objects.filter(pedido_pagamento=pedido).first()
-        
-        # Determina o status para exibição
-        status_pedido = status_mapping.get(pedido.status, pedido.status.lower())
-        
-        # Determina o método de pagamento para exibição
-        metodo_pagamento = metodo_mapping.get(pedido.metodo, pedido.metodo.lower())
-        
-        # Calcula percentual de bônus
-        percentual_bonus = Decimal('0.00')
-        if pedido.valor_pago > 0:
-            percentual_bonus = (pedido.bonus_aplicado / pedido.valor_pago) * 100
-        
-        # Acumula totais
-        total_valor_pago += pedido.valor_pago
-        total_bonus += pedido.bonus_aplicado
-        total_creditado += pedido.total_creditado
-        total_moedas += pedido.moedas_geradas
-        if status_pedido in contador_status:
-            contador_status[status_pedido] += 1
-        
-        relatorio.append({
-            'id_pedido': pedido.id,
-            'usuario': pedido.usuario.username,
-            'valor': pedido.valor_pago,
-            'bonus_aplicado': pedido.bonus_aplicado,
-            'total_creditado': pedido.total_creditado,
-            'moedas_geradas': pedido.moedas_geradas,
-            'percentual_bonus': percentual_bonus,
-            'status': status_pedido,
-            'metodo_pagamento': metodo_pagamento,
-            'data': pedido.data_criacao,
-        })
+    # Calcula totais financeiros APENAS de pedidos CONFIRMADOS
+    # Usando aggregate para eficiência e precisão
+    totais_confirmados = pedidos_confirmados.aggregate(
+        total_valor_pago=Sum('valor_pago'),
+        total_bonus=Sum('bonus_aplicado'),
+        total_moedas=Sum('moedas_geradas'),
+        count=Count('id')
+    )
+
+    # Valores financeiros (apenas confirmados)
+    total_valor_pago = totais_confirmados['total_valor_pago'] or Decimal('0.00')
+    total_bonus = totais_confirmados['total_bonus'] or Decimal('0.00')
+    # IMPORTANTE: Total creditado deve ser sempre = valor_pago + bonus_aplicado
+    # Não somamos o campo total_creditado do banco porque pode estar inconsistente
+    # Calculamos dinamicamente para garantir precisão financeira
+    total_creditado = total_valor_pago + total_bonus
+    total_moedas = totais_confirmados['total_moedas'] or Decimal('0.00')
+    total_pedidos_confirmados = totais_confirmados['count'] or 0
+
+    # Não precisamos calcular percentuais aqui - será feito na view apenas para a página atual
 
     # Calcula resumo geral
-    total_pedidos = len(relatorio)
-    media_valor = total_valor_pago / total_pedidos if total_pedidos > 0 else Decimal('0.00')
-    media_bonus = total_bonus / total_pedidos if total_pedidos > 0 else Decimal('0.00')
+    # IMPORTANTE: Os totais financeiros são calculados apenas com pedidos CONFIRMADOS
+    # Mas o total de pedidos deve mostrar TODOS os pedidos do sistema (independente de status)
+    todos_pedidos_count = todos_pedidos.count()  # Total de pedidos no sistema (todos os status)
+    media_valor = total_valor_pago / total_pedidos_confirmados if total_pedidos_confirmados > 0 else Decimal('0.00')
     percentual_bonus_geral = (total_bonus / total_valor_pago * 100) if total_valor_pago > 0 else Decimal('0.00')
     
     resumo = {
-        'total_pedidos': total_pedidos,
-        'total_valor_pago': total_valor_pago,
-        'total_bonus': total_bonus,
-        'total_creditado': total_creditado,
-        'total_moedas': total_moedas,
-        'media_valor': media_valor,
-        'media_bonus': media_bonus,
-        'percentual_bonus_geral': percentual_bonus_geral,
-        'status_contador': contador_status,
+        'total_pedidos': todos_pedidos_count,  # Total de TODOS os pedidos (independente de status)
+        'total_valor_pago': total_valor_pago,  # Soma apenas de pedidos confirmados
+        'total_bonus': total_bonus,  # Soma apenas de pedidos confirmados
+        'total_creditado': total_creditado,  # Soma apenas de pedidos confirmados
+        'total_moedas': total_moedas,  # Soma apenas de pedidos confirmados
+        'media_valor': media_valor,  # Média calculada apenas com pedidos confirmados
+        'percentual_bonus_geral': percentual_bonus_geral,  # Percentual calculado apenas com pedidos confirmados
+        'status_contador': contador_status,  # Contador de todos os status (mostra aprovados, pendentes, etc)
     }
 
     return {
-        'relatorio': relatorio,
-        'resumo': resumo
+        'queryset': pedidos,  # Retorna o queryset para paginação
+        'resumo': resumo,
+        'status_mapping': status_mapping,
+        'metodo_mapping': metodo_mapping,
     }
