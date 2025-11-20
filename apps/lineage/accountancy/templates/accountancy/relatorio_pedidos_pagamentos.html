@@ -328,6 +328,48 @@
               </div>
               {% endif %}
             </div>
+            {% if resumo.origem_contador %}
+            <div class="row g-3 mt-2">
+              <div class="col-md-4">
+                <div class="summary-card">
+                  <div class="summary-icon bg-success">
+                    <i class="fas fa-check-circle"></i>
+                  </div>
+                  <div class="summary-content">
+                    <div class="summary-label">{% trans "Via Serviço" %}</div>
+                    <div class="summary-value">{{ resumo.origem_contador.servico }}</div>
+                    <small class="text-muted">{% trans "Webhook/Callback" %}</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="summary-card">
+                  <div class="summary-icon bg-warning">
+                    <i class="fas fa-user-shield"></i>
+                  </div>
+                  <div class="summary-content">
+                    <div class="summary-label">{% trans "Manual (Staff)" %}</div>
+                    <div class="summary-value">{{ resumo.origem_contador.manual }}</div>
+                    <small class="text-muted">{% trans "Confirmado no Admin" %}</small>
+                  </div>
+                </div>
+              </div>
+              {% if resumo.origem_contador.indeterminado > 0 %}
+              <div class="col-md-4">
+                <div class="summary-card">
+                  <div class="summary-icon bg-secondary">
+                    <i class="fas fa-question-circle"></i>
+                  </div>
+                  <div class="summary-content">
+                    <div class="summary-label">{% trans "Indeterminado" %}</div>
+                    <div class="summary-value">{{ resumo.origem_contador.indeterminado }}</div>
+                    <small class="text-muted">{% trans "Origem não determinada" %}</small>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
           </div>
           {% endif %}
           
@@ -401,6 +443,7 @@
                     <th><i class="fas fa-coins me-2"></i>{% trans "Moedas Geradas" %}</th>
                     <th><i class="fas fa-calendar me-2"></i>{% trans "Data" %}</th>
                     <th><i class="fas fa-info-circle me-2"></i>{% trans "Status" %}</th>
+                    <th><i class="fas fa-shield-alt me-2"></i>{% trans "Origem" %}</th>
                     <th><i class="fas fa-credit-card me-2"></i>{% trans "Método de Pagamento" %}</th>
                   </tr>
                 </thead>
@@ -489,6 +532,24 @@
                         <span class="badge bg-secondary">
                           <i class="fas fa-question me-1"></i>
                           {{ item.status|title }}
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if item.origem_pagamento == 'manual' %}
+                        <span class="badge bg-warning" title="{% trans 'Confirmado manualmente por staff no admin' %}">
+                          <i class="fas fa-user-shield me-1"></i>
+                          {% trans "Manual" %}
+                        </span>
+                      {% elif item.origem_pagamento == 'servico' %}
+                        <span class="badge bg-success" title="{% trans 'Processado via serviço de pagamento (webhook/callback)' %}">
+                          <i class="fas fa-check-circle me-1"></i>
+                          {% trans "Serviço" %}
+                        </span>
+                      {% else %}
+                        <span class="badge bg-secondary" title="{% trans 'Origem não determinada' %}">
+                          <i class="fas fa-question-circle me-1"></i>
+                          {% trans "Indeterminado" %}
                         </span>
                       {% endif %}
                     </td>

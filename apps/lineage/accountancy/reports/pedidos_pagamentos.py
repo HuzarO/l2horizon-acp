@@ -1,6 +1,69 @@
-from apps.lineage.payment.models import PedidoPagamento, Pagamento
-from django.db.models import Sum, Count
+from apps.lineage.payment.models import PedidoPagamento, Pagamento, WebhookLog
+from apps.lineage.wallet.models import TransacaoWallet
+from django.db.models import Sum, Count, Q
 from decimal import Decimal
+
+
+def validar_origem_pagamento(pedido):
+    """
+    Valida se o pagamento foi confirmado manualmente por staff ou processado via serviço de pagamento.
+    
+    Retorna:
+    - 'manual': Confirmado manualmente por staff no admin
+    - 'servico': Processado via webhook/serviço de pagamento (MercadoPago/Stripe)
+    - 'indeterminado': Não foi possível determinar a origem
+    """
+    # Verifica se existe um Pagamento associado com transaction_code
+    try:
+        pagamento = Pagamento.objects.filter(pedido_pagamento=pedido).first()
+        
+        if pagamento:
+            # Se tem transaction_code, provavelmente passou pelo serviço
+            if pagamento.transaction_code:
+                # Verifica se existe webhook log relacionado
+                webhook_exists = WebhookLog.objects.filter(
+                    Q(data_id=str(pagamento.id)) | 
+                    Q(payload__metadata__pagamento_id=str(pagamento.id)) |
+                    Q(payload__data__object__metadata__pagamento_id=str(pagamento.id))
+                ).exists()
+                
+                if webhook_exists:
+                    return 'servico'
+                # Se tem transaction_code mas não tem webhook, ainda pode ser serviço (webhook pode ter falhado)
+                # Mas vamos verificar se foi processado por webhook verificando a data de processamento
+                if pagamento.processado_em:
+                    # Se tem processado_em, provavelmente foi via serviço
+                    return 'servico'
+                # Se tem transaction_code mas não tem processado_em, pode ser manual também
+                return 'indeterminado'
+            else:
+                # Sem transaction_code, provavelmente foi manual
+                return 'manual'
+        else:
+            # Não tem Pagamento associado, provavelmente foi confirmado manualmente direto no pedido
+            # Verifica nas transações da wallet se tem a descrição "confirmação manual"
+            try:
+                wallet = pedido.usuario.wallet_set.first()
+                if wallet:
+                    transacoes = TransacaoWallet.objects.filter(
+                        wallet=wallet,
+                        tipo='ENTRADA',
+                        descricao__icontains='confirmação manual por admin'
+                    ).order_by('-data')[:1]
+                    
+                    # Verifica se alguma transação recente corresponde ao valor do pedido
+                    for transacao in transacoes:
+                        if abs(float(transacao.valor) - float(pedido.total_creditado)) < 0.01:
+                            return 'manual'
+            except Exception:
+                pass
+            
+            # Se não encontrou evidência de manual, mas não tem pagamento, pode ser manual
+            return 'manual'
+    except Exception:
+        pass
+    
+    return 'indeterminado'
 
 
 def pedidos_pagamentos_resumo(pedidos=None):
@@ -55,6 +118,13 @@ def pedidos_pagamentos_resumo(pedidos=None):
         else:
             # Status desconhecido, adiciona a "outros"
             contador_status['outros'] += item['count']
+    
+    # Conta pedidos confirmados por origem (manual vs serviço)
+    contador_origem = {'manual': 0, 'servico': 0, 'indeterminado': 0}
+    pedidos_confirmados_para_validacao = pedidos_confirmados.select_related('usuario')
+    for pedido in pedidos_confirmados_para_validacao:
+        origem = validar_origem_pagamento(pedido)
+        contador_origem[origem] += 1
 
     # Calcula totais financeiros APENAS de pedidos CONFIRMADOS
     # Usando aggregate para eficiência e precisão
@@ -93,6 +163,7 @@ def pedidos_pagamentos_resumo(pedidos=None):
         'media_valor': media_valor,  # Média calculada apenas com pedidos confirmados
         'percentual_bonus_geral': percentual_bonus_geral,  # Percentual calculado apenas com pedidos confirmados
         'status_contador': contador_status,  # Contador de todos os status (mostra aprovados, pendentes, etc)
+        'origem_contador': contador_origem,  # Contador de origem (manual vs serviço) apenas para pedidos confirmados
     }
 
     return {
