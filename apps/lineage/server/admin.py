@@ -261,3 +261,24 @@ class ItemInflationStatsAdmin(BaseModelAdmin):
     list_filter = ('location', 'category', 'calculated_at')
     search_fields = ('item_name', 'item_id')
     readonly_fields = ('item_id', 'item_name', 'location', 'current_quantity', 'previous_quantity', 'quantity_change', 'change_percentage', 'calculated_at', 'created_at', 'updated_at')
+
+
+@admin.register(ItemInflationFavorite)
+class ItemInflationFavoriteAdmin(BaseModelAdmin):
+    list_display = ('user', 'item_id', 'item_name', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('user__username', 'item_name', 'item_id', 'notes')
+    readonly_fields = ('created_at', 'updated_at')
+    
+    fieldsets = (
+        (_('Informações do Item'), {
+            'fields': ('user', 'item_id', 'item_name')
+        }),
+        (_('Observações'), {
+            'fields': ('notes',)
+        }),
+        (_('Datas'), {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )

@@ -454,6 +454,19 @@
         </a>
       </li>
 
+      <li class="nav-item {% if 'inflation' in segment %}active{% endif %}">
+        <a href="{% url 'server:inflation_dashboard' %}" class="nav-link d-flex align-items-center">
+          <span class="sidebar-icon">
+            <svg class="icon icon-xs me-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path fill-rule="evenodd"
+                d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clip-rule="evenodd"></path>
+            </svg>
+          </span>
+          <span class="sidebar-text">{% trans "Dashboard de Inflação" %}</span>
+        </a>
+      </li>
+
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
 
       <li class="nav-item">

@@ -1,6 +1,7 @@
 {% extends "layouts/base.html" %}
 {% load i18n static %}
 {% load itens_extras %}
+{% load l10n %}
 
 {% block title %}{% trans "Painel de Inflação de Itens" %}{% endblock %}
 
@@ -35,6 +36,13 @@
     margin-bottom: 2rem;
   }
 
+  @media (max-width: 768px) {
+    .stats-grid {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+  }
+
   .stat-card {
     background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
     border-radius: 15px;
@@ -43,6 +51,13 @@
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
   }
 
   .stat-card:hover {
@@ -55,13 +70,35 @@
     margin-bottom: 1rem;
     font-weight: 500;
     font-size: 1rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .stat-value {
     color: white;
-    font-size: 2rem;
+    font-size: clamp(1rem, 4vw, 2rem);
     font-weight: 600;
     margin: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    display: block;
+    hyphens: auto;
+  }
+
+  @media (max-width: 768px) {
+    .stat-value {
+      font-size: 1.5rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .stat-value {
+      font-size: 1.25rem;
+    }
   }
 
   .action-buttons {
@@ -289,6 +326,34 @@
     display: block;
     margin-bottom: 0.5rem;
   }
+
+  .favorite-btn {
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #a0aec0;
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .favorite-btn:hover {
+    border-color: #fbbf24;
+    color: #fbbf24;
+    transform: scale(1.1);
+  }
+
+  .favorite-btn.active {
+    background: rgba(251, 191, 36, 0.2);
+    border-color: #fbbf24;
+    color: #fbbf24;
+  }
 </style>
 {% endblock %}
 
@@ -390,8 +455,12 @@
       </table>
     </div>
 
+    {% if favorite_items %}
     <div class="table-container" style="margin-top: 2rem;">
-      <h2 style="color: white; margin-bottom: 1.5rem;">{% trans "Top 20 Itens Mais Comuns" %}</h2>
+      <h2 style="color: white; margin-bottom: 1.5rem;">
+        <i class="fas fa-star" style="color: #fbbf24; margin-right: 0.5rem;"></i>
+        {% trans "Itens Favoritos" %}
+      </h2>
       <table class="table">
         <thead>
           <tr>
@@ -399,6 +468,65 @@
             <th>{% trans "Quantidade Total" %}</th>
             <th>{% trans "Proprietários Únicos" %}</th>
             <th>{% trans "Instâncias" %}</th>
+            <th>{% trans "Ações" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in favorite_items %}
+          <tr>
+            <td>
+              <div class="item-row" style="border: none; padding: 0;">
+                <img src="{% item_image_url item.item_id %}" 
+                     alt="{{ item.item_name|default:'Item' }}" 
+                     class="item-icon">
+                <div class="item-info-cell">
+                  <span class="item-name">{{ item.item_name|default:"Item Desconhecido" }}</span>
+                  <span class="item-id">ID: {{ item.item_id }}</span>
+                </div>
+              </div>
+            </td>
+            <td>{{ item.total_quantity|default:0|floatformat:0 }}</td>
+            <td>{{ item.unique_owners|default:0 }}</td>
+            <td>{{ item.total_instances|default:0 }}</td>
+            <td>
+              <button class="favorite-btn active" 
+                      onclick="toggleFavorite({{ item.item_id|unlocalize }}, this)"
+                      data-item-id="{{ item.item_id|unlocalize }}"
+                      style="background: transparent; border: 2px solid rgba(255, 255, 255, 0.3); color: #a0aec0; padding: 0.5rem; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; font-size: 1.2rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-star"></i>
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" style="text-align: center; color: #a0aec0;">
+              {% trans "Você ainda não tem itens favoritos. Adicione alguns itens para acompanhar!" %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <div class="table-container" style="margin-top: 2rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2 style="color: white; margin: 0;">{% trans "Top 20 Itens Mais Comuns" %}</h2>
+        <a href="{% url 'server:inflation_all_items' %}" 
+           style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.75rem 1.5rem; border-radius: 10px; text-decoration: none; font-weight: 600; transition: all 0.3s ease;">
+          <i class="fas fa-list"></i> {% trans "Ver Todos os Itens" %}
+        </a>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>{% trans "Item" %}</th>
+            <th>{% trans "Quantidade Total" %}</th>
+            <th>{% trans "Proprietários Únicos" %}</th>
+            <th>{% trans "Instâncias" %}</th>
+            {% if user.is_authenticated %}
+            <th>{% trans "Favorito" %}</th>
+            {% endif %}
           </tr>
         </thead>
         <tbody>
@@ -418,10 +546,20 @@
             <td>{{ item.total_quantity|default:0|floatformat:0 }}</td>
             <td>{{ item.unique_owners|default:0 }}</td>
             <td>{{ item.total_instances|default:0 }}</td>
+            {% if user.is_authenticated %}
+            <td>
+              <button class="favorite-btn {% if item.item_id in favorite_item_ids %}active{% endif %}" 
+                      onclick="toggleFavorite({{ item.item_id|unlocalize }}, this)"
+                      data-item-id="{{ item.item_id|unlocalize }}"
+                      style="background: transparent; border: 2px solid rgba(255, 255, 255, 0.3); color: #a0aec0; padding: 0.5rem; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; font-size: 1.2rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-star"></i>
+              </button>
+            </td>
+            {% endif %}
           </tr>
           {% empty %}
           <tr>
-            <td colspan="4" style="text-align: center; color: #a0aec0;">
+            <td colspan="{% if user.is_authenticated %}5{% else %}4{% endif %}" style="text-align: center; color: #a0aec0;">
               {% trans "Nenhum dado disponível." %}
             </td>
           </tr>
@@ -465,6 +603,41 @@
 </div>
 
 <script>
+// Ajusta o tamanho da fonte para números grandes
+function adjustStatValueFontSize() {
+  const statValues = document.querySelectorAll('.stat-value');
+  statValues.forEach(function(element) {
+    const text = element.textContent.trim();
+    const textLength = text.replace(/[^\d]/g, '').length; // Conta apenas dígitos
+    
+    // Remove estilos inline anteriores
+    element.style.fontSize = '';
+    
+    // Ajusta o tamanho baseado no comprimento do número
+    if (textLength > 12) {
+      element.style.fontSize = '1.25rem';
+    } else if (textLength > 9) {
+      element.style.fontSize = '1.5rem';
+    } else if (textLength > 6) {
+      element.style.fontSize = '1.75rem';
+    }
+    
+    // Verifica se o texto está transbordando
+    if (element.scrollWidth > element.clientWidth) {
+      const currentSize = parseFloat(window.getComputedStyle(element).fontSize);
+      element.style.fontSize = (currentSize * 0.9) + 'px';
+    }
+  });
+}
+
+// Executa quando a página carregar
+document.addEventListener('DOMContentLoaded', function() {
+  adjustStatValueFontSize();
+  
+  // Re-executa após um pequeno delay para garantir que tudo foi renderizado
+  setTimeout(adjustStatValueFontSize, 100);
+});
+
 function createSnapshot() {
   if (!confirm('{% trans "Deseja criar um snapshot do estado atual dos itens?" %}')) {
     return;
@@ -517,6 +690,80 @@ document.addEventListener('keydown', function(event) {
     closeHelpModal();
   }
 });
+
+// Função para obter CSRF token
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// Função para favoritar/desfavoritar itens
+function toggleFavorite(itemId, button) {
+  // Garante que itemId seja um inteiro
+  itemId = parseInt(itemId);
+  if (isNaN(itemId)) {
+    alert('{% trans "ID de item inválido" %}');
+    return;
+  }
+  
+  const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+  // Usa o template tag do Django para gerar a URL corretamente
+  // Gera a URL base com um placeholder e substitui pelo item_id real
+  const baseUrl = '{% url "server:inflation_toggle_favorite" item_id=123456 %}';
+  const url = baseUrl.replace('123456', itemId.toString());
+  
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': csrftoken,
+    },
+    credentials: 'same-origin',
+  })
+  .then(response => {
+    if (!response.ok) {
+      return response.json().then(err => Promise.reject(err));
+    }
+    return response.json();
+  })
+  .then(data => {
+    if (data.success) {
+      if (data.is_favorite) {
+        button.classList.add('active');
+        button.style.borderColor = '#fbbf24';
+        button.style.color = '#fbbf24';
+        // Recarrega a página para atualizar a lista de favoritos
+        setTimeout(() => {
+          location.reload();
+        }, 500);
+      } else {
+        button.classList.remove('active');
+        button.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+        button.style.color = '#a0aec0';
+        // Recarrega a página para atualizar a lista de favoritos
+        setTimeout(() => {
+          location.reload();
+        }, 500);
+      }
+    } else {
+      alert(data.error || '{% trans "Erro ao atualizar favorito" %}');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    const errorMsg = error.error || error.message || '{% trans "Erro ao atualizar favorito" %}';
+    alert(errorMsg);
+  });
+}
 </script>
 
 <!-- Modal de Ajuda -->

@@ -553,3 +553,32 @@ class ItemInflationStats(BaseModel):
     def __str__(self):
         change_sign = "+" if self.quantity_change >= 0 else ""
         return f"{self.item_name or f'Item {self.item_id}'} - {self.location}: {change_sign}{self.quantity_change:,} ({self.change_percentage}%)"
+
+
+class ItemInflationFavorite(BaseModel):
+    """
+    Itens favoritos que o usuário quer acompanhar.
+    Permite monitorar a quantidade de itens específicos no servidor.
+    """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='inflation_favorites',
+        verbose_name=_("User")
+    )
+    item_id = models.PositiveIntegerField(verbose_name=_("Item ID"))
+    item_name = models.CharField(max_length=255, blank=True, verbose_name=_("Item Name"))
+    notes = models.TextField(blank=True, verbose_name=_("Notes"), help_text=_("Notas pessoais sobre este item"))
+
+    class Meta:
+        verbose_name = _("Item Inflation Favorite")
+        verbose_name_plural = _("Item Inflation Favorites")
+        unique_together = ['user', 'item_id']
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'item_id']),
+            models.Index(fields=['user']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.item_name or f'Item {self.item_id}'}"

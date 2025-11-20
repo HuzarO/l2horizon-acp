@@ -11,6 +11,8 @@ from .views.inflation_views import (
     inflation_comparison,
     inflation_categories,
     delete_snapshot,
+    all_items_list,
+    toggle_favorite,
 )
 
 app_name = 'server'
@@ -61,6 +63,8 @@ urlpatterns = [
     
     # Inflation routes
     path('inflation/', inflation_dashboard, name='inflation_dashboard'),
+    path('inflation/all-items/', all_items_list, name='inflation_all_items'),
+    path('inflation/favorite/<int:item_id>/toggle/', toggle_favorite, name='inflation_toggle_favorite'),
     path('inflation/snapshot/create/', create_snapshot, name='create_snapshot'),
     path('inflation/snapshot/<int:snapshot_id>/', snapshot_detail, name='snapshot_detail'),
     path('inflation/snapshot/<int:snapshot_id>/delete/', delete_snapshot, name='delete_snapshot'),
