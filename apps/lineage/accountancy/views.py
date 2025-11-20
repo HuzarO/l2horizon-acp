@@ -212,6 +212,7 @@ def relatorio_pedidos_pagamentos(request):
     page_obj = paginator.get_page(page_number)
     
     # Processa apenas os pedidos da página atual para o relatório
+    from .reports.pedidos_pagamentos import validar_origem_pagamento
     relatorio = []
     from decimal import Decimal
     for pedido in page_obj:
@@ -219,6 +220,9 @@ def relatorio_pedidos_pagamentos(request):
         percentual_bonus = Decimal('0.00')
         if pedido.valor_pago > 0:
             percentual_bonus = (pedido.bonus_aplicado / pedido.valor_pago) * 100
+        
+        # Valida origem do pagamento (manual vs serviço)
+        origem_pagamento = validar_origem_pagamento(pedido)
         
         relatorio.append({
             'id_pedido': pedido.id,
@@ -230,6 +234,7 @@ def relatorio_pedidos_pagamentos(request):
             'percentual_bonus': percentual_bonus,
             'status': dados['status_mapping'].get(pedido.status, pedido.status.lower()),
             'metodo_pagamento': dados['metodo_mapping'].get(pedido.metodo, pedido.metodo.lower()),
+            'origem_pagamento': origem_pagamento,  # 'manual', 'servico', ou 'indeterminado'
             'data': pedido.data_criacao,
         })
     
