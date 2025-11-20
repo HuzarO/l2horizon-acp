@@ -1,10 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.decorators import user_passes_test, login_required
 from django.utils.translation import gettext_lazy as _
 from django.db import transaction, models
 from django.http import JsonResponse
 from django.utils import timezone
+from django.core.paginator import Paginator
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -12,7 +13,8 @@ from ..models import (
     ItemInflationSnapshot,
     ItemInflationSnapshotDetail,
     ItemInflationCategory,
-    ItemInflationStats
+    ItemInflationStats,
+    ItemInflationFavorite
 )
 from apps.lineage.inventory.models import Inventory, InventoryItem, CustomItem
 from apps.lineage.inventory.utils.items import get_itens_json
@@ -438,4 +440,205 @@ def delete_snapshot(request, snapshot_id):
     
     messages.success(request, _('Snapshot deletado com sucesso!'))
     return JsonResponse({'success': True})
+
+
+@staff_required
+def all_items_list(request):
+    """
+    Lista todos os itens do servidor com paginação.
+    """
+    LineageInflation = get_query_class("LineageInflation")
+    
+    # Busca todos os itens (sem limite)
+    try:
+        all_items_raw = LineageInflation.get_top_items_by_quantity(limit=10000) or []
+        all_items = enrich_items_with_names(all_items_raw)
+    except Exception as e:
+        print(f"Erro ao buscar todos os itens: {e}")
+        all_items = []
+    
+    # Busca favoritos do usuário ANTES da paginação
+    favorite_item_ids = set()
+    if request.user.is_authenticated:
+        favorite_item_ids = set(
+            ItemInflationFavorite.objects.filter(user=request.user)
+            .values_list('item_id', flat=True)
+        )
+    
+    # Marca itens favoritos antes da paginação
+    for item in all_items:
+        item_id = item.get('item_id')
+        if item_id is not None:
+            try:
+                item_id_int = int(item_id)
+                item['is_favorite'] = item_id_int in favorite_item_ids
+            except (ValueError, TypeError):
+                item['is_favorite'] = False
+        else:
+            item['is_favorite'] = False
+    
+    # Paginação
+    paginator = Paginator(all_items, 50)  # 50 itens por página
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'total_items': len(all_items),
+        'favorite_item_ids': favorite_item_ids,
+    }
+    
+    return render(request, 'server/inflation/all_items.html', context)
+
+
+@login_required
+def toggle_favorite(request, item_id):
+    """
+    Adiciona ou remove um item dos favoritos.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método não permitido'}, status=405)
+    
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Usuário não autenticado'}, status=401)
+    
+    try:
+        item_id = int(item_id)
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'error': 'ID de item inválido'}, status=400)
+    
+    try:
+        # Busca o nome do item
+        item_name = get_item_name(item_id)
+        
+        # Verifica se já é favorito
+        favorite, created = ItemInflationFavorite.objects.get_or_create(
+            user=request.user,
+            item_id=item_id,
+            defaults={'item_name': item_name}
+        )
+        
+        if not created:
+            # Remove dos favoritos
+            favorite.delete()
+            return JsonResponse({
+                'success': True,
+                'is_favorite': False,
+                'message': _('Item removido dos favoritos')
+            })
+        else:
+            # Adiciona aos favoritos
+            favorite.item_name = item_name
+            favorite.save()
+            return JsonResponse({
+                'success': True,
+                'is_favorite': True,
+                'message': _('Item adicionado aos favoritos')
+            })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@staff_required
+def inflation_dashboard(request):
+    """
+    Painel principal de inflação de itens.
+    Mostra estatísticas gerais e permite criar snapshots.
+    """
+    LineageInflation = get_query_class("LineageInflation")
+    
+    # Estatísticas gerais
+    try:
+        location_summary = LineageInflation.get_items_by_location_summary() or []
+    except Exception as e:
+        print(f"Erro ao buscar location_summary: {e}")
+        location_summary = []
+    
+    try:
+        top_items_raw = LineageInflation.get_top_items_by_quantity(limit=20) or []
+        top_items = enrich_items_with_names(top_items_raw)
+    except Exception as e:
+        print(f"Erro ao buscar top_items: {e}")
+        top_items = []
+    
+    # Calcula totais a partir dos dados reais do servidor
+    total_instances = 0
+    total_quantity = 0
+    if location_summary:
+        for loc in location_summary:
+            try:
+                total_instances += int(loc.get('total_instances', 0) or 0)
+                total_quantity += int(loc.get('total_quantity', 0) or 0)
+            except (ValueError, TypeError):
+                continue
+    
+    # Conta personagens
+    try:
+        total_chars_result = LineageDB().select(
+            "SELECT COUNT(*) as total FROM characters WHERE accesslevel = '0'"
+        )
+        if total_chars_result and len(total_chars_result) > 0:
+            total_characters = int(total_chars_result[0].get('total', 0) or 0)
+        else:
+            total_characters = 0
+    except Exception as e:
+        print(f"Erro ao contar personagens: {e}")
+        total_characters = 0
+    
+    # Snapshots recentes
+    recent_snapshots = ItemInflationSnapshot.objects.all()[:10]
+    
+    # Último snapshot
+    last_snapshot = ItemInflationSnapshot.objects.first()
+    
+    # Estatísticas do site (inventário do site)
+    site_items_count = InventoryItem.objects.aggregate(
+        total_quantity=models.Sum('quantity'),
+        total_items=models.Count('id')
+    )
+    
+    # Busca itens favoritos do usuário
+    favorite_items = []
+    favorite_item_ids = set()
+    if request.user.is_authenticated:
+        favorites = ItemInflationFavorite.objects.filter(user=request.user)
+        favorite_item_ids = set(favorites.values_list('item_id', flat=True))
+        
+        # Busca dados dos itens favoritos
+        if favorite_item_ids:
+            try:
+                # Busca dados dos itens favoritos no servidor
+                all_items_raw = LineageInflation.get_top_items_by_quantity(limit=10000) or []
+                all_items = enrich_items_with_names(all_items_raw)
+                
+                # Filtra apenas os favoritos
+                favorite_items = [
+                    item for item in all_items 
+                    if item.get('item_id') in favorite_item_ids
+                ]
+                # Ordena por quantidade
+                favorite_items.sort(key=lambda x: x.get('total_quantity', 0), reverse=True)
+            except Exception as e:
+                print(f"Erro ao buscar itens favoritos: {e}")
+                favorite_items = []
+    
+    context = {
+        'location_summary': location_summary,
+        'top_items': top_items,
+        'recent_snapshots': recent_snapshots,
+        'last_snapshot': last_snapshot,
+        'site_items_count': site_items_count,
+        # Dados calculados em tempo real
+        'total_instances': total_instances,
+        'total_quantity': total_quantity,
+        'total_characters': total_characters,
+        # Favoritos
+        'favorite_items': favorite_items,
+        'favorite_item_ids': favorite_item_ids,
+    }
+    
+    return render(request, 'server/inflation/dashboard.html', context)
 

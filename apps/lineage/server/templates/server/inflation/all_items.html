@@ -1,0 +1,343 @@
+{% extends "layouts/base.html" %}
+{% load i18n static %}
+{% load itens_extras %}
+{% load l10n %}
+
+{% block title %}{% trans "Todos os Itens" %} - {% trans "Inflação de Itens" %}{% endblock %}
+
+{% block extrastyle %}
+<link rel="stylesheet" href="{% static 'css/dashboard-custom.css' %}">
+<style>
+  .inflation-container {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    padding: 2rem 0;
+  }
+
+  .inflation-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    text-align: center;
+  }
+
+  .inflation-header h1 {
+    color: white;
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .table-container {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    border-radius: 15px;
+    padding: 2rem;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    overflow-x: auto;
+  }
+
+  .table {
+    width: 100%;
+    color: white;
+    border-collapse: collapse;
+  }
+
+  .table th {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .table td {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .table tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .item-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    border: none;
+    padding: 0;
+  }
+
+  .item-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+  }
+
+  .item-info-cell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .item-name {
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .item-id {
+    color: #a0aec0;
+    font-size: 0.875rem;
+  }
+
+  .favorite-btn {
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #a0aec0;
+    padding: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .favorite-btn:hover {
+    border-color: #fbbf24;
+    color: #fbbf24;
+    transform: scale(1.1);
+  }
+
+  .favorite-btn.active {
+    background: rgba(251, 191, 36, 0.2);
+    border-color: #fbbf24;
+    color: #fbbf24;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .pagination a,
+  .pagination span {
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .pagination a:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    transform: translateY(-2px);
+  }
+
+  .pagination .current {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .back-link:hover {
+    color: #764ba2;
+    transform: translateX(-5px);
+  }
+
+  .stats-info {
+    background: rgba(102, 126, 234, 0.1);
+    border-left: 4px solid #667eea;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    color: #a0aec0;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="inflation-container">
+  <div class="container">
+    <a href="{% url 'server:inflation_dashboard' %}" class="back-link">
+      <i class="fas fa-arrow-left"></i> {% trans "Voltar ao Dashboard" %}
+    </a>
+
+    <div class="inflation-header">
+      <h1>{% trans "Todos os Itens do Servidor" %}</h1>
+      <p style="color: rgba(255, 255, 255, 0.8); margin-top: 0.5rem;">
+        {% trans "Lista completa de todos os itens com suas quantidades" %}
+      </p>
+    </div>
+
+    <div class="stats-info">
+      <strong>{% trans "Total de itens únicos" %}:</strong> {{ total_items|floatformat:0 }}
+      <span style="margin-left: 2rem;">
+        <strong>{% trans "Página" %}:</strong> {{ page_obj.number }} {% trans "de" %} {{ page_obj.paginator.num_pages }}
+      </span>
+    </div>
+
+    <div class="table-container">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>{% trans "Item" %}</th>
+            <th>{% trans "Quantidade Total" %}</th>
+            <th>{% trans "Proprietários Únicos" %}</th>
+            <th>{% trans "Instâncias" %}</th>
+            <th>{% trans "Favorito" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in page_obj %}
+          <tr>
+            <td>
+              <div class="item-row">
+                <img src="{% item_image_url item.item_id %}" 
+                     alt="{{ item.item_name|default:'Item' }}" 
+                     class="item-icon">
+                <div class="item-info-cell">
+                  <span class="item-name">{{ item.item_name|default:"Item Desconhecido" }}</span>
+                  <span class="item-id">ID: {{ item.item_id }}</span>
+                </div>
+              </div>
+            </td>
+            <td>{{ item.total_quantity|default:0|floatformat:0 }}</td>
+            <td>{{ item.unique_owners|default:0 }}</td>
+            <td>{{ item.total_instances|default:0 }}</td>
+            <td>
+              {% if user.is_authenticated %}
+              <button class="favorite-btn {% if item.is_favorite %}active{% endif %}" 
+                      onclick="toggleFavorite({{ item.item_id|unlocalize }}, this)"
+                      data-item-id="{{ item.item_id|unlocalize }}">
+                <i class="fas fa-star"></i>
+              </button>
+              {% else %}
+              <span style="color: #a0aec0;">{% trans "Faça login para favoritar" %}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" style="text-align: center; color: #a0aec0;">
+              {% trans "Nenhum item encontrado." %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="pagination">
+      {% if page_obj.has_previous %}
+        <a href="?page=1">&laquo; {% trans "Primeira" %}</a>
+        <a href="?page={{ page_obj.previous_page_number }}">&lsaquo; {% trans "Anterior" %}</a>
+      {% endif %}
+
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+          <span class="current">{{ num }}</span>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+          <a href="?page={{ num }}">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">{% trans "Próxima" %} &rsaquo;</a>
+        <a href="?page={{ page_obj.paginator.num_pages }}">{% trans "Última" %} &raquo;</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+function toggleFavorite(itemId, button) {
+  // Garante que itemId seja um inteiro
+  itemId = parseInt(itemId);
+  if (isNaN(itemId)) {
+    alert('{% trans "ID de item inválido" %}');
+    return;
+  }
+  
+  const csrftoken = getCookie('csrftoken') || '{{ csrf_token }}';
+  // Usa o template tag do Django para gerar a URL corretamente
+  // Gera a URL base com um placeholder e substitui pelo item_id real
+  const baseUrl = '{% url "server:inflation_toggle_favorite" item_id=123456 %}';
+  const url = baseUrl.replace('123456', itemId.toString());
+  
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': csrftoken,
+    },
+    credentials: 'same-origin',
+  })
+  .then(response => {
+    if (!response.ok) {
+      return response.json().then(err => Promise.reject(err));
+    }
+    return response.json();
+  })
+  .then(data => {
+    if (data.success) {
+      if (data.is_favorite) {
+        button.classList.add('active');
+        button.style.borderColor = '#fbbf24';
+        button.style.color = '#fbbf24';
+      } else {
+        button.classList.remove('active');
+        button.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+        button.style.color = '#a0aec0';
+      }
+    } else {
+      alert(data.error || '{% trans "Erro ao atualizar favorito" %}');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    const errorMsg = error.error || error.message || '{% trans "Erro ao atualizar favorito" %}';
+    alert(errorMsg);
+  });
+}
+</script>
+{% endblock %}
+
