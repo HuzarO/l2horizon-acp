@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% load i18n %}
+{% load l10n %}
 {% load static %}
 
 {% block extrastyle %}
@@ -544,8 +545,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const btnTransfer = document.getElementById('btn-transfer');
   const feedback = document.getElementById('valor-feedback');
 
-  const SALDO_NORMAL = parseFloat('{{ wallet.saldo|floatformat:2|default:"0.00"|escapejs }}'.replace(',', '.')) || 0;
-  const SALDO_BONUS = parseFloat('{{ wallet.saldo_bonus|floatformat:2|default:"0.00"|escapejs }}'.replace(',', '.')) || 0;
+  const SALDO_NORMAL = parseFloat('{{ wallet.saldo|unlocalize|default:"0.00"|escapejs }}') || 0;
+  const SALDO_BONUS = parseFloat('{{ wallet.saldo_bonus|unlocalize|default:"0.00"|escapejs }}') || 0;
 
   function saldoDisponivelAtual() {
     {% if show_bonus_option %}
