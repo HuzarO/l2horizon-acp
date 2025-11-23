@@ -105,6 +105,38 @@ ask_value() {
     fi
 }
 
+# Função para ler valor existente do .env
+get_existing_value() {
+    local key="$1"
+    local env_file="${2:-$ENV_FILE}"
+    
+    if [ ! -f "$env_file" ]; then
+        return 1
+    fi
+    
+    # Busca a variável no arquivo, removendo aspas e espaços
+    local value=$(grep "^${key}=" "$env_file" 2>/dev/null | head -1 | cut -d'=' -f2- | sed "s/^[[:space:]]*//;s/[[:space:]]*$//" | sed "s/^['\"]//;s/['\"]$//")
+    
+    if [ -n "$value" ]; then
+        echo "$value"
+        return 0
+    fi
+    
+    return 1
+}
+
+# Função para verificar se variável existe no .env
+var_exists() {
+    local key="$1"
+    local env_file="${2:-$ENV_FILE}"
+    
+    if [ ! -f "$env_file" ]; then
+        return 1
+    fi
+    
+    grep -q "^${key}=" "$env_file" 2>/dev/null
+}
+
 # Função para adicionar seção ao .env
 add_section() {
     local section_name="$1"
@@ -119,198 +151,481 @@ add_var() {
     echo "${key}=${value}" >> "$ENV_FILE"
 }
 
+# Função para atualizar ou adicionar variável no .env
+update_var() {
+    local key="$1"
+    local value="$2"
+    local env_file="${3:-$ENV_FILE}"
+    
+    if var_exists "$key" "$env_file"; then
+        # Atualiza variável existente (preserva a linha original se possível)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS usa versão diferente do sed
+            sed -i '' "s|^${key}=.*|${key}=${value}|" "$env_file"
+        else
+            sed -i "s|^${key}=.*|${key}=${value}|" "$env_file"
+        fi
+    else
+        # Adiciona nova variável
+        echo "${key}=${value}" >> "$env_file"
+    fi
+}
+
 # Função para gerar variáveis obrigatórias
 generate_required() {
+    local edit_mode="${1:-false}"
     log_info "Gerando variáveis obrigatórias..."
     
-    add_section "REQUIRED CONFIGURATION"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "REQUIRED CONFIGURATION"
+    fi
     
     # DEBUG
-    if ask_yes_no "Habilitar modo DEBUG?" "n"; then
-        add_var "DEBUG" "True"
+    local existing_debug=$(get_existing_value "DEBUG" 2>/dev/null || echo "")
+    local debug_default="${existing_debug:-False}"
+    if [ "$edit_mode" = "true" ] && [ -n "$existing_debug" ]; then
+        if ask_yes_no "Habilitar modo DEBUG? (atual: $existing_debug)" "$(echo "$existing_debug" | tr '[:upper:]' '[:lower:]')"; then
+            update_var "DEBUG" "True"
+        else
+            update_var "DEBUG" "False"
+        fi
     else
-        add_var "DEBUG" "False"
+        if ask_yes_no "Habilitar modo DEBUG?" "$(echo "$debug_default" | tr '[:upper:]' '[:lower:]')"; then
+            if [ "$edit_mode" = "true" ]; then
+                update_var "DEBUG" "True"
+            else
+                add_var "DEBUG" "True"
+            fi
+        else
+            if [ "$edit_mode" = "true" ]; then
+                update_var "DEBUG" "False"
+            else
+                add_var "DEBUG" "False"
+            fi
+        fi
     fi
     
     # SECRET_KEY
-    log_info "Gerando SECRET_KEY..."
-    SECRET_KEY=$(generate_secret_key 2>/dev/null || echo "41&l85x\$t8g5!wgvzxw9_v%jbph2msibr3x7jww5%1u8w*3ax")
-    add_var "SECRET_KEY" "$SECRET_KEY"
+    local existing_secret=$(get_existing_value "SECRET_KEY" 2>/dev/null || echo "")
+    if [ -z "$existing_secret" ] || [ "$edit_mode" = "false" ]; then
+        log_info "Gerando SECRET_KEY..."
+        SECRET_KEY=$(generate_secret_key 2>/dev/null || echo "41&l85x\$t8g5!wgvzxw9_v%jbph2msibr3x7jww5%1u8w*3ax")
+        if [ "$edit_mode" = "true" ]; then
+            update_var "SECRET_KEY" "$SECRET_KEY"
+        else
+            add_var "SECRET_KEY" "$SECRET_KEY"
+        fi
+    else
+        log_info "SECRET_KEY já existe, mantendo valor atual."
+        if [ "$edit_mode" = "true" ]; then
+            # Não atualiza, mantém o existente
+            :
+        fi
+    fi
     
     # Database
-    add_section "DATABASE CONFIGURATION"
-    DB_ENGINE=$(ask_value "Tipo de banco de dados (postgresql/mysql/sqlite3)" "postgresql")
-    add_var "DB_ENGINE" "$DB_ENGINE"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "DATABASE CONFIGURATION"
+    fi
+    local existing_db_engine=$(get_existing_value "DB_ENGINE" 2>/dev/null || echo "postgresql")
+    DB_ENGINE=$(ask_value "Tipo de banco de dados (postgresql/mysql/sqlite3)" "$existing_db_engine")
+    if [ "$edit_mode" = "true" ]; then
+        update_var "DB_ENGINE" "$DB_ENGINE"
+    else
+        add_var "DB_ENGINE" "$DB_ENGINE"
+    fi
     
     if [ "$DB_ENGINE" != "sqlite3" ]; then
-        DB_HOST=$(ask_value "Host do banco de dados" "postgres")
-        DB_NAME=$(ask_value "Nome do banco de dados" "db_name")
-        DB_USERNAME=$(ask_value "Usuário do banco de dados" "db_user")
-        DB_PASS=$(ask_value "Senha do banco de dados" "db_pass")
-        DB_PORT=$(ask_value "Porta do banco de dados" "5432")
+        local existing_db_host=$(get_existing_value "DB_HOST" 2>/dev/null || echo "postgres")
+        local existing_db_name=$(get_existing_value "DB_NAME" 2>/dev/null || echo "db_name")
+        local existing_db_user=$(get_existing_value "DB_USERNAME" 2>/dev/null || echo "db_user")
+        local existing_db_pass=$(get_existing_value "DB_PASS" 2>/dev/null || echo "db_pass")
+        local existing_db_port=$(get_existing_value "DB_PORT" 2>/dev/null || echo "5432")
         
-        add_var "DB_HOST" "$DB_HOST"
-        add_var "DB_NAME" "$DB_NAME"
-        add_var "DB_USERNAME" "$DB_USERNAME"
-        add_var "DB_PASS" "$DB_PASS"
-        add_var "DB_PORT" "$DB_PORT"
+        DB_HOST=$(ask_value "Host do banco de dados" "$existing_db_host")
+        DB_NAME=$(ask_value "Nome do banco de dados" "$existing_db_name")
+        DB_USERNAME=$(ask_value "Usuário do banco de dados" "$existing_db_user")
+        DB_PASS=$(ask_value "Senha do banco de dados" "$existing_db_pass")
+        DB_PORT=$(ask_value "Porta do banco de dados" "$existing_db_port")
+        
+        if [ "$edit_mode" = "true" ]; then
+            update_var "DB_HOST" "$DB_HOST"
+            update_var "DB_NAME" "$DB_NAME"
+            update_var "DB_USERNAME" "$DB_USERNAME"
+            update_var "DB_PASS" "$DB_PASS"
+            update_var "DB_PORT" "$DB_PORT"
+        else
+            add_var "DB_HOST" "$DB_HOST"
+            add_var "DB_NAME" "$DB_NAME"
+            add_var "DB_USERNAME" "$DB_USERNAME"
+            add_var "DB_PASS" "$DB_PASS"
+            add_var "DB_PORT" "$DB_PORT"
+        fi
     fi
     
     # Redis e Cache
-    add_section "REDIS AND CACHE"
-    add_var "DJANGO_CACHE_REDIS_URI" "redis://redis:6379/0"
-    add_var "CELERY_BROKER_URI" "redis://redis:6379/1"
-    add_var "CELERY_BACKEND_URI" "redis://redis:6379/1"
-    add_var "CHANNELS_BACKEND" "redis://redis:6379/2"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "REDIS AND CACHE"
+    fi
+    local existing_cache=$(get_existing_value "DJANGO_CACHE_REDIS_URI" 2>/dev/null || echo "redis://redis:6379/0")
+    local existing_broker=$(get_existing_value "CELERY_BROKER_URI" 2>/dev/null || echo "redis://redis:6379/1")
+    local existing_backend=$(get_existing_value "CELERY_BACKEND_URI" 2>/dev/null || echo "redis://redis:6379/1")
+    local existing_channels=$(get_existing_value "CHANNELS_BACKEND" 2>/dev/null || echo "redis://redis:6379/2")
+    
+    if [ "$edit_mode" = "true" ]; then
+        update_var "DJANGO_CACHE_REDIS_URI" "$existing_cache"
+        update_var "CELERY_BROKER_URI" "$existing_broker"
+        update_var "CELERY_BACKEND_URI" "$existing_backend"
+        update_var "CHANNELS_BACKEND" "$existing_channels"
+    else
+        add_var "DJANGO_CACHE_REDIS_URI" "$existing_cache"
+        add_var "CELERY_BROKER_URI" "$existing_broker"
+        add_var "CELERY_BACKEND_URI" "$existing_backend"
+        add_var "CHANNELS_BACKEND" "$existing_channels"
+    fi
     
     # Auditor
-    if ask_yes_no "Habilitar auditor middleware?" "y"; then
-        add_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "True"
+    local existing_auditor=$(get_existing_value "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" 2>/dev/null || echo "True")
+    local auditor_default=$(echo "$existing_auditor" | tr '[:upper:]' '[:lower:]')
+    if [ "$edit_mode" = "true" ] && [ -n "$existing_auditor" ]; then
+        if ask_yes_no "Habilitar auditor middleware? (atual: $existing_auditor)" "$auditor_default"; then
+            update_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "True"
+        else
+            update_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "False"
+        fi
     else
-        add_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "False"
+        if ask_yes_no "Habilitar auditor middleware?" "$auditor_default"; then
+            if [ "$edit_mode" = "true" ]; then
+                update_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "True"
+            else
+                add_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "True"
+            fi
+        else
+            if [ "$edit_mode" = "true" ]; then
+                update_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "False"
+            else
+                add_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "False"
+            fi
+        fi
     fi
     
     # Hostname
-    add_section "HOSTNAME CONFIGURATION"
-    RENDER_EXTERNAL_HOSTNAME=$(ask_value "Hostname externo" "pdl.denky.dev.br")
-    RENDER_EXTERNAL_FRONTEND=$(ask_value "Frontend externo" "$RENDER_EXTERNAL_HOSTNAME")
-    add_var "RENDER_EXTERNAL_HOSTNAME" "$RENDER_EXTERNAL_HOSTNAME"
-    add_var "RENDER_EXTERNAL_FRONTEND" "$RENDER_EXTERNAL_FRONTEND"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "HOSTNAME CONFIGURATION"
+    fi
+    local existing_hostname=$(get_existing_value "RENDER_EXTERNAL_HOSTNAME" 2>/dev/null || echo "pdl.denky.dev.br")
+    local existing_frontend=$(get_existing_value "RENDER_EXTERNAL_FRONTEND" 2>/dev/null || echo "$existing_hostname")
+    RENDER_EXTERNAL_HOSTNAME=$(ask_value "Hostname externo" "$existing_hostname")
+    RENDER_EXTERNAL_FRONTEND=$(ask_value "Frontend externo" "$existing_frontend")
+    if [ "$edit_mode" = "true" ]; then
+        update_var "RENDER_EXTERNAL_HOSTNAME" "$RENDER_EXTERNAL_HOSTNAME"
+        update_var "RENDER_EXTERNAL_FRONTEND" "$RENDER_EXTERNAL_FRONTEND"
+    else
+        add_var "RENDER_EXTERNAL_HOSTNAME" "$RENDER_EXTERNAL_HOSTNAME"
+        add_var "RENDER_EXTERNAL_FRONTEND" "$RENDER_EXTERNAL_FRONTEND"
+    fi
     
     # Encryption
-    log_info "Gerando ENCRYPTION_KEY..."
-    ENCRYPTION_KEY=$(generate_fernet_key 2>/dev/null || echo "iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac=")
-    add_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
-    add_var "DATA_UPLOAD_MAX_MEMORY_SIZE" "31457280"
+    local existing_encryption=$(get_existing_value "ENCRYPTION_KEY" 2>/dev/null || echo "")
+    if [ -z "$existing_encryption" ] || [ "$edit_mode" = "false" ]; then
+        log_info "Gerando ENCRYPTION_KEY..."
+        ENCRYPTION_KEY=$(generate_fernet_key 2>/dev/null || echo "iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac=")
+        if [ "$edit_mode" = "true" ]; then
+            update_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
+        else
+            add_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
+        fi
+    else
+        log_info "ENCRYPTION_KEY já existe, mantendo valor atual (não será alterado por segurança)."
+    fi
+    local existing_upload_size=$(get_existing_value "DATA_UPLOAD_MAX_MEMORY_SIZE" 2>/dev/null || echo "31457280")
+    if [ "$edit_mode" = "true" ]; then
+        update_var "DATA_UPLOAD_MAX_MEMORY_SIZE" "$existing_upload_size"
+    else
+        add_var "DATA_UPLOAD_MAX_MEMORY_SIZE" "$existing_upload_size"
+    fi
     
     # hCaptcha
-    add_section "HCAPTCHA CONFIGURATION"
-    CONFIG_HCAPTCHA_SITE_KEY=$(ask_value "hCaptcha Site Key" "bcf40348-fa88-4570-a752-2asdasde0b2bc")
-    CONFIG_HCAPTCHA_SECRET_KEY=$(ask_value "hCaptcha Secret Key" "ES_dc688fdasdasdadasdas4e918093asddsddsafa3f1b")
-    add_var "CONFIG_HCAPTCHA_SITE_KEY" "$CONFIG_HCAPTCHA_SITE_KEY"
-    add_var "CONFIG_HCAPTCHA_SECRET_KEY" "$CONFIG_HCAPTCHA_SECRET_KEY"
-    add_var "CONFIG_LOGIN_MAX_ATTEMPTS" "3"
-    add_var "CONFIG_HCAPTCHA_FAIL_OPEN" "False"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "HCAPTCHA CONFIGURATION"
+    fi
+    local existing_hcaptcha_site=$(get_existing_value "CONFIG_HCAPTCHA_SITE_KEY" 2>/dev/null || echo "bcf40348-fa88-4570-a752-2asdasde0b2bc")
+    local existing_hcaptcha_secret=$(get_existing_value "CONFIG_HCAPTCHA_SECRET_KEY" 2>/dev/null || echo "ES_dc688fdasdasdadasdas4e918093asddsddsafa3f1b")
+    local existing_max_attempts=$(get_existing_value "CONFIG_LOGIN_MAX_ATTEMPTS" 2>/dev/null || echo "3")
+    local existing_fail_open=$(get_existing_value "CONFIG_HCAPTCHA_FAIL_OPEN" 2>/dev/null || echo "False")
+    
+    CONFIG_HCAPTCHA_SITE_KEY=$(ask_value "hCaptcha Site Key" "$existing_hcaptcha_site")
+    CONFIG_HCAPTCHA_SECRET_KEY=$(ask_value "hCaptcha Secret Key" "$existing_hcaptcha_secret")
+    CONFIG_LOGIN_MAX_ATTEMPTS=$(ask_value "Número máximo de tentativas de login" "$existing_max_attempts")
+    CONFIG_HCAPTCHA_FAIL_OPEN=$(ask_value "hCaptcha Fail Open (True/False)" "$existing_fail_open")
+    
+    if [ "$edit_mode" = "true" ]; then
+        update_var "CONFIG_HCAPTCHA_SITE_KEY" "$CONFIG_HCAPTCHA_SITE_KEY"
+        update_var "CONFIG_HCAPTCHA_SECRET_KEY" "$CONFIG_HCAPTCHA_SECRET_KEY"
+        update_var "CONFIG_LOGIN_MAX_ATTEMPTS" "$CONFIG_LOGIN_MAX_ATTEMPTS"
+        update_var "CONFIG_HCAPTCHA_FAIL_OPEN" "$CONFIG_HCAPTCHA_FAIL_OPEN"
+    else
+        add_var "CONFIG_HCAPTCHA_SITE_KEY" "$CONFIG_HCAPTCHA_SITE_KEY"
+        add_var "CONFIG_HCAPTCHA_SECRET_KEY" "$CONFIG_HCAPTCHA_SECRET_KEY"
+        add_var "CONFIG_LOGIN_MAX_ATTEMPTS" "$CONFIG_LOGIN_MAX_ATTEMPTS"
+        add_var "CONFIG_HCAPTCHA_FAIL_OPEN" "$CONFIG_HCAPTCHA_FAIL_OPEN"
+    fi
     
     # Lineage Query Module
-    add_section "LINEAGE QUERY MODULE"
-    LINEAGE_QUERY_MODULE=$(ask_value "Módulo de query do Lineage" "dreamv3")
-    add_var "LINEAGE_QUERY_MODULE" "$LINEAGE_QUERY_MODULE"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "LINEAGE QUERY MODULE"
+    fi
+    local existing_query_module=$(get_existing_value "LINEAGE_QUERY_MODULE" 2>/dev/null || echo "dreamv3")
+    LINEAGE_QUERY_MODULE=$(ask_value "Módulo de query do Lineage" "$existing_query_module")
+    if [ "$edit_mode" = "true" ]; then
+        update_var "LINEAGE_QUERY_MODULE" "$LINEAGE_QUERY_MODULE"
+    else
+        add_var "LINEAGE_QUERY_MODULE" "$LINEAGE_QUERY_MODULE"
+    fi
     
     # Localization
-    add_section "LOCALIZATION"
-    CONFIG_LANGUAGE_CODE=$(ask_value "Código do idioma (pt/en/es)" "pt")
-    CONFIG_TIME_ZONE=$(ask_value "Fuso horário" "America/Recife")
-    CONFIG_DECIMAL_SEPARATOR=$(ask_value "Separador decimal" ",")
-    CONFIG_USE_THOUSAND_SEPARATOR=$(ask_value "Usar separador de milhar? (True/False)" "True")
-    CONFIG_DATETIME_FORMAT=$(ask_value "Formato de data/hora" "d/m/Y H:i:s")
-    CONFIG_DATE_FORMAT=$(ask_value "Formato de data" "d/m/Y")
-    CONFIG_TIME_FORMAT=$(ask_value "Formato de hora" "H:i:s")
-    CONFIG_GMT_OFFSET=$(ask_value "Offset GMT" "-3")
+    if [ "$edit_mode" = "false" ]; then
+        add_section "LOCALIZATION"
+    fi
+    local existing_lang=$(get_existing_value "CONFIG_LANGUAGE_CODE" 2>/dev/null | sed 's/"//g' || echo "pt")
+    local existing_tz=$(get_existing_value "CONFIG_TIME_ZONE" 2>/dev/null | sed 's/"//g' || echo "America/Recife")
+    local existing_decimal=$(get_existing_value "CONFIG_DECIMAL_SEPARATOR" 2>/dev/null | sed "s/'//g" || echo ",")
+    local existing_thousand=$(get_existing_value "CONFIG_USE_THOUSAND_SEPARATOR" 2>/dev/null || echo "True")
+    local existing_datetime=$(get_existing_value "CONFIG_DATETIME_FORMAT" 2>/dev/null | sed "s/'//g" || echo "d/m/Y H:i:s")
+    local existing_date=$(get_existing_value "CONFIG_DATE_FORMAT" 2>/dev/null | sed "s/'//g" || echo "d/m/Y")
+    local existing_time=$(get_existing_value "CONFIG_TIME_FORMAT" 2>/dev/null | sed "s/'//g" || echo "H:i:s")
+    local existing_gmt=$(get_existing_value "CONFIG_GMT_OFFSET" 2>/dev/null || echo "-3")
     
-    add_var "CONFIG_LANGUAGE_CODE" "\"$CONFIG_LANGUAGE_CODE\""
-    add_var "CONFIG_TIME_ZONE" "\"$CONFIG_TIME_ZONE\""
-    add_var "CONFIG_DECIMAL_SEPARATOR" "'$CONFIG_DECIMAL_SEPARATOR'"
-    add_var "CONFIG_USE_THOUSAND_SEPARATOR" "$CONFIG_USE_THOUSAND_SEPARATOR"
-    add_var "CONFIG_DATETIME_FORMAT" "'$CONFIG_DATETIME_FORMAT'"
-    add_var "CONFIG_DATE_FORMAT" "'$CONFIG_DATE_FORMAT'"
-    add_var "CONFIG_TIME_FORMAT" "'$CONFIG_TIME_FORMAT'"
-    add_var "CONFIG_GMT_OFFSET" "$CONFIG_GMT_OFFSET"
+    CONFIG_LANGUAGE_CODE=$(ask_value "Código do idioma (pt/en/es)" "$existing_lang")
+    CONFIG_TIME_ZONE=$(ask_value "Fuso horário" "$existing_tz")
+    CONFIG_DECIMAL_SEPARATOR=$(ask_value "Separador decimal" "$existing_decimal")
+    CONFIG_USE_THOUSAND_SEPARATOR=$(ask_value "Usar separador de milhar? (True/False)" "$existing_thousand")
+    CONFIG_DATETIME_FORMAT=$(ask_value "Formato de data/hora" "$existing_datetime")
+    CONFIG_DATE_FORMAT=$(ask_value "Formato de data" "$existing_date")
+    CONFIG_TIME_FORMAT=$(ask_value "Formato de hora" "$existing_time")
+    CONFIG_GMT_OFFSET=$(ask_value "Offset GMT" "$existing_gmt")
+    
+    if [ "$edit_mode" = "true" ]; then
+        update_var "CONFIG_LANGUAGE_CODE" "\"$CONFIG_LANGUAGE_CODE\""
+        update_var "CONFIG_TIME_ZONE" "\"$CONFIG_TIME_ZONE\""
+        update_var "CONFIG_DECIMAL_SEPARATOR" "'$CONFIG_DECIMAL_SEPARATOR'"
+        update_var "CONFIG_USE_THOUSAND_SEPARATOR" "$CONFIG_USE_THOUSAND_SEPARATOR"
+        update_var "CONFIG_DATETIME_FORMAT" "'$CONFIG_DATETIME_FORMAT'"
+        update_var "CONFIG_DATE_FORMAT" "'$CONFIG_DATE_FORMAT'"
+        update_var "CONFIG_TIME_FORMAT" "'$CONFIG_TIME_FORMAT'"
+        update_var "CONFIG_GMT_OFFSET" "$CONFIG_GMT_OFFSET"
+    else
+        add_var "CONFIG_LANGUAGE_CODE" "\"$CONFIG_LANGUAGE_CODE\""
+        add_var "CONFIG_TIME_ZONE" "\"$CONFIG_TIME_ZONE\""
+        add_var "CONFIG_DECIMAL_SEPARATOR" "'$CONFIG_DECIMAL_SEPARATOR'"
+        add_var "CONFIG_USE_THOUSAND_SEPARATOR" "$CONFIG_USE_THOUSAND_SEPARATOR"
+        add_var "CONFIG_DATETIME_FORMAT" "'$CONFIG_DATETIME_FORMAT'"
+        add_var "CONFIG_DATE_FORMAT" "'$CONFIG_DATE_FORMAT'"
+        add_var "CONFIG_TIME_FORMAT" "'$CONFIG_TIME_FORMAT'"
+        add_var "CONFIG_GMT_OFFSET" "$CONFIG_GMT_OFFSET"
+    fi
     
     # Project Info
-    add_section "PROJECT INFORMATION"
-    PROJECT_TITLE=$(ask_value "Título do projeto" "Lineage 2 PDL")
-    PROJECT_AUTHOR=$(ask_value "Autor do projeto" "Lineage 2 PDL")
-    PROJECT_DESCRIPTION=$(ask_value "Descrição do projeto" "O PDL é um painel que nasceu com a missão de oferecer ferramentas poderosas para administradores de servidores privados de Lineage 2.")
-    PROJECT_KEYWORDS=$(ask_value "Palavras-chave" "lineage l2 painel servidor")
-    PROJECT_URL=$(ask_value "URL do projeto" "https://pdl.denky.dev.br")
-    PROJECT_LOGO_URL=$(ask_value "URL do logo" "/static/assets/img/logo_painel.png")
-    PROJECT_FAVICON_ICO=$(ask_value "URL do favicon .ico" "/static/assets/img/ico.jpg")
-    PROJECT_FAVICON_MANIFEST=$(ask_value "URL do manifest" "/static/assets/img/favicon/site.webmanifest")
-    PROJECT_THEME_COLOR=$(ask_value "Cor do tema" "#ffffff")
+    if [ "$edit_mode" = "false" ]; then
+        add_section "PROJECT INFORMATION"
+    fi
+    local existing_title=$(get_existing_value "PROJECT_TITLE" 2>/dev/null || echo "Lineage 2 PDL")
+    local existing_author=$(get_existing_value "PROJECT_AUTHOR" 2>/dev/null || echo "Lineage 2 PDL")
+    local existing_desc=$(get_existing_value "PROJECT_DESCRIPTION" 2>/dev/null || echo "O PDL é um painel que nasceu com a missão de oferecer ferramentas poderosas para administradores de servidores privados de Lineage 2.")
+    local existing_keywords=$(get_existing_value "PROJECT_KEYWORDS" 2>/dev/null || echo "lineage l2 painel servidor")
+    local existing_url=$(get_existing_value "PROJECT_URL" 2>/dev/null || echo "https://pdl.denky.dev.br")
+    local existing_logo=$(get_existing_value "PROJECT_LOGO_URL" 2>/dev/null || echo "/static/assets/img/logo_painel.png")
+    local existing_favicon=$(get_existing_value "PROJECT_FAVICON_ICO" 2>/dev/null || echo "/static/assets/img/ico.jpg")
+    local existing_manifest=$(get_existing_value "PROJECT_FAVICON_MANIFEST" 2>/dev/null || echo "/static/assets/img/favicon/site.webmanifest")
+    local existing_theme=$(get_existing_value "PROJECT_THEME_COLOR" 2>/dev/null || echo "#ffffff")
     
-    add_var "PROJECT_TITLE" "$PROJECT_TITLE"
-    add_var "PROJECT_AUTHOR" "$PROJECT_AUTHOR"
-    add_var "PROJECT_DESCRIPTION" "$PROJECT_DESCRIPTION"
-    add_var "PROJECT_KEYWORDS" "$PROJECT_KEYWORDS"
-    add_var "PROJECT_URL" "$PROJECT_URL"
-    add_var "PROJECT_LOGO_URL" "$PROJECT_LOGO_URL"
-    add_var "PROJECT_FAVICON_ICO" "$PROJECT_FAVICON_ICO"
-    add_var "PROJECT_FAVICON_MANIFEST" "$PROJECT_FAVICON_MANIFEST"
-    add_var "PROJECT_THEME_COLOR" "$PROJECT_THEME_COLOR"
+    PROJECT_TITLE=$(ask_value "Título do projeto" "$existing_title")
+    PROJECT_AUTHOR=$(ask_value "Autor do projeto" "$existing_author")
+    PROJECT_DESCRIPTION=$(ask_value "Descrição do projeto" "$existing_desc")
+    PROJECT_KEYWORDS=$(ask_value "Palavras-chave" "$existing_keywords")
+    PROJECT_URL=$(ask_value "URL do projeto" "$existing_url")
+    PROJECT_LOGO_URL=$(ask_value "URL do logo" "$existing_logo")
+    PROJECT_FAVICON_ICO=$(ask_value "URL do favicon .ico" "$existing_favicon")
+    PROJECT_FAVICON_MANIFEST=$(ask_value "URL do manifest" "$existing_manifest")
+    PROJECT_THEME_COLOR=$(ask_value "Cor do tema" "$existing_theme")
+    
+    if [ "$edit_mode" = "true" ]; then
+        update_var "PROJECT_TITLE" "$PROJECT_TITLE"
+        update_var "PROJECT_AUTHOR" "$PROJECT_AUTHOR"
+        update_var "PROJECT_DESCRIPTION" "$PROJECT_DESCRIPTION"
+        update_var "PROJECT_KEYWORDS" "$PROJECT_KEYWORDS"
+        update_var "PROJECT_URL" "$PROJECT_URL"
+        update_var "PROJECT_LOGO_URL" "$PROJECT_LOGO_URL"
+        update_var "PROJECT_FAVICON_ICO" "$PROJECT_FAVICON_ICO"
+        update_var "PROJECT_FAVICON_MANIFEST" "$PROJECT_FAVICON_MANIFEST"
+        update_var "PROJECT_THEME_COLOR" "$PROJECT_THEME_COLOR"
+    else
+        add_var "PROJECT_TITLE" "$PROJECT_TITLE"
+        add_var "PROJECT_AUTHOR" "$PROJECT_AUTHOR"
+        add_var "PROJECT_DESCRIPTION" "$PROJECT_DESCRIPTION"
+        add_var "PROJECT_KEYWORDS" "$PROJECT_KEYWORDS"
+        add_var "PROJECT_URL" "$PROJECT_URL"
+        add_var "PROJECT_LOGO_URL" "$PROJECT_LOGO_URL"
+        add_var "PROJECT_FAVICON_ICO" "$PROJECT_FAVICON_ICO"
+        add_var "PROJECT_FAVICON_MANIFEST" "$PROJECT_FAVICON_MANIFEST"
+        add_var "PROJECT_THEME_COLOR" "$PROJECT_THEME_COLOR"
+    fi
     
     # Social Media Links
-    add_section "SOCIAL MEDIA LINKS"
-    PROJECT_DISCORD_URL=$(ask_value "URL do Discord" "https://discord.gg/seu-link-aqui")
-    PROJECT_YOUTUBE_URL=$(ask_value "URL do YouTube" "https://www.youtube.com/@seu-canal")
-    PROJECT_FACEBOOK_URL=$(ask_value "URL do Facebook" "https://www.facebook.com/sua-pagina")
-    PROJECT_INSTAGRAM_URL=$(ask_value "URL do Instagram" "https://www.instagram.com/seu-perfil")
+    if [ "$edit_mode" = "false" ]; then
+        add_section "SOCIAL MEDIA LINKS"
+    fi
+    local existing_discord=$(get_existing_value "PROJECT_DISCORD_URL" 2>/dev/null | sed "s/'//g" || echo "https://discord.gg/seu-link-aqui")
+    local existing_youtube=$(get_existing_value "PROJECT_YOUTUBE_URL" 2>/dev/null | sed "s/'//g" || echo "https://www.youtube.com/@seu-canal")
+    local existing_facebook=$(get_existing_value "PROJECT_FACEBOOK_URL" 2>/dev/null | sed "s/'//g" || echo "https://www.facebook.com/sua-pagina")
+    local existing_instagram=$(get_existing_value "PROJECT_INSTAGRAM_URL" 2>/dev/null | sed "s/'//g" || echo "https://www.instagram.com/seu-perfil")
     
-    add_var "PROJECT_DISCORD_URL" "'$PROJECT_DISCORD_URL'"
-    add_var "PROJECT_YOUTUBE_URL" "'$PROJECT_YOUTUBE_URL'"
-    add_var "PROJECT_FACEBOOK_URL" "'$PROJECT_FACEBOOK_URL'"
-    add_var "PROJECT_INSTAGRAM_URL" "'$PROJECT_INSTAGRAM_URL'"
+    PROJECT_DISCORD_URL=$(ask_value "URL do Discord" "$existing_discord")
+    PROJECT_YOUTUBE_URL=$(ask_value "URL do YouTube" "$existing_youtube")
+    PROJECT_FACEBOOK_URL=$(ask_value "URL do Facebook" "$existing_facebook")
+    PROJECT_INSTAGRAM_URL=$(ask_value "URL do Instagram" "$existing_instagram")
+    
+    if [ "$edit_mode" = "true" ]; then
+        update_var "PROJECT_DISCORD_URL" "'$PROJECT_DISCORD_URL'"
+        update_var "PROJECT_YOUTUBE_URL" "'$PROJECT_YOUTUBE_URL'"
+        update_var "PROJECT_FACEBOOK_URL" "'$PROJECT_FACEBOOK_URL'"
+        update_var "PROJECT_INSTAGRAM_URL" "'$PROJECT_INSTAGRAM_URL'"
+    else
+        add_var "PROJECT_DISCORD_URL" "'$PROJECT_DISCORD_URL'"
+        add_var "PROJECT_YOUTUBE_URL" "'$PROJECT_YOUTUBE_URL'"
+        add_var "PROJECT_FACEBOOK_URL" "'$PROJECT_FACEBOOK_URL'"
+        add_var "PROJECT_INSTAGRAM_URL" "'$PROJECT_INSTAGRAM_URL'"
+    fi
     
     # Basic Flags
-    add_section "BASIC FLAGS"
-    add_var "RUNNING_IN_DOCKER" "True"
-    add_var "SLOGAN" "True"
-    add_var "LINEAGE_DB_ENABLED" "False"
-    add_var "SHOW_THEME_ERRORS_TO_USERS" "True"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "BASIC FLAGS"
+    fi
+    local existing_docker=$(get_existing_value "RUNNING_IN_DOCKER" 2>/dev/null || echo "True")
+    local existing_slogan=$(get_existing_value "SLOGAN" 2>/dev/null || echo "True")
+    local existing_lineage_db=$(get_existing_value "LINEAGE_DB_ENABLED" 2>/dev/null || echo "False")
+    local existing_theme_errors=$(get_existing_value "SHOW_THEME_ERRORS_TO_USERS" 2>/dev/null || echo "True")
+    
+    if [ "$edit_mode" = "true" ]; then
+        update_var "RUNNING_IN_DOCKER" "$existing_docker"
+        update_var "SLOGAN" "$existing_slogan"
+        update_var "LINEAGE_DB_ENABLED" "$existing_lineage_db"
+        update_var "SHOW_THEME_ERRORS_TO_USERS" "$existing_theme_errors"
+    else
+        add_var "RUNNING_IN_DOCKER" "$existing_docker"
+        add_var "SLOGAN" "$existing_slogan"
+        add_var "LINEAGE_DB_ENABLED" "$existing_lineage_db"
+        add_var "SHOW_THEME_ERRORS_TO_USERS" "$existing_theme_errors"
+    fi
 }
 
 # Função para gerar configuração de Email
 generate_email_config() {
-    add_section "EMAIL CONFIGURATION"
+    local edit_mode="${1:-false}"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "EMAIL CONFIGURATION"
+    fi
     
-    if ask_yes_no "Habilitar envio de emails?" "n"; then
+    local existing_email_enable=$(get_existing_value "CONFIG_EMAIL_ENABLE" 2>/dev/null || echo "False")
+    local email_enable_default=$(echo "$existing_email_enable" | tr '[:upper:]' '[:lower:]')
+    
+    if ask_yes_no "Habilitar envio de emails?" "$email_enable_default"; then
         add_var "CONFIG_EMAIL_ENABLE" "True"
-        CONFIG_EMAIL_USE_TLS=$(ask_yes_no "Usar TLS?" "y" && echo "True" || echo "False")
-        CONFIG_EMAIL_HOST=$(ask_value "Servidor SMTP" "smtp.domain.com")
-        CONFIG_EMAIL_PORT=$(ask_value "Porta SMTP" "587")
-        CONFIG_EMAIL_HOST_USER=$(ask_value "Usuário do email" "mail@mail.dev.br")
-        CONFIG_EMAIL_HOST_PASSWORD=$(ask_value "Senha do email" "password")
-        CONFIG_DEFAULT_FROM_EMAIL=$(ask_value "Email remetente padrão" "$CONFIG_EMAIL_HOST_USER")
+        local existing_tls=$(get_existing_value "CONFIG_EMAIL_USE_TLS" 2>/dev/null || echo "True")
+        local existing_smtp=$(get_existing_value "CONFIG_EMAIL_HOST" 2>/dev/null || echo "smtp.domain.com")
+        local existing_port=$(get_existing_value "CONFIG_EMAIL_PORT" 2>/dev/null || echo "587")
+        local existing_user=$(get_existing_value "CONFIG_EMAIL_HOST_USER" 2>/dev/null || echo "mail@mail.dev.br")
+        local existing_pass=$(get_existing_value "CONFIG_EMAIL_HOST_PASSWORD" 2>/dev/null || echo "password")
+        local existing_from=$(get_existing_value "CONFIG_DEFAULT_FROM_EMAIL" 2>/dev/null || echo "$existing_user")
         
-        add_var "CONFIG_EMAIL_USE_TLS" "$CONFIG_EMAIL_USE_TLS"
-        add_var "CONFIG_EMAIL_HOST" "$CONFIG_EMAIL_HOST"
-        add_var "CONFIG_EMAIL_PORT" "$CONFIG_EMAIL_PORT"
-        add_var "CONFIG_EMAIL_HOST_USER" "$CONFIG_EMAIL_HOST_USER"
-        add_var "CONFIG_EMAIL_HOST_PASSWORD" "$CONFIG_EMAIL_HOST_PASSWORD"
-        add_var "CONFIG_DEFAULT_FROM_EMAIL" "$CONFIG_DEFAULT_FROM_EMAIL"
+        CONFIG_EMAIL_USE_TLS=$(ask_yes_no "Usar TLS?" "$(echo "$existing_tls" | tr '[:upper:]' '[:lower:]')" && echo "True" || echo "False")
+        CONFIG_EMAIL_HOST=$(ask_value "Servidor SMTP" "$existing_smtp")
+        CONFIG_EMAIL_PORT=$(ask_value "Porta SMTP" "$existing_port")
+        CONFIG_EMAIL_HOST_USER=$(ask_value "Usuário do email" "$existing_user")
+        CONFIG_EMAIL_HOST_PASSWORD=$(ask_value "Senha do email" "$existing_pass")
+        CONFIG_DEFAULT_FROM_EMAIL=$(ask_value "Email remetente padrão" "$existing_from")
+        
+        if [ "$edit_mode" = "true" ]; then
+            update_var "CONFIG_EMAIL_USE_TLS" "$CONFIG_EMAIL_USE_TLS"
+            update_var "CONFIG_EMAIL_HOST" "$CONFIG_EMAIL_HOST"
+            update_var "CONFIG_EMAIL_PORT" "$CONFIG_EMAIL_PORT"
+            update_var "CONFIG_EMAIL_HOST_USER" "$CONFIG_EMAIL_HOST_USER"
+            update_var "CONFIG_EMAIL_HOST_PASSWORD" "$CONFIG_EMAIL_HOST_PASSWORD"
+            update_var "CONFIG_DEFAULT_FROM_EMAIL" "$CONFIG_DEFAULT_FROM_EMAIL"
+        else
+            add_var "CONFIG_EMAIL_USE_TLS" "$CONFIG_EMAIL_USE_TLS"
+            add_var "CONFIG_EMAIL_HOST" "$CONFIG_EMAIL_HOST"
+            add_var "CONFIG_EMAIL_PORT" "$CONFIG_EMAIL_PORT"
+            add_var "CONFIG_EMAIL_HOST_USER" "$CONFIG_EMAIL_HOST_USER"
+            add_var "CONFIG_EMAIL_HOST_PASSWORD" "$CONFIG_EMAIL_HOST_PASSWORD"
+            add_var "CONFIG_DEFAULT_FROM_EMAIL" "$CONFIG_DEFAULT_FROM_EMAIL"
+        fi
     else
-        add_var "CONFIG_EMAIL_ENABLE" "False"
-        add_var "CONFIG_EMAIL_USE_TLS" "True"
-        add_var "CONFIG_EMAIL_HOST" "smtp.domain.com"
-        add_var "CONFIG_EMAIL_PORT" "587"
-        add_var "CONFIG_EMAIL_HOST_USER" "mail@mail.dev.br"
-        add_var "CONFIG_EMAIL_HOST_PASSWORD" "password"
-        add_var "CONFIG_DEFAULT_FROM_EMAIL" "mail@mail.dev.br"
+        if [ "$edit_mode" = "true" ]; then
+            update_var "CONFIG_EMAIL_ENABLE" "False"
+            update_var "CONFIG_EMAIL_USE_TLS" "True"
+            update_var "CONFIG_EMAIL_HOST" "smtp.domain.com"
+            update_var "CONFIG_EMAIL_PORT" "587"
+            update_var "CONFIG_EMAIL_HOST_USER" "mail@mail.dev.br"
+            update_var "CONFIG_EMAIL_HOST_PASSWORD" "password"
+            update_var "CONFIG_DEFAULT_FROM_EMAIL" "mail@mail.dev.br"
+        else
+            add_var "CONFIG_EMAIL_ENABLE" "False"
+            add_var "CONFIG_EMAIL_USE_TLS" "True"
+            add_var "CONFIG_EMAIL_HOST" "smtp.domain.com"
+            add_var "CONFIG_EMAIL_PORT" "587"
+            add_var "CONFIG_EMAIL_HOST_USER" "mail@mail.dev.br"
+            add_var "CONFIG_EMAIL_HOST_PASSWORD" "password"
+            add_var "CONFIG_DEFAULT_FROM_EMAIL" "mail@mail.dev.br"
+        fi
     fi
 }
 
 # Função para gerar configuração do Lineage DB
 generate_lineage_db_config() {
-    add_section "LINEAGE DATABASE CONFIGURATION"
+    local edit_mode="${1:-false}"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "LINEAGE DATABASE CONFIGURATION"
+    fi
     
-    LINEAGE_DB_NAME=$(ask_value "Nome do banco Lineage" "l2jdb")
-    LINEAGE_DB_USER=$(ask_value "Usuário do banco Lineage" "l2user")
-    LINEAGE_DB_PASSWORD=$(ask_value "Senha do banco Lineage" "suaSenhaAqui")
-    LINEAGE_DB_HOST=$(ask_value "Host do banco Lineage" "192.168.1.100")
-    LINEAGE_DB_PORT=$(ask_value "Porta do banco Lineage" "3306")
+    local existing_db_name=$(get_existing_value "LINEAGE_DB_NAME" 2>/dev/null || echo "l2jdb")
+    local existing_db_user=$(get_existing_value "LINEAGE_DB_USER" 2>/dev/null || echo "l2user")
+    local existing_db_pass=$(get_existing_value "LINEAGE_DB_PASSWORD" 2>/dev/null || echo "suaSenhaAqui")
+    local existing_db_host=$(get_existing_value "LINEAGE_DB_HOST" 2>/dev/null || echo "192.168.1.100")
+    local existing_db_port=$(get_existing_value "LINEAGE_DB_PORT" 2>/dev/null || echo "3306")
     
-    add_var "LINEAGE_DB_NAME" "$LINEAGE_DB_NAME"
-    add_var "LINEAGE_DB_USER" "$LINEAGE_DB_USER"
-    add_var "LINEAGE_DB_PASSWORD" "$LINEAGE_DB_PASSWORD"
-    add_var "LINEAGE_DB_HOST" "$LINEAGE_DB_HOST"
-    add_var "LINEAGE_DB_PORT" "$LINEAGE_DB_PORT"
+    LINEAGE_DB_NAME=$(ask_value "Nome do banco Lineage" "$existing_db_name")
+    LINEAGE_DB_USER=$(ask_value "Usuário do banco Lineage" "$existing_db_user")
+    LINEAGE_DB_PASSWORD=$(ask_value "Senha do banco Lineage" "$existing_db_pass")
+    LINEAGE_DB_HOST=$(ask_value "Host do banco Lineage" "$existing_db_host")
+    LINEAGE_DB_PORT=$(ask_value "Porta do banco Lineage" "$existing_db_port")
+    
+    if [ "$edit_mode" = "true" ]; then
+        update_var "LINEAGE_DB_NAME" "$LINEAGE_DB_NAME"
+        update_var "LINEAGE_DB_USER" "$LINEAGE_DB_USER"
+        update_var "LINEAGE_DB_PASSWORD" "$LINEAGE_DB_PASSWORD"
+        update_var "LINEAGE_DB_HOST" "$LINEAGE_DB_HOST"
+        update_var "LINEAGE_DB_PORT" "$LINEAGE_DB_PORT"
+    else
+        add_var "LINEAGE_DB_NAME" "$LINEAGE_DB_NAME"
+        add_var "LINEAGE_DB_USER" "$LINEAGE_DB_USER"
+        add_var "LINEAGE_DB_PASSWORD" "$LINEAGE_DB_PASSWORD"
+        add_var "LINEAGE_DB_HOST" "$LINEAGE_DB_HOST"
+        add_var "LINEAGE_DB_PORT" "$LINEAGE_DB_PORT"
+    fi
 }
 
 # Função para gerar configuração do AWS S3
 generate_s3_config() {
-    add_section "AWS S3 CONFIGURATION"
+    local edit_mode="${1:-false}"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "AWS S3 CONFIGURATION"
+    fi
     
-    if ask_yes_no "Usar AWS S3 para armazenamento?" "n"; then
+    local existing_use_s3=$(get_existing_value "USE_S3" 2>/dev/null || echo "False")
+    local s3_default=$(echo "$existing_use_s3" | tr '[:upper:]' '[:lower:]')
+    
+    if ask_yes_no "Usar AWS S3 para armazenamento?" "$s3_default"; then
         add_var "USE_S3" "True"
         AWS_ACCESS_KEY_ID=$(ask_value "AWS Access Key ID" "your_aws_access_key_id")
         AWS_SECRET_ACCESS_KEY=$(ask_value "AWS Secret Access Key" "your_aws_secret_access_key")
@@ -447,34 +762,66 @@ generate_social_login_config() {
 
 # Função para gerar configuração de Server Status
 generate_server_status_config() {
-    add_section "SERVER STATUS CONFIGURATION"
+    local edit_mode="${1:-false}"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "SERVER STATUS CONFIGURATION"
+    fi
     
-    GAME_SERVER_IP=$(ask_value "IP do servidor de jogo" "192.168.1.100")
-    GAME_SERVER_PORT=$(ask_value "Porta do servidor de jogo" "7777")
-    LOGIN_SERVER_PORT=$(ask_value "Porta do servidor de login" "2106")
-    SERVER_STATUS_TIMEOUT=$(ask_value "Timeout para verificação (segundos)" "1")
-    FORCE_GAME_SERVER_STATUS=$(ask_value "Forçar status do servidor (auto/on/off)" "auto")
-    FORCE_LOGIN_SERVER_STATUS=$(ask_value "Forçar status do login (auto/on/off)" "auto")
+    local existing_game_ip=$(get_existing_value "GAME_SERVER_IP" 2>/dev/null || echo "192.168.1.100")
+    local existing_game_port=$(get_existing_value "GAME_SERVER_PORT" 2>/dev/null || echo "7777")
+    local existing_login_port=$(get_existing_value "LOGIN_SERVER_PORT" 2>/dev/null || echo "2106")
+    local existing_timeout=$(get_existing_value "SERVER_STATUS_TIMEOUT" 2>/dev/null || echo "1")
+    local existing_force_game=$(get_existing_value "FORCE_GAME_SERVER_STATUS" 2>/dev/null || echo "auto")
+    local existing_force_login=$(get_existing_value "FORCE_LOGIN_SERVER_STATUS" 2>/dev/null || echo "auto")
     
-    add_var "GAME_SERVER_IP" "$GAME_SERVER_IP"
-    add_var "GAME_SERVER_PORT" "$GAME_SERVER_PORT"
-    add_var "LOGIN_SERVER_PORT" "$LOGIN_SERVER_PORT"
-    add_var "SERVER_STATUS_TIMEOUT" "$SERVER_STATUS_TIMEOUT"
-    add_var "FORCE_GAME_SERVER_STATUS" "$FORCE_GAME_SERVER_STATUS"
-    add_var "FORCE_LOGIN_SERVER_STATUS" "$FORCE_LOGIN_SERVER_STATUS"
+    GAME_SERVER_IP=$(ask_value "IP do servidor de jogo" "$existing_game_ip")
+    GAME_SERVER_PORT=$(ask_value "Porta do servidor de jogo" "$existing_game_port")
+    LOGIN_SERVER_PORT=$(ask_value "Porta do servidor de login" "$existing_login_port")
+    SERVER_STATUS_TIMEOUT=$(ask_value "Timeout para verificação (segundos)" "$existing_timeout")
+    FORCE_GAME_SERVER_STATUS=$(ask_value "Forçar status do servidor (auto/on/off)" "$existing_force_game")
+    FORCE_LOGIN_SERVER_STATUS=$(ask_value "Forçar status do login (auto/on/off)" "$existing_force_login")
+    
+    if [ "$edit_mode" = "true" ]; then
+        update_var "GAME_SERVER_IP" "$GAME_SERVER_IP"
+        update_var "GAME_SERVER_PORT" "$GAME_SERVER_PORT"
+        update_var "LOGIN_SERVER_PORT" "$LOGIN_SERVER_PORT"
+        update_var "SERVER_STATUS_TIMEOUT" "$SERVER_STATUS_TIMEOUT"
+        update_var "FORCE_GAME_SERVER_STATUS" "$FORCE_GAME_SERVER_STATUS"
+        update_var "FORCE_LOGIN_SERVER_STATUS" "$FORCE_LOGIN_SERVER_STATUS"
+    else
+        add_var "GAME_SERVER_IP" "$GAME_SERVER_IP"
+        add_var "GAME_SERVER_PORT" "$GAME_SERVER_PORT"
+        add_var "LOGIN_SERVER_PORT" "$LOGIN_SERVER_PORT"
+        add_var "SERVER_STATUS_TIMEOUT" "$SERVER_STATUS_TIMEOUT"
+        add_var "FORCE_GAME_SERVER_STATUS" "$FORCE_GAME_SERVER_STATUS"
+        add_var "FORCE_LOGIN_SERVER_STATUS" "$FORCE_LOGIN_SERVER_STATUS"
+    fi
 }
 
 # Função para gerar configuração de Fake Players
 generate_fake_players_config() {
-    add_section "FAKE PLAYERS CONFIGURATION"
+    local edit_mode="${1:-false}"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "FAKE PLAYERS CONFIGURATION"
+    fi
     
-    FAKE_PLAYERS_FACTOR=$(ask_value "Multiplicador de jogadores (ex: 1.2 = +20%)" "1.0")
-    FAKE_PLAYERS_MIN=$(ask_value "Valor mínimo de jogadores (0 para ignorar)" "0")
-    FAKE_PLAYERS_MAX=$(ask_value "Valor máximo de jogadores (0 para ignorar)" "0")
+    local existing_factor=$(get_existing_value "FAKE_PLAYERS_FACTOR" 2>/dev/null || echo "1.0")
+    local existing_min=$(get_existing_value "FAKE_PLAYERS_MIN" 2>/dev/null || echo "0")
+    local existing_max=$(get_existing_value "FAKE_PLAYERS_MAX" 2>/dev/null || echo "0")
     
-    add_var "FAKE_PLAYERS_FACTOR" "$FAKE_PLAYERS_FACTOR"
-    add_var "FAKE_PLAYERS_MIN" "$FAKE_PLAYERS_MIN"
-    add_var "FAKE_PLAYERS_MAX" "$FAKE_PLAYERS_MAX"
+    FAKE_PLAYERS_FACTOR=$(ask_value "Multiplicador de jogadores (ex: 1.2 = +20%)" "$existing_factor")
+    FAKE_PLAYERS_MIN=$(ask_value "Valor mínimo de jogadores (0 para ignorar)" "$existing_min")
+    FAKE_PLAYERS_MAX=$(ask_value "Valor máximo de jogadores (0 para ignorar)" "$existing_max")
+    
+    if [ "$edit_mode" = "true" ]; then
+        update_var "FAKE_PLAYERS_FACTOR" "$FAKE_PLAYERS_FACTOR"
+        update_var "FAKE_PLAYERS_MIN" "$FAKE_PLAYERS_MIN"
+        update_var "FAKE_PLAYERS_MAX" "$FAKE_PLAYERS_MAX"
+    else
+        add_var "FAKE_PLAYERS_FACTOR" "$FAKE_PLAYERS_FACTOR"
+        add_var "FAKE_PLAYERS_MIN" "$FAKE_PLAYERS_MIN"
+        add_var "FAKE_PLAYERS_MAX" "$FAKE_PLAYERS_MAX"
+    fi
 }
 
 # Função para gerar configuração de VAPID (Web Push)
@@ -517,21 +864,47 @@ main() {
     fi
     
     # Verificar se .env já existe
+    local edit_mode=false
     if [ -f "$ENV_FILE" ]; then
         log_warning "Arquivo .env já existe: $ENV_FILE"
-        if ! ask_yes_no "Deseja sobrescrever?" "n"; then
-            log_info "Operação cancelada."
-            exit 0
-        fi
-        log_info "Fazendo backup do .env existente..."
-        cp "$ENV_FILE" "${ENV_FILE}.bak.$(date +%Y%m%d_%H%M%S)"
+        echo
+        echo "Escolha uma opção:"
+        echo "  1) Editar o arquivo existente (preserva valores atuais)"
+        echo "  2) Sobrescrever completamente (cria novo arquivo)"
+        echo "  3) Cancelar"
+        echo
+        read -p "Opção (1/2/3): " OPCAO
+        
+        case "$OPCAO" in
+            1)
+                edit_mode=true
+                log_info "Fazendo backup do .env existente..."
+                cp "$ENV_FILE" "${ENV_FILE}.bak.$(date +%Y%m%d_%H%M%S)"
+                log_success "Modo de edição ativado. Valores existentes serão preservados como padrão."
+                ;;
+            2)
+                edit_mode=false
+                log_info "Fazendo backup do .env existente..."
+                cp "$ENV_FILE" "${ENV_FILE}.bak.$(date +%Y%m%d_%H%M%S)"
+                # Criar arquivo .env vazio
+                > "$ENV_FILE"
+                ;;
+            3)
+                log_info "Operação cancelada."
+                exit 0
+                ;;
+            *)
+                log_error "Opção inválida."
+                exit 1
+                ;;
+        esac
+    else
+        # Criar arquivo .env vazio
+        > "$ENV_FILE"
     fi
     
-    # Criar arquivo .env vazio
-    > "$ENV_FILE"
-    
     log_info "Gerando variáveis obrigatórias..."
-    generate_required
+    generate_required "$edit_mode"
     
     echo
     log_info "Agora vamos configurar as categorias opcionais:"
@@ -539,46 +912,50 @@ main() {
     
     # Email
     if ask_yes_no "Incluir configuração de Email?" "n"; then
-        generate_email_config
+        generate_email_config "$edit_mode"
     fi
     
     # Lineage DB
     if ask_yes_no "Incluir configuração do Banco de Dados Lineage?" "n"; then
-        generate_lineage_db_config
+        generate_lineage_db_config "$edit_mode"
     fi
     
     # AWS S3
     if ask_yes_no "Incluir configuração do AWS S3?" "n"; then
-        generate_s3_config
+        generate_s3_config "$edit_mode"
     fi
     
     # Pagamentos
     if ask_yes_no "Incluir configuração de Pagamentos (Mercado Pago/Stripe)?" "n"; then
-        generate_payments_config
+        generate_payments_config "$edit_mode"
     fi
     
     # Social Login
     if ask_yes_no "Incluir configuração de Login Social?" "n"; then
-        generate_social_login_config
+        generate_social_login_config "$edit_mode"
     fi
     
     # Server Status
     if ask_yes_no "Incluir configuração de Status do Servidor?" "n"; then
-        generate_server_status_config
+        generate_server_status_config "$edit_mode"
     fi
     
     # Fake Players
     if ask_yes_no "Incluir configuração de Jogadores Falsos?" "n"; then
-        generate_fake_players_config
+        generate_fake_players_config "$edit_mode"
     fi
     
     # VAPID
     if ask_yes_no "Incluir configuração de VAPID (Web Push)?" "n"; then
-        generate_vapid_config
+        generate_vapid_config "$edit_mode"
     fi
     
     echo
-    log_success "Arquivo .env gerado com sucesso!"
+    if [ "$edit_mode" = "true" ]; then
+        log_success "Arquivo .env atualizado com sucesso!"
+    else
+        log_success "Arquivo .env gerado com sucesso!"
+    fi
     log_info "Localização: $ENV_FILE"
     echo
     log_warning "IMPORTANTE: Revise o arquivo .env e ajuste os valores conforme necessário!"

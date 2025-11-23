@@ -36,6 +36,34 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
+# Função para verificar se .env está completo
+check_env_complete() {
+    local env_file="$1"
+    local required_vars=(
+        "DEBUG"
+        "SECRET_KEY"
+        "DB_ENGINE"
+        "ENCRYPTION_KEY"
+        "RENDER_EXTERNAL_HOSTNAME"
+        "CONFIG_HCAPTCHA_SITE_KEY"
+        "CONFIG_LANGUAGE_CODE"
+    )
+    
+    local missing_vars=()
+    
+    for var in "${required_vars[@]}"; do
+        if ! grep -q "^${var}=" "$env_file" 2>/dev/null; then
+            missing_vars+=("$var")
+        fi
+    done
+    
+    if [ ${#missing_vars[@]} -gt 0 ]; then
+        return 1  # Incompleto
+    fi
+    
+    return 0  # Completo
+}
+
 INSTALL_DIR="$(pwd)/.install_status"
 mkdir -p "$INSTALL_DIR"
 
@@ -268,6 +296,35 @@ if [ ! -f "$INSTALL_DIR/env_created" ]; then
     fi
   else
     log_warning "Arquivo .env já existe. Verificando se está completo..."
+    
+    # Verificar se o .env está completo
+    if ! check_env_complete ".env"; then
+      log_warning "O arquivo .env parece estar incompleto (faltam variáveis obrigatórias)."
+      echo
+      read -p "Deseja executar o script generate-env.sh para completar o .env? (s/n): " EXEC_GENERATE
+      if [[ "$EXEC_GENERATE" =~ ^[sS]$ ]]; then
+        log_info "Executando script de geração do .env..."
+        if [ -f "setup/generate-env.sh" ]; then
+          # Fazer backup do .env existente
+          log_info "Fazendo backup do .env existente..."
+          cp ".env" ".env.backup.$(date +%Y%m%d_%H%M%S)"
+          
+          # Executar generate-env.sh (ele vai perguntar se quer sobrescrever)
+          bash setup/generate-env.sh || {
+            log_error "Falha ao gerar arquivo .env"
+            log_info "Você pode executar manualmente depois com: bash setup/generate-env.sh"
+            exit 1
+          }
+        else
+          log_error "Script setup/generate-env.sh não encontrado!"
+          exit 1
+        fi
+      else
+        log_warning "Continuando com o .env existente. Certifique-se de que todas as variáveis necessárias estão configuradas."
+      fi
+    else
+      log_success "Arquivo .env parece estar completo."
+    fi
   fi
   
   # SEMPRE verificar e garantir ENCRYPTION_KEY (obrigatório)
