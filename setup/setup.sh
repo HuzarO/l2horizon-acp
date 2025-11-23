@@ -530,10 +530,7 @@ if [ ! -f "$INSTALL_DIR/superuser_created" ]; then
       echo "  $DOCKER_COMPOSE exec site_http python3 manage.py createsuperuser"
     else
       log_info "Usando serviço: $APP_SERVICE"
-      $DOCKER_COMPOSE exec -T "$APP_SERVICE" python3 manage.py shell <<PYTHON_SCRIPT || {
-        log_warning "Falha ao criar superuser via script. Tente manualmente."
-        exit 0
-      }
+      if $DOCKER_COMPOSE exec -T "$APP_SERVICE" python3 manage.py shell <<PYTHON_SCRIPT
 from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='$DJANGO_SUPERUSER_USERNAME').exists():
@@ -546,7 +543,13 @@ if not User.objects.filter(username='$DJANGO_SUPERUSER_USERNAME').exists():
 else:
     print('ℹ️ O usuário \"$DJANGO_SUPERUSER_USERNAME\" já existe.')
 PYTHON_SCRIPT
-      log_success "Superuser criado ou já existente."
+      then
+        log_success "Superuser criado ou já existente."
+      else
+        log_warning "Falha ao criar superuser via script. Tente manualmente."
+        log_info "Você pode criar manualmente depois com:"
+        echo "  $DOCKER_COMPOSE exec $APP_SERVICE python3 manage.py createsuperuser"
+      fi
     fi
   fi
   
