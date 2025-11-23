@@ -515,7 +515,8 @@
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
 
       {% if request.user.is_staff %}
-      <!-- Botão de Atualização (apenas para staffs) -->
+      <!-- Status de Atualização (apenas para staffs) -->
+      <!-- Indicador de atualização disponível -->
       <li class="nav-item" id="update-notification-item" style="display: none;">
         <button type="button" class="nav-link d-flex align-items-center justify-content-center w-100 border-0 bg-transparent text-warning" 
                 data-bs-toggle="modal" data-bs-target="#updateModal" style="cursor: pointer;">
@@ -529,11 +530,30 @@
           </span>
         </button>
       </li>
+      
+      <!-- Indicador de versão atualizada -->
+      <li class="nav-item" id="version-updated-item" style="display: none;">
+        <div class="nav-link d-flex align-items-center justify-content-center w-100">
+          <span class="sidebar-icon me-2">
+            <svg class="icon icon-xs text-success" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            </svg>
+          </span>
+          <span class="sidebar-text text-success small">
+            <span id="updated-text">Versão atualizada</span>
+          </span>
+        </div>
+      </li>
       {% endif %}
 
       <li class="nav-item">
         <div class="nav-link d-flex align-items-center justify-content-center">
-          <span class="sidebar-text text-muted small">v{{ version }}</span>
+          <span class="sidebar-text text-muted small">
+            <span id="version-display">v{{ version }}</span>
+            {% if request.user.is_staff %}
+            <span id="version-check-badge" class="ms-2" style="display: none;"></span>
+            {% endif %}
+          </span>
         </div>
       </li>
 
@@ -623,17 +643,38 @@ document.addEventListener('DOMContentLoaded', function() {
   fetch('{% url "check_version_update" %}')
     .then(response => response.json())
     .then(data => {
+      const versionDisplay = document.getElementById('version-display');
+      const versionBadge = document.getElementById('version-check-badge');
+      const updateItem = document.getElementById('update-notification-item');
+      const updatedItem = document.getElementById('version-updated-item');
+      
       if (data.has_update) {
         // Mostrar botão de atualização
-        const updateItem = document.getElementById('update-notification-item');
         if (updateItem) {
           updateItem.style.display = 'block';
+        }
+        
+        // Ocultar indicador de atualizado
+        if (updatedItem) {
+          updatedItem.style.display = 'none';
         }
         
         // Atualizar texto do botão
         const updateText = document.getElementById('update-text');
         if (updateText) {
           updateText.textContent = `Atualizar para v${data.latest_version}`;
+        }
+        
+        // Adicionar badge de atualização disponível na versão
+        if (versionBadge) {
+          versionBadge.innerHTML = '<span class="badge bg-warning text-dark" title="Nova versão disponível: v' + data.latest_version + '">!</span>';
+          versionBadge.style.display = 'inline';
+        }
+        
+        // Destacar versão atual
+        if (versionDisplay) {
+          versionDisplay.classList.add('text-warning');
+          versionDisplay.setAttribute('title', 'Nova versão disponível: v' + data.latest_version);
         }
         
         // Configurar modal quando aberto
@@ -668,10 +709,34 @@ document.addEventListener('DOMContentLoaded', function() {
             }
           });
         }
+      } else {
+        // Versão está atualizada - mostrar indicador verde
+        if (updatedItem) {
+          updatedItem.style.display = 'block';
+        }
+        
+        // Ocultar botão de atualização
+        if (updateItem) {
+          updateItem.style.display = 'none';
+        }
+        
+        // Adicionar badge de atualizado na versão
+        if (versionBadge) {
+          versionBadge.innerHTML = '<span class="badge bg-success" title="Versão atualizada">✓</span>';
+          versionBadge.style.display = 'inline';
+        }
+        
+        // Destacar versão como atualizada
+        if (versionDisplay) {
+          versionDisplay.classList.remove('text-warning');
+          versionDisplay.classList.add('text-success');
+          versionDisplay.setAttribute('title', 'Versão atualizada');
+        }
       }
     })
     .catch(error => {
       console.error('Erro ao verificar atualização:', error);
+      // Em caso de erro, não mostrar nada (manter comportamento padrão)
     });
   {% endif %}
 });
@@ -695,5 +760,39 @@ document.addEventListener('DOMContentLoaded', function() {
     height: 140px !important;
     width: 100px !important;
     background-color: #1F2937 !important;
+  }
+  
+  /* Indicadores de versão */
+  #update-notification-item .nav-link:hover {
+    background-color: rgba(251, 191, 36, 0.1) !important;
+    border-radius: 4px;
+  }
+  
+  #version-updated-item .nav-link {
+    opacity: 0.9;
+  }
+  
+  #version-check-badge .badge {
+    font-size: 0.65rem;
+    padding: 0.2em 0.4em;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+  
+  #version-check-badge .badge.bg-warning {
+    animation: none;
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+  }
+  
+  #version-check-badge .badge.bg-success {
+    animation: none;
   }
 </style>
