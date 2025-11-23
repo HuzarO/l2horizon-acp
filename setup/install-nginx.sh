@@ -196,6 +196,7 @@ setup_directories() {
 configure_nginx_conf() {
     local NGINX_CONF="/etc/nginx/nginx.conf"
     local INCLUDE_LINE="    include /etc/nginx/sites-enabled/*;"
+    local CLIENT_MAX_BODY_SIZE="    client_max_body_size 50M;"
     
     if [ ! -f "$NGINX_CONF" ]; then
         log_error "Arquivo nginx.conf não encontrado: $NGINX_CONF"
@@ -208,6 +209,17 @@ configure_nginx_conf() {
     if [ ! -f "${NGINX_CONF}.bak" ]; then
         cp "$NGINX_CONF" "${NGINX_CONF}.bak"
         log_debug "Backup do nginx.conf criado."
+    fi
+    
+    # Adicionar client_max_body_size se não existir
+    if ! grep -qF "client_max_body_size" "$NGINX_CONF"; then
+        # Insere client_max_body_size dentro do bloco http
+        sed -i "/http {/a\\
+$CLIENT_MAX_BODY_SIZE
+" "$NGINX_CONF"
+        log_success "client_max_body_size 50M adicionado no nginx.conf"
+    else
+        log_debug "client_max_body_size já presente no nginx.conf"
     fi
     
     if ! grep -qF "$INCLUDE_LINE" "$NGINX_CONF"; then
