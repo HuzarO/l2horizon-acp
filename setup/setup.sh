@@ -362,7 +362,7 @@ if [ ! -f "$INSTALL_DIR/superuser_created" ]; then
     exit 1
   fi
 
-  $DOCKER_COMPOSE exec site python3 manage.py shell -c "
+  $DOCKER_COMPOSE exec site_http python3 manage.py shell -c "
 from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='$DJANGO_SUPERUSER_USERNAME').exists():
