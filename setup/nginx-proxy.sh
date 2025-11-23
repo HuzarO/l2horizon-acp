@@ -124,7 +124,7 @@ configure_nginx_conf
 
 # Instala o Certbot e plugin Nginx para SSL se necessário
 if [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
-    local NEED_INSTALL=false
+    NEED_INSTALL=false
     
     # Verifica se certbot está instalado
     if ! command -v certbot &> /dev/null; then
