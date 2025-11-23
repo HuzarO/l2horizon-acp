@@ -99,20 +99,20 @@ else
   echo "No legacy containers found to remove."
 fi
 
-# Função para limpar e preparar volumes Docker (SEM apagar volume do banco!)
+# Função para limpar e preparar volumes Docker (SEM apagar volume do banco, media e logs!)
 cleanup_volumes() {
-  echo "Cleaning up Docker volumes (preserving database volume)..."
+  echo "Cleaning up Docker volumes (preserving database, media and logs volumes)..."
   
-  # Parar containers SEM remover volumes (para preservar dados do banco)
+  # Parar containers SEM remover volumes (para preservar dados do banco, media e logs)
   $DOCKER_COMPOSE down --remove-orphans 2>/dev/null || true
   
-  # Lista de volumes para limpar (NÃO inclui postgres_data para preservar dados do banco!)
-  local volumes=("lineage_static_data" "lineage_media_data" "static_data" "media_data" "logs_data")
+  # Lista de volumes para limpar (NÃO inclui postgres_data, media_data e logs_data para preservar dados!)
+  local volumes=("lineage_static_data" "static_data")
   
   for vol_name in "${volumes[@]}"; do
     # Verifica se o volume existe
     if docker volume inspect "$vol_name" >/dev/null 2>&1; then
-      echo "Removing volume: $vol_name (safe - no database data)"
+      echo "Removing volume: $vol_name (safe - only static files)"
       # Tenta remover o volume
       docker volume rm "$vol_name" 2>/dev/null || {
         echo "Warning: Could not remove volume $vol_name (may be in use). Trying force cleanup..."
@@ -122,7 +122,7 @@ cleanup_volumes() {
     fi
   done
   
-  echo "Volumes cleaned up (database volume preserved)."
+  echo "Volumes cleaned up (database, media and logs volumes preserved)."
 }
 
 # Remove optional static_data volume (if exists and not in use)
@@ -263,9 +263,11 @@ fi
 $DOCKER_COMPOSE exec "$APP_SERVICE" python3 manage.py migrate || { echo "Failed to apply migrations"; exit 1; }
 
 # Clean up (non-interactive, only unused resources)
+# Preservar volumes de dados importantes: postgres_data, media_data, logs_data
 echo "Cleaning up unused Docker resources..."
 docker image prune -f 2>/dev/null || true
-docker volume prune -f 2>/dev/null || true
+# Não fazer volume prune - volumes importantes (media, logs, database) devem ser preservados
+# docker volume prune -f 2>/dev/null || true  # Desabilitado para preservar volumes de dados
 docker container prune -f 2>/dev/null || true
 docker builder prune -f 2>/dev/null || true
 
