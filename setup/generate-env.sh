@@ -114,8 +114,8 @@ get_existing_value() {
         return 1
     fi
     
-    # Busca a variável no arquivo, removendo aspas e espaços
-    local value=$(grep "^${key}=" "$env_file" 2>/dev/null | head -1 | cut -d'=' -f2- | sed "s/^[[:space:]]*//;s/[[:space:]]*$//" | sed "s/^['\"]//;s/['\"]$//")
+    # Busca a variável no arquivo, removendo aspas e espaços (aceita espaços opcionais ao redor do =)
+    local value=$(grep -E "^${key}\s*=" "$env_file" 2>/dev/null | head -1 | cut -d'=' -f2- | sed "s/^[[:space:]]*//;s/[[:space:]]*$//" | sed "s/^['\"]//;s/['\"]$//")
     
     if [ -n "$value" ]; then
         echo "$value"
@@ -134,7 +134,7 @@ var_exists() {
         return 1
     fi
     
-    grep -q "^${key}=" "$env_file" 2>/dev/null
+    grep -qE "^${key}\s*=" "$env_file" 2>/dev/null
 }
 
 # Função para adicionar seção ao .env
@@ -158,12 +158,12 @@ update_var() {
     local env_file="${3:-$ENV_FILE}"
     
     if var_exists "$key" "$env_file"; then
-        # Atualiza variável existente (preserva a linha original se possível)
+        # Atualiza variável existente (preserva a linha original se possível, aceita espaços opcionais)
         if [[ "$OSTYPE" == "darwin"* ]]; then
             # macOS usa versão diferente do sed
-            sed -i '' "s|^${key}=.*|${key}=${value}|" "$env_file"
+            sed -i '' "s|^${key}\s*=.*|${key}=${value}|" "$env_file"
         else
-            sed -i "s|^${key}=.*|${key}=${value}|" "$env_file"
+            sed -i "s|^${key}\s*=.*|${key}=${value}|" "$env_file"
         fi
     else
         # Adiciona nova variável
