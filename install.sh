@@ -42,6 +42,27 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
+# Preservar install.sh original para evitar problemas com git
+# Esta função garante que o arquivo não seja modificado durante a execução
+# Restaura o arquivo do repositório se houver mudanças (normalmente line endings)
+preserve_install_sh() {
+    local install_sh_path="${SCRIPT_DIR}/install.sh"
+    if [ -f "$install_sh_path" ] && [ -d "${SCRIPT_DIR}/.git" ]; then
+        # Verificar se há mudanças não commitadas no install.sh
+        if ! git -C "${SCRIPT_DIR}" diff --quiet "$install_sh_path" 2>/dev/null; then
+            # Há mudanças (provavelmente line endings), restaurar do git
+            log_warning "Detectadas mudanças no install.sh (provavelmente line endings)."
+            log_info "Restaurando do repositório para evitar conflitos com git pull..."
+            if git -C "${SCRIPT_DIR}" checkout -- "$install_sh_path" 2>/dev/null; then
+                chmod +x "$install_sh_path" 2>/dev/null || true
+                log_success "install.sh restaurado."
+            else
+                log_warning "Não foi possível restaurar automaticamente. Execute: git checkout -- install.sh"
+            fi
+        fi
+    fi
+}
+
 # Função para verificar se o comando existe
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -187,6 +208,9 @@ run_setup_script() {
 # Função principal de instalação
 main() {
     local action="${1:-install}"
+    
+    # Preservar install.sh ANTES de qualquer coisa para evitar problemas com git
+    preserve_install_sh
     
     clear
     
