@@ -267,9 +267,140 @@ if [ ! -f "$INSTALL_DIR/env_created" ]; then
       exit 1
     fi
   else
-    log_warning "Arquivo .env já existe. Pulando geração."
+    log_warning "Arquivo .env já existe. Verificando se está completo..."
   fi
+  
+  # SEMPRE verificar e garantir ENCRYPTION_KEY (obrigatório)
+  if ! grep -q "^ENCRYPTION_KEY=" .env 2>/dev/null; then
+    log_warning "ENCRYPTION_KEY não encontrada no .env. Gerando..."
+    FERNET_KEY=$(python3 - <<EOF
+from cryptography.fernet import Fernet
+print(Fernet.generate_key().decode())
+EOF
+)
+    if [ -n "$FERNET_KEY" ]; then
+      echo "" >> .env
+      echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
+      log_success "ENCRYPTION_KEY adicionada ao .env."
+    else
+      log_error "Não foi possível gerar ENCRYPTION_KEY."
+      log_error "Adicione manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
+      exit 1
+    fi
+  else
+    log_info "ENCRYPTION_KEY já existe no .env."
+  fi
+  
+  # Verificar se SECRET_KEY existe no .env
+  if ! grep -q "^SECRET_KEY=" .env 2>/dev/null; then
+    log_warning "SECRET_KEY não encontrada no .env. Gerando..."
+    SECRET_KEY=$(python3 - <<EOF
+from django.core.management.utils import get_random_secret_key
+print(get_random_secret_key())
+EOF
+)
+    if [ -n "$SECRET_KEY" ]; then
+      sed -i "1i SECRET_KEY=$SECRET_KEY" .env
+      log_success "SECRET_KEY adicionada ao .env."
+    fi
+  fi
+  
+  # Verificar se ENCRYPTION_KEY existe no .env (obrigatório)
+  if ! grep -q "^ENCRYPTION_KEY=" .env 2>/dev/null; then
+    log_warning "ENCRYPTION_KEY não encontrada no .env. Gerando..."
+    FERNET_KEY=$(python3 - <<EOF
+from cryptography.fernet import Fernet
+print(Fernet.generate_key().decode())
+EOF
+)
+    if [ -n "$FERNET_KEY" ]; then
+      # Adicionar ENCRYPTION_KEY ao .env se não existir
+      if ! grep -q "^ENCRYPTION_KEY=" .env 2>/dev/null; then
+        echo "" >> .env
+        echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
+        log_success "ENCRYPTION_KEY adicionada ao .env."
+      else
+        sed -i "/^ENCRYPTION_KEY=/c\ENCRYPTION_KEY='$FERNET_KEY'" .env
+        log_success "ENCRYPTION_KEY atualizada no .env."
+      fi
+    else
+      log_error "Não foi possível gerar ENCRYPTION_KEY."
+      log_info "Adicione manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
+      exit 1
+    fi
+  fi
+  
+  # Verificar se SECRET_KEY existe no .env (obrigatório)
+  if ! grep -q "^SECRET_KEY=" .env 2>/dev/null; then
+    log_warning "SECRET_KEY não encontrada no .env. Gerando..."
+    SECRET_KEY=$(python3 - <<EOF
+from django.core.management.utils import get_random_secret_key
+print(get_random_secret_key())
+EOF
+)
+    if [ -n "$SECRET_KEY" ]; then
+      if ! grep -q "^SECRET_KEY=" .env 2>/dev/null; then
+        # Adicionar no início do arquivo
+        sed -i "1i SECRET_KEY=$SECRET_KEY" .env
+        log_success "SECRET_KEY adicionada ao .env."
+      fi
+    fi
+  fi
+  
+  # Validar que .env tem as variáveis mínimas necessárias ANTES de continuar
+  if [ ! -f ".env" ]; then
+    log_error "Arquivo .env não foi criado!"
+    exit 1
+  fi
+  
+  # Garantir ENCRYPTION_KEY (obrigatório para Django)
+  if ! grep -q "^ENCRYPTION_KEY=" .env 2>/dev/null; then
+    log_error "ENCRYPTION_KEY não encontrada no .env após geração!"
+    log_info "Tentando gerar ENCRYPTION_KEY..."
+    FERNET_KEY=$(python3 - <<EOF
+from cryptography.fernet import Fernet
+print(Fernet.generate_key().decode())
+EOF
+)
+    if [ -n "$FERNET_KEY" ]; then
+      echo "" >> .env
+      echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
+      log_success "ENCRYPTION_KEY adicionada ao .env."
+    else
+      log_error "Não foi possível gerar ENCRYPTION_KEY automaticamente."
+      log_error "Por favor, adicione manualmente ao .env:"
+      log_error "  ENCRYPTION_KEY='sua_chave_aqui'"
+      exit 1
+    fi
+  fi
+  
+  # Validação final - garantir que ENCRYPTION_KEY existe
+  if ! grep -q "^ENCRYPTION_KEY=" .env 2>/dev/null; then
+    log_error "ENCRYPTION_KEY ainda não encontrada após todas as tentativas!"
+    exit 1
+  fi
+  
   touch "$INSTALL_DIR/env_created"
+  log_success "Arquivo .env criado e validado com sucesso."
+fi
+
+# Garantir ENCRYPTION_KEY mesmo se .env já existia (para casos onde foi criado manualmente)
+if [ -f ".env" ] && ! grep -q "^ENCRYPTION_KEY=" .env 2>/dev/null; then
+  log_warning "ENCRYPTION_KEY não encontrada no .env existente. Gerando..."
+  FERNET_KEY=$(python3 - <<EOF
+from cryptography.fernet import Fernet
+print(Fernet.generate_key().decode())
+EOF
+)
+  if [ -n "$FERNET_KEY" ]; then
+    echo "" >> .env
+    echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
+    log_success "ENCRYPTION_KEY adicionada ao .env existente."
+  else
+    log_error "Não foi possível gerar ENCRYPTION_KEY."
+    log_error "Adicione manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
+    exit 1
+  fi
 fi
 
 if [ ! -f "$INSTALL_DIR/htpasswd_created" ]; then
@@ -313,6 +444,31 @@ fi
 if [ ! -f "$INSTALL_DIR/build_executed" ]; then
   echo
   log_info "🔨 Preparando build.sh..."
+  
+  # Validar que .env existe e tem ENCRYPTION_KEY antes de executar build.sh
+  if [ ! -f ".env" ]; then
+    log_error "Arquivo .env não encontrado! Execute primeiro: bash setup/generate-env.sh"
+    exit 1
+  fi
+  
+  if ! grep -q "^ENCRYPTION_KEY=" .env 2>/dev/null; then
+    log_error "ENCRYPTION_KEY não encontrada no .env!"
+    log_info "Gerando ENCRYPTION_KEY..."
+    FERNET_KEY=$(python3 - <<EOF
+from cryptography.fernet import Fernet
+print(Fernet.generate_key().decode())
+EOF
+)
+    if [ -n "$FERNET_KEY" ]; then
+      echo "" >> .env
+      echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
+      log_success "ENCRYPTION_KEY adicionada ao .env."
+    else
+      log_error "Não foi possível gerar ENCRYPTION_KEY."
+      log_error "Adicione manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
+      exit 1
+    fi
+  fi
   
   # Não copia mais o build.sh, apenas referencia
   # O build.sh deve ser executado da pasta setup/

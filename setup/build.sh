@@ -27,6 +27,32 @@ source .venv/bin/activate || { echo "Virtualenv not found. Please create it with
 echo "Upgrading pip..."
 python -m pip install --upgrade pip || { echo "Failed to upgrade pip"; exit 1; }
 
+# Verificar se .env existe e tem ENCRYPTION_KEY antes de executar comandos Django
+if [ ! -f ".env" ]; then
+  echo "[ERROR] Arquivo .env não encontrado!"
+  echo "[INFO] Execute primeiro: bash setup/generate-env.sh"
+  exit 1
+fi
+
+if ! grep -q "^ENCRYPTION_KEY=" .env 2>/dev/null; then
+  echo "[ERROR] ENCRYPTION_KEY não encontrada no .env!"
+  echo "[INFO] Gerando ENCRYPTION_KEY..."
+  FERNET_KEY=$(python3 - <<EOF
+from cryptography.fernet import Fernet
+print(Fernet.generate_key().decode())
+EOF
+)
+  if [ -n "$FERNET_KEY" ]; then
+    echo "" >> .env
+    echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
+    echo "[SUCCESS] ENCRYPTION_KEY adicionada ao .env."
+  else
+    echo "[ERROR] Não foi possível gerar ENCRYPTION_KEY."
+    echo "[INFO] Adicione manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
+    exit 1
+  fi
+fi
+
 # Upgrade installed packages from requirements.txt
 echo "Upgrading packages from requirements.txt..."
 pip install -U -r requirements.txt || { echo "Failed to upgrade packages"; exit 1; }
