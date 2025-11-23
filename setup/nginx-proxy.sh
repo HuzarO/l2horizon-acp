@@ -122,14 +122,30 @@ mkdir -p /etc/nginx/sites-enabled
 # Configura o nginx.conf para incluir sites-enabled
 configure_nginx_conf
 
-# Instala o Certbot para SSL se necessário
-if [[ "$SETUP_SSL" =~ ^[sS]$ ]] && ! command -v certbot &> /dev/null; then
-    log_info "Instalando Certbot..."
-    apt-get update -qq
-    apt-get install -y certbot python3-certbot-nginx
-    log_success "Certbot instalado."
-elif [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
-    log_info "Certbot já está instalado."
+# Instala o Certbot e plugin Nginx para SSL se necessário
+if [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
+    local NEED_INSTALL=false
+    
+    # Verifica se certbot está instalado
+    if ! command -v certbot &> /dev/null; then
+        NEED_INSTALL=true
+        log_info "Certbot não encontrado. Será instalado."
+    fi
+    
+    # Verifica se o plugin nginx do certbot está instalado
+    if ! dpkg -l | grep -q "^ii.*python3-certbot-nginx"; then
+        NEED_INSTALL=true
+        log_info "Plugin Nginx do Certbot não encontrado. Será instalado."
+    fi
+    
+    if [ "$NEED_INSTALL" = true ]; then
+        log_info "Instalando Certbot e plugin Nginx..."
+        apt-get update -qq
+        apt-get install -y certbot python3-certbot-nginx
+        log_success "Certbot e plugin Nginx instalados."
+    else
+        log_info "Certbot e plugin Nginx já estão instalados."
+    fi
 fi
 
 # Cria a configuração do Nginx para proxy reverso
