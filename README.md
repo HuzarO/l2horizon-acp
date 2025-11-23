@@ -55,6 +55,14 @@ chmod +x install.sh && ./install.sh
 
 Pronto! O script `install.sh` cuida de tudo automaticamente. 🎉
 
+**Nota:** O projeto inclui um `.gitattributes` que garante line endings consistentes. Se você encontrar problemas com `git pull` detectando mudanças no `install.sh`, execute:
+
+```bash
+# Normalizar line endings (apenas uma vez)
+git add --renormalize .
+git commit -m "Normalizar line endings"
+```
+
 ---
 
 ## 🚀 Como Instalar
