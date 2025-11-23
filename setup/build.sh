@@ -34,7 +34,7 @@ if [ ! -f ".env" ]; then
   exit 1
 fi
 
-if ! grep -q "^ENCRYPTION_KEY=" .env 2>/dev/null; then
+if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
   echo "[ERROR] ENCRYPTION_KEY não encontrada no .env!"
   echo "[INFO] Gerando ENCRYPTION_KEY..."
   FERNET_KEY=$(python3 - <<EOF
