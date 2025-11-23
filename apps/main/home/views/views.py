@@ -1,4 +1,5 @@
-import json, base64, logging, pyotp, os
+import json, base64, logging, pyotp, os, re
+import requests
 
 from ..models import *
 from ..forms import *
@@ -10,6 +11,10 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.shortcuts import render, redirect
 from django.urls import reverse
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.cache import cache_page
+from django.core.cache import cache
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import authenticate
@@ -783,3 +788,153 @@ def desativar_2fa(request):
 
     messages.success(request, "Autenticação em duas etapas desativada com sucesso.")
     return redirect('administrator:security_settings')
+
+
+@require_http_methods(["GET"])
+@staff_member_required
+def check_version_update(request):
+    """
+    Verifica se existe uma versão mais nova do projeto no GitHub.
+    Busca a última tag do repositório e compara com a versão atual.
+    Retorna JSON com informações sobre atualizações disponíveis.
+    """
+    try:
+        current_version = getattr(settings, 'VERSION', '1.0.0')
+        
+        # Cache por 1 hora para evitar muitas requisições ao GitHub
+        cache_key = f'github_latest_version_{current_version}'
+        cached_result = cache.get(cache_key)
+        
+        if cached_result:
+            return JsonResponse(cached_result)
+        
+        # URL da API do GitHub para buscar tags (ordenadas por data de criação)
+        github_api_url = "https://api.github.com/repos/D3NKYT0/lineage/tags"
+        
+        # Fazer requisição ao GitHub
+        response = requests.get(
+            github_api_url,
+            timeout=5,
+            headers={'Accept': 'application/vnd.github.v3+json'},
+            params={'per_page': 30, 'page': 1}  # Buscar as 30 primeiras tags
+        )
+        
+        if response.status_code == 200:
+            tags_data = response.json()
+            
+            if not tags_data or not isinstance(tags_data, list):
+                # Se não houver tags, retornar sem atualização
+                result = {
+                    'has_update': False,
+                    'current_version': current_version,
+                    'latest_version': current_version,
+                    'error': 'Nenhuma tag encontrada no repositório'
+                }
+                return JsonResponse(result)
+            
+            # Função para comparar versões (formato: X.Y.Z)
+            def version_tuple(v):
+                """Converte versão string para tuple para comparação"""
+                try:
+                    # Remove 'v' do início se existir
+                    v = str(v).lstrip('vV')
+                    # Extrai números da versão
+                    parts = re.findall(r'\d+', v)
+                    # Retorna tuple com até 3 números (major, minor, patch)
+                    # Preenche com zeros se tiver menos de 3 partes
+                    while len(parts) < 3:
+                        parts.append('0')
+                    return tuple(int(p) for p in parts[:3]) if parts else (0, 0, 0)
+                except:
+                    return (0, 0, 0)
+            
+            # Ordenar tags por versão (maior primeiro) para garantir que pegamos a mais recente
+            # A API pode não retornar em ordem de versão, então ordenamos por versão numérica
+            sorted_tags = sorted(
+                tags_data,
+                key=lambda tag: version_tuple(tag.get('name', '')),
+                reverse=True
+            )
+            
+            # Pegar a tag com maior versão
+            latest_tag = sorted_tags[0]
+            latest_version = latest_tag.get('name', '').lstrip('vV')
+            
+            # Comparar versões
+            current_tuple = version_tuple(current_version)
+            latest_tuple = version_tuple(latest_version)
+            
+            has_update = latest_tuple > current_tuple
+            
+            # Buscar informações do commit da tag para obter data e mensagem
+            commit_url = latest_tag.get('commit', {}).get('url', '')
+            commit_sha = latest_tag.get('commit', {}).get('sha', '')
+            release_notes = ''
+            published_at = ''
+            
+            if commit_url:
+                try:
+                    commit_response = requests.get(commit_url, timeout=3, headers={'Accept': 'application/vnd.github.v3+json'})
+                    if commit_response.status_code == 200:
+                        commit_data = commit_response.json()
+                        published_at = commit_data.get('commit', {}).get('author', {}).get('date', '')
+                        release_notes = commit_data.get('commit', {}).get('message', '')[:500]
+                except:
+                    pass  # Se falhar, continua sem as informações do commit
+            
+            # URL da tag no GitHub
+            tag_name = latest_tag.get('name', '')
+            # Tenta usar releases/tag primeiro, se não existir usa tree
+            tag_url = f"https://github.com/D3NKYT0/lineage/releases/tag/{tag_name}"
+            
+            result = {
+                'has_update': has_update,
+                'current_version': current_version,
+                'latest_version': latest_version if has_update else current_version,
+                'release_url': tag_url,
+                'release_notes': release_notes,
+                'published_at': published_at,
+                'tag_name': latest_tag.get('name', ''),
+            }
+            
+            # Cachear resultado por 1 hora
+            cache.set(cache_key, result, 3600)
+            
+            return JsonResponse(result)
+        elif response.status_code == 404:
+            # Repositório não encontrado ou sem acesso
+            result = {
+                'has_update': False,
+                'current_version': current_version,
+                'latest_version': current_version,
+                'error': 'Repositório não encontrado ou sem acesso'
+            }
+            return JsonResponse(result)
+        else:
+            # Se não conseguir buscar, retornar sem atualização
+            result = {
+                'has_update': False,
+                'current_version': current_version,
+                'latest_version': current_version,
+                'error': f'Não foi possível verificar atualizações (Status: {response.status_code})'
+            }
+            return JsonResponse(result)
+            
+    except requests.RequestException as e:
+        logging.error(f"Erro ao verificar versão no GitHub: {str(e)}")
+        result = {
+            'has_update': False,
+            'current_version': getattr(settings, 'VERSION', '1.0.0'),
+            'latest_version': getattr(settings, 'VERSION', '1.0.0'),
+            'error': 'Erro de conexão'
+        }
+        return JsonResponse(result)
+    except Exception as e:
+        logging.error(f"Erro inesperado ao verificar versão: {str(e)}")
+        result = {
+            'has_update': False,
+            'current_version': getattr(settings, 'VERSION', '1.0.0'),
+            'latest_version': getattr(settings, 'VERSION', '1.0.0'),
+            'error': 'Erro inesperado'
+        }
+        return JsonResponse(result)

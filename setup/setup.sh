@@ -1,6 +1,40 @@
 #!/bin/bash
 
-set -e
+################################################################################
+# Script de Setup do Painel Definitivo Lineage (PDL)
+# 
+# Este script prepara o ambiente completo para o PDL, incluindo:
+# - Instalação de dependências do sistema
+# - Instalação do Docker e Docker Compose
+# - Configuração do ambiente Python
+# - Criação de arquivos de configuração
+################################################################################
+
+set -euo pipefail
+
+# Cores para output
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly NC='\033[0m' # No Color
+
+# Função para log
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+}
 
 INSTALL_DIR="$(pwd)/.install_status"
 mkdir -p "$INSTALL_DIR"
@@ -158,12 +192,37 @@ fi
 
 if [ ! -f "$INSTALL_DIR/repo_cloned" ]; then
   echo
-  echo "📂 Clonando repositório do projeto..."
-  git clone https://github.com/D3NKYT0/lineage.git || true
-  touch "$INSTALL_DIR/repo_cloned"
+  log_info "📂 Verificando repositório do projeto..."
+  
+  # Se já estamos dentro do repositório (manage.py existe), não precisa clonar
+  if [ -f "manage.py" ]; then
+    log_success "Repositório já está presente (manage.py encontrado)."
+    touch "$INSTALL_DIR/repo_cloned"
+  elif [ -d "lineage" ] && [ -f "lineage/manage.py" ]; then
+    log_info "Repositório encontrado em subdiretório 'lineage'."
+    touch "$INSTALL_DIR/repo_cloned"
+  else
+    log_info "Clonando repositório do projeto..."
+    git clone https://github.com/D3NKYT0/lineage.git || {
+      log_error "Falha ao clonar repositório."
+      log_info "Certifique-se de que o Git está instalado e você tem acesso à internet."
+      exit 1
+    }
+    log_success "Repositório clonado com sucesso."
+    touch "$INSTALL_DIR/repo_cloned"
+  fi
 fi
 
-pushd lineage > /dev/null
+# Entrar no diretório do projeto se necessário
+if [ -d "lineage" ] && [ -f "lineage/manage.py" ] && [ ! -f "manage.py" ]; then
+  pushd lineage > /dev/null
+elif [ -f "manage.py" ]; then
+  # Já estamos no diretório correto
+  :
+else
+  log_error "Não foi possível encontrar o diretório do projeto."
+  exit 1
+fi
 
 if [ ! -f "$INSTALL_DIR/python_ready" ]; then
   echo
@@ -194,114 +253,21 @@ fi
 
 if [ ! -f "$INSTALL_DIR/env_created" ]; then
   echo
-  echo "⚙️ Criando arquivo .env (se não existir)..."
+  log_info "⚙️ Criando arquivo .env..."
   if [ ! -f ".env" ]; then
-    cat <<EOL > .env
-DEBUG=False
-SECRET_KEY=41&l85x$t8g5!wgvzxw9_v%jbph2msibr3x7jww5%1u8w*3ax
-
-DB_ENGINE=postgresql
-DB_HOST=postgres
-DB_NAME=db_name
-DB_USERNAME=db_user
-DB_PASS=db_pass
-DB_PORT=5432
-
-CONFIG_EMAIL_ENABLE=False
-CONFIG_EMAIL_USE_TLS=True
-CONFIG_EMAIL_HOST=smtp.domain.com
-CONFIG_EMAIL_HOST_USER=mail@mail.dev.br
-CONFIG_DEFAULT_FROM_EMAIL=mail@mail.dev.br
-CONFIG_EMAIL_HOST_PASSWORD=password
-CONFIG_EMAIL_PORT=587
-
-CONFIG_AUDITOR_MIDDLEWARE_ENABLE = True
-DJANGO_CACHE_REDIS_URI=redis://redis:6379/0
-
-RENDER_EXTERNAL_HOSTNAME=pdl.denky.dev.br
-RENDER_EXTERNAL_FRONTEND=pdl.denky.dev.br
-
-CELERY_BROKER_URI=redis://redis:6379/1
-CELERY_BACKEND_URI=redis://redis:6379/1
-CHANNELS_BACKEND=redis://redis:6379/2
-
-ENCRYPTION_KEY = 'iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac='
-DATA_UPLOAD_MAX_MEMORY_SIZE = 31457280
-
-LINEAGE_DB_NAME=l2jdb
-LINEAGE_DB_USER=l2user
-LINEAGE_DB_PASSWORD=suaSenhaAqui
-LINEAGE_DB_HOST=192.168.1.100
-LINEAGE_DB_PORT=3306
-
-USE_S3=False
-AWS_ACCESS_KEY_ID=your_aws_access_key_id
-AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
-AWS_STORAGE_BUCKET_NAME=your-bucket-name
-AWS_S3_REGION_NAME=us-east-1
-AWS_S3_CUSTOM_DOMAIN=your-bucket-name.s3.amazonaws.com
-
-CONFIG_MERCADO_PAGO_ACCESS_TOKEN = "APP_USR-0000000000000000-000000-00000000000000000000000000000000-000000000"
-CONFIG_MERCADO_PAGO_PUBLIC_KEY = "APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-CONFIG_MERCADO_PAGO_CLIENT_ID = "0000000000000000"
-CONFIG_MERCADO_PAGO_CLIENT_SECRET = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-CONFIG_MERCADO_PAGO_SIGNATURE = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
-LINEAGE_QUERY_MODULE=dreamv3
-
-CONFIG_HCAPTCHA_SITE_KEY=bcf40348-fa88-4570-a752-2asdasde0b2bc
-CONFIG_HCAPTCHA_SECRET_KEY=ES_dc688fdasdasdadasdas4e918093asddsddsafa3f1b
-
-CONFIG_LANGUAGE_CODE="pt"
-CONFIG_TIME_ZONE="America/Recife"
-CONFIG_DECIMAL_SEPARATOR=','
-CONFIG_USE_THOUSAND_SEPARATOR=True
-CONFIG_DATETIME_FORMAT='d/m/Y H:i:s'
-CONFIG_DATE_FORMAT='d/m/Y'
-CONFIG_TIME_FORMAT='H:i:s'
-CONFIG_GMT_OFFSET=-3
-
-PROJECT_TITLE=Lineage 2 PDL
-PROJECT_AUTHOR=Lineage 2 PDL
-PROJECT_DESCRIPTION=O PDL é um painel que nasceu com a missão de oferecer ferramentas poderosas para administradores de servidores privados de Lineage 2. Inicialmente voltado à análise de riscos e estabilidade dos servidores, o projeto evoluiu e se consolidou como uma solução completa para prospecção, gerenciamento e operação de servidores — tudo em código aberto.
-PROJECT_KEYWORDS=lineage l2 painel servidor
-PROJECT_URL=https://pdl.denky.dev.br
-PROJECT_LOGO_URL=/static/assets/img/logo_painel.png
-PROJECT_FAVICON_ICO=/static/assets/img/ico.jpg
-PROJECT_FAVICON_MANIFEST=/static/assets/img/favicon/site.webmanifest
-PROJECT_THEME_COLOR=#ffffff
-
-PROJECT_DISCORD_URL='https://discord.gg/seu-link-aqui'
-PROJECT_YOUTUBE_URL='https://www.youtube.com/@seu-canal'
-PROJECT_FACEBOOK_URL='https://www.facebook.com/sua-pagina'
-PROJECT_INSTAGRAM_URL='https://www.instagram.com/seu-perfil'
-
-CONFIG_STRIPE_WEBHOOK_SECRET='whsec_5dzjceF7LgeYzasdasdasdZpSuPq'
-CONFIG_STRIPE_SECRET_KEY='sk_test_51RK0cORmyaPSbmPDEMjN0DaasdasdadadasdafgagdhhfasdfsfnbgRrtdKRwHRakfrQub9SQ5jQEUNvTfrcFxbw00gsqFR09W'
-
-CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS=True
-CONFIG_STRIPE_ACTIVATE_PAYMENTS=True
-
-RUNNING_IN_DOCKER=True
-SLOGAN=True
-LINEAGE_DB_ENABLED=True
-
-GOOGLE_CLIENT_ID=3029asdasd17179-i4lfm6078nrov5lhv9628bch2o8vlqs8.apps.googleusercontent.com
-GOOGLE_SECRET_KEY=GOCSPX-bWw9hU6Mb3pasdasdasd
-
-GITHUB_CLINET_ID=Ov23liadadadwcXpjog38V
-GITHUB_SECRET_KEY=ea0d1c77b910eadadadada65a7cbddee1bd07deb
-
-DISCORD_CLIENT_ID=13836455adada77550336
-DISCORD_SECRET_KEY=Gs9db5OmQ9dadadadadad8CtOQuLKx42fdf
-
-SOCIAL_LOGIN_ENABLED=False
-SOCIAL_LOGIN_GOOGLE_ENABLED=False
-SOCIAL_LOGIN_GITHUB_ENABLED=False
-SOCIAL_LOGIN_DISCORD_ENABLED=False
-SOCIAL_LOGIN_SHOW_SECTION=False
-
-EOL
+    log_info "Executando script de geração do .env..."
+    if [ -f "setup/generate-env.sh" ]; then
+      bash setup/generate-env.sh || {
+        log_error "Falha ao gerar arquivo .env"
+        log_info "Você pode executar manualmente depois com: bash setup/generate-env.sh"
+        exit 1
+      }
+    else
+      log_error "Script setup/generate-env.sh não encontrado!"
+      exit 1
+    fi
+  else
+    log_warning "Arquivo .env já existe. Pulando geração."
   fi
   touch "$INSTALL_DIR/env_created"
 fi
@@ -324,45 +290,94 @@ EOF
 fi
 
 if [ ! -f "$INSTALL_DIR/fernet_key_generated" ]; then
-  FERNET_KEY=$(python3 - <<EOF
+  # Verificar se ENCRYPTION_KEY já foi gerado pelo generate-env.sh
+  if ! grep -q "^ENCRYPTION_KEY=" .env 2>/dev/null || grep -q "^ENCRYPTION_KEY='iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac='" .env 2>/dev/null; then
+    log_info "Gerando ENCRYPTION_KEY..."
+    FERNET_KEY=$(python3 - <<EOF
 from cryptography.fernet import Fernet
 print(Fernet.generate_key().decode())
 EOF
 )
-  sed -i "/^ENCRYPTION_KEY=/c\ENCRYPTION_KEY='$FERNET_KEY'" .env
-  echo "✅ ENCRYPTION_KEY atualizado no .env."
+    if [ -n "$FERNET_KEY" ]; then
+      sed -i "/^ENCRYPTION_KEY=/c\ENCRYPTION_KEY='$FERNET_KEY'" .env
+      log_success "ENCRYPTION_KEY atualizado no .env."
+    else
+      log_warning "Não foi possível gerar ENCRYPTION_KEY. Mantendo valor padrão."
+    fi
+  else
+    log_info "ENCRYPTION_KEY já foi configurado."
+  fi
   touch "$INSTALL_DIR/fernet_key_generated"
 fi
 
 if [ ! -f "$INSTALL_DIR/build_executed" ]; then
   echo
-  echo "🔨 Copiando e preparando build.sh..."
-  cp setup/build.sh .
-  chmod +x build.sh
+  log_info "🔨 Preparando build.sh..."
+  
+  # Não copia mais o build.sh, apenas referencia
+  # O build.sh deve ser executado da pasta setup/
+  if [ ! -f "setup/build.sh" ]; then
+    log_error "Arquivo setup/build.sh não encontrado!"
+    exit 1
+  fi
+  
+  chmod +x setup/build.sh || true
 
   echo
-  echo "🚀 Executando build.sh..."
-  ./build.sh || { echo "❌ Falha ao executar build.sh"; exit 1; }
+  log_info "🚀 Executando build.sh..."
+  bash setup/build.sh || { 
+    log_error "Falha ao executar build.sh"
+    log_info "Você pode executar manualmente depois com: bash setup/build.sh"
+    exit 1
+  }
 
   touch "$INSTALL_DIR/build_executed"
 fi
 
 if [ ! -f "$INSTALL_DIR/superuser_created" ]; then
   echo
-  echo "👤 Criando usuário administrador no Django..."
-  read -p "Username: " DJANGO_SUPERUSER_USERNAME
-  read -p "Email: " DJANGO_SUPERUSER_EMAIL
-  read -s -p "Password: " DJANGO_SUPERUSER_PASSWORD
-  echo
-  read -s -p "Confirme a senha: " DJANGO_SUPERUSER_PASSWORD_CONFIRM
-  echo
+  log_info "👤 Criando usuário administrador no Django..."
+  
+  # Verificar se os containers estão rodando
+  if ! $DOCKER_COMPOSE ps | grep -q "site_http.*Up"; then
+    log_warning "Containers não estão rodando. Pulando criação de superuser."
+    log_info "Você pode criar o superuser depois com:"
+    echo "  $DOCKER_COMPOSE exec site_http python3 manage.py createsuperuser"
+  else
+    read -p "Username: " DJANGO_SUPERUSER_USERNAME
+    read -p "Email: " DJANGO_SUPERUSER_EMAIL
+    read -s -p "Password: " DJANGO_SUPERUSER_PASSWORD
+    echo
+    read -s -p "Confirme a senha: " DJANGO_SUPERUSER_PASSWORD_CONFIRM
+    echo
 
-  if [ "$DJANGO_SUPERUSER_PASSWORD" != "$DJANGO_SUPERUSER_PASSWORD_CONFIRM" ]; then
-    echo "❌ As senhas não conferem. Abortando."
-    exit 1
-  fi
+    if [ "$DJANGO_SUPERUSER_PASSWORD" != "$DJANGO_SUPERUSER_PASSWORD_CONFIRM" ]; then
+      log_error "As senhas não conferem. Abortando."
+      exit 1
+    fi
 
-  $DOCKER_COMPOSE exec site_http python3 manage.py shell -c "
+    # Detectar qual serviço usar
+    APP_SERVICE=""
+    APP_CANDIDATES=("site_http" "site_wsgi" "app" "web" "site" "django" "backend")
+    for svc in "${APP_CANDIDATES[@]}"; do
+      if $DOCKER_COMPOSE ps --services 2>/dev/null | grep -q "^${svc}$"; then
+        if $DOCKER_COMPOSE exec -T "$svc" python3 manage.py --version > /dev/null 2>&1; then
+          APP_SERVICE="$svc"
+          break
+        fi
+      fi
+    done
+
+    if [ -z "$APP_SERVICE" ]; then
+      log_warning "Não foi possível detectar o serviço Django. Pulando criação de superuser."
+      log_info "Você pode criar manualmente depois com:"
+      echo "  $DOCKER_COMPOSE exec site_http python3 manage.py createsuperuser"
+    else
+      log_info "Usando serviço: $APP_SERVICE"
+      $DOCKER_COMPOSE exec -T "$APP_SERVICE" python3 manage.py shell <<PYTHON_SCRIPT || {
+        log_warning "Falha ao criar superuser via script. Tente manualmente."
+        exit 0
+      }
 from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='$DJANGO_SUPERUSER_USERNAME').exists():
@@ -374,18 +389,30 @@ if not User.objects.filter(username='$DJANGO_SUPERUSER_USERNAME').exists():
     print('✅ Superuser \"$DJANGO_SUPERUSER_USERNAME\" criado com sucesso.')
 else:
     print('ℹ️ O usuário \"$DJANGO_SUPERUSER_USERNAME\" já existe.')
-"
+PYTHON_SCRIPT
+      log_success "Superuser criado ou já existente."
+    fi
+  fi
+  
   touch "$INSTALL_DIR/superuser_created"
 fi
 
-popd > /dev/null
+# Voltar ao diretório anterior se necessário
+if [ "$(pwd)" != "$(dirname "$INSTALL_DIR")" ] && [ -d "lineage" ]; then
+  popd > /dev/null 2>&1 || true
+fi
 
 touch "$INSTALL_DIR/.install_done"
 
 echo
-echo "🎉 Instalação concluída com sucesso!"
-echo "Acesse: http://localhost:6085"
-echo "Para gerenciar o projeto, use:"
-echo " - docker compose up -d         # Para iniciar"
-echo " - docker compose down          # Para parar"
+log_success "🎉 Instalação concluída com sucesso!"
+echo
+log_info "Informações importantes:"
+echo "  - Acesse: http://localhost:6085"
+echo "  - Para atualizar: bash setup/build.sh"
+echo "  - Para parar: $DOCKER_COMPOSE down"
+echo "  - Para iniciar: $DOCKER_COMPOSE up -d"
+echo
+log_info "Para configurar domínio personalizado:"
+echo "  - Execute: sudo bash setup/nginx-proxy.sh"
 echo

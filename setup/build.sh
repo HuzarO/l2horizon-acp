@@ -39,15 +39,17 @@ python3 manage.py check || { echo "Django check failed"; exit 1; }
 echo "Making migrations (host)..."
 python3 manage.py makemigrations || { echo "Failed to make migrations"; exit 1; }
 
-# Stop running containers
+# Stop running containers gracefully
 echo "Stopping containers (compose down)..."
-$DOCKER_COMPOSE down || { echo "Failed to stop running containers"; }
+$DOCKER_COMPOSE down --remove-orphans 2>/dev/null || {
+  echo "Warning: Some containers may not have stopped cleanly. Continuing..."
+}
 
 # Remove legacy/old containers explicitly (compose service names may have changed)
 echo "Removing legacy containers..."
 legacy_filters=(
   "name=site"           # old app container name (requested)
-  "name=site_wsgi"      # new wsgi app container (cleanup previous runs)
+  "name=site_wsgi"       # new wsgi app container (cleanup previous runs)
   "name=site_http"      # new http app container (cleanup previous runs)
   "name=web"            # common app alias
   "name=django"         # common app alias
@@ -64,16 +66,46 @@ for f in "${legacy_filters[@]}"; do
   filters_args+=(--filter "$f")
 done
 
-containers=$(docker ps -a -q "${filters_args[@]}")
+containers=$(docker ps -a -q "${filters_args[@]}" 2>/dev/null || true)
 if [ -n "$containers" ]; then
-  docker rm -f $containers || echo "Some legacy containers could not be removed (maybe already removed)"
+  echo "$containers" | xargs -r docker rm -f 2>/dev/null || echo "Some legacy containers could not be removed (maybe already removed)"
 else
   echo "No legacy containers found to remove."
 fi
 
-# Remove optional static_data volume
-echo "Removing static_data volume..."
-docker volume rm $(docker volume ls -q --filter name=static_data) || echo "Volume not found or already removed"
+# Remove optional static_data volume (if exists and not in use)
+echo "Checking for unused volumes..."
+static_volumes=$(docker volume ls -q --filter name=static_data 2>/dev/null || true)
+if [ -n "$static_volumes" ]; then
+  echo "$static_volumes" | while read -r vol; do
+    docker volume rm "$vol" 2>/dev/null || echo "Volume $vol is in use or already removed"
+  done
+fi
+
+# Ensure network exists before building
+echo "Ensuring Docker network exists..."
+NETWORK_NAME="lineage_network"
+
+# Check if network exists
+if docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
+  echo "Network $NETWORK_NAME already exists."
+else
+  echo "Creating Docker network: $NETWORK_NAME"
+  # Try to create network, handling case where it might be in use
+  if ! docker network create "$NETWORK_NAME" 2>/dev/null; then
+    # If creation failed, try to remove and recreate (only if not in use)
+    echo "Network creation failed. Attempting to clean up and recreate..."
+    docker network rm "$NETWORK_NAME" 2>/dev/null || true
+    sleep 1
+    if ! docker network create "$NETWORK_NAME" 2>/dev/null; then
+      echo "Warning: Could not create network. Docker Compose will handle it."
+    else
+      echo "Network $NETWORK_NAME created successfully."
+    fi
+  else
+    echo "Network $NETWORK_NAME created successfully."
+  fi
+fi
 
 # Build Docker images
 echo "Building Docker images (pulling latest bases)..."
@@ -133,11 +165,13 @@ fi
 
 $DOCKER_COMPOSE exec "$APP_SERVICE" python3 manage.py migrate || { echo "Failed to apply migrations"; exit 1; }
 
-# Clean up
-echo "Cleaning up..."
-docker image prune -f
-docker volume prune -f
-docker container prune -f
-docker builder prune -f
+# Clean up (non-interactive, only unused resources)
+echo "Cleaning up unused Docker resources..."
+docker image prune -f 2>/dev/null || true
+docker volume prune -f 2>/dev/null || true
+docker container prune -f 2>/dev/null || true
+docker builder prune -f 2>/dev/null || true
 
+echo "=============================="
 echo "Deployment completed successfully."
+echo "=============================="

@@ -64,6 +64,9 @@ urlpatterns = [
     # locale
     path('set-language/', custom_set_language, name='set_language'),
 
+    # version check
+    path('check-version-update/', check_version_update, name='check_version_update'),
+
     # disable views
     path('components/buttons/', empty_view, name="buttons"),
     path('components/notifications/', empty_view, name="notifications"),
