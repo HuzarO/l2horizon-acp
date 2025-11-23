@@ -99,20 +99,20 @@ else
   echo "No legacy containers found to remove."
 fi
 
-# Função para limpar e preparar volumes Docker
+# Função para limpar e preparar volumes Docker (SEM apagar volume do banco!)
 cleanup_volumes() {
-  echo "Cleaning up Docker volumes..."
+  echo "Cleaning up Docker volumes (preserving database volume)..."
   
-  # Parar containers que podem estar usando os volumes
-  $DOCKER_COMPOSE down --volumes 2>/dev/null || true
+  # Parar containers SEM remover volumes (para preservar dados do banco)
+  $DOCKER_COMPOSE down --remove-orphans 2>/dev/null || true
   
-  # Lista de volumes para limpar
-  local volumes=("lineage_static_data" "lineage_media_data" "static_data" "media_data")
+  # Lista de volumes para limpar (NÃO inclui postgres_data para preservar dados do banco!)
+  local volumes=("lineage_static_data" "lineage_media_data" "static_data" "media_data" "logs_data")
   
   for vol_name in "${volumes[@]}"; do
     # Verifica se o volume existe
     if docker volume inspect "$vol_name" >/dev/null 2>&1; then
-      echo "Removing volume: $vol_name"
+      echo "Removing volume: $vol_name (safe - no database data)"
       # Tenta remover o volume
       docker volume rm "$vol_name" 2>/dev/null || {
         echo "Warning: Could not remove volume $vol_name (may be in use). Trying force cleanup..."
@@ -122,7 +122,7 @@ cleanup_volumes() {
     fi
   done
   
-  echo "Volumes cleaned up."
+  echo "Volumes cleaned up (database volume preserved)."
 }
 
 # Remove optional static_data volume (if exists and not in use)
