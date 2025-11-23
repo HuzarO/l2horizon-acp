@@ -1,10 +1,15 @@
 services:
-  site_http:
-    container_name: site_http
-    restart: always
+  site_base:
     build:
       context: .
       dockerfile: Dockerfile
+    image: site:latest
+    command: ["sh", "-c", "echo 'Base image built' && exit 0"]
+    restart: "no"
+
+  site_http:
+    container_name: site_http
+    restart: always
     image: site:latest
     env_file:
       - .env
@@ -21,15 +26,13 @@ services:
     environment:
       - RUNNING_IN_DOCKER=true
     depends_on:
+      - site_base
       - redis
       - postgres
 
   site_asgi:
     container_name: site_asgi
     restart: always
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: site:latest
     env_file:
       - .env
@@ -46,15 +49,13 @@ services:
     environment:
       - RUNNING_IN_DOCKER=true
     depends_on:
+      - site_base
       - redis
       - postgres
 
   celery:
     container_name: celery
     restart: always
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: site:latest
     env_file:
       - .env
@@ -66,6 +67,7 @@ services:
     init: true
     stop_grace_period: 60s
     depends_on:
+      - site_base
       - redis
       - site_http
     hostname: celery-worker
@@ -79,9 +81,6 @@ services:
   celery-beat:
     container_name: celery_beat
     restart: always
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: site:latest
     env_file:
       - .env
@@ -93,15 +92,13 @@ services:
     init: true
     stop_grace_period: 60s
     depends_on:
+      - site_base
       - redis
       - site_http
 
   flower:
     container_name: flower
     restart: always 
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: site:latest
     env_file:
       - .env
@@ -113,6 +110,7 @@ services:
     init: true
     stop_grace_period: 60s
     depends_on:
+      - site_base
       - redis
       - site_http
       - celery
