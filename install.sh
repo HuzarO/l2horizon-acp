@@ -50,9 +50,10 @@ command_exists() {
 # Função para verificar se está rodando como root
 check_root() {
     if [ "$EUID" -eq 0 ]; then
-        log_error "Este script não deve ser executado como root."
-        log_info "Execute sem sudo. O script pedirá permissões quando necessário."
-        exit 1
+        log_warning "⚠️  Executando como root detectado."
+        log_info "Nota: Em servidores, é comum executar como root."
+        log_info "O script continuará normalmente. Alguns comandos podem não precisar de sudo."
+        echo
     fi
 }
 
@@ -328,7 +329,7 @@ main() {
     
     # Continuar com instalação completa se action ainda for "install"
     if [ "$action" = "install" ]; then
-        # Verificar se não está rodando como root
+        # Verificar se está rodando como root (apenas aviso, não bloqueia)
         check_root
     
         # Verificar pré-requisitos
