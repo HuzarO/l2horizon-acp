@@ -270,8 +270,7 @@ main() {
         install|"")
             echo "Este script irá:"
             echo "  1. Verificar pré-requisitos"
-            echo "  2. Executar setup.sh (instalação inicial)"
-            echo "  3. Executar build.sh (build e deploy)"
+            echo "  2. Executar setup.sh (instalação inicial + build e deploy)"
             echo
             echo "Repositório: https://github.com/D3NKYT0/lineage"
             echo
@@ -497,18 +496,11 @@ main() {
             exit 0
         fi
         
-        # Executar setup.sh
+        # Executar setup.sh (que já executa build.sh internamente)
         log_info "Executando setup.sh..."
         log_info "=========================================="
         cd "${SCRIPT_DIR}"
         run_setup_script "setup.sh"
-        
-        # Executar build.sh
-        log_info "=========================================="
-        log_info "Executando build.sh..."
-        log_info "=========================================="
-        cd "${SCRIPT_DIR}"
-        run_setup_script "build.sh"
         
         # Marcar instalação como concluída
         touch "${INSTALL_DIR}/.install_done"

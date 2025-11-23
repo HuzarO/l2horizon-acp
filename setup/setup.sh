@@ -353,7 +353,7 @@ if [ ! -f "$INSTALL_DIR/env_created" ]; then
     fi
   fi
   
-  # SEMPRE verificar e garantir ENCRYPTION_KEY (obrigatório)
+  # Verificar e garantir ENCRYPTION_KEY (obrigatório)
   # IMPORTANTE: NÃO sobrescreve chaves existentes para evitar quebrar dados criptografados
   if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
     log_warning "ENCRYPTION_KEY não encontrada no .env. Gerando..."
@@ -373,7 +373,7 @@ EOF
       exit 1
     fi
   else
-    log_info "ENCRYPTION_KEY já existe no .env."
+    log_info "ENCRYPTION_KEY já existe no .env (não será sobrescrita para preservar dados criptografados)."
   fi
   
   # Verificar se SECRET_KEY existe no .env
@@ -391,77 +391,9 @@ EOF
     fi
   fi
   
-  # Verificar se ENCRYPTION_KEY existe no .env (obrigatório)
-  # IMPORTANTE: NÃO sobrescreve chaves existentes para evitar quebrar dados criptografados
-  if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
-    log_warning "ENCRYPTION_KEY não encontrada no .env. Gerando..."
-    FERNET_KEY=$(python3 - <<EOF
-from cryptography.fernet import Fernet
-print(Fernet.generate_key().decode())
-EOF
-)
-    if [ -n "$FERNET_KEY" ]; then
-      echo "" >> .env
-      echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
-      log_success "ENCRYPTION_KEY adicionada ao .env."
-    else
-      log_error "Não foi possível gerar ENCRYPTION_KEY."
-      log_info "Adicione manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
-      exit 1
-    fi
-  else
-    log_info "ENCRYPTION_KEY já existe no .env (não será sobrescrita para preservar dados criptografados)."
-  fi
-  
-  # Verificar se SECRET_KEY existe no .env (obrigatório)
-  if ! grep -q "^SECRET_KEY=" .env 2>/dev/null; then
-    log_warning "SECRET_KEY não encontrada no .env. Gerando..."
-    SECRET_KEY=$(python3 - <<EOF
-from django.core.management.utils import get_random_secret_key
-print(get_random_secret_key())
-EOF
-)
-    if [ -n "$SECRET_KEY" ]; then
-      if ! grep -q "^SECRET_KEY=" .env 2>/dev/null; then
-        # Adicionar no início do arquivo
-        backup_env_file ".env"
-        sed -i "1i SECRET_KEY=$SECRET_KEY" .env
-        log_success "SECRET_KEY adicionada ao .env."
-      fi
-    fi
-  fi
-  
-  # Validar que .env tem as variáveis mínimas necessárias ANTES de continuar
-  if [ ! -f ".env" ]; then
-    log_error "Arquivo .env não foi criado!"
-    exit 1
-  fi
-  
-  # Garantir ENCRYPTION_KEY (obrigatório para Django)
-  if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
-    log_error "ENCRYPTION_KEY não encontrada no .env após geração!"
-    log_info "Tentando gerar ENCRYPTION_KEY..."
-    backup_env_file ".env"
-    FERNET_KEY=$(python3 - <<EOF
-from cryptography.fernet import Fernet
-print(Fernet.generate_key().decode())
-EOF
-)
-    if [ -n "$FERNET_KEY" ]; then
-      echo "" >> .env
-      echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
-      log_success "ENCRYPTION_KEY adicionada ao .env."
-    else
-      log_error "Não foi possível gerar ENCRYPTION_KEY automaticamente."
-      log_error "Por favor, adicione manualmente ao .env:"
-      log_error "  ENCRYPTION_KEY='sua_chave_aqui'"
-      exit 1
-    fi
-  fi
-  
   # Validação final - garantir que ENCRYPTION_KEY existe
   if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
-    log_error "ENCRYPTION_KEY ainda não encontrada após todas as tentativas!"
+    log_error "ENCRYPTION_KEY não foi criada corretamente!"
     exit 1
   fi
   
@@ -470,6 +402,7 @@ EOF
 fi
 
 # Garantir ENCRYPTION_KEY mesmo se .env já existia (para casos onde foi criado manualmente)
+# IMPORTANTE: Só adiciona se não existir, NUNCA substitui chaves existentes
 if [ -f ".env" ] && ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
   log_warning "ENCRYPTION_KEY não encontrada no .env existente. Gerando..."
   backup_env_file ".env"
@@ -487,6 +420,8 @@ EOF
     log_error "Adicione manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
     exit 1
   fi
+elif [ -f ".env" ] && grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
+  log_info "ENCRYPTION_KEY já existe no .env (preservada para manter dados criptografados)."
 fi
 
 if [ ! -f "$INSTALL_DIR/htpasswd_created" ]; then
@@ -508,8 +443,8 @@ fi
 
 if [ ! -f "$INSTALL_DIR/fernet_key_generated" ]; then
   # Verificar se ENCRYPTION_KEY já foi gerado pelo generate-env.sh
-  # IMPORTANTE: Só substitui se for a chave padrão/placeholder (primeira instalação)
-  # NÃO substitui chaves existentes para evitar quebrar dados criptografados
+  # IMPORTANTE: NÃO substitui chaves existentes para evitar quebrar dados criptografados
+  # Só substitui a chave placeholder padrão na primeira instalação (quando não há dados ainda)
   if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
     log_info "ENCRYPTION_KEY não encontrada. Gerando..."
     FERNET_KEY=$(python3 - <<EOF
@@ -525,20 +460,26 @@ EOF
       log_warning "Não foi possível gerar ENCRYPTION_KEY."
     fi
   elif grep -qE "^ENCRYPTION_KEY\s*=\s*['\"]?iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac=" .env 2>/dev/null; then
-    # Só substitui se for a chave padrão/placeholder (primeira instalação)
-    log_warning "ENCRYPTION_KEY é a chave padrão/placeholder. Gerando nova chave..."
-    backup_env_file ".env"
-    FERNET_KEY=$(python3 - <<EOF
+    # Só substitui se for a chave padrão/placeholder E se for a primeira instalação
+    # Verificar se já foi feita instalação anterior (se sim, não substituir!)
+    if [ ! -f "$INSTALL_DIR/.install_done" ] && [ ! -f "$INSTALL_DIR/build_executed" ]; then
+      log_warning "ENCRYPTION_KEY é a chave padrão/placeholder. Gerando nova chave (primeira instalação)..."
+      backup_env_file ".env"
+      FERNET_KEY=$(python3 - <<EOF
 from cryptography.fernet import Fernet
 print(Fernet.generate_key().decode())
 EOF
 )
-    if [ -n "$FERNET_KEY" ]; then
-      sed -i "/^ENCRYPTION_KEY\s*=/c\ENCRYPTION_KEY='$FERNET_KEY'" .env
-      log_success "ENCRYPTION_KEY atualizada no .env (chave padrão substituída)."
-      log_warning "ATENÇÃO: Se houver dados criptografados com a chave antiga, eles não poderão ser descriptografados!"
+      if [ -n "$FERNET_KEY" ]; then
+        sed -i "/^ENCRYPTION_KEY\s*=/c\ENCRYPTION_KEY='$FERNET_KEY'" .env
+        log_success "ENCRYPTION_KEY atualizada no .env (chave padrão substituída)."
+      else
+        log_warning "Não foi possível gerar ENCRYPTION_KEY. Mantendo valor padrão."
+      fi
     else
-      log_warning "Não foi possível gerar ENCRYPTION_KEY. Mantendo valor padrão."
+      log_warning "ENCRYPTION_KEY é a chave padrão, mas já existe instalação anterior."
+      log_warning "NÃO será substituída para preservar dados criptografados."
+      log_info "Se você realmente precisa substituir, faça backup do banco primeiro e remova os arquivos de status!"
     fi
   else
     log_info "ENCRYPTION_KEY já foi configurada (não será sobrescrita para preservar dados criptografados)."
@@ -556,24 +497,12 @@ if [ ! -f "$INSTALL_DIR/build_executed" ]; then
     exit 1
   fi
   
+  # Verificar se ENCRYPTION_KEY existe (não gerar aqui, já foi verificado antes)
   if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
     log_error "ENCRYPTION_KEY não encontrada no .env!"
-    log_info "Gerando ENCRYPTION_KEY..."
-    backup_env_file ".env"
-    FERNET_KEY=$(python3 - <<EOF
-from cryptography.fernet import Fernet
-print(Fernet.generate_key().decode())
-EOF
-)
-    if [ -n "$FERNET_KEY" ]; then
-      echo "" >> .env
-      echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
-      log_success "ENCRYPTION_KEY adicionada ao .env."
-    else
-      log_error "Não foi possível gerar ENCRYPTION_KEY."
-      log_error "Adicione manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
-      exit 1
-    fi
+    log_error "A chave deve ter sido gerada anteriormente. Verifique o .env."
+    log_info "Você pode adicionar manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
+    exit 1
   fi
   
   # Não copia mais o build.sh, apenas referencia
@@ -600,11 +529,19 @@ if [ ! -f "$INSTALL_DIR/superuser_created" ]; then
   echo
   log_info "👤 Criando usuário administrador no Django..."
   
+  # Perguntar se deseja criar o superuser agora
+  read -p "Deseja criar o usuário administrador agora? (s/n): " CREATE_SUPERUSER
+  
+  if [[ ! "$CREATE_SUPERUSER" =~ ^[sS]$ ]]; then
+    log_info "Criação do superuser pulada. Você pode criar depois com:"
+    echo "  $DOCKER_COMPOSE exec site_http python3 manage.py createsuperuser"
+    touch "$INSTALL_DIR/superuser_created"
   # Verificar se os containers estão rodando
-  if ! $DOCKER_COMPOSE ps | grep -q "site_http.*Up"; then
+  elif ! $DOCKER_COMPOSE ps | grep -q "site_http.*Up"; then
     log_warning "Containers não estão rodando. Pulando criação de superuser."
     log_info "Você pode criar o superuser depois com:"
     echo "  $DOCKER_COMPOSE exec site_http python3 manage.py createsuperuser"
+    touch "$INSTALL_DIR/superuser_created"
   else
     read -p "Username: " DJANGO_SUPERUSER_USERNAME
     read -p "Email: " DJANGO_SUPERUSER_EMAIL
