@@ -136,9 +136,9 @@ fi
 log_info "Criando configuração do Nginx..."
 
 if [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
-    # Configuração com SSL (será atualizada pelo Certbot)
+    # Configuração inicial apenas HTTP (SSL será adicionado pelo Certbot)
     cat > /etc/nginx/sites-available/lineage-proxy << EOF
-# HTTP - Redirect to HTTPS
+# HTTP - Initial configuration (SSL will be added by Certbot)
 server {
     listen 80;
     listen [::]:80;
@@ -148,27 +148,6 @@ server {
     location /.well-known/acme-challenge/ {
         root /var/www/html;
     }
-
-    # Redirect all other HTTP traffic to HTTPS
-    location / {
-        return 301 https://\$server_name\$request_uri;
-    }
-}
-
-# HTTPS - Main configuration
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name ${DOMAIN};
-
-    # SSL configuration will be added by certbot
-    # ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
 
     # Proxy settings
     location / {
@@ -187,6 +166,11 @@ server {
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
     }
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
 }
 EOF
 else
