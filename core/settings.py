@@ -738,37 +738,46 @@ CKEDITOR_5_CONFIGS = {
 
 # =========================== PAYMENTS CONFIGS ===========================
 
-def get_env_variable(var_name):
+def get_env_variable(var_name, default=None):
+    """Obtém variável de ambiente, retornando default se não existir"""
+    value = os.getenv(var_name, default)
+    return value
+
+def get_env_variable_required(var_name):
+    """Obtém variável de ambiente obrigatória, lança erro se não existir"""
     value = os.getenv(var_name)
     if not value:
         raise EnvironmentError(f"Required environment variable not set: {var_name}")
     return value
 
-MERCADO_PAGO_ACCESS_TOKEN = get_env_variable('CONFIG_MERCADO_PAGO_ACCESS_TOKEN')
-MERCADO_PAGO_PUBLIC_KEY = get_env_variable('CONFIG_MERCADO_PAGO_PUBLIC_KEY')
-MERCADO_PAGO_CLIENT_ID = get_env_variable('CONFIG_MERCADO_PAGO_CLIENT_ID')
-MERCADO_PAGO_CLIENT_SECRET = get_env_variable('CONFIG_MERCADO_PAGO_CLIENT_SECRET')
-MERCADO_PAGO_WEBHOOK_SECRET = get_env_variable('CONFIG_MERCADO_PAGO_SIGNATURE')
+# Variáveis opcionais de pagamento (podem estar vazias se pagamentos não estiverem ativados)
+MERCADO_PAGO_ACCESS_TOKEN = get_env_variable('CONFIG_MERCADO_PAGO_ACCESS_TOKEN', '')
+MERCADO_PAGO_PUBLIC_KEY = get_env_variable('CONFIG_MERCADO_PAGO_PUBLIC_KEY', '')
+MERCADO_PAGO_CLIENT_ID = get_env_variable('CONFIG_MERCADO_PAGO_CLIENT_ID', '')
+MERCADO_PAGO_CLIENT_SECRET = get_env_variable('CONFIG_MERCADO_PAGO_CLIENT_SECRET', '')
+MERCADO_PAGO_WEBHOOK_SECRET = get_env_variable('CONFIG_MERCADO_PAGO_SIGNATURE', '')
 
+# RENDER_EXTERNAL_HOSTNAME é opcional, usa localhost como padrão se não estiver definido
+# (já foi definido acima, mas garantimos que não seja None)
 if not RENDER_EXTERNAL_HOSTNAME:
-    raise EnvironmentError(f"Required environment variable not set: RENDER_EXTERNAL_HOSTNAME")
+    RENDER_EXTERNAL_HOSTNAME = 'localhost'
 
-MERCADO_PAGO_SUCCESS_URL = f"https://{RENDER_EXTERNAL_HOSTNAME}/app/payment/mercadopago/sucesso/"
-MERCADO_PAGO_FAILURE_URL = f"https://{RENDER_EXTERNAL_HOSTNAME}/app/payment/mercadopago/erro/"
+MERCADO_PAGO_SUCCESS_URL = f"https://{RENDER_EXTERNAL_HOSTNAME}/app/payment/mercadopago/sucesso/" if RENDER_EXTERNAL_HOSTNAME else ""
+MERCADO_PAGO_FAILURE_URL = f"https://{RENDER_EXTERNAL_HOSTNAME}/app/payment/mercadopago/erro/" if RENDER_EXTERNAL_HOSTNAME else ""
 
 # =========================== STRIPE CONFIGS ===========================
 
-STRIPE_WEBHOOK_SECRET = get_env_variable('CONFIG_STRIPE_WEBHOOK_SECRET')
-STRIPE_SECRET_KEY = get_env_variable('CONFIG_STRIPE_SECRET_KEY')
+STRIPE_WEBHOOK_SECRET = get_env_variable('CONFIG_STRIPE_WEBHOOK_SECRET', '')
+STRIPE_SECRET_KEY = get_env_variable('CONFIG_STRIPE_SECRET_KEY', '')
 
-STRIPE_SUCCESS_URL = f"https://{RENDER_EXTERNAL_HOSTNAME}/app/payment/stripe/sucesso/"
-STRIPE_FAILURE_URL = f"https://{RENDER_EXTERNAL_HOSTNAME}/app/payment/stripe/erro/"
+STRIPE_SUCCESS_URL = f"https://{RENDER_EXTERNAL_HOSTNAME}/app/payment/stripe/sucesso/" if RENDER_EXTERNAL_HOSTNAME else ""
+STRIPE_FAILURE_URL = f"https://{RENDER_EXTERNAL_HOSTNAME}/app/payment/stripe/erro/" if RENDER_EXTERNAL_HOSTNAME else ""
 
 # =========================== PAYMENTS CONFIGS ===========================
 
 METHODS_PAYMENTS = ["MercadoPago", "Stripe"]
-MERCADO_PAGO_ACTIVATE_PAYMENTS = str2bool(get_env_variable('CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS'))
-STRIPE_ACTIVATE_PAYMENTS = str2bool(get_env_variable('CONFIG_STRIPE_ACTIVATE_PAYMENTS'))
+MERCADO_PAGO_ACTIVATE_PAYMENTS = str2bool(get_env_variable('CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS', 'False'))
+STRIPE_ACTIVATE_PAYMENTS = str2bool(get_env_variable('CONFIG_STRIPE_ACTIVATE_PAYMENTS', 'False'))
 
 # =========================== GOOGLE ANALYTICS ===========================
 # Ativa/Desativa GA e define o Measurement ID (ex.: G-XXXXXXXXXX)
@@ -777,13 +786,9 @@ GOOGLE_ANALYTICS_MEASUREMENT_ID = os.environ.get('CONFIG_GOOGLE_ANALYTICS_MEASUR
 
 # =========================== HCAPTCHA CONFIGS ===========================
 
-HCAPTCHA_SITE_KEY = os.environ.get('CONFIG_HCAPTCHA_SITE_KEY')
-if not HCAPTCHA_SITE_KEY:
-    raise EnvironmentError(f"Required environment variable not set: HCAPTCHA_SITE_KEY")
-
-HCAPTCHA_SECRET_KEY = os.environ.get('CONFIG_HCAPTCHA_SECRET_KEY')
-if not HCAPTCHA_SECRET_KEY:
-    raise EnvironmentError(f"Required environment variable not set: HCAPTCHA_SECRET_KEY")
+# HCAPTCHA é opcional (pode estar vazio se não for usado)
+HCAPTCHA_SITE_KEY = os.environ.get('CONFIG_HCAPTCHA_SITE_KEY', '')
+HCAPTCHA_SECRET_KEY = os.environ.get('CONFIG_HCAPTCHA_SECRET_KEY', '')
 
 # Configuração para número máximo de tentativas de login antes do captcha
 LOGIN_MAX_ATTEMPTS = int(os.environ.get('CONFIG_LOGIN_MAX_ATTEMPTS', 3))
