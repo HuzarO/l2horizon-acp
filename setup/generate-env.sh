@@ -37,6 +37,33 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
+# Função para criar backup do .env antes de modificações (com numeração incremental)
+backup_env_file() {
+    local env_file="${1:-$ENV_FILE}"
+    
+    if [ ! -f "$env_file" ]; then
+        return 0  # Se o arquivo não existe, não precisa fazer backup
+    fi
+    
+    # Encontrar o próximo número de backup disponível
+    local backup_num=1
+    local backup_file="${env_file}.bkp"
+    
+    while [ -f "$backup_file" ]; do
+        backup_num=$((backup_num + 1))
+        backup_file="${env_file}.bkp${backup_num}"
+    done
+    
+    # Criar o backup
+    cp "$env_file" "$backup_file" 2>/dev/null || {
+        log_error "Falha ao criar backup do .env em $backup_file"
+        return 1
+    }
+    
+    log_success "Backup do .env criado: $backup_file"
+    return 0
+}
+
 # Diretórios
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -148,6 +175,13 @@ add_section() {
 add_var() {
     local key="$1"
     local value="$2"
+    
+    # Criar backup antes de adicionar (apenas uma vez por sessão)
+    if [ -z "${_BACKUP_CREATED:-}" ]; then
+        backup_env_file "$ENV_FILE"
+        _BACKUP_CREATED=1
+    fi
+    
     echo "${key}=${value}" >> "$ENV_FILE"
 }
 
@@ -156,6 +190,12 @@ update_var() {
     local key="$1"
     local value="$2"
     local env_file="${3:-$ENV_FILE}"
+    
+    # Criar backup antes de atualizar (apenas uma vez por sessão)
+    if [ -z "${_BACKUP_CREATED:-}" ]; then
+        backup_env_file "$env_file"
+        _BACKUP_CREATED=1
+    fi
     
     if var_exists "$key" "$env_file"; then
         # Atualiza variável existente (preserva a linha original se possível, aceita espaços opcionais)
@@ -326,17 +366,32 @@ generate_required() {
     fi
     
     # Encryption
+    # IMPORTANTE: NÃO sobrescreve chaves existentes para evitar quebrar dados criptografados
     local existing_encryption=$(get_existing_value "ENCRYPTION_KEY" 2>/dev/null || echo "")
-    if [ -z "$existing_encryption" ] || [ "$edit_mode" = "false" ]; then
+    local default_key="iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac="
+    
+    if [ -z "$existing_encryption" ]; then
+        # Se não existe, gera uma nova
         log_info "Gerando ENCRYPTION_KEY..."
-        ENCRYPTION_KEY=$(generate_fernet_key 2>/dev/null || echo "iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac=")
+        ENCRYPTION_KEY=$(generate_fernet_key 2>/dev/null || echo "$default_key")
         if [ "$edit_mode" = "true" ]; then
             update_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
         else
             add_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
         fi
+    elif [ "$existing_encryption" = "$default_key" ]; then
+        # Se for a chave padrão/placeholder, substitui (apenas primeira instalação)
+        log_warning "ENCRYPTION_KEY é a chave padrão/placeholder. Gerando nova chave..."
+        ENCRYPTION_KEY=$(generate_fernet_key 2>/dev/null || echo "$default_key")
+        if [ "$edit_mode" = "true" ]; then
+            update_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
+            log_warning "ATENÇÃO: Se houver dados criptografados com a chave antiga, eles não poderão ser descriptografados!"
+        else
+            add_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
+        fi
     else
-        log_info "ENCRYPTION_KEY já existe, mantendo valor atual (não será alterado por segurança)."
+        # Se já existe e não é a chave padrão, mantém (CRÍTICO: não sobrescrever!)
+        log_info "ENCRYPTION_KEY já existe, mantendo valor atual (não será alterado para preservar dados criptografados)."
     fi
     local existing_upload_size=$(get_existing_value "DATA_UPLOAD_MAX_MEMORY_SIZE" 2>/dev/null || echo "31457280")
     if [ "$edit_mode" = "true" ]; then

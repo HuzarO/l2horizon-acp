@@ -99,14 +99,36 @@ else
   echo "No legacy containers found to remove."
 fi
 
+# Função para limpar e preparar volumes Docker
+cleanup_volumes() {
+  echo "Cleaning up Docker volumes..."
+  
+  # Parar containers que podem estar usando os volumes
+  $DOCKER_COMPOSE down --volumes 2>/dev/null || true
+  
+  # Lista de volumes para limpar
+  local volumes=("lineage_static_data" "lineage_media_data" "static_data" "media_data")
+  
+  for vol_name in "${volumes[@]}"; do
+    # Verifica se o volume existe
+    if docker volume inspect "$vol_name" >/dev/null 2>&1; then
+      echo "Removing volume: $vol_name"
+      # Tenta remover o volume
+      docker volume rm "$vol_name" 2>/dev/null || {
+        echo "Warning: Could not remove volume $vol_name (may be in use). Trying force cleanup..."
+        # Se o volume estiver em uso, tenta usar um container temporário para limpar
+        docker run --rm -v "$vol_name":/data alpine sh -c "rm -rf /data/* /data/.[!.]*" 2>/dev/null || true
+      }
+    fi
+  done
+  
+  echo "Volumes cleaned up."
+}
+
 # Remove optional static_data volume (if exists and not in use)
 echo "Checking for unused volumes..."
-static_volumes=$(docker volume ls -q --filter name=static_data 2>/dev/null || true)
-if [ -n "$static_volumes" ]; then
-  echo "$static_volumes" | while read -r vol; do
-    docker volume rm "$vol" 2>/dev/null || echo "Volume $vol is in use or already removed"
-  done
-fi
+# Chama a função de limpeza
+cleanup_volumes
 
 # Ensure network exists before building
 echo "Ensuring Docker network exists..."
@@ -136,6 +158,55 @@ fi
 # Build Docker images
 echo "Building Docker images (pulling latest bases)..."
 $DOCKER_COMPOSE build --pull || { echo "Failed to build Docker images"; exit 1; }
+
+# Preparar volumes antes de iniciar containers
+echo "Preparing volumes..."
+# Garante que os volumes existam e estejam limpos
+$DOCKER_COMPOSE up -d --no-deps --remove-orphans postgres redis 2>/dev/null || true
+sleep 2
+
+# Criar diretórios necessários nos volumes usando container temporário
+echo "Creating necessary directories in volumes..."
+for vol_name in static_data media_data; do
+  if docker volume inspect "$vol_name" >/dev/null 2>&1 || docker volume inspect "lineage_${vol_name}" >/dev/null 2>&1; then
+    # Usa o nome correto do volume (com ou sem prefixo lineage_)
+    actual_vol=$(docker volume ls -q --filter name="${vol_name}$" | head -1)
+    if [ -n "$actual_vol" ]; then
+      echo "Preparing volume: $actual_vol"
+      # Cria diretórios necessários no volume e remove arquivos conflitantes
+      docker run --rm -v "$actual_vol":/data alpine sh -c "
+        set -e
+        # Remove arquivos que podem estar bloqueando a criação de diretórios
+        if [ -f /data/pwa/icons ]; then
+          echo 'Removing conflicting file: /data/pwa/icons'
+          rm -f /data/pwa/icons
+        fi
+        if [ -f /data/pwa ]; then
+          echo 'Removing conflicting file: /data/pwa'
+          rm -f /data/pwa
+        fi
+        # Cria diretórios necessários (pwa/icons primeiro, depois os outros)
+        echo 'Creating directory: /data/pwa/icons'
+        mkdir -p /data/pwa/icons
+        mkdir -p /data/admin 2>/dev/null || true
+        mkdir -p /data/rest_framework 2>/dev/null || true
+        mkdir -p /data/pwa 2>/dev/null || true
+        # Define permissões
+        chmod -R 755 /data 2>/dev/null || true
+        # Verifica se o diretório foi criado corretamente
+        if [ ! -d /data/pwa/icons ]; then
+          echo 'ERROR: Failed to create /data/pwa/icons directory' >&2
+          exit 1
+        fi
+        echo 'Successfully prepared volume directories'
+      " || {
+        echo "Warning: Could not prepare volume $actual_vol using container method."
+        echo "Volume will be recreated on next docker-compose up..."
+        # Não remove o volume aqui para evitar perda de dados - apenas tenta criar os diretórios
+      }
+    fi
+  fi
+done
 
 # Start containers
 echo "Starting containers..."
