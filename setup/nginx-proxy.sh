@@ -144,6 +144,9 @@ server {
     listen [::]:80;
     server_name ${DOMAIN};
 
+    # Limite o tamanho de upload para 50 MB
+    client_max_body_size 50M;
+
     # Allow Let's Encrypt verification
     location /.well-known/acme-challenge/ {
         root /var/www/html;
@@ -180,6 +183,9 @@ server {
     listen 80;
     listen [::]:80;
     server_name ${DOMAIN};
+
+    # Limite o tamanho de upload para 50 MB
+    client_max_body_size 50M;
 
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
