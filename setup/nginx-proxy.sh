@@ -1,18 +1,64 @@
 #!/bin/bash
 
+################################################################################
+# Script de Configuração do Nginx Proxy Reverso para PDL
+# 
+# Este script configura o Nginx como proxy reverso para o PDL,
+# permitindo acesso via domínio personalizado com suporte a SSL.
+################################################################################
+
+set -euo pipefail
+
+# Cores para output
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly NC='\033[0m' # No Color
+
+# Função para log
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
 # Verifica se está rodando como root
 if [ "$EUID" -ne 0 ]; then 
-    echo "Por favor, execute este script como root (sudo)"
+    log_error "Por favor, execute este script como root (sudo)"
     exit 1
 fi
 
+# Função para validar domínio
+validate_domain() {
+    local domain="$1"
+    # Validação básica de domínio
+    if [[ ! "$domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$ ]]; then
+        return 1
+    fi
+    return 0
+}
+
 # Função para garantir que a linha de include esteja presente no nginx.conf
 configure_nginx_conf() {
-    NGINX_CONF="/etc/nginx/nginx.conf"
-    INCLUDE_LINE="    include /etc/nginx/sites-enabled/*;"
+    local NGINX_CONF="/etc/nginx/nginx.conf"
+    local INCLUDE_LINE="    include /etc/nginx/sites-enabled/*;"
 
-    # Cria backup
-    cp "$NGINX_CONF" "${NGINX_CONF}.bak"
+    # Cria backup se não existir
+    if [ ! -f "${NGINX_CONF}.bak" ]; then
+        cp "$NGINX_CONF" "${NGINX_CONF}.bak"
+        log_info "Backup do nginx.conf criado."
+    fi
 
     if ! grep -qF "$INCLUDE_LINE" "$NGINX_CONF"; then
         # Insere o include dentro do bloco http
@@ -23,17 +69,50 @@ configure_nginx_conf() {
             i\\
 $INCLUDE_LINE
         }" "$NGINX_CONF"
-        echo "Linha para incluir sites-enabled adicionada no nginx.conf"
+        log_success "Linha para incluir sites-enabled adicionada no nginx.conf"
     else
-        echo "Linha para incluir sites-enabled já presente no nginx.conf"
+        log_info "Linha para incluir sites-enabled já presente no nginx.conf"
     fi
 }
 
+# Solicitar domínio do usuário
+echo "========================================================="
+echo "  🔧 Configuração do Nginx Proxy Reverso para PDL"
+echo "========================================================="
+echo
+
+DOMAIN=""
+while [ -z "$DOMAIN" ]; do
+    read -p "Digite o domínio (ex: pdl.exemplo.com): " DOMAIN
+    DOMAIN=$(echo "$DOMAIN" | tr '[:upper:]' '[:lower:]' | xargs)
+    
+    if [ -z "$DOMAIN" ]; then
+        log_error "Domínio não pode estar vazio."
+        continue
+    fi
+    
+    if ! validate_domain "$DOMAIN"; then
+        log_error "Domínio inválido. Por favor, digite um domínio válido."
+        DOMAIN=""
+        continue
+    fi
+done
+
+log_success "Domínio configurado: $DOMAIN"
+
+# Perguntar sobre SSL
+echo
+read -p "Deseja configurar SSL com Let's Encrypt? (s/n): " SETUP_SSL
+SETUP_SSL=$(echo "$SETUP_SSL" | tr '[:upper:]' '[:lower:]')
+
 # Instala o Nginx se não estiver instalado
 if ! command -v nginx &> /dev/null; then
-    echo "Instalando Nginx..."
-    apt-get update
+    log_info "Instalando Nginx..."
+    apt-get update -qq
     apt-get install -y nginx
+    log_success "Nginx instalado."
+else
+    log_info "Nginx já está instalado."
 fi
 
 # Garante que os diretórios existam
@@ -43,58 +122,162 @@ mkdir -p /etc/nginx/sites-enabled
 # Configura o nginx.conf para incluir sites-enabled
 configure_nginx_conf
 
-# Instala o Certbot para SSL
-if ! command -v certbot &> /dev/null; then
-    echo "Instalando Certbot..."
+# Instala o Certbot para SSL se necessário
+if [[ "$SETUP_SSL" =~ ^[sS]$ ]] && ! command -v certbot &> /dev/null; then
+    log_info "Instalando Certbot..."
+    apt-get update -qq
     apt-get install -y certbot python3-certbot-nginx
+    log_success "Certbot instalado."
+elif [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
+    log_info "Certbot já está instalado."
 fi
 
 # Cria a configuração do Nginx para proxy reverso
-cat > /etc/nginx/sites-available/lineage-proxy << 'EOL'
+log_info "Criando configuração do Nginx..."
+
+if [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
+    # Configuração com SSL (será atualizada pelo Certbot)
+    cat > /etc/nginx/sites-available/lineage-proxy << EOF
+# HTTP - Redirect to HTTPS
 server {
     listen 80;
-    server_name seu-dominio.com;  # Domínio atualizado
-    
-    # Redirect all HTTP traffic to HTTPS
-    return 301 https://$server_name$request_uri;
+    listen [::]:80;
+    server_name ${DOMAIN};
+
+    # Allow Let's Encrypt verification
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    # Redirect all other HTTP traffic to HTTPS
+    location / {
+        return 301 https://\$server_name\$request_uri;
+    }
 }
 
+# HTTPS - Main configuration
 server {
-    listen 443 ssl;
-    server_name seu-dominio.com;  # Domínio atualizado
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${DOMAIN};
 
     # SSL configuration will be added by certbot
-    # ssl_certificate /etc/letsencrypt/live/seu-dominio.com/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/seu-dominio.com/privkey.pem;
+    # ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
 
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Proxy settings
     location / {
         proxy_pass http://localhost:6085;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
     }
 }
-EOL
+EOF
+else
+    # Configuração sem SSL (apenas HTTP)
+    cat > /etc/nginx/sites-available/lineage-proxy << EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN};
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Proxy settings
+    location / {
+        proxy_pass http://localhost:6085;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+EOF
+fi
 
 # Cria link simbólico para habilitar o site
-ln -sf /etc/nginx/sites-available/lineage-proxy /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/lineage-proxy /etc/nginx/sites-enabled/lineage-proxy
+log_success "Configuração do site habilitada."
 
 # Remove a configuração padrão do Nginx, se existir
-rm -f /etc/nginx/sites-enabled/default
+if [ -f /etc/nginx/sites-enabled/default ]; then
+    rm -f /etc/nginx/sites-enabled/default
+    log_info "Configuração padrão removida."
+fi
 
 # Testa a configuração do Nginx
-nginx -t
+log_info "Testando configuração do Nginx..."
+if nginx -t; then
+    log_success "Configuração do Nginx está válida."
+else
+    log_error "Configuração do Nginx inválida. Abortando."
+    exit 1
+fi
 
 # Reinicia o Nginx
+log_info "Reiniciando Nginx..."
 systemctl restart nginx
+log_success "Nginx reiniciado."
 
-echo "Configuração do Nginx concluída!"
-echo "Para configurar o SSL, execute:"
-echo "sudo certbot --nginx -d seu-dominio.com"
-echo ""
-echo "Lembre-se de substituir 'seu-dominio.com' pelo seu domínio real"
+# Configurar SSL se solicitado
+if [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
+    echo
+    log_info "Configurando SSL com Let's Encrypt..."
+    log_warning "Certifique-se de que o domínio ${DOMAIN} aponta para este servidor."
+    read -p "Pressione Enter para continuar com a configuração SSL..."
+    
+    if certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos --register-unsafely-without-email; then
+        log_success "SSL configurado com sucesso!"
+        systemctl reload nginx
+    else
+        log_warning "Falha ao configurar SSL automaticamente."
+        log_info "Você pode configurar manualmente executando:"
+        echo "  sudo certbot --nginx -d ${DOMAIN}"
+    fi
+fi
+
+echo
+log_success "Configuração do Nginx concluída!"
+echo
+log_info "Resumo da configuração:"
+echo "  - Domínio: ${DOMAIN}"
+echo "  - Proxy: http://localhost:6085"
+if [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
+    echo "  - SSL: Configurado (se bem-sucedido)"
+    echo "  - Acesso: https://${DOMAIN}"
+else
+    echo "  - SSL: Não configurado"
+    echo "  - Acesso: http://${DOMAIN}"
+    echo
+    log_info "Para configurar SSL posteriormente, execute:"
+    echo "  sudo certbot --nginx -d ${DOMAIN}"
+fi
+echo
