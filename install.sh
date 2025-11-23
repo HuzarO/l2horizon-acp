@@ -121,6 +121,53 @@ detect_ubuntu_version() {
     fi
 }
 
+# Função para verificar se é um repositório git
+is_git_repository() {
+    [ -d "${SCRIPT_DIR}/.git" ]
+}
+
+# Função para atualizar repositório (git stash + git pull)
+update_repository() {
+    if ! is_git_repository; then
+        log_error "Este diretório não é um repositório git."
+        return 1
+    fi
+    
+    log_info "Atualizando repositório..."
+    
+    cd "${SCRIPT_DIR}" || {
+        log_error "Não foi possível acessar o diretório do script."
+        return 1
+    }
+    
+    # Verificar se há mudanças locais antes de fazer stash
+    if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+        log_info "Fazendo stash das mudanças locais..."
+        if git stash push -m "Stash automático antes de atualizar - $(date +%Y-%m-%d\ %H:%M:%S)"; then
+            log_success "Mudanças locais salvas no stash."
+        else
+            log_warning "Falha ao fazer stash. Continuando mesmo assim..."
+        fi
+    else
+        log_info "Nenhuma mudança local para fazer stash."
+    fi
+    
+    # Fazer pull das atualizações
+    log_info "Atualizando do repositório remoto..."
+    if git pull; then
+        log_success "Repositório atualizado com sucesso."
+        return 0
+    else
+        log_error "Falha ao atualizar repositório."
+        # Tentar restaurar stash se houve mudanças
+        if git stash list | grep -q .; then
+            log_info "Tentando restaurar mudanças do stash..."
+            git stash pop >/dev/null 2>&1 || true
+        fi
+        return 1
+    fi
+}
+
 # Função para clonar repositório se necessário
 clone_repository() {
     if [ ! -f "${SCRIPT_DIR}/manage.py" ]; then
@@ -236,27 +283,53 @@ main() {
             echo "  1) Instalação completa (setup.sh + build.sh)"
             echo "  2) Apenas setup.sh"
             echo "  3) Apenas build.sh"
-            echo "  4) Backup do banco de dados"
-            echo "  5) Configurar proxy reverso (nginx-proxy.sh)"
-            echo "  6) Instalar Nginx (install-nginx.sh)"
-            echo "  7) Gerar arquivo .env (generate-env.sh)"
-            echo "  8) Listar scripts disponíveis"
-            echo "  9) Sair"
-            echo
-            read -p "Opção: " menu_option
-            
-            case "$menu_option" in
-                1) action="install" ;;
-                2) action="setup" ;;
-                3) action="build" ;;
-                4) action="backup" ;;
-                5) action="nginx-proxy" ;;
-                6) action="install-nginx" ;;
-                7) action="generate-env" ;;
-                8) show_scripts_menu; exit 0 ;;
-                9) exit 0 ;;
-                *) log_error "Opção inválida."; exit 1 ;;
-            esac
+            if is_git_repository; then
+                echo "  4) Atualizar repositório (git pull)"
+                echo "  5) Backup do banco de dados"
+                echo "  6) Configurar proxy reverso (nginx-proxy.sh)"
+                echo "  7) Instalar Nginx (install-nginx.sh)"
+                echo "  8) Gerar arquivo .env (generate-env.sh)"
+                echo "  9) Listar scripts disponíveis"
+                echo "  10) Sair"
+                echo
+                read -p "Opção: " menu_option
+                
+                case "$menu_option" in
+                    1) action="install" ;;
+                    2) action="setup" ;;
+                    3) action="build" ;;
+                    4) action="update" ;;
+                    5) action="backup" ;;
+                    6) action="nginx-proxy" ;;
+                    7) action="install-nginx" ;;
+                    8) action="generate-env" ;;
+                    9) show_scripts_menu; exit 0 ;;
+                    10) exit 0 ;;
+                    *) log_error "Opção inválida."; exit 1 ;;
+                esac
+            else
+                echo "  4) Backup do banco de dados"
+                echo "  5) Configurar proxy reverso (nginx-proxy.sh)"
+                echo "  6) Instalar Nginx (install-nginx.sh)"
+                echo "  7) Gerar arquivo .env (generate-env.sh)"
+                echo "  8) Listar scripts disponíveis"
+                echo "  9) Sair"
+                echo
+                read -p "Opção: " menu_option
+                
+                case "$menu_option" in
+                    1) action="install" ;;
+                    2) action="setup" ;;
+                    3) action="build" ;;
+                    4) action="backup" ;;
+                    5) action="nginx-proxy" ;;
+                    6) action="install-nginx" ;;
+                    7) action="generate-env" ;;
+                    8) show_scripts_menu; exit 0 ;;
+                    9) exit 0 ;;
+                    *) log_error "Opção inválida."; exit 1 ;;
+                esac
+            fi
             ;;
         setup)
             log_info "Executando apenas setup.sh..."
@@ -275,6 +348,20 @@ main() {
             fi
             cd "${SCRIPT_DIR}"
             run_setup_script "build.sh"
+            exit 0
+            ;;
+        update)
+            log_info "Atualizando repositório..."
+            if ! is_git_repository; then
+                log_error "Este diretório não é um repositório git."
+                exit 1
+            fi
+            if update_repository; then
+                log_success "Repositório atualizado com sucesso!"
+            else
+                log_error "Falha ao atualizar repositório."
+                exit 1
+            fi
             exit 0
             ;;
         backup)
@@ -329,6 +416,7 @@ main() {
             echo "  menu             - Menu interativo para escolher script"
             echo "  setup            - Executar apenas setup.sh"
             echo "  build            - Executar apenas build.sh"
+            echo "  update           - Atualizar repositório (git stash + git pull)"
             echo "  backup [args]    - Executar backup.sh (aceita argumentos: list, restore)"
             echo "  nginx-proxy      - Configurar proxy reverso"
             echo "  install-nginx    - Instalar Nginx (aceita: stable, mainline)"
@@ -339,6 +427,7 @@ main() {
             echo "Exemplos:"
             echo "  $0                    # Instalação completa"
             echo "  $0 menu                # Menu interativo"
+            echo "  $0 update              # Atualizar repositório"
             echo "  $0 backup list         # Listar backups"
             echo "  $0 install-nginx stable  # Instalar Nginx stable"
             echo
