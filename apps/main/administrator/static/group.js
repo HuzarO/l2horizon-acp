@@ -73,49 +73,24 @@ function appendMessage(message, sender, avatarUrl, isSent, timestamp = null) {
         hour12: false
     });
     
-    // Escapar todos os dados do usuário para prevenir XSS
-    const senderName = escapeHtml(sender);
-    const escapedAvatarUrl = escapeHtml(avatarUrl || '');
-    const escapedMessage = escapeHtml(message);
+    const senderName = sender;
 
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('chat-message', isSent ? 'sent' : 'received');
     messageDiv.style.animation = 'fadeInUp 0.3s ease-out';
 
-    const avatarContainer = document.createElement('div');
-    avatarContainer.className = 'admin-avatar-container';
-    const avatarImg = document.createElement('img');
-    avatarImg.src = escapedAvatarUrl;
-    avatarImg.alt = senderName;
-    avatarImg.loading = 'lazy';
-    avatarContainer.appendChild(avatarImg);
-
-    const messageContent = document.createElement('div');
-    messageContent.className = 'message-content';
-
-    const messageHeader = document.createElement('div');
-    messageHeader.className = 'message-header';
-
-    const senderStrong = document.createElement('strong');
-    senderStrong.className = 'sender-name';
-    senderStrong.textContent = senderName;
-
-    const timeSpan = document.createElement('span');
-    timeSpan.className = 'message-time';
-    timeSpan.textContent = messageTimestamp;
-
-    messageHeader.appendChild(senderStrong);
-    messageHeader.appendChild(timeSpan);
-
-    const messageText = document.createElement('div');
-    messageText.className = 'message-text';
-    messageText.textContent = message; // Usar textContent em vez de innerHTML
-
-    messageContent.appendChild(messageHeader);
-    messageContent.appendChild(messageText);
-
-    messageDiv.appendChild(avatarContainer);
-    messageDiv.appendChild(messageContent);
+    messageDiv.innerHTML = `
+        <div class="admin-avatar-container">
+            <img src="${avatarUrl}" alt="${senderName}" loading="lazy" />
+        </div>
+        <div class="message-content">
+            <div class="message-header">
+                <strong class="sender-name">${senderName}</strong>
+                <span class="message-time">${messageTimestamp}</span>
+            </div>
+            <div class="message-text">${escapeHtml(message)}</div>
+        </div>
+    `;
 
     messagesContainer.appendChild(messageDiv);
     chatLog.scrollTop = chatLog.scrollHeight;
@@ -133,11 +108,9 @@ function showConnectionStatus(message, type) {
     const statusDiv = document.getElementById('connection-status');
     if (statusDiv) {
         statusDiv.className = `alert alert-${type} alert-dismissible fade show`;
-        // Escapar a mensagem para prevenir XSS
-        const escapedMessage = escapeHtml(message);
         statusDiv.innerHTML = `
             <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
-            ${escapedMessage}
+            ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
         statusDiv.style.display = 'block';

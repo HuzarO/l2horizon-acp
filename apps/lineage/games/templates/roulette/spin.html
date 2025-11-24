@@ -121,9 +121,8 @@
 
 <meta name="csrf-token" content="{{ csrf_token }}">
 
-{{ prizes|json_script:"prizes-data" }}
 <script>
-  const prizes = JSON.parse(document.getElementById('prizes-data').textContent);
+  const prizes = {{ prizes|safe }};
   const SPIN_URL = "{% url 'games:spin_ajax' %}";
   const FICHAS_URL = "{% url 'games:comprar_fichas' %}";
 </script>

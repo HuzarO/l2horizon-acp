@@ -126,7 +126,7 @@
                         {% endif %}
                     {% endwith %}
                     <button class="btn btn-outline-info mt-2" data-bs-toggle="modal" data-bs-target="#itemsModal"
-                        data-box-name="{{ box_type.name|escapejs }}" data-items="{{ box_type|get_item_list_json|escapejs }}">
+                        data-box-name="{{ box_type.name }}" data-items='{{ box_type|get_item_list_json|safe }}'>
                         {% trans "Ver Itens" %}
                     </button>
                 </div>

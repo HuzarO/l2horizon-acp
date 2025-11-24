@@ -239,57 +239,25 @@ class WebSocketChat {
         document.dispatchEvent(event);
     }
 
-    // Função para escapar HTML e prevenir XSS
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     addMessageToChat(data, isOwn) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${isOwn ? 'own' : ''}`;
         
         const timestamp = new Date(data.timestamp).toLocaleString();
-        // Escapar HTML antes de processar quebras de linha
-        const escapedMessage = this.escapeHtml(data.message);
-        const formattedMessage = escapedMessage.replace(/\n/g, '<br>');
-        const escapedUsername = this.escapeHtml(isOwn ? currentUser : data.sender_username);
-        const escapedAvatarUrl = this.escapeHtml(isOwn ? avatarUrl : data.sender_avatar_url);
+        const formattedMessage = data.message.replace(/\n/g, '<br>');
         
-        const avatarDiv = document.createElement('div');
-        avatarDiv.className = 'message-avatar';
-        const avatarImg = document.createElement('img');
-        avatarImg.src = escapedAvatarUrl;
-        avatarImg.alt = escapedUsername;
-        avatarDiv.appendChild(avatarImg);
-        
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'message-content';
-        
-        const headerDiv = document.createElement('div');
-        headerDiv.className = 'message-header';
-        
-        const senderSpan = document.createElement('span');
-        senderSpan.className = 'message-sender';
-        senderSpan.textContent = escapedUsername;
-        
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'message-time';
-        timeSpan.textContent = timestamp;
-        
-        headerDiv.appendChild(senderSpan);
-        headerDiv.appendChild(timeSpan);
-        
-        const messageP = document.createElement('p');
-        messageP.className = 'message-text';
-        messageP.innerHTML = formattedMessage;
-        
-        contentDiv.appendChild(headerDiv);
-        contentDiv.appendChild(messageP);
-        
-        messageDiv.appendChild(avatarDiv);
-        messageDiv.appendChild(contentDiv);
+        messageDiv.innerHTML = `
+            <div class="message-avatar">
+                <img src="${isOwn ? avatarUrl : data.sender_avatar_url}" alt="${isOwn ? currentUser : data.sender_username}">
+            </div>
+            <div class="message-content">
+                <div class="message-header">
+                    <span class="message-sender">${isOwn ? currentUser : data.sender_username}</span>
+                    <span class="message-time">${timestamp}</span>
+                </div>
+                <p class="message-text">${formattedMessage}</p>
+            </div>
+        `;
         
         this.chatMessages.appendChild(messageDiv);
     }

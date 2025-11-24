@@ -38,76 +38,30 @@ class RateLimitMiddleware:
         
         for path, config in self.URL_RATE_LIMITS.items():
             logger.debug(f"Checking path {request.path} against {path}")
-            
-            # Verificar se o path corresponde (exato ou começa com o padrão)
-            request_path = request.path.rstrip('/')
-            pattern_path = path.rstrip('/')
-            
-            # Match exato ou match de prefixo (para rotas com parâmetros dinâmicos)
-            path_matches = (
-                request_path == pattern_path or
-                request_path.startswith(pattern_path + '/') or
-                (pattern_path.endswith('/') and request_path.startswith(pattern_path))
-            )
-            
-            if path_matches:
-                method = config.get("method", None)
-                
-                # Se method está especificado, verificar se corresponde
-                if method and request.method != method:
-                    continue
+            if request.path.rstrip('/') == path.rstrip('/'):
 
-                # Preparar a chave para rate limiting
-                key_type = config["key"]
-                
-                # Se for 'user_or_ip', usar função callable
-                if key_type == 'user_or_ip':
-                    def rate_limit_key_func(r):
-                        if r.user.is_authenticated:
-                            return f"user_{r.user.pk}"
-                        x_forwarded_for = r.META.get('HTTP_X_FORWARDED_FOR')
-                        if x_forwarded_for:
-                            ip = x_forwarded_for.split(',')[0].strip()
-                        else:
-                            ip = r.META.get('REMOTE_ADDR', 'unknown')
-                        return f"ip_{ip}"
-                    rate_limit_key = rate_limit_key_func
-                else:
-                    # Usar string diretamente ('ip' ou 'user')
-                    rate_limit_key = key_type
-                
-                # Preparar parâmetros para is_ratelimited
-                rate_limit_kwargs = {
-                    'request': request,
-                    'group': config["group"],
-                    'key': rate_limit_key,
-                    'rate': config["rate"],
-                    'increment': True,
-                }
-                
-                # Adicionar method apenas se especificado
-                if method:
-                    rate_limit_kwargs['method'] = method
+                method = config.get("method", "GET")
 
-                was_limited = is_ratelimited(**rate_limit_kwargs)
+                was_limited = is_ratelimited(
+                    request=request,
+                    group=config["group"],
+                    key=config["key"],
+                    rate=config["rate"],
+                    method=method,
+                    increment=True,
+                )
 
                 if was_limited:
                     logger.warning(f"Rate limit exceeded for path {path}")
 
-                    # Preparar parâmetros para get_usage (usar a mesma chave)
-                    usage_kwargs = {
-                        'request': request,
-                        'group': config["group"],
-                        'key': rate_limit_key,
-                        'rate': config["rate"],
-                        'increment': False
-                    }
-                    
-                    # Adicionar method apenas se especificado
-                    if method:
-                        usage_kwargs['method'] = method
-
-                    usage = get_usage(**usage_kwargs)
+                    usage = get_usage(
+                        request=request,
+                        group=config["group"],
+                        key=config["key"],
+                        rate=config["rate"],
+                        method=method,
+                        increment=False
+                    )
 
                     reset_time = usage['time_left']
 
