@@ -109,17 +109,22 @@ Abre um menu para escolher qual ação executar:
 1. Instalação completa
 2. Apenas setup
 3. Apenas build
-4. Backup do banco
-5. Configurar proxy reverso
-6. Instalar Nginx
-7. Gerar arquivo .env
-8. Listar scripts disponíveis
+4. Atualizar repositório (git pull)
+5. Backup do banco
+6. Configurar proxy reverso
+7. Instalar Nginx
+8. Gerar arquivo .env
+9. Configurar FTP para launcher
+10. Configurar Nginx para launcher
+11. Listar scripts disponíveis
 
 #### Comandos Individuais
 
-**Atualizar o projeto (após git pull):**
+**Atualizar o projeto:**
 ```bash
-./install.sh build
+./install.sh update        # Atualiza repositório e faz rebuild (recomendado)
+# ou
+./install.sh build         # Apenas rebuild (após git pull manual)
 ```
 
 **Fazer backup:**
@@ -143,6 +148,21 @@ Abre um menu para escolher qual ação executar:
 **Gerar arquivo .env:**
 ```bash
 ./install.sh generate-env
+```
+
+**Configurar FTP para launcher:**
+```bash
+./install.sh setup-ftp
+```
+
+**Configurar Nginx com index of para launcher:**
+```bash
+./install.sh setup-nginx-launcher
+```
+
+**Atualizar repositório:**
+```bash
+./install.sh update
 ```
 
 **Ver ajuda:**
@@ -178,10 +198,11 @@ Abre um menu para escolher qual ação executar:
 Quando uma nova versão for lançada:
 
 ```bash
-# 1. Atualizar código
-git pull origin main
+# Opção 1: Usar o comando update do install.sh (recomendado)
+./install.sh update
 
-# 2. Rebuild e deploy
+# Opção 2: Manualmente
+git pull origin main
 ./install.sh build
 ```
 
@@ -195,9 +216,15 @@ Para mais detalhes sobre o `install.sh`, consulte:
 
 ## 🔄 Como Atualizar o Projeto
 
-### Atualização Simples
+### Atualização Simples (Recomendado)
 ```bash
 cd /var/pdl/lineage  # ou caminho onde está o projeto
+./install.sh update  # Atualiza repositório e faz rebuild automaticamente
+```
+
+### Atualização Manual
+```bash
+cd /var/pdl/lineage
 git pull origin main
 ./install.sh build
 ```
@@ -206,8 +233,7 @@ git pull origin main
 ```bash
 cd /var/pdl/lineage
 ./install.sh backup        # Fazer backup primeiro
-git pull origin main        # Atualizar código
-./install.sh build          # Rebuild e deploy
+./install.sh update        # Atualizar código e fazer rebuild
 ```
 
 ## 💾 Como Fazer Backup do Banco de Dados
@@ -223,8 +249,8 @@ cd /var/pdl/lineage
 # Adicionar ao crontab para backup diário às 3h
 crontab -e
 
-# Adicionar esta linha:
-0 3 * * * cd /var/pdl/lineage && bash setup/backup.sh >> /var/pdl/backup.log 2>&1
+# Adicionar esta linha (usando install.sh):
+0 3 * * * cd /var/pdl/lineage && ./install.sh backup >> /var/pdl/backup.log 2>&1
 ```
 
 ### Outras Opções de Backup
@@ -256,9 +282,29 @@ curl https://api.github.com/repos/D3NKYT0/lineage/tags | grep '"name"'
 
 ## 🔧 Comandos Úteis
 
-### Gerenciar Containers
+### Gerenciar o Projeto (via install.sh)
+
+**Ver todos os scripts disponíveis:**
 ```bash
-# Iniciar containers
+./install.sh list
+```
+
+**Ver ajuda completa:**
+```bash
+./install.sh help
+```
+
+**Menu interativo:**
+```bash
+./install.sh menu
+```
+
+### Gerenciar Containers Docker
+
+**Nota:** Para operações básicas, use o `install.sh`. Para operações avançadas, use os comandos diretos:
+
+```bash
+# Iniciar containers (após build)
 docker compose up -d
 
 # Parar containers
@@ -269,6 +315,9 @@ docker compose logs -f
 
 # Reiniciar containers
 docker compose restart
+
+# Status dos containers
+docker compose ps
 ```
 
 ### Verificar Status
@@ -280,14 +329,24 @@ docker compose ps
 grep VERSION core/settings.py
 ```
 
-### Scripts Disponíveis
-```bash
-# Ver todos os scripts disponíveis
-./install.sh list
+### Scripts Disponíveis via install.sh
 
-# Ver ajuda completa
-./install.sh help
-```
+Todos os scripts podem ser executados através do `install.sh`:
+
+- `./install.sh install` - Instalação completa
+- `./install.sh setup` - Apenas setup inicial
+- `./install.sh build` - Build e deploy
+- `./install.sh update` - Atualizar repositório e rebuild
+- `./install.sh backup` - Backup do banco de dados
+- `./install.sh backup list` - Listar backups
+- `./install.sh backup restore` - Restaurar backup
+- `./install.sh nginx-proxy` - Configurar proxy reverso
+- `./install.sh install-nginx` - Instalar/atualizar Nginx
+- `./install.sh generate-env` - Gerar arquivo .env
+- `./install.sh setup-ftp` - Configurar servidor FTP para launcher
+- `./install.sh setup-nginx-launcher` - Configurar Nginx com index of para launcher
+- `./install.sh list` - Listar todos os scripts
+- `./install.sh help` - Ver ajuda completa
 
 
 ## Como testar (produção)
