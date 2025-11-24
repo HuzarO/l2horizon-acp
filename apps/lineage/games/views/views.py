@@ -10,7 +10,7 @@ from apps.lineage.wallet.models import Wallet
 from apps.lineage.wallet.signals import aplicar_transacao
 from apps.lineage.inventory.models import Inventory, InventoryLog, InventoryItem
 from ..services.box_opening import open_box
-from ..services.box_populate import populate_box_with_items
+from ..services.box_populate import populate_box_with_items, can_populate_box
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils.translation import gettext_lazy as _
@@ -390,6 +390,12 @@ def buy_box_view(request, box_type_id):
         messages.error(request, _("Essa caixa não contém itens disponíveis para a abertura."))
         return redirect('games:box_user_dashboard')
 
+    # Verificar se a caixa pode ser populada com boosters ANTES de gastar o dinheiro
+    can_populate, populate_error = can_populate_box(box_type)
+    if not can_populate:
+        messages.error(request, _(populate_error or "Não é possível popular esta caixa com boosters."))
+        return redirect('games:box_user_dashboard')
+
     total = box_type.price
     wallet = Wallet.objects.get(usuario=request.user)
 
@@ -415,6 +421,13 @@ def buy_box_view(request, box_type_id):
         # Criar a caixa e preencher com itens (sem abrir)
         box = Box.objects.create(user=request.user, box_type=box_type)
         populate_box_with_items(box)
+        
+        # Verificar se a caixa foi populada corretamente (deve ter pelo menos 1 booster)
+        box.refresh_from_db()
+        boosters_count = box.items.filter(opened=False).count()
+        if boosters_count == 0:
+            # Se não foi populada, lança exceção para reverter a transação automaticamente
+            raise ValueError(_("Não foi possível popular a caixa com boosters. Verifique se há itens disponíveis com can_be_populated=True para todas as raridades necessárias."))
         
         messages.success(request, _("Caixa comprada com sucesso! Você pode abrir os boosters quando tiver fichas."))
         return redirect('games:box_user_dashboard')
@@ -446,6 +459,12 @@ def buy_and_open_box_view(request, box_type_id):
     # Verificar se o tipo de caixa tem itens disponíveis para a raridade que ele define
     if not box_type.boosters_amount:
         messages.error(request, _("Essa caixa não contém itens disponíveis para a abertura."))
+        return redirect('games:box_user_dashboard')
+
+    # Verificar se a caixa pode ser populada com boosters ANTES de gastar o dinheiro
+    can_populate, populate_error = can_populate_box(box_type)
+    if not can_populate:
+        messages.error(request, _(populate_error or "Não é possível popular esta caixa com boosters."))
         return redirect('games:box_user_dashboard')
 
     # Verificar se o usuário tem saldo suficiente para comprar a caixa
@@ -482,6 +501,13 @@ def buy_and_open_box_view(request, box_type_id):
         box = Box.objects.create(user=request.user, box_type=box_type)
         populate_box_with_items(box)
         
+        # Verificar se a caixa foi populada corretamente (deve ter pelo menos 1 booster)
+        box.refresh_from_db()
+        boosters_count = box.items.filter(opened=False).count()
+        if boosters_count == 0:
+            # Se não foi populada, lança exceção para reverter a transação automaticamente
+            raise ValueError(_("Não foi possível popular a caixa com boosters. Verifique se há itens disponíveis com can_be_populated=True para todas as raridades necessárias."))
+        
         # Deduzir uma ficha do saldo
         request.user.fichas -= 1
         request.user.save()
@@ -490,6 +516,8 @@ def buy_and_open_box_view(request, box_type_id):
         item, error = open_box(request.user, box.id)
         
         if error:
+            # Se houver erro ao abrir, a transação já foi feita mas não conseguimos abrir
+            # Neste caso, mantemos a caixa criada mas mostramos o erro
             messages.warning(request, error)
             return redirect('games:box_user_dashboard')
         
@@ -543,6 +571,12 @@ def reset_box_view(request, box_id):
         messages.error(request, _("Saldo insuficiente para resetar a caixa. É necessário comprar a caixa novamente."))
         return redirect('games:box_user_dashboard')
 
+    # Verificar se a caixa pode ser populada com boosters ANTES de gastar o dinheiro
+    can_populate, populate_error = can_populate_box(box_type)
+    if not can_populate:
+        messages.error(request, _(populate_error or "Não é possível popular esta caixa com boosters."))
+        return redirect('games:box_user_dashboard')
+
     # Aplicar a transação de saída da carteira
     try:
         aplicar_transacao(
@@ -564,6 +598,14 @@ def reset_box_view(request, box_id):
 
         # Recriar os itens da caixa atual
         populate_box_with_items(box)
+        
+        # Verificar se a caixa foi populada corretamente (deve ter pelo menos 1 booster)
+        box.refresh_from_db()
+        boosters_count = box.items.filter(opened=False).count()
+        if boosters_count == 0:
+            # Se não foi populada, lança exceção para reverter a transação automaticamente
+            raise ValueError(_("Não foi possível popular a caixa com boosters. Verifique se há itens disponíveis com can_be_populated=True para todas as raridades necessárias."))
+        
         messages.success(request, _("Caixa resetada com sucesso! O preço foi cobrado novamente."))
     except ValueError as e:
         messages.error(request, _("Erro na transação: ") + str(e))

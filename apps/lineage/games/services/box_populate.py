@@ -2,6 +2,68 @@ import random
 from apps.lineage.games.models import *
 
 
+def can_populate_box(box_type):
+    """
+    Verifica se a caixa pode ser populada com boosters.
+    Retorna (True, None) se pode ser populada, ou (False, mensagem_erro) se não pode.
+    """
+    all_items = box_type.allowed_items.filter(can_be_populated=True)
+    
+    if not all_items.exists():
+        return False, "Não há itens disponíveis para popular esta caixa."
+    
+    rarities = {
+        'common': box_type.chance_common,
+        'rare': box_type.chance_rare,
+        'epic': box_type.chance_epic,
+        'legendary': box_type.chance_legendary,
+    }
+    
+    total_chance = sum(rarities.values())
+    if total_chance != 100:
+        return False, f"A soma das chances não é 100%. Soma atual: {total_chance}"
+    
+    boosters_count = box_type.boosters_amount
+    boosters_by_rarity = {
+        rarity: int((boosters_count * chance) / 100)
+        for rarity, chance in rarities.items()
+    }
+    
+    # Corrigir diferenças causadas por arredondamento
+    difference = boosters_count - sum(boosters_by_rarity.values())
+    for rarity in sorted(rarities, key=lambda x: rarities[x], reverse=True):
+        if difference > 0:
+            boosters_by_rarity[rarity] += 1
+            difference -= 1
+    
+    # Aplicar limites (se configurados) para épico e lendário
+    if box_type.max_epic_items > 0:
+        boosters_by_rarity['epic'] = min(boosters_by_rarity['epic'], box_type.max_epic_items)
+    
+    if box_type.max_legendary_items > 0:
+        boosters_by_rarity['legendary'] = min(boosters_by_rarity['legendary'], box_type.max_legendary_items)
+    
+    # Verificar se há itens disponíveis para cada raridade necessária
+    missing_rarities = []
+    for rarity, count in boosters_by_rarity.items():
+        if count > 0:
+            candidates = all_items.filter(rarity=rarity)
+            if not candidates.exists():
+                missing_rarities.append(rarity)
+    
+    if missing_rarities:
+        rarity_names = {
+            'common': 'Comum',
+            'rare': 'Rara',
+            'epic': 'Épica',
+            'legendary': 'Lendária'
+        }
+        missing_names = [rarity_names.get(r, r) for r in missing_rarities]
+        return False, f"Não há itens disponíveis para as raridades: {', '.join(missing_names)}"
+    
+    return True, None
+
+
 def populate_box_with_items(box):
     box_type = box.box_type
     all_items = box_type.allowed_items.filter(can_be_populated=True)
