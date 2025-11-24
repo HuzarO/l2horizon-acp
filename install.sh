@@ -351,30 +351,35 @@ update_repository() {
 
 # Função para clonar repositório se necessário
 clone_repository() {
-    if [ ! -f "${SCRIPT_DIR}/manage.py" ]; then
-        log_info "Repositório não encontrado. Clonando do GitHub..."
-        
-        local repo_url="https://github.com/D3NKYT0/lineage.git"
-        local clone_dir="${SCRIPT_DIR}/lineage"
-        
-        if [ -d "${clone_dir}" ]; then
-            log_warning "Diretório ${clone_dir} já existe. Pulando clone."
-        else
-            git clone "${repo_url}" "${clone_dir}" || {
-                log_error "Falha ao clonar repositório."
-                exit 1
-            }
-            log_success "Repositório clonado com sucesso."
-        fi
-        
-        # Se clonou em subdiretório, informar usuário
-        if [ -d "${clone_dir}" ] && [ ! -f "${SCRIPT_DIR}/manage.py" ]; then
-            log_info "Repositório clonado em: ${clone_dir}"
-            log_info "Execute este script de dentro do diretório clonado."
-            exit 0
-        fi
-    else
+    # Verificar se estamos dentro de um repositório (manage.py na raiz ou em subdiretório)
+    if [ -f "${SCRIPT_DIR}/manage.py" ] || [ -f "${SCRIPT_DIR}/lineage/manage.py" ] || [ -d "${SCRIPT_DIR}/.git" ]; then
         log_success "Repositório já existe."
+        return 0
+    fi
+    
+    log_info "Repositório não encontrado. Clonando do GitHub..."
+    
+    local repo_url="https://github.com/D3NKYT0/lineage.git"
+    local clone_dir="${SCRIPT_DIR}/lineage"
+    
+    if [ -d "${clone_dir}" ]; then
+        log_warning "Diretório ${clone_dir} já existe. Pulando clone."
+        log_info "Se este é o repositório do projeto, você pode continuar."
+    else
+        git clone "${repo_url}" "${clone_dir}" || {
+            log_error "Falha ao clonar repositório."
+            exit 1
+        }
+        log_success "Repositório clonado com sucesso."
+    fi
+    
+    # Verificar se o repositório foi clonado corretamente
+    if [ -d "${clone_dir}" ] && [ -f "${clone_dir}/manage.py" ]; then
+        log_success "Repositório encontrado em: ${clone_dir}"
+        # Não sai mais aqui - permite continuar a instalação
+    elif [ -d "${clone_dir}" ] && [ ! -f "${SCRIPT_DIR}/manage.py" ] && [ ! -f "${clone_dir}/manage.py" ]; then
+        log_warning "Diretório ${clone_dir} existe mas não parece ser o repositório completo."
+        log_info "Certifique-se de que está executando este script na raiz do projeto."
     fi
 }
 
@@ -640,10 +645,16 @@ main() {
         mkdir -p "${INSTALL_DIR}"
         
         # Preservar ENCRYPTION_KEY ANTES de qualquer verificação
-        preserve_encryption_key
+        log_info "Verificando instalações existentes e preservando configurações..."
+        preserve_encryption_key || true  # Continua mesmo se não encontrar chave
         
         # Verificar se já foi instalado (incluindo instalações antigas)
+        local is_existing=false
         if detect_existing_installation || [ -f "${INSTALL_DIR}/.install_done" ]; then
+            is_existing=true
+        fi
+        
+        if [ "$is_existing" = "true" ]; then
             log_warning "⚠️  Instalação existente detectada!"
             log_info "Foi detectado que o sistema já foi instalado anteriormente."
             echo
@@ -654,12 +665,12 @@ main() {
             fi
             
             echo
-            read -p "O que deseja fazer?" 2>/dev/null || true
+            log_info "O que deseja fazer?"
             echo "  (b) Rodar apenas build (atualizar código sem reinstalar)"
             echo "  (r) Refazer instalação completa (ATENÇÃO: pode sobrescrever configurações)"
             echo "  (s) Sair"
             echo
-            read -p "Escolha (b/r/s): " OPCAO
+            read -p "Escolha (b/r/s): " OPCAO </dev/tty || read OPCAO
             
             case "${OPCAO}" in
                 b|B)
