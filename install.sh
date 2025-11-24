@@ -388,12 +388,14 @@ show_scripts_menu() {
     echo
     log_info "Scripts disponíveis na pasta setup/:"
     echo
-    echo "  📦 setup.sh           - Instalação inicial completa (Docker, Python, etc.)"
-    echo "  🔨 build.sh           - Build e deploy do projeto"
-    echo "  💾 backup.sh          - Backup do banco de dados"
-    echo "  🌐 nginx-proxy.sh      - Configurar proxy reverso com domínio"
-    echo "  🔧 install-nginx.sh    - Instalar Nginx do repositório oficial"
-    echo "  ⚙️  generate-env.sh    - Gerar arquivo .env interativamente"
+    echo "  📦 setup.sh                - Instalação inicial completa (Docker, Python, etc.)"
+    echo "  🔨 build.sh                - Build e deploy do projeto"
+    echo "  💾 backup.sh               - Backup do banco de dados"
+    echo "  🌐 nginx-proxy.sh           - Configurar proxy reverso com domínio"
+    echo "  🔧 install-nginx.sh         - Instalar Nginx do repositório oficial"
+    echo "  ⚙️  generate-env.sh         - Gerar arquivo .env interativamente"
+    echo "  📁 setup-ftp.sh             - Configurar servidor FTP para launcher"
+    echo "  🌐 setup-nginx-launcher.sh  - Configurar Nginx com index of para launcher"
     echo
 }
 
@@ -412,7 +414,7 @@ run_setup_script() {
     
     # Verificar se precisa de sudo
     case "$script_name" in
-        nginx-proxy.sh|install-nginx.sh)
+        nginx-proxy.sh|install-nginx.sh|setup-ftp.sh|setup-nginx-launcher.sh)
             if [ "$EUID" -ne 0 ]; then
                 log_info "Este script requer privilégios de root."
                 log_info "Executando com sudo..."
@@ -474,8 +476,10 @@ main() {
                 echo "  6) Configurar proxy reverso (nginx-proxy.sh)"
                 echo "  7) Instalar Nginx (install-nginx.sh)"
                 echo "  8) Gerar arquivo .env (generate-env.sh)"
-                echo "  9) Listar scripts disponíveis"
-                echo "  10) Sair"
+                echo "  9) Configurar FTP para launcher (setup-ftp.sh)"
+                echo "  10) Configurar Nginx para launcher (setup-nginx-launcher.sh)"
+                echo "  11) Listar scripts disponíveis"
+                echo "  12) Sair"
                 echo
                 read -p "Opção: " menu_option
                 
@@ -488,8 +492,10 @@ main() {
                     6) action="nginx-proxy" ;;
                     7) action="install-nginx" ;;
                     8) action="generate-env" ;;
-                    9) show_scripts_menu; exit 0 ;;
-                    10) exit 0 ;;
+                    9) action="setup-ftp" ;;
+                    10) action="setup-nginx-launcher" ;;
+                    11) show_scripts_menu; exit 0 ;;
+                    12) exit 0 ;;
                     *) log_error "Opção inválida."; exit 1 ;;
                 esac
             else
@@ -497,8 +503,10 @@ main() {
                 echo "  5) Configurar proxy reverso (nginx-proxy.sh)"
                 echo "  6) Instalar Nginx (install-nginx.sh)"
                 echo "  7) Gerar arquivo .env (generate-env.sh)"
-                echo "  8) Listar scripts disponíveis"
-                echo "  9) Sair"
+                echo "  8) Configurar FTP para launcher (setup-ftp.sh)"
+                echo "  9) Configurar Nginx para launcher (setup-nginx-launcher.sh)"
+                echo "  10) Listar scripts disponíveis"
+                echo "  11) Sair"
                 echo
                 read -p "Opção: " menu_option
                 
@@ -510,8 +518,10 @@ main() {
                     5) action="nginx-proxy" ;;
                     6) action="install-nginx" ;;
                     7) action="generate-env" ;;
-                    8) show_scripts_menu; exit 0 ;;
-                    9) exit 0 ;;
+                    8) action="setup-ftp" ;;
+                    9) action="setup-nginx-launcher" ;;
+                    10) show_scripts_menu; exit 0 ;;
+                    11) exit 0 ;;
                     *) log_error "Opção inválida."; exit 1 ;;
                 esac
             fi
@@ -589,6 +599,26 @@ main() {
             run_setup_script "generate-env.sh"
             exit 0
             ;;
+        setup-ftp)
+            log_info "Executando setup-ftp.sh..."
+            if [ ! -d "${SETUP_DIR}" ]; then
+                log_error "Pasta setup/ não encontrada!"
+                exit 1
+            fi
+            cd "${SCRIPT_DIR}"
+            run_setup_script "setup-ftp.sh"
+            exit 0
+            ;;
+        setup-nginx-launcher)
+            log_info "Executando setup-nginx-launcher.sh..."
+            if [ ! -d "${SETUP_DIR}" ]; then
+                log_error "Pasta setup/ não encontrada!"
+                exit 1
+            fi
+            cd "${SCRIPT_DIR}"
+            run_setup_script "setup-nginx-launcher.sh"
+            exit 0
+            ;;
         list|scripts)
             show_scripts_menu
             exit 0
@@ -602,12 +632,14 @@ main() {
             echo "  setup            - Executar apenas setup.sh"
             echo "  build            - Executar apenas build.sh"
             echo "  update           - Atualizar repositório (git stash + git pull)"
-            echo "  backup [args]    - Executar backup.sh (aceita argumentos: list, restore)"
-            echo "  nginx-proxy      - Configurar proxy reverso"
-            echo "  install-nginx    - Instalar Nginx (aceita: stable, mainline)"
-            echo "  generate-env     - Gerar arquivo .env interativamente"
-            echo "  list             - Listar todos os scripts disponíveis"
-            echo "  help             - Mostrar esta ajuda"
+            echo "  backup [args]         - Executar backup.sh (aceita argumentos: list, restore)"
+            echo "  nginx-proxy           - Configurar proxy reverso"
+            echo "  install-nginx         - Instalar Nginx (aceita: stable, mainline)"
+            echo "  generate-env          - Gerar arquivo .env interativamente"
+            echo "  setup-ftp             - Configurar servidor FTP para launcher"
+            echo "  setup-nginx-launcher  - Configurar Nginx com index of para launcher"
+            echo "  list                  - Listar todos os scripts disponíveis"
+            echo "  help                  - Mostrar esta ajuda"
             echo
             echo "Exemplos:"
             echo "  $0                    # Instalação completa"
@@ -745,6 +777,8 @@ main() {
         echo "  - Backup: $0 backup [list|restore]"
         echo "  - Proxy reverso: $0 nginx-proxy"
         echo "  - Instalar Nginx: $0 install-nginx [stable|mainline]"
+        echo "  - Configurar FTP: $0 setup-ftp"
+        echo "  - Configurar Nginx Launcher: $0 setup-nginx-launcher"
         echo
         log_info "Para ver todos os scripts: $0 list"
         echo
