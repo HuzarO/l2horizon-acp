@@ -31,68 +31,83 @@ def parse_int(value, default=0):
 @conditional_otp_required
 @transaction.atomic
 def spin_ajax(request):
-    UserModel = get_user_model()
+    try:
+        UserModel = get_user_model()
 
-    # Lock the user row to avoid race conditions during concurrent spins
-    user = UserModel.objects.select_for_update().get(pk=request.user.pk)
+        # Lock the user row to avoid race conditions during concurrent spins
+        user = UserModel.objects.select_for_update().get(pk=request.user.pk)
 
-    if user.fichas <= 0:
-        return JsonResponse({'error': _('Você não tem fichas suficientes.')}, status=400)
+        if user.fichas <= 0:
+            return JsonResponse({'error': _('Você não tem fichas suficientes.')}, status=400)
 
-    prizes = list(Prize.objects.all())
-    if not prizes:
-        # Auto-popula a tabela de prêmios a partir dos Itens de caixas
-        weight_by_rarity = {
-            'COMUM': 60,
-            'RARE': 25,
-            'RARA': 25,
-            'EPIC': 10,
-            'EPICA': 10,
-            'LEGENDARY': 5,
-            'LENDARIA': 5,
-        }
-        items = Item.objects.filter(can_be_populated=True)
-        created_any = False
-        for it in items:
-            Prize.objects.get_or_create(
-                item=it,
-                defaults={
-                    'name': it.name,
-                    'legacy_item_code': it.item_id,
-                    'enchant': it.enchant,
-                    'rarity': it.rarity,
-                    'weight': weight_by_rarity.get(str(it.rarity).upper(), 10),
-                }
-            )
-            created_any = True
         prizes = list(Prize.objects.all())
         if not prizes:
-            return JsonResponse({'error': _('Nenhum prêmio disponível.')}, status=400)
+            # Auto-popula a tabela de prêmios a partir dos Itens de caixas
+            weight_by_rarity = {
+                'COMUM': 60,
+                'RARE': 25,
+                'RARA': 25,
+                'EPIC': 10,
+                'EPICA': 10,
+                'LEGENDARY': 5,
+                'LENDARIA': 5,
+            }
+            items = Item.objects.filter(can_be_populated=True)
+            created_any = False
+            for it in items:
+                Prize.objects.get_or_create(
+                    item=it,
+                    defaults={
+                        'name': it.name,
+                        'legacy_item_code': it.item_id,
+                        'enchant': it.enchant,
+                        'rarity': it.rarity,
+                        'weight': weight_by_rarity.get(str(it.rarity).upper(), 10),
+                    }
+                )
+                created_any = True
+            prizes = list(Prize.objects.all())
+            if not prizes:
+                return JsonResponse({'error': _('Nenhum prêmio disponível.')}, status=400)
 
-    # Configurável via GameConfig
-    from ..models import GameConfig
-    cfg = GameConfig.objects.first()
-    fail_chance = cfg.fail_chance if cfg else 20  # fallback para 20%
-    total_weight = sum(p.weight for p in prizes)
-    fail_weight = total_weight * (fail_chance / (100 - fail_chance))
+        # Configurável via GameConfig
+        from ..models import GameConfig
+        cfg = GameConfig.objects.first()
+        fail_chance = cfg.fail_chance if cfg else 20  # fallback para 20%
+        total_weight = sum(p.weight for p in prizes)
+        fail_weight = total_weight * (fail_chance / (100 - fail_chance))
 
-    choices = prizes + [None]  # `None` representa a falha
-    weights = [p.weight for p in prizes] + [fail_weight]
+        choices = prizes + [None]  # `None` representa a falha
+        weights = [p.weight for p in prizes] + [fail_weight]
 
-    # Auditoria: seed e snapshot de pesos
-    seed = int(time.time_ns())
-    random.seed(seed)
-    chosen = random.choices(choices, weights=weights, k=1)[0]
+        # Auditoria: seed e snapshot de pesos
+        seed = int(time.time_ns())
+        random.seed(seed)
+        chosen = random.choices(choices, weights=weights, k=1)[0]
 
-    # Deduz uma ficha de forma transacional
-    user.fichas -= 1
-    user.save(update_fields=["fichas"])
+        # Deduz uma ficha de forma transacional
+        user.fichas -= 1
+        user.save(update_fields=["fichas"])
 
-    if chosen is None:
-        # Registrar auditoria mesmo em falha
+        if chosen is None:
+            # Registrar auditoria mesmo em falha
+            SpinHistory.objects.create(
+                user=user,
+                prize=prizes[0],  # dummy prize para manter FK não nula; alternativa seria permitir null
+                fail_chance=fail_chance,
+                seed=seed,
+                weights_snapshot=json.dumps({
+                    'prizes': [
+                        {'id': p.id, 'weight': p.weight} for p in prizes
+                    ],
+                    'fail_weight': fail_weight
+                })
+            )
+            return JsonResponse({'fail': True, 'message': _('Você não ganhou nenhum prêmio.')})
+
         SpinHistory.objects.create(
             user=user,
-            prize=prizes[0],  # dummy prize para manter FK não nula; alternativa seria permitir null
+            prize=chosen,
             fail_chance=fail_chance,
             seed=seed,
             weights_snapshot=json.dumps({
@@ -102,54 +117,57 @@ def spin_ajax(request):
                 'fail_weight': fail_weight
             })
         )
-        return JsonResponse({'fail': True, 'message': _('Você não ganhou nenhum prêmio.')})
 
-    SpinHistory.objects.create(
-        user=user,
-        prize=chosen,
-        fail_chance=fail_chance,
-        seed=seed,
-        weights_snapshot=json.dumps({
-            'prizes': [
-                {'id': p.id, 'weight': p.weight} for p in prizes
-            ],
-            'fail_weight': fail_weight
+        # Certifique-se de que o usuário tenha uma bag
+        bag, created = Bag.objects.get_or_create(user=user)
+
+        # Verifica se o item já existe na bag (mesma id + enchant)
+        # Resolve os campos do prêmio de forma segura
+        if chosen.item:
+            resolved_item_id = chosen.item.item_id
+            resolved_enchant = chosen.item.enchant
+            resolved_name = chosen.item.name
+        else:
+            resolved_item_id = chosen.legacy_item_code
+            resolved_enchant = chosen.enchant
+            resolved_name = chosen.name
+        
+        bag_item, created = BagItem.objects.get_or_create(
+            bag=bag,
+            item_id=resolved_item_id,
+            enchant=resolved_enchant,
+            defaults={
+                'item_name': resolved_name,
+                'quantity': 1,
+            }
+        )
+
+        if not created:
+            bag_item.quantity += 1
+            bag_item.save(update_fields=["quantity"])
+
+        # Campos via Item quando disponível para resposta
+        if chosen.item:
+            resp_name = chosen.item.name
+            resp_item_id = chosen.item.item_id
+            resp_enchant = chosen.item.enchant
+        else:
+            resp_name = chosen.name
+            resp_item_id = chosen.legacy_item_code
+            resp_enchant = chosen.enchant
+        
+        return JsonResponse({
+            'id': chosen.id,
+            'name': resp_name,
+            'item_id': resp_item_id,
+            'enchant': resp_enchant,
+            'rarity': chosen.rarity,
+            'image_url': chosen.get_image_url()
         })
-    )
-
-    # Certifique-se de que o usuário tenha uma bag
-    bag, created = Bag.objects.get_or_create(user=user)
-
-    # Verifica se o item já existe na bag (mesma id + enchant)
-    resolved_item_id = chosen.item.item_id if getattr(chosen, 'item', None) else chosen.item_id
-    resolved_enchant = chosen.item.enchant if getattr(chosen, 'item', None) else chosen.enchant
-    resolved_name = chosen.item.name if getattr(chosen, 'item', None) else chosen.name
-    bag_item, created = BagItem.objects.get_or_create(
-        bag=bag,
-        item_id=resolved_item_id,
-        enchant=resolved_enchant,
-        defaults={
-            'item_name': resolved_name,
-            'quantity': 1,
-        }
-    )
-
-    if not created:
-        bag_item.quantity += 1
-        bag_item.save(update_fields=["quantity"])
-
-    # Campos via Item quando disponível
-    resp_name = chosen.item.name if getattr(chosen, 'item_id', None) and chosen.item_id and hasattr(chosen, 'item') and chosen.item else chosen.name
-    resp_item_id = chosen.item.item_id if getattr(chosen, 'item', None) else chosen.legacy_item_code
-    resp_enchant = chosen.item.enchant if getattr(chosen, 'item', None) else chosen.enchant
-    return JsonResponse({
-        'id': chosen.id,
-        'name': resp_name,
-        'item_id': resp_item_id,
-        'enchant': resp_enchant,
-        'rarity': chosen.rarity,
-        'image_url': chosen.get_image_url()
-    })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': _('Erro ao processar o giro. Tente novamente.')}, status=500)
 
 
 @conditional_otp_required
@@ -211,19 +229,29 @@ def box_dashboard_view(request):
     box_types = BoxType.objects.all()
     wallet = Wallet.objects.filter(usuario=request.user).first()
 
-    # Caixas do usuário com boosters restantes
-    user_boxes = (
-        Box.objects.filter(user=request.user)
-        .annotate(remaining_boosters=Count('items', filter=Q(items__opened=False)))
-        .filter(remaining_boosters__gt=0)
-    )
-
+    # Busca todas as caixas do usuário
+    all_user_boxes = Box.objects.filter(user=request.user).prefetch_related('items')
+    
     # Cria um dicionário com o ID do tipo da caixa como chave
-    box_map = {box.box_type.id: box for box in user_boxes}
+    # Calcula remaining_boosters diretamente para cada caixa
+    # IMPORTANTE: Só mostra caixas com boosters restantes > 0
+    # Se houver múltiplas caixas do mesmo tipo, mostra a mais recente (maior ID)
+    box_map = {}
+    for box in all_user_boxes.order_by('-id'):  # Ordena por ID decrescente (mais recente primeiro)
+        remaining_boosters = box.items.filter(opened=False).count()
+        
+        # Só adiciona ao mapa se tiver boosters restantes (maior que 0)
+        # Se remaining_boosters = 0, a caixa NÃO aparece no dashboard
+        # Se já existe uma caixa deste tipo no mapa, não sobrescreve (mantém a primeira encontrada, que é a mais recente)
+        if remaining_boosters > 0:
+            if box.box_type.id not in box_map:  # Só adiciona se ainda não existe uma caixa deste tipo
+                box.remaining_boosters = remaining_boosters
+                box_map[box.box_type.id] = box
 
     return render(request, 'box/dashboard.html', {
         'box_types': box_types,
         'user_balance': wallet.saldo if wallet else 0,
+        'user_fichas': request.user.fichas,
         'user_boxes': box_map
     })
 
@@ -235,21 +263,35 @@ def box_opening_home(request):
 
 
 @conditional_otp_required
-def open_box_view(request, box_id):
+@transaction.atomic
+def open_box_ajax(request, box_id):
+    """API endpoint para abrir caixa via AJAX"""
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'error': 'Método não permitido. Use POST.'
+        }, status=405)
+    
     try:
         box = Box.objects.get(id=box_id)
     except Box.DoesNotExist:
-        messages.warning(request, _("Esta caixa não existe. Você pode comprá-la abaixo."))
-        return redirect('games:box_user_dashboard')  # Dashboard com todas as BoxType
+        return JsonResponse({
+            'success': False,
+            'error': 'Esta caixa não existe.'
+        }, status=404)
 
     if box.user != request.user:
-        messages.warning(request, _("Essa caixa não pertence a você. Compre uma nova do mesmo tipo."))
-        return redirect('games:box_user_dashboard')
+        return JsonResponse({
+            'success': False,
+            'error': 'Essa caixa não pertence a você.'
+        }, status=403)
 
     # Verificar se o usuário possui fichas suficientes
     if request.user.fichas <= 0:
-        messages.warning(request, _("Você não tem fichas suficientes para abrir a caixa."))
-        return redirect('games:box_user_dashboard')
+        return JsonResponse({
+            'success': False,
+            'error': 'Você não tem fichas suficientes para abrir a caixa.'
+        }, status=400)
 
     # Deduzir uma ficha do saldo
     request.user.fichas -= 1
@@ -259,14 +301,137 @@ def open_box_view(request, box_id):
     item, error = open_box(request.user, box_id)
 
     if error:
-        messages.warning(request, error)
-        return redirect('games:box_user_dashboard')
+        return JsonResponse({
+            'success': False,
+            'error': error
+        }, status=400)
 
-    return render(request, 'box/result.html', {'item': item})
+    # Buscar a caixa novamente para calcular boosters restantes
+    box = Box.objects.get(id=box_id)
+    remaining_boosters = box.items.filter(opened=False).count()
+    
+    # Se a caixa zerou, deleta automaticamente
+    box_type_id = box.box_type.id
+    if remaining_boosters == 0:
+        box.delete()
+        remaining_boosters = 0  # Garante que será 0 na resposta
+    
+    # Salva os dados do resultado na sessão para a view de exibição
+    request.session['box_open_result'] = {
+        'item_id': item.id,
+        'box_type_id': box_type_id,
+        'remaining_boosters': remaining_boosters
+    }
+    request.session.modified = True
+    
+    return JsonResponse({
+        'success': True,
+        'item': {
+            'id': item.item_id,
+            'name': item.name,
+            'enchant': item.enchant,
+            'rarity': item.rarity,
+            'rarity_display': item.get_rarity_display(),
+            'image_url': item.image.url if item.image else None,
+        },
+        'remaining_boosters': remaining_boosters,
+        'user_fichas': request.user.fichas,
+        'box_id': box_id,
+        'box_type_id': box.box_type.id,
+        'redirect_url': '/app/game/box/result/'
+    })
 
 
 @conditional_otp_required
+def open_box_view(request):
+    """View apenas para exibir o resultado visual - a abertura é feita via AJAX"""
+    # Busca os dados do resultado na sessão (setados pelo AJAX)
+    result_data = request.session.get('box_open_result', None)
+    
+    if not result_data:
+        messages.warning(request, _("Nenhum resultado de abertura encontrado."))
+        return redirect('games:box_user_dashboard')
+    
+    # Remove os dados da sessão após usar (para não mostrar novamente se recarregar)
+    del request.session['box_open_result']
+    request.session.modified = True
+    
+    try:
+        # Busca o item do banco de dados
+        item = Item.objects.get(id=result_data.get('item_id'))
+        box_type_id = result_data.get('box_type_id')
+        remaining_boosters = result_data.get('remaining_boosters', 0)
+        
+        return render(request, 'box/result.html', {
+            'item': item,
+            'box_type_id': box_type_id,
+            'remaining_boosters': remaining_boosters
+        })
+    except Item.DoesNotExist:
+        messages.warning(request, _("Item não encontrado."))
+        return redirect('games:box_user_dashboard')
+
+
+@conditional_otp_required
+@transaction.atomic
+def buy_box_view(request, box_type_id):
+    """Apenas compra a caixa, sem abrir o primeiro booster"""
+    try:
+        box_type = BoxType.objects.get(id=box_type_id)
+    except BoxType.DoesNotExist:
+        messages.error(request, _("Tipo de caixa não encontrado."))
+        return redirect('games:box_user_dashboard')
+
+    if not Item.objects.exists():
+        messages.error(request, _("Não há itens cadastrados para abrir caixas."))
+        return redirect('games:box_user_dashboard')
+
+    if not box_type.boosters_amount:
+        messages.error(request, _("Essa caixa não contém itens disponíveis para a abertura."))
+        return redirect('games:box_user_dashboard')
+
+    total = box_type.price
+    wallet = Wallet.objects.get(usuario=request.user)
+
+    if wallet.saldo < total:
+        messages.error(request, _("Saldo insuficiente para comprar a caixa."))
+        return redirect('games:box_user_dashboard')
+
+    try:
+        aplicar_transacao(
+            wallet=wallet,
+            tipo='SAIDA',
+            valor=total,
+            descricao=f'Compra de caixa {box_type.name}',
+            origem='Wallet',
+            destino='Sistema de Caixas'
+        )
+        
+        # Deletar TODAS as caixas existentes do mesmo tipo do usuário (para garantir apenas uma ativa)
+        existing_boxes = Box.objects.filter(user=request.user, box_type=box_type)
+        if existing_boxes.exists():
+            existing_boxes.delete()
+        
+        # Criar a caixa e preencher com itens (sem abrir)
+        box = Box.objects.create(user=request.user, box_type=box_type)
+        populate_box_with_items(box)
+        
+        messages.success(request, _("Caixa comprada com sucesso! Você pode abrir os boosters quando tiver fichas."))
+        return redirect('games:box_user_dashboard')
+
+    except ValueError as e:
+        messages.error(request, _("Erro na transação: ") + str(e))
+        return redirect('games:box_user_dashboard')
+
+
+@conditional_otp_required
+@transaction.atomic
 def buy_and_open_box_view(request, box_type_id):
+    # Limpa qualquer resultado anterior da sessão para evitar conflitos
+    if 'box_open_result' in request.session:
+        del request.session['box_open_result']
+        request.session.modified = True
+    
     try:
         box_type = BoxType.objects.get(id=box_type_id)
     except BoxType.DoesNotExist:
@@ -292,6 +457,11 @@ def buy_and_open_box_view(request, box_type_id):
         messages.error(request, _("Saldo insuficiente para comprar a caixa."))
         return redirect('games:box_user_dashboard')
 
+    # Verificar se o usuário possui fichas suficientes
+    if request.user.fichas <= 0:
+        messages.warning(request, _("Você não tem fichas suficientes para abrir a caixa."))
+        return redirect('games:box_user_dashboard')
+
     # Aplicar a transação de saída da carteira para o sistema de caixas
     try:
         aplicar_transacao(
@@ -302,14 +472,105 @@ def buy_and_open_box_view(request, box_type_id):
             origem='Wallet',
             destino='Sistema de Caixas'
         )
+        
+        # Deletar TODAS as caixas existentes do mesmo tipo do usuário (para garantir apenas uma ativa)
+        existing_boxes = Box.objects.filter(user=request.user, box_type=box_type)
+        if existing_boxes.exists():
+            existing_boxes.delete()
+        
         # Criar a caixa e preencher com itens
         box = Box.objects.create(user=request.user, box_type=box_type)
         populate_box_with_items(box)
-        return redirect('games:box_user_open_box', box_id=box.id)
+        
+        # Deduzir uma ficha do saldo
+        request.user.fichas -= 1
+        request.user.save()
+        
+        # Abrir a caixa diretamente (primeiro booster)
+        item, error = open_box(request.user, box.id)
+        
+        if error:
+            messages.warning(request, error)
+            return redirect('games:box_user_dashboard')
+        
+        # Buscar a caixa novamente para calcular boosters restantes
+        box.refresh_from_db()
+        remaining_boosters = box.items.filter(opened=False).count()
+        
+        # Se a caixa zerou, deleta automaticamente (não deve acontecer na compra, mas por segurança)
+        box_type_id = box.box_type.id
+        if remaining_boosters == 0:
+            box.delete()
+            remaining_boosters = 0  # Garante que será 0 na resposta
+        
+        # Salva os dados do resultado na sessão para a view de exibição
+        request.session['box_open_result'] = {
+            'item_id': item.id,
+            'box_type_id': box_type_id,
+            'remaining_boosters': remaining_boosters
+        }
+        request.session.modified = True
+        
+        # Redireciona para a URL fixa de resultado
+        return redirect('games:box_user_open_box')
 
     except ValueError as e:
         messages.error(request, _("Erro na transação: ") + str(e))
         return redirect('games:box_user_dashboard')
+
+
+@conditional_otp_required
+@transaction.atomic
+def reset_box_view(request, box_id):
+    """Reseta uma caixa, deletando todos os itens e recriando-os, cobrando o preço novamente"""
+    try:
+        box = Box.objects.get(id=box_id)
+    except Box.DoesNotExist:
+        messages.warning(request, _("Esta caixa não existe."))
+        return redirect('games:box_user_dashboard')
+
+    if box.user != request.user:
+        messages.warning(request, _("Essa caixa não pertence a você."))
+        return redirect('games:box_user_dashboard')
+
+    # Verificar se o usuário tem saldo suficiente para resetar (comprar novamente)
+    box_type = box.box_type
+    total = box_type.price
+
+    wallet = Wallet.objects.get(usuario=request.user)
+
+    if wallet.saldo < total:
+        messages.error(request, _("Saldo insuficiente para resetar a caixa. É necessário comprar a caixa novamente."))
+        return redirect('games:box_user_dashboard')
+
+    # Aplicar a transação de saída da carteira
+    try:
+        aplicar_transacao(
+            wallet=wallet,
+            tipo='SAIDA',
+            valor=total,
+            descricao=f'Reset de caixa {box_type.name}',
+            origem='Wallet',
+            destino='Sistema de Caixas'
+        )
+        
+        # Deletar TODAS as outras caixas do mesmo tipo do usuário (para garantir apenas uma ativa)
+        other_boxes = Box.objects.filter(user=request.user, box_type=box_type).exclude(id=box_id)
+        if other_boxes.exists():
+            other_boxes.delete()
+        
+        # Deletar todos os BoxItem da caixa atual
+        box.items.all().delete()
+
+        # Recriar os itens da caixa atual
+        populate_box_with_items(box)
+        messages.success(request, _("Caixa resetada com sucesso! O preço foi cobrado novamente."))
+    except ValueError as e:
+        messages.error(request, _("Erro na transação: ") + str(e))
+    except Exception as e:
+        messages.error(request, _("Erro ao resetar a caixa: ") + str(e))
+
+    return redirect('games:box_user_dashboard')
 
 
 @conditional_otp_required

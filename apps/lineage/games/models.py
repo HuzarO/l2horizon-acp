@@ -22,9 +22,14 @@ class Prize(BaseModel):
     
     # Método para retornar a URL da imagem
     def get_image_url(self):
-        if self.item and self.item.image:
-            return self.item.image.url
-        return self.image.url if self.image else static("roulette/images/default.png")
+        try:
+            if self.item and self.item.image:
+                return self.item.image.url
+            if self.image:
+                return self.image.url
+        except (AttributeError, ValueError):
+            pass
+        return static("roulette/images/default.png")
 
     def __str__(self):
         display_name = self.item.name if self.item else self.name

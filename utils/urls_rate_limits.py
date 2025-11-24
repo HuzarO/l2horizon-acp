@@ -65,6 +65,11 @@ URL_RATE_LIMITS_DICT = {
     '/app/payment/status-pagamento/': {'rate': '30/m', 'key': 'user', 'group': 'payment'},
     '/app/payment/cancel-order/':     {'rate': '5/m', 'key': 'user', 'group': 'payment', 'method': 'POST'},
     
+    # =========================== WEBHOOKS DE PAGAMENTO ===========================
+    # Rate limiting rigoroso para webhooks (proteção contra ataques)
+    '/app/payment/stripe/webhook/':   {'rate': '100/h', 'key': 'ip', 'group': 'webhook-stripe', 'method': 'POST'},
+    '/app/payment/mercadopago/notificacao/': {'rate': '100/h', 'key': 'ip', 'group': 'webhook-mercadopago', 'method': 'POST'},
+    
     # =========================== UPLOAD DE ARQUIVOS ===========================
     # Proteção contra spam de uploads
     '/app/media/upload/':             {'rate': '10/m', 'key': 'user', 'group': 'file-upload', 'method': 'POST'},

@@ -24,9 +24,9 @@
                         <td>{{ box.opened|yesno:"Sim,Não" }}</td>
                         <td>
                             {% if not box.opened %}
-                                <a href="{% url 'games:box_user_open_box' box.id %}" class="btn btn-sm btn-success">
+                                <button onclick="openBoxAjax({{ box.id }})" class="btn btn-sm btn-success">
                                     {% trans "Abrir" %}
-                                </a>
+                                </button>
                             {% else %}
                                 <span class="badge bg-secondary">{% trans "Aberta" %}</span>
                             {% endif %}
@@ -39,4 +39,58 @@
         <p class="text-warning">{% trans "Você ainda não possui nenhuma caixa para abrir." %}</p>
     {% endif %}
 </div>
+
+{% block extrascripts %}
+<script>
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + "=")) {
+          cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function openBoxAjax(boxId) {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '{% trans "Abrindo..." %}';
+    
+    const csrfToken = getCookie('csrftoken');
+    const url = `/app/game/box/open-ajax/${boxId}/`;
+    
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        window.location.href = data.redirect_url || '/app/game/box/result/';
+      } else {
+        alert(data.error || 'Erro ao abrir a caixa.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      alert('Erro de conexão com o servidor.');
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    });
+  }
+</script>
 {% endblock %}

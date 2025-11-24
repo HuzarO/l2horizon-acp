@@ -470,13 +470,17 @@
                         <strong>{% trans "ID do Item" %}</strong>
                         <span>{{ item.item_id }}</span>
                     </div>
+                    <div class="info-item">
+                        <strong>{% trans "Boosters Restantes" %}</strong>
+                        <span class="badge bg-warning text-dark fs-5 px-3 py-2">{{ remaining_boosters }}</span>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Action Buttons -->
         <div class="action-buttons">
-            <a href="{% url 'games:box_user_dashboard' %}" class="btn btn-custom">
+            <a href="{% url 'games:box_user_dashboard' %}" class="btn btn-secondary-custom">
                 <i class="bi bi-arrow-left-circle me-2"></i>
                 {% trans "Voltar ao Dashboard" %}
             </a>
