@@ -462,7 +462,22 @@ EOF
   elif grep -qE "^ENCRYPTION_KEY\s*=\s*['\"]?iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac=" .env 2>/dev/null; then
     # Só substitui se for a chave padrão/placeholder E se for a primeira instalação
     # Verificar se já foi feita instalação anterior (se sim, não substituir!)
-    if [ ! -f "$INSTALL_DIR/.install_done" ] && [ ! -f "$INSTALL_DIR/build_executed" ]; then
+    # Verificar também se há containers Docker rodando (instalação antiga)
+    local has_running_containers=false
+    if command -v docker &> /dev/null; then
+      if docker ps --format '{{.Names}}' 2>/dev/null | grep -qE "(site_http|site_wsgi|postgres|celery)"; then
+        has_running_containers=true
+      fi
+    fi
+    
+    # Verificar se há chave preservada no install.sh
+    local has_preserved_key=false
+    if [ -f "$INSTALL_DIR/.encryption_key_preserved" ]; then
+      has_preserved_key=true
+    fi
+    
+    # Verificar se é primeira instalação (não há instalação anterior)
+    if [ ! -f "$INSTALL_DIR/.install_done" ] && [ ! -f "$INSTALL_DIR/build_executed" ] && [ "$has_running_containers" = "false" ] && [ "$has_preserved_key" = "false" ]; then
       log_warning "ENCRYPTION_KEY é a chave padrão/placeholder. Gerando nova chave (primeira instalação)..."
       backup_env_file ".env"
       FERNET_KEY=$(python3 - <<EOF
@@ -477,7 +492,13 @@ EOF
         log_warning "Não foi possível gerar ENCRYPTION_KEY. Mantendo valor padrão."
       fi
     else
-      log_warning "ENCRYPTION_KEY é a chave padrão, mas já existe instalação anterior."
+      log_warning "ENCRYPTION_KEY é a chave padrão, mas foi detectada instalação anterior."
+      if [ "$has_running_containers" = "true" ]; then
+        log_warning "Containers Docker estão rodando - preservando chave para manter dados criptografados."
+      fi
+      if [ "$has_preserved_key" = "true" ]; then
+        log_warning "Chave preservada detectada - não será substituída."
+      fi
       log_warning "NÃO será substituída para preservar dados criptografados."
       log_info "Se você realmente precisa substituir, faça backup do banco primeiro e remova os arquivos de status!"
     fi
