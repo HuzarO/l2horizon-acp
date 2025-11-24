@@ -121,6 +121,187 @@ detect_ubuntu_version() {
     fi
 }
 
+# Função para detectar instalações antigas (feitas com scripts anteriores)
+detect_existing_installation() {
+    local project_dir="${SCRIPT_DIR}"
+    
+    # Se já existe arquivo de status, é instalação nova
+    if [ -f "${INSTALL_DIR}/.install_done" ]; then
+        return 0  # Instalação detectada
+    fi
+    
+    # Verificar se existe diretório de status com arquivos do script antigo
+    # O script antigo criava: system_ready, docker_ready, repo_cloned, python_ready, env_created, htpasswd_created, fernet_key_generated, build_executed, superuser_created
+    if [ -d "$INSTALL_DIR" ]; then
+        local old_script_markers=("system_ready" "docker_ready" "repo_cloned" "python_ready" "env_created" "htpasswd_created" "fernet_key_generated" "build_executed" "superuser_created")
+        for marker in "${old_script_markers[@]}"; do
+            if [ -f "${INSTALL_DIR}/${marker}" ]; then
+                log_info "Detectado arquivo de status do script antigo: ${marker}"
+                log_info "Instalação antiga detectada (script anterior executado)."
+                return 0  # Instalação detectada
+            fi
+        done
+        
+        # Se existe qualquer arquivo no diretório de status, considera instalado
+        if [ "$(find "$INSTALL_DIR" -type f 2>/dev/null | wc -l)" -gt 0 ]; then
+            log_info "Detectado diretório de status com arquivos (instalação antiga)."
+            return 0  # Instalação detectada
+        fi
+    fi
+    
+    # Verificar se existe .env com ENCRYPTION_KEY configurada (não placeholder)
+    local env_file="${project_dir}/.env"
+    if [ -d "${project_dir}/lineage" ]; then
+        env_file="${project_dir}/lineage/.env"
+    fi
+    
+    if [ -f "$env_file" ]; then
+        local encryption_key=$(grep -E "^ENCRYPTION_KEY\s*=" "$env_file" 2>/dev/null | head -1 | sed -E "s/^ENCRYPTION_KEY\s*=\s*['\"]?([^'\"]+)['\"]?.*$/\1/" | tr -d '[:space:]')
+        local default_key="iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac="
+        
+        # Se existe ENCRYPTION_KEY e não é a chave padrão/placeholder, é instalação antiga
+        if [ -n "$encryption_key" ] && [ "$encryption_key" != "$default_key" ]; then
+            log_info "Detectada ENCRYPTION_KEY existente no .env (instalação antiga)."
+            return 0  # Instalação detectada
+        fi
+    fi
+    
+    # Verificar se existem containers Docker rodando
+    if command_exists docker; then
+        local running_containers=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E "(site_http|site_wsgi|postgres|celery)" | wc -l)
+        if [ "$running_containers" -gt 0 ]; then
+            log_info "Detectados containers Docker rodando (instalação antiga)."
+            return 0  # Instalação detectada
+        fi
+    fi
+    
+    # Verificar se existe manage.py (projeto configurado)
+    if [ -f "${project_dir}/manage.py" ] || [ -f "${project_dir}/lineage/manage.py" ]; then
+        # Se existe .env com variáveis importantes, considera instalado
+        if [ -f "$env_file" ]; then
+            local has_secret_key=$(grep -qE "^SECRET_KEY\s*=" "$env_file" 2>/dev/null && echo "yes" || echo "no")
+            local has_db_config=$(grep -qE "^DB_ENGINE\s*=" "$env_file" 2>/dev/null && echo "yes" || echo "no")
+            
+            if [ "$has_secret_key" = "yes" ] && [ "$has_db_config" = "yes" ]; then
+                log_info "Detectado projeto configurado com .env completo (instalação antiga)."
+                return 0  # Instalação detectada
+            fi
+        fi
+    fi
+    
+    # Verificar se existe diretório lineage com estrutura configurada (script antigo clonava para lineage/)
+    if [ -d "${project_dir}/lineage" ]; then
+        if [ -f "${project_dir}/lineage/manage.py" ] && [ -d "${project_dir}/lineage/.venv" ]; then
+            log_info "Detectado projeto lineage com ambiente virtual configurado (instalação antiga)."
+            return 0  # Instalação detectada
+        fi
+    fi
+    
+    return 1  # Não é instalação existente
+}
+
+# Função para preservar ENCRYPTION_KEY existente
+preserve_encryption_key() {
+    local env_file="${SCRIPT_DIR}/.env"
+    
+    # O script antigo clonava para lineage/, então verificar ambos os locais
+    if [ ! -f "$env_file" ] && [ -d "${SCRIPT_DIR}/lineage" ]; then
+        env_file="${SCRIPT_DIR}/lineage/.env"
+    fi
+    
+    if [ ! -f "$env_file" ]; then
+        return 0  # Sem .env, não precisa preservar
+    fi
+    
+    # Extrair ENCRYPTION_KEY atual (se existir)
+    local current_key=$(grep -E "^ENCRYPTION_KEY\s*=" "$env_file" 2>/dev/null | head -1 | sed -E "s/^ENCRYPTION_KEY\s*=\s*['\"]?([^'\"]+)['\"]?.*$/\1/" | tr -d '[:space:]')
+    local default_key="iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac="
+    
+    # Se existe chave e não é placeholder, preservar
+    if [ -n "$current_key" ] && [ "$current_key" != "$default_key" ]; then
+        log_warning "⚠️  ENCRYPTION_KEY existente detectada em: $env_file"
+        log_warning "Chave: ${current_key:0:20}..."
+        log_warning "Esta chave será preservada para manter dados criptografados."
+        log_warning "⚠️  IMPORTANTE: Nenhum script sobrescreverá esta chave."
+        
+        # Criar arquivo de marcação para garantir que a chave não seja substituída
+        mkdir -p "$INSTALL_DIR"
+        echo "$current_key" > "${INSTALL_DIR}/.encryption_key_preserved"
+        echo "$env_file" > "${INSTALL_DIR}/.encryption_key_location"
+        return 0
+    fi
+    
+    return 1  # Não há chave para preservar
+}
+
+# Função para restaurar ENCRYPTION_KEY preservada se foi modificada
+restore_encryption_key() {
+    local preserved_key_file="${INSTALL_DIR}/.encryption_key_preserved"
+    local preserved_location_file="${INSTALL_DIR}/.encryption_key_location"
+    
+    # Se não há chave preservada, não precisa restaurar
+    if [ ! -f "$preserved_key_file" ]; then
+        return 0
+    fi
+    
+    local preserved_key=$(cat "$preserved_key_file" | tr -d '[:space:]')
+    if [ -z "$preserved_key" ]; then
+        return 0  # Chave preservada vazia, não restaurar
+    fi
+    
+    # Determinar localização do .env (onde estava originalmente ou onde deveria estar agora)
+    local env_file="${SCRIPT_DIR}/.env"
+    if [ -f "$preserved_location_file" ]; then
+        local original_location=$(cat "$preserved_location_file")
+        if [ -f "$original_location" ]; then
+            env_file="$original_location"
+        fi
+    fi
+    
+    # Também verificar em lineage/.env (script antigo)
+    if [ ! -f "$env_file" ] && [ -f "${SCRIPT_DIR}/lineage/.env" ]; then
+        env_file="${SCRIPT_DIR}/lineage/.env"
+    fi
+    
+    if [ ! -f "$env_file" ]; then
+        return 0  # Arquivo .env não encontrado, não restaurar
+    fi
+    
+    # Extrair ENCRYPTION_KEY atual do .env
+    local current_key=$(grep -E "^ENCRYPTION_KEY\s*=" "$env_file" 2>/dev/null | head -1 | sed -E "s/^ENCRYPTION_KEY\s*=\s*['\"]?([^'\"]+)['\"]?.*$/\1/" | tr -d '[:space:]')
+    local default_key="iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac="
+    
+    # Se a chave atual é diferente da preservada (e não é apenas placeholder sendo substituída)
+    if [ "$current_key" != "$preserved_key" ]; then
+        # Se a chave preservada não é placeholder, restaurá-la
+        if [ "$preserved_key" != "$default_key" ]; then
+            log_warning "⚠️  ENCRYPTION_KEY foi modificada, restaurando chave preservada em: $env_file"
+            
+            # Fazer backup antes de restaurar
+            if [ -f "$env_file" ]; then
+                cp "$env_file" "${env_file}.before_key_restore.bkp" 2>/dev/null || true
+            fi
+            
+            # Restaurar a chave preservada
+            if grep -qE "^ENCRYPTION_KEY\s*=" "$env_file" 2>/dev/null; then
+                # Substituir linha existente (suporta diferentes formatos)
+                sed -i "s|^ENCRYPTION_KEY\s*=.*|ENCRYPTION_KEY = '$preserved_key'|" "$env_file" 2>/dev/null || \
+                sed -i "s|^ENCRYPTION_KEY\s*=.*|ENCRYPTION_KEY='$preserved_key'|" "$env_file" 2>/dev/null || \
+                sed -i "/^ENCRYPTION_KEY\s*=/c\ENCRYPTION_KEY='$preserved_key'" "$env_file" 2>/dev/null || true
+            else
+                # Adicionar se não existe
+                echo "" >> "$env_file"
+                echo "ENCRYPTION_KEY = '$preserved_key'" >> "$env_file"
+            fi
+            
+            log_success "✓ ENCRYPTION_KEY restaurada com sucesso."
+            log_warning "⚠️  Backup criado: ${env_file}.before_key_restore.bkp"
+        fi
+    else
+        log_info "✓ ENCRYPTION_KEY preservada corretamente em: $env_file"
+    fi
+}
+
 # Função para verificar se é um repositório git
 is_git_repository() {
     [ -d "${SCRIPT_DIR}/.git" ]
@@ -458,11 +639,27 @@ main() {
         # Criar diretório de status
         mkdir -p "${INSTALL_DIR}"
         
-        # Verificar se já foi instalado
-        if [ -f "${INSTALL_DIR}/.install_done" ]; then
-            log_warning "Instalação já foi concluída anteriormente."
+        # Preservar ENCRYPTION_KEY ANTES de qualquer verificação
+        preserve_encryption_key
+        
+        # Verificar se já foi instalado (incluindo instalações antigas)
+        if detect_existing_installation || [ -f "${INSTALL_DIR}/.install_done" ]; then
+            log_warning "⚠️  Instalação existente detectada!"
+            log_info "Foi detectado que o sistema já foi instalado anteriormente."
             echo
-            read -p "Deseja rodar apenas o build (b), refazer instalação completa (r) ou sair (s)? (b/r/s): " OPCAO
+            
+            # Verificar se ENCRYPTION_KEY está preservada
+            if [ -f "${INSTALL_DIR}/.encryption_key_preserved" ]; then
+                log_success "✓ ENCRYPTION_KEY será preservada (dados criptografados serão mantidos)."
+            fi
+            
+            echo
+            read -p "O que deseja fazer?" 2>/dev/null || true
+            echo "  (b) Rodar apenas build (atualizar código sem reinstalar)"
+            echo "  (r) Refazer instalação completa (ATENÇÃO: pode sobrescrever configurações)"
+            echo "  (s) Sair"
+            echo
+            read -p "Escolha (b/r/s): " OPCAO
             
             case "${OPCAO}" in
                 b|B)
@@ -472,9 +669,26 @@ main() {
                     exit 0
                     ;;
                 r|R)
+                    log_warning "⚠️  ATENÇÃO: Você escolheu refazer a instalação completa."
+                    log_warning "Isso pode sobrescrever configurações existentes."
+                    echo
+                    read -p "Tem CERTEZA que deseja continuar? (digite 'SIM' para confirmar): " CONFIRM
+                    if [ "$CONFIRM" != "SIM" ]; then
+                        log_info "Operação cancelada."
+                        exit 0
+                    fi
                     log_info "Refazendo instalação completa..."
-                    rm -rf "${INSTALL_DIR}"
-                    mkdir -p "${INSTALL_DIR}"
+                    # NÃO remover o arquivo de preservação da chave se existir
+                    if [ -f "${INSTALL_DIR}/.encryption_key_preserved" ]; then
+                        local preserved_key=$(cat "${INSTALL_DIR}/.encryption_key_preserved")
+                        rm -rf "${INSTALL_DIR}"
+                        mkdir -p "${INSTALL_DIR}"
+                        echo "$preserved_key" > "${INSTALL_DIR}/.encryption_key_preserved"
+                        log_info "ENCRYPTION_KEY preservada mesmo com reinstalação."
+                    else
+                        rm -rf "${INSTALL_DIR}"
+                        mkdir -p "${INSTALL_DIR}"
+                    fi
                     ;;
                 s|S)
                     log_info "Saindo..."
@@ -501,6 +715,9 @@ main() {
         log_info "=========================================="
         cd "${SCRIPT_DIR}"
         run_setup_script "setup.sh"
+        
+        # Restaurar ENCRYPTION_KEY preservada se necessário (proteção contra sobrescrita)
+        restore_encryption_key
         
         # Marcar instalação como concluída
         touch "${INSTALL_DIR}/.install_done"
