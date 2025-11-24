@@ -331,8 +331,9 @@
   </div>
 </div>
 
+{{ inventories_json|json_script:"inventories-data" }}
 <script>
-  const inventories = {{ inventories_json|safe }};
+  const inventories = JSON.parse(document.getElementById('inventories-data').textContent);
 
   function atualizarItens() {
     const personagemSelecionado = document.getElementById('character_name').value;

@@ -256,12 +256,12 @@
                     <td>
                       <div class="btn-group btn-group-sm" role="group">
                         <button type="button" class="btn btn-outline-primary" 
-                                onclick="editFilter({{ filter.id }}, '{{ filter.name }}', '{{ filter.pattern }}', '{{ filter.filter_type }}', '{{ filter.action }}', '{{ filter.description|default:"" }}', {{ filter.case_sensitive|yesno:"true,false" }}, {{ filter.apply_to_posts|yesno:"true,false" }}, {{ filter.apply_to_comments|yesno:"true,false" }}, {{ filter.apply_to_usernames|yesno:"true,false" }})"
+                                onclick="editFilter({{ filter.id }}, {{ filter.name|escapejs }}, {{ filter.pattern|escapejs }}, {{ filter.filter_type|escapejs }}, {{ filter.action|escapejs }}, {{ filter.description|default:""|escapejs }}, {{ filter.case_sensitive|yesno:"true,false" }}, {{ filter.apply_to_posts|yesno:"true,false" }}, {{ filter.apply_to_comments|yesno:"true,false" }}, {{ filter.apply_to_usernames|yesno:"true,false" }})"
                                 title="{% trans 'Editar' %}">
                           <i class="bi bi-pencil"></i>
                         </button>
                         <button type="button" class="btn btn-outline-danger" 
-                                onclick="deleteFilter({{ filter.id }}, '{{ filter.name }}')"
+                                onclick="deleteFilter({{ filter.id }}, {{ filter.name|escapejs }})"
                                 title="{% trans 'Excluir' %}">
                           <i class="bi bi-trash"></i>
                         </button>

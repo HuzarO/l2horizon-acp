@@ -48,21 +48,58 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                const formatted = message.replace(/\n/g, '<br>');
-                messageContainer.innerHTML += `
-                    <div class="media mb-3 d-flex justify-content-end text-end" style="gap: 5px;">
-                        <div class="media-body" style="max-width: 80%;">
-                            <div class="current-user">
-                                <div class="title-current">
-                                    <h6 class="m-0 fw-bold">${currentUser}</h6>
-                                    <small class="text-dark">${new Date().toLocaleString()}</small>
-                                </div>
-                                <p class="m-0" style="font-size: 12pt; word-break: break-word; white-space: pre-wrap;">${formatted}</p>
-                            </div>
-                        </div>
-                        <img src="${avatarUrl}" class="rounded-circle ms-3" alt="Avatar" width="40" height="40">
-                    </div>
-                `;
+                // Escapar HTML antes de processar quebras de linha
+                const escapedMessage = escapeHtml(message);
+                const formatted = escapedMessage.replace(/\n/g, '<br>');
+                const escapedCurrentUser = escapeHtml(currentUser);
+                const escapedAvatarUrl = escapeHtml(avatarUrl || '');
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'media mb-3 d-flex justify-content-end text-end';
+                messageDiv.style.gap = '5px';
+                
+                const mediaBody = document.createElement('div');
+                mediaBody.className = 'media-body';
+                mediaBody.style.maxWidth = '80%';
+                
+                const messageContent = document.createElement('div');
+                messageContent.className = 'current-user';
+                
+                const messageHeader = document.createElement('div');
+                messageHeader.className = 'title-current';
+                
+                const usernameH6 = document.createElement('h6');
+                usernameH6.className = 'm-0 fw-bold';
+                usernameH6.textContent = escapedCurrentUser;
+                
+                const timestampSmall = document.createElement('small');
+                timestampSmall.className = 'text-dark';
+                timestampSmall.textContent = new Date().toLocaleString();
+                
+                messageHeader.appendChild(usernameH6);
+                messageHeader.appendChild(timestampSmall);
+                
+                const messageP = document.createElement('p');
+                messageP.className = 'm-0';
+                messageP.style.fontSize = '12pt';
+                messageP.style.wordBreak = 'break-word';
+                messageP.style.whiteSpace = 'pre-wrap';
+                messageP.innerHTML = formatted;
+                
+                messageContent.appendChild(messageHeader);
+                messageContent.appendChild(messageP);
+                mediaBody.appendChild(messageContent);
+                messageDiv.appendChild(mediaBody);
+                
+                const avatarImg = document.createElement('img');
+                avatarImg.src = escapedAvatarUrl;
+                avatarImg.className = 'rounded-circle ms-3';
+                avatarImg.alt = 'Avatar';
+                avatarImg.width = 40;
+                avatarImg.height = 40;
+                messageDiv.appendChild(avatarImg);
+                
+                messageContainer.appendChild(messageDiv);
                 messageInput.value = '';
                 messageContainer.scrollTop = messageContainer.scrollHeight;
             }
@@ -118,6 +155,13 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(console.error);
     });
 
+    // Função para escapar HTML e prevenir XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     function loadMessages(friendId) {
         fetch(`/app/message/api/load-messages/${friendId}/`)
             .then(res => res.json())
@@ -126,22 +170,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 data.messages.forEach(msg => {
                     const isUser = msg.sender.username === currentUser;
-                    const formatted = msg.text.replace(/\n/g, '<br>');
+                    // Escapar HTML antes de processar quebras de linha
+                    const escapedText = escapeHtml(msg.text);
+                    const formatted = escapedText.replace(/\n/g, '<br>');
+                    const escapedUsername = escapeHtml(msg.sender.username);
+                    const escapedAvatarUrl = escapeHtml(msg.sender.avatar_url || '');
                 
-                    messageContainer.innerHTML += `
-                        <div class="media mb-3 d-flex ${isUser ? 'justify-content-end text-end' : 'justify-content-start text-start'}" style="gap: 5px;">
-                            ${!isUser ? `<img src="${msg.sender.avatar_url}" class="rounded-circle me-3" alt="${msg.sender.username}" width="40" height="40">` : ''}
-                            <div class="media-body" style="max-width: 80%;">
-                                <div class="${isUser ? 'current-user' : 'current-friend'}">
-                                    <div class="${isUser ? 'title-current' : 'title-friend'}">
-                                        <h6 class="m-0 fw-bold">${msg.sender.username}</h6>
-                                        <small class="text-dark">${new Date(msg.timestamp).toLocaleString()}</small>
-                                    </div>
-                                    <p class="m-0" style="font-size: 12pt; word-break: break-word; white-space: pre-wrap;">${formatted}</p>
-                                </div>
-                            </div>
-                            ${isUser ? `<img src="${msg.sender.avatar_url}" class="rounded-circle ms-3" alt="${msg.sender.username}" width="40" height="40">` : ''}
-                        </div>`;
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `media mb-3 d-flex ${isUser ? 'justify-content-end text-end' : 'justify-content-start text-start'}`;
+                    messageDiv.style.gap = '5px';
+                    
+                    if (!isUser) {
+                        const avatarImg = document.createElement('img');
+                        avatarImg.src = escapedAvatarUrl;
+                        avatarImg.className = 'rounded-circle me-3';
+                        avatarImg.alt = escapedUsername;
+                        avatarImg.width = 40;
+                        avatarImg.height = 40;
+                        messageDiv.appendChild(avatarImg);
+                    }
+                    
+                    const mediaBody = document.createElement('div');
+                    mediaBody.className = 'media-body';
+                    mediaBody.style.maxWidth = '80%';
+                    
+                    const messageContent = document.createElement('div');
+                    messageContent.className = isUser ? 'current-user' : 'current-friend';
+                    
+                    const messageHeader = document.createElement('div');
+                    messageHeader.className = isUser ? 'title-current' : 'title-friend';
+                    
+                    const usernameH6 = document.createElement('h6');
+                    usernameH6.className = 'm-0 fw-bold';
+                    usernameH6.textContent = escapedUsername;
+                    
+                    const timestampSmall = document.createElement('small');
+                    timestampSmall.className = 'text-dark';
+                    timestampSmall.textContent = new Date(msg.timestamp).toLocaleString();
+                    
+                    messageHeader.appendChild(usernameH6);
+                    messageHeader.appendChild(timestampSmall);
+                    
+                    const messageP = document.createElement('p');
+                    messageP.className = 'm-0';
+                    messageP.style.fontSize = '12pt';
+                    messageP.style.wordBreak = 'break-word';
+                    messageP.style.whiteSpace = 'pre-wrap';
+                    messageP.innerHTML = formatted;
+                    
+                    messageContent.appendChild(messageHeader);
+                    messageContent.appendChild(messageP);
+                    mediaBody.appendChild(messageContent);
+                    messageDiv.appendChild(mediaBody);
+                    
+                    if (isUser) {
+                        const avatarImg = document.createElement('img');
+                        avatarImg.src = escapedAvatarUrl;
+                        avatarImg.className = 'rounded-circle ms-3';
+                        avatarImg.alt = escapedUsername;
+                        avatarImg.width = 40;
+                        avatarImg.height = 40;
+                        messageDiv.appendChild(avatarImg);
+                    }
+                    
+                    messageContainer.appendChild(messageDiv);
                 });                
 
                 if (data.has_unread_messages) {

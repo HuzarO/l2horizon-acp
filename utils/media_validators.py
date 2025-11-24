@@ -514,12 +514,23 @@ def get_video_info(video_path):
                     break
             
             if video_stream:
+                # Calcular FPS de forma segura sem usar eval()
+                fps_str = video_stream.get('r_frame_rate', '0/1')
+                try:
+                    if '/' in fps_str:
+                        numerator, denominator = map(int, fps_str.split('/'))
+                        fps = numerator / denominator if denominator != 0 else 0
+                    else:
+                        fps = float(fps_str)
+                except (ValueError, ZeroDivisionError):
+                    fps = 0
+                
                 return {
                     'duration': float(info['format'].get('duration', 0)),
                     'width': int(video_stream.get('width', 0)),
                     'height': int(video_stream.get('height', 0)),
                     'codec': video_stream.get('codec_name'),
-                    'fps': eval(video_stream.get('r_frame_rate', '0/1')),
+                    'fps': fps,
                     'bitrate': int(info['format'].get('bit_rate', 0)),
                 }
         
