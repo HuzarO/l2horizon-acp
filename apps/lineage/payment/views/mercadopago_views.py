@@ -26,6 +26,12 @@ def validar_assinatura_hmac(request):
 
     if not x_signature or not x_request_id:
         logger.warning("Cabeçalhos obrigatórios ausentes: x-signature ou x-request-id.")
+        # Registra tentativa de falsificação
+        from ..utils import registrar_tentativa_falsificacao
+        registrar_tentativa_falsificacao(
+            request, 'MercadoPago', 'sem_assinatura',
+            detalhes="Cabeçalhos obrigatórios ausentes"
+        )
         return False
 
     # Pega o data.id da query string ou do corpo da requisição
@@ -48,11 +54,33 @@ def validar_assinatura_hmac(request):
 
     # Extrai ts e v1 da assinatura
     try:
-        parts = dict(part.strip().split("=", 1) for part in x_signature.split(","))
+        parts = {}
+        for part in x_signature.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            # Verifica se a parte tem o formato correto (chave=valor)
+            if "=" not in part:
+                logger.warning(f"Formato inválido na parte da assinatura: {part}")
+                # Registra tentativa de falsificação
+                from ..utils import registrar_tentativa_falsificacao
+                registrar_tentativa_falsificacao(
+                    request, 'MercadoPago', 'assinatura_malformada',
+                    detalhes=f"Formato inválido: {part}"
+                )
+                return False
+            key, value = part.split("=", 1)
+            parts[key.strip()] = value.strip()
         ts = parts.get("ts")
         v1 = parts.get("v1")
-    except Exception as e:
+    except (ValueError, AttributeError) as e:
         logger.warning(f"Erro ao analisar x-signature: {e}")
+        # Registra tentativa de falsificação
+        from ..utils import registrar_tentativa_falsificacao
+        registrar_tentativa_falsificacao(
+            request, 'MercadoPago', 'assinatura_malformada',
+            detalhes=f"Erro ao analisar: {str(e)}"
+        )
         return False
 
     if not ts or not v1:
@@ -73,6 +101,12 @@ def validar_assinatura_hmac(request):
 
     if not hmac.compare_digest(expected_signature, v1):
         logger.warning("Assinatura HMAC inválida.")
+        # Registra tentativa de falsificação
+        from ..utils import registrar_tentativa_falsificacao
+        registrar_tentativa_falsificacao(
+            request, 'MercadoPago', 'assinatura_falsa',
+            detalhes="HMAC inválido"
+        )
         return False
 
     return True
@@ -92,6 +126,12 @@ def pagamento_sucesso(request):
 
         if result["status"] != 200:
             logger.error("Erro ao consultar o pagamento no Mercado Pago.")
+            # Registra tentativa de falsificação (payment_id inválido)
+            from ..utils import registrar_tentativa_falsificacao
+            registrar_tentativa_falsificacao(
+                request, 'MercadoPago', 'id_falso',
+                detalhes=f"Payment ID inválido: {payment_id} - Status: {result.get('status')}"
+            )
             return redirect("payment:pagamento_erro")
 
         pagamento_info = result["response"]
@@ -162,6 +202,7 @@ def pagamento_pendente(request):
 @csrf_exempt
 @require_POST
 def notificacao_mercado_pago(request):
+    # A validação já registra tentativas de falsificação internamente
     if not validar_assinatura_hmac(request):
         return HttpResponse("Assinatura inválida", status=400)
 

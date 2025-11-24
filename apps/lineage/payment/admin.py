@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import PedidoPagamento, Pagamento, WebhookLog
+from .models import PedidoPagamento, Pagamento, WebhookLog, TentativaFalsificacao
 from core.admin import BaseModelAdmin
 from django.template.response import TemplateResponse
 
@@ -254,3 +254,59 @@ class WebhookLogAdmin(BaseModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False  # impede a exclusão
+
+
+@admin.register(TentativaFalsificacao)
+class TentativaFalsificacaoAdmin(BaseModelAdmin):
+    list_display = ('id', 'ip_address', 'provedor', 'tipo_tentativa', 'alerta_enviado', 'data_tentativa')
+    list_filter = ('provedor', 'tipo_tentativa', 'alerta_enviado', 'data_tentativa')
+    search_fields = ('ip_address', 'detalhes', 'user_agent')
+    readonly_fields = ('ip_address', 'provedor', 'tipo_tentativa', 'detalhes', 'user_agent', 'data_tentativa', 'alerta_enviado')
+    ordering = ('-data_tentativa',)
+    
+    fieldsets = (
+        ('Informações da Tentativa', {
+            'fields': ('ip_address', 'provedor', 'tipo_tentativa', 'data_tentativa')
+        }),
+        ('Detalhes', {
+            'fields': ('detalhes', 'user_agent', 'alerta_enviado'),
+            'description': 'Informações adicionais sobre a tentativa de falsificação'
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        return False  # impede a criação manual
+    
+    def has_change_permission(self, request, obj=None):
+        return False  # impede a edição (apenas visualização)
+    
+    actions = ['marcar_alerta_enviado', 'obter_estatisticas_ip']
+    
+    @admin.action(description='Marcar alertas como enviados')
+    def marcar_alerta_enviado(self, request, queryset):
+        atualizados = queryset.update(alerta_enviado=True)
+        self.message_user(request, f"{atualizados} tentativa(s) marcada(s) com alerta enviado.")
+    
+    @admin.action(description='Ver estatísticas do IP')
+    def obter_estatisticas_ip(self, request, queryset):
+        from ..utils import obter_estatisticas_seguranca
+        from django.contrib import messages
+        
+        if queryset.count() != 1:
+            messages.warning(request, "Selecione apenas uma tentativa para ver estatísticas do IP.")
+            return
+        
+        tentativa = queryset.first()
+        stats = obter_estatisticas_seguranca(ip_address=tentativa.ip_address, dias=7)
+        
+        provedores_str = ', '.join([f"{p['provedor']}: {p['count']}" for p in stats['por_provedor']])
+        tipos_str = ', '.join([f"{t['tipo_tentativa']}: {t['count']}" for t in stats['por_tipo'][:5]])
+        
+        mensagem = (
+            f"Estatísticas do IP {tentativa.ip_address} (últimos 7 dias):\n"
+            f"Total de tentativas: {stats['total_tentativas']}\n"
+            f"Por provedor: {provedores_str}\n"
+            f"Tipos mais comuns: {tipos_str}"
+        )
+        
+        messages.info(request, mensagem)

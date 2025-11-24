@@ -89,3 +89,61 @@ class WebhookLog(BaseModel):
 
     def __str__(self):
         return f"{self.tipo} - {self.data_id}"
+
+
+class TentativaFalsificacao(BaseModel):
+    """Modelo para rastrear tentativas de falsificação de pagamentos"""
+    ip_address = models.GenericIPAddressField(verbose_name=_("IP Address"), db_index=True)
+    provedor = models.CharField(max_length=50, choices=[('Stripe', 'Stripe'), ('MercadoPago', 'Mercado Pago')], verbose_name=_("Provider"))
+    tipo_tentativa = models.CharField(
+        max_length=50,
+        choices=[
+            ('sem_assinatura', _('Sem Assinatura')),
+            ('assinatura_falsa', _('Assinatura Falsa')),
+            ('assinatura_malformada', _('Assinatura Malformada')),
+            ('valor_modificado', _('Valor Modificado')),
+            ('id_falso', _('ID Falso')),
+            ('replay_attack', _('Replay Attack')),
+        ],
+        verbose_name=_("Attempt Type")
+    )
+    detalhes = models.TextField(blank=True, null=True, verbose_name=_("Details"))
+    user_agent = models.CharField(max_length=500, blank=True, null=True, verbose_name=_("User Agent"))
+    alerta_enviado = models.BooleanField(default=False, verbose_name=_("Alert Sent"))
+    data_tentativa = models.DateTimeField(auto_now_add=True, verbose_name=_("Attempt Date"), db_index=True)
+
+    class Meta:
+        verbose_name = _("Fraud Attempt")
+        verbose_name_plural = _("Fraud Attempts")
+        indexes = [
+            models.Index(fields=['ip_address', 'data_tentativa']),
+            models.Index(fields=['provedor', 'data_tentativa']),
+            models.Index(fields=['alerta_enviado', 'data_tentativa']),
+        ]
+        ordering = ['-data_tentativa']
+
+    def __str__(self):
+        return f"{self.provedor} - {self.tipo_tentativa} - {self.ip_address} - {self.data_tentativa}"
+
+    @classmethod
+    def contar_tentativas_recentes(cls, ip_address, minutos=60):
+        """Conta tentativas do mesmo IP nos últimos N minutos"""
+        from django.utils import timezone
+        from datetime import timedelta
+        cutoff = timezone.now() - timedelta(minutes=minutos)
+        return cls.objects.filter(ip_address=ip_address, data_tentativa__gte=cutoff).count()
+
+    @classmethod
+    def deve_enviar_alerta(cls, ip_address, limite=5, minutos=60):
+        """Verifica se deve enviar alerta baseado no número de tentativas"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        tentativas = cls.contar_tentativas_recentes(ip_address, minutos)
+        # Verifica se já foi enviado alerta recente
+        ja_alertado = cls.objects.filter(
+            ip_address=ip_address,
+            alerta_enviado=True,
+            data_tentativa__gte=timezone.now() - timedelta(hours=24)
+        ).exists()
+        return tentativas >= limite and not ja_alertado

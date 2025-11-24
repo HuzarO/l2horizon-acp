@@ -86,7 +86,16 @@
     <!-- Exibir saldo do usuário -->
     <div class="saldo-card text-center">
         <h4 class="mb-3">{% trans "Seu Saldo" %}</h4>
-        <span class="badge bg-primary fs-5">R$ {{ user_balance }}</span>
+        <div class="d-flex justify-content-center gap-4 flex-wrap">
+            <div>
+                <span class="badge bg-primary fs-5">R$ {{ user_balance }}</span>
+            </div>
+            <div>
+                <span class="badge bg-warning text-dark fs-5">
+                    <i class="bi bi-coin me-1"></i>{% trans "Fichas" %}: {{ user_fichas }}
+                </span>
+            </div>
+        </div>
     </div>
 
     {% if box_types %}
@@ -116,13 +125,26 @@
                                     {% trans "Boosters restantes" %}: {{ box.remaining_boosters }}
                                 </span>
                             </p>
-                            <a href="{% url 'games:box_user_open_box' box.id %}" class="btn btn-success mt-auto">
-                                {% trans "Abrir Caixa" %}
-                            </a>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-success mt-auto flex-fill" onclick="openBoxAjax({{ box.id }})" id="openBoxBtn{{ box.id }}">
+                                    <i class="bi bi-box-arrow-up me-1"></i>
+                                    {% trans "Abrir Caixa" %}
+                                </button>
+                                <button class="btn btn-warning mt-auto" data-bs-toggle="modal" data-bs-target="#confirmResetModal" data-box-id="{{ box.id }}" data-box-price="{{ box_type.price }}" data-box-name="{{ box_type.name }}">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>
+                                    {% trans "Resetar" %}
+                                </button>
+                            </div>
                         {% else %}
-                            <button class="btn btn-primary mt-auto" data-bs-toggle="modal" data-bs-target="#confirmBoxModal" data-box-id="{{ box_type.id }}">
-                                {% trans "Comprar e Abrir Caixa" %}
-                            </button>
+                            {% if user_fichas > 0 %}
+                                <button class="btn btn-primary mt-auto" data-bs-toggle="modal" data-bs-target="#confirmBoxModal" data-box-id="{{ box_type.id }}" data-has-fichas="true">
+                                    {% trans "Comprar e Abrir Caixa" %}
+                                </button>
+                            {% else %}
+                                <button class="btn btn-primary mt-auto" data-bs-toggle="modal" data-bs-target="#confirmBoxModal" data-box-id="{{ box_type.id }}" data-has-fichas="false">
+                                    {% trans "Comprar Caixa" %}
+                                </button>
+                            {% endif %}
                         {% endif %}
                     {% endwith %}
                     <button class="btn btn-outline-info mt-2" data-bs-toggle="modal" data-bs-target="#itemsModal"
@@ -147,11 +169,28 @@
   <div class="modal-dialog">
     <div class="modal-content text-center p-4 text-white bg-dark">
       <h5 class="modal-title mb-3" id="confirmBoxModalLabel">{% trans "Confirmar Compra" %}</h5>
-      <p>{% trans "Você tem certeza de que deseja comprar e abrir esta caixa?" %}</p>
+      <p id="boxModalMessage"></p>
       <p id="boxPrice" class="fw-bold"></p>
       <div class="d-flex justify-content-between">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancelar" %}</button>
         <a href="#" id="confirmPurchaseButton" class="btn btn-primary">{% trans "Confirmar Compra" %}</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Confirmação de Reset -->
+<div class="modal fade" id="confirmResetModal" tabindex="-1" aria-labelledby="confirmResetModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content text-center p-4 text-white bg-dark">
+      <h5 class="modal-title mb-3" id="confirmResetModalLabel">{% trans "Confirmar Reset" %}</h5>
+      <p>{% trans "Você tem certeza de que deseja resetar esta caixa?" %}</p>
+      <p class="text-warning mb-2">{% trans "ATENÇÃO: Ao resetar, você precisará comprar a caixa novamente!" %}</p>
+      <p id="resetBoxPrice" class="fw-bold"></p>
+      <p class="text-muted small">{% trans "Todos os boosters serão recriados e o preço será cobrado novamente." %}</p>
+      <div class="d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancelar" %}</button>
+        <a href="#" id="confirmResetButton" class="btn btn-warning">{% trans "Confirmar Reset" %}</a>
       </div>
     </div>
   </div>
@@ -188,20 +227,126 @@
 <script>
   const FICHAS_URL = "{% url 'games:comprar_fichas' %}";
 
+  // Helper function to get CSRF token from cookie
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + "=")) {
+          cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Function to open box via AJAX and redirect to result page
+  function openBoxAjax(boxId) {
+    const btn = document.getElementById(`openBoxBtn${boxId}`);
+    const originalText = btn.innerHTML;
+    
+    // Desabilita o botão e mostra loading
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>{% trans "Abrindo..." %}';
+    
+    const csrfToken = getCookie('csrftoken');
+    const url = `/app/game/box/open-ajax/${boxId}/`;
+    
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        // Redireciona para a página de resultado visual
+        window.location.href = data.redirect_url || '/app/game/box/result/';
+      } else {
+        alert(data.error || 'Erro ao abrir a caixa.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      alert('Erro de conexão com o servidor.');
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    });
+  }
+
+  // Function to buy fichas
+  function buyFichas() {
+    const quantity = parseInt(document.getElementById("buyQuantity").value);
+    const csrfToken = getCookie('csrftoken');
+
+    fetch(FICHAS_URL, {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrfToken
+      },
+      body: `quantidade=${quantity}`
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(`Compra realizada! Você agora tem ${data.fichas} ficha(s).`);
+        location.reload(); // Atualiza para refletir no contador de fichas
+      } else {
+        alert(data.error || "Erro ao processar a compra.");
+      }
+    })
+    .catch(error => {
+      alert("Erro de conexão com o servidor.");
+      console.error(error);
+    });
+  }
+
   // Modal de confirmação da compra da box
   const confirmBoxModal = document.getElementById('confirmBoxModal');
   confirmBoxModal.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     const boxId = button.getAttribute('data-box-id');
+    const hasFichas = button.getAttribute('data-has-fichas') === 'true';
 
     // Busca o preço da box no texto do card
     const boxPriceElement = button.closest('.card-body').querySelector('.card-text strong');
     const boxPrice = boxPriceElement ? boxPriceElement.textContent.trim() : "";
 
-    // Atualiza o texto e o link no modal
+    // Atualiza o texto e o link no modal baseado na quantidade de fichas
+    if (hasFichas) {
+      document.getElementById('boxModalMessage').textContent = "{% trans 'Você tem certeza de que deseja comprar e abrir esta caixa?' %}";
+      const purchaseUrl = "{% url 'games:box_buy_and_open' 0 %}".replace('0', boxId);
+      document.getElementById('confirmPurchaseButton').setAttribute('href', purchaseUrl);
+    } else {
+      document.getElementById('boxModalMessage').textContent = "{% trans 'Você tem certeza de que deseja comprar esta caixa? (Você precisará de fichas para abrir os boosters depois)' %}";
+      const purchaseUrl = "{% url 'games:box_buy' 0 %}".replace('0', boxId);
+      document.getElementById('confirmPurchaseButton').setAttribute('href', purchaseUrl);
+    }
+    
     document.getElementById('boxPrice').textContent = "Preço: " + boxPrice;
-    const purchaseUrl = "{% url 'games:box_buy_and_open' 0 %}".replace('0', boxId);
-    document.getElementById('confirmPurchaseButton').setAttribute('href', purchaseUrl);
+  });
+
+  // Modal de confirmação do reset da box
+  const confirmResetModal = document.getElementById('confirmResetModal');
+  confirmResetModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const boxId = button.getAttribute('data-box-id');
+    const boxPrice = button.getAttribute('data-box-price');
+    const boxName = button.getAttribute('data-box-name');
+
+    // Atualiza o texto e o link no modal
+    document.getElementById('resetBoxPrice').textContent = "Preço: R$ " + boxPrice;
+    const resetUrl = "{% url 'games:box_reset' 0 %}".replace('0', boxId);
+    document.getElementById('confirmResetButton').setAttribute('href', resetUrl);
   });
 </script>
 

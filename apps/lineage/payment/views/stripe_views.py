@@ -29,9 +29,21 @@ def stripe_webhook(request):
         )
     except ValueError as e:
         logger.warning("Payload inválido.")
+        # Registra tentativa de falsificação
+        from ..utils import registrar_tentativa_falsificacao
+        registrar_tentativa_falsificacao(
+            request, 'Stripe', 'sem_assinatura',
+            detalhes=f"Payload inválido: {str(e)}"
+        )
         return HttpResponse(status=400)
     except stripe.error.SignatureVerificationError as e:
         logger.warning("Assinatura inválida.")
+        # Registra tentativa de falsificação
+        from ..utils import registrar_tentativa_falsificacao
+        registrar_tentativa_falsificacao(
+            request, 'Stripe', 'assinatura_falsa',
+            detalhes=f"Assinatura inválida: {str(e)}"
+        )
         return HttpResponse(status=400)
 
     logger.info(f"Evento Stripe recebido: {event['type']}")
@@ -154,6 +166,15 @@ def stripe_pagamento_sucesso(request):
 
         return render(request, "stripe/pagamento_sucesso.html")
 
+    except stripe.error.InvalidRequestError as e:
+        # Session ID inválido - possível tentativa de falsificação
+        logger.warning(f"Session ID inválido: {session_id}")
+        from ..utils import registrar_tentativa_falsificacao
+        registrar_tentativa_falsificacao(
+            request, 'Stripe', 'id_falso',
+            detalhes=f"Session ID inválido: {session_id} - {str(e)}"
+        )
+        return redirect("payment:stripe_pagamento_erro")
     except Exception as e:
         logger.exception("Erro ao processar sucesso do Stripe.")
         return redirect("payment:stripe_pagamento_erro")

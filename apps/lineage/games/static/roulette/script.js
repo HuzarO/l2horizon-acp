@@ -226,11 +226,15 @@ function buyFichas() {
 function updateUserPanel(prizeName) {
     // Atualiza quantidade de fichas
     let fichasEl = document.getElementById("userFichas");
-    fichasEl.textContent = parseInt(fichasEl.textContent) - 1;
+    // Remove formatação de números (pontos, vírgulas) antes de fazer o parse
+    let fichasValue = fichasEl.textContent.replace(/[.,]/g, '');
+    fichasEl.textContent = parseInt(fichasValue) - 1;
 
     // Atualiza giros
     let spinsEl = document.getElementById("userSpins");
-    spinsEl.textContent = parseInt(spinsEl.textContent) + 1;
+    // Remove formatação de números (pontos, vírgulas) antes de fazer o parse
+    let spinsValue = spinsEl.textContent.replace(/[.,]/g, '');
+    spinsEl.textContent = parseInt(spinsValue) + 1;
 
     // Atualiza último prêmio
     let prizeInfoEl = document.getElementById("lastPrizeInfo");

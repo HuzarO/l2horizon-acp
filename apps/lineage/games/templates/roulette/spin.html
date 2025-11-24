@@ -1,5 +1,5 @@
 {% extends "layouts/base.html" %}
-{% load static i18n %}
+{% load static i18n l10n %}
 
 {% block extrastyle %}
 <link rel="stylesheet" href="{% static 'roulette/style.css' %}">
@@ -11,7 +11,7 @@
   <div class="user-panel my-4 mx-3" role="region" aria-label="Painel do Usuário">
     <div class="info-block">
       <strong>🎫 Fichas</strong>
-      <span id="userFichas">{{ fichas }}</span>
+      <span id="userFichas">{{ fichas|unlocalize }}</span>
     </div>
     <div class="info-block">
       <strong>🔁 Giros</strong>

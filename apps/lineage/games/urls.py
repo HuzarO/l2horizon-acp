@@ -17,8 +17,11 @@ urlpatterns = [
 
     path('box/dashboard/', views.box_dashboard_view, name='box_user_dashboard'),
     path('box/opening/', views.box_opening_home, name='box_opening_home'),
+    path('box/buy/<int:box_type_id>/', views.buy_box_view, name='box_buy'),
     path('box/buy-and-open/<int:box_type_id>/', views.buy_and_open_box_view, name='box_buy_and_open'),
-    path('box/open/<int:box_id>/', views.open_box_view, name='box_user_open_box'),
+    path('box/result/', views.open_box_view, name='box_user_open_box'),
+    path('box/open-ajax/<int:box_id>/', views.open_box_ajax, name='box_open_ajax'),
+    path('box/reset/<int:box_id>/', views.reset_box_view, name='box_reset'),
 
     path('box/manager/dashboard/', manager_box_views.dashboard, name='box_manager_dashboard'),
     path('box/manager/boxes/', manager_box_views.box_list_view, name='box_list'),
