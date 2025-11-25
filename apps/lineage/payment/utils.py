@@ -4,11 +4,14 @@ Utilitários para monitoramento de segurança de pagamentos
 import logging
 from django.utils import timezone
 from django.utils.timezone import timedelta
-from ipware import get_client_ip
+from python_ipware import IpWare
 from .models import TentativaFalsificacao
 from utils.notifications import send_notification
 
 logger = logging.getLogger(__name__)
+
+# Instância do IpWare para obter IP do cliente
+ipw = IpWare(precedence=("X_FORWARDED_FOR", "HTTP_X_FORWARDED_FOR"))
 
 
 def registrar_tentativa_falsificacao(request, provedor, tipo_tentativa, detalhes=None):
@@ -22,7 +25,7 @@ def registrar_tentativa_falsificacao(request, provedor, tipo_tentativa, detalhes
         detalhes: Detalhes adicionais sobre a tentativa
     """
     try:
-        ip_address, _ = get_client_ip(request)
+        ip_address, _ = ipw.get_client_ip(meta=request.META)
         if not ip_address:
             ip_address = '0.0.0.0'
         
