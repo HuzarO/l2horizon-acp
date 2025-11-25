@@ -97,13 +97,19 @@ if [ -d ".venv" ]; then
     echo "Removing old virtual environment..."
     rm -rf .venv
     echo "Creating new virtual environment with Python $SYSTEM_PYTHON_VERSION..."
-    $PYTHON_CMD -m venv .venv || { echo "Failed to create virtual environment"; exit 1; }
+    $PYTHON_CMD -m venv .venv --upgrade-deps || {
+      # Se --upgrade-deps não funcionar, criar sem e instalar pip depois
+      $PYTHON_CMD -m venv .venv || { echo "Failed to create virtual environment"; exit 1; }
+    }
   else
     echo "Virtual environment Python version matches: $VENV_PYTHON_VERSION"
   fi
 else
   echo "Virtual environment not found. Creating new one with Python $SYSTEM_PYTHON_VERSION..."
-  $PYTHON_CMD -m venv .venv || { echo "Failed to create virtual environment"; exit 1; }
+  $PYTHON_CMD -m venv .venv --upgrade-deps || {
+    # Se --upgrade-deps não funcionar, criar sem e instalar pip depois
+    $PYTHON_CMD -m venv .venv || { echo "Failed to create virtual environment"; exit 1; }
+  }
 fi
 
 # Activate virtualenv
@@ -121,13 +127,28 @@ if [ "$VENV_MAJOR" -lt 3 ] || ([ "$VENV_MAJOR" -eq 3 ] && [ "$VENV_MINOR" -lt 11
   deactivate 2>/dev/null || true
   rm -rf .venv
   if command -v python3.13 &> /dev/null; then
-    python3.13 -m venv .venv || { echo "Failed to create virtual environment with Python 3.13"; exit 1; }
+    python3.13 -m venv .venv --upgrade-deps || {
+      python3.13 -m venv .venv || { echo "Failed to create virtual environment with Python 3.13"; exit 1; }
+    }
     source .venv/bin/activate || { echo "Failed to activate virtual environment"; exit 1; }
     echo "Virtual environment recriado com Python 3.13"
   else
     echo "ERROR: Python 3.13 não encontrado. Execute o script novamente para instalar."
     exit 1
   fi
+fi
+
+# Garantir que pip está instalado no venv
+echo "Verificando pip no virtual environment..."
+if ! python -m pip --version &>/dev/null; then
+  echo "pip não encontrado. Instalando pip usando ensurepip..."
+  python -m ensurepip --upgrade --default-pip || {
+    echo "ensurepip falhou. Tentando instalar pip via get-pip.py..."
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python || {
+      echo "Failed to install pip"
+      exit 1
+    }
+  }
 fi
 
 # Upgrade pip
