@@ -19,15 +19,15 @@ echo "=============================="
 echo "Pulling latest changes from Git..."
 git pull origin main || { echo "Failed to pull from Git repository"; exit 1; }
 
-# Função para verificar e instalar Python 3.14 se necessário
+# Função para verificar e instalar Python 3.13 se necessário
 check_and_install_python() {
   echo "Checking Python version..."
   
   # Verificar versão atual do Python
-  if command -v python3.14 &> /dev/null; then
-    PYTHON_CMD="python3.14"
-    PYTHON_VERSION=$(python3.14 --version 2>&1 | awk '{print $2}')
-    echo "Python 3.14 encontrado: $PYTHON_VERSION"
+  if command -v python3.13 &> /dev/null; then
+    PYTHON_CMD="python3.13"
+    PYTHON_VERSION=$(python3.13 --version 2>&1 | awk '{print $2}')
+    echo "Python 3.13 encontrado: $PYTHON_VERSION"
     return 0
   fi
   
@@ -38,40 +38,40 @@ check_and_install_python() {
   
   echo "Python atual detectado: $SYSTEM_PYTHON_VERSION"
   
-  # Verificar se Python é menor que 3.14
-  if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 14 ]); then
-    echo "Python $SYSTEM_PYTHON_VERSION é menor que 3.14"
-    echo "Instalando Python 3.14..."
+  # Verificar se Python é menor que 3.11 (requerido para autobahn==25.11.1)
+  if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 11 ]); then
+    echo "Python $SYSTEM_PYTHON_VERSION é menor que 3.11 (requerido para autobahn==25.11.1)"
+    echo "Instalando Python 3.13 (versão mais recente disponível)..."
     
     # Detectar versão do Ubuntu
     UBUNTU_VERSION=$(lsb_release -cs 2>/dev/null || echo "unknown")
     
     # Adicionar repositório deadsnakes se necessário
-    if ! dpkg -l | grep -q python3.14; then
+    if ! dpkg -l | grep -q python3.13; then
       echo "Adicionando repositório deadsnakes/ppa..."
       sudo apt update
       sudo apt install -y software-properties-common
       sudo add-apt-repository -y ppa:deadsnakes/ppa
       sudo apt update
       
-      echo "Instalando Python 3.14 e dependências..."
-      sudo apt install -y python3.14 python3.14-venv python3.14-dev python3.14-distutils
+      echo "Instalando Python 3.13 e dependências..."
+      sudo apt install -y python3.13 python3.13-venv python3.13-dev python3.13-distutils
     fi
     
-    # Configurar python3.14 como padrão usando update-alternatives
+    # Configurar python3.13 como padrão usando update-alternatives
     if command -v update-alternatives &> /dev/null; then
-      echo "Configurando Python 3.14 como padrão..."
-      sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.14 1 2>/dev/null || true
-      sudo update-alternatives --set python3 /usr/bin/python3.14 2>/dev/null || true
+      echo "Configurando Python 3.13 como padrão..."
+      sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 1 2>/dev/null || true
+      sudo update-alternatives --set python3 /usr/bin/python3.13 2>/dev/null || true
     fi
     
-    PYTHON_CMD="python3.14"
-    PYTHON_VERSION=$(python3.14 --version 2>&1 | awk '{print $2}')
-    echo "Python 3.14 instalado e configurado: $PYTHON_VERSION"
+    PYTHON_CMD="python3.13"
+    PYTHON_VERSION=$(python3.13 --version 2>&1 | awk '{print $2}')
+    echo "Python 3.13 instalado e configurado: $PYTHON_VERSION"
   else
     PYTHON_CMD="python3"
     PYTHON_VERSION="$SYSTEM_PYTHON_VERSION"
-    echo "Python $PYTHON_VERSION atende aos requisitos (>=3.14)"
+    echo "Python $PYTHON_VERSION atende aos requisitos (>=3.11)"
   fi
 }
 
@@ -110,22 +110,22 @@ fi
 echo "Activating virtual environment..."
 source .venv/bin/activate || { echo "Failed to activate virtual environment"; exit 1; }
 
-# Verificar se o Python do venv é >= 3.14
+# Verificar se o Python do venv é >= 3.11
 VENV_PYTHON_VERSION=$(python --version 2>&1 | awk '{print $2}')
 VENV_MAJOR=$(echo "$VENV_PYTHON_VERSION" | cut -d. -f1)
 VENV_MINOR=$(echo "$VENV_PYTHON_VERSION" | cut -d. -f2)
 
-if [ "$VENV_MAJOR" -lt 3 ] || ([ "$VENV_MAJOR" -eq 3 ] && [ "$VENV_MINOR" -lt 14 ]); then
-  echo "ERROR: Python no venv ($VENV_PYTHON_VERSION) é menor que 3.14"
-  echo "Removendo venv e recriando com Python 3.14..."
+if [ "$VENV_MAJOR" -lt 3 ] || ([ "$VENV_MAJOR" -eq 3 ] && [ "$VENV_MINOR" -lt 11 ]); then
+  echo "ERROR: Python no venv ($VENV_PYTHON_VERSION) é menor que 3.11"
+  echo "Removendo venv e recriando com Python 3.13..."
   deactivate 2>/dev/null || true
   rm -rf .venv
-  if command -v python3.14 &> /dev/null; then
-    python3.14 -m venv .venv || { echo "Failed to create virtual environment with Python 3.14"; exit 1; }
+  if command -v python3.13 &> /dev/null; then
+    python3.13 -m venv .venv || { echo "Failed to create virtual environment with Python 3.13"; exit 1; }
     source .venv/bin/activate || { echo "Failed to activate virtual environment"; exit 1; }
-    echo "Virtual environment recriado com Python 3.14"
+    echo "Virtual environment recriado com Python 3.13"
   else
-    echo "ERROR: Python 3.14 não encontrado. Execute o script novamente para instalar."
+    echo "ERROR: Python 3.13 não encontrado. Execute o script novamente para instalar."
     exit 1
   fi
 fi
