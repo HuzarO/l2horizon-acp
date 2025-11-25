@@ -144,7 +144,12 @@ def enchant_weapon(request):
             # Recompensa: prioriza configuração específica; senão usa pool de Itens das caixas
             reward = RewardItem.objects.select_related('item').first()
             if reward:
-                add_reward_to_bag(request.user, reward.item.item_id, reward.item.name, reward.item.enchant, reward.amount)
+                # Verifica se reward.item existe, senão usa campos legados
+                if reward.item:
+                    add_reward_to_bag(request.user, reward.item.item_id, reward.item.name, reward.item.enchant, reward.amount)
+                else:
+                    # Fallback para campos legados quando item é None
+                    add_reward_to_bag(request.user, reward.legacy_item_code, reward.name, reward.enchant, reward.amount)
             else:
                 pool_item = Item.objects.filter(can_be_populated=True).order_by('?').first()
                 if pool_item:
