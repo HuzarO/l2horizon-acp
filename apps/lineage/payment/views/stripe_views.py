@@ -14,11 +14,33 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+# Configura a chave do Stripe apenas se estiver configurada
+if settings.STRIPE_SECRET_KEY:
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+def validar_stripe():
+    """
+    Valida se o Stripe está configurado e ativado.
+    Retorna (is_valid, error_message)
+    """
+    if not getattr(settings, 'STRIPE_ACTIVATE_PAYMENTS', False):
+        return False, "O método de pagamento Stripe está desativado no momento."
+    
+    if not getattr(settings, 'STRIPE_SECRET_KEY', None):
+        return False, "O Stripe não está configurado corretamente. Entre em contato com o suporte."
+    
+    return True, None
 
 
 @csrf_exempt
 def stripe_webhook(request):
+    # Valida se Stripe está configurado antes de processar webhook
+    is_valid, error_msg = validar_stripe()
+    if not is_valid:
+        logger.error(f"Webhook do Stripe recebido mas Stripe não está configurado: {error_msg}")
+        return HttpResponse(status=503)  # Service Unavailable
+    
     payload = request.body
     sig_header = request.headers.get('Stripe-Signature')
     endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
@@ -125,6 +147,14 @@ def stripe_webhook(request):
 
 
 def stripe_pagamento_sucesso(request):
+    # Valida se Stripe está configurado e ativado
+    is_valid, error_msg = validar_stripe()
+    if not is_valid:
+        logger.error(f"Tentativa de acessar sucesso do Stripe mas Stripe não está configurado: {error_msg}")
+        from django.contrib import messages
+        messages.error(request, error_msg)
+        return redirect("payment:stripe_pagamento_erro")
+    
     session_id = request.GET.get("session_id")
     if not session_id:
         return redirect("payment:stripe_pagamento_erro")
@@ -166,6 +196,12 @@ def stripe_pagamento_sucesso(request):
 
         return render(request, "stripe/pagamento_sucesso.html")
 
+    except stripe.error.AuthenticationError as e:
+        # Erro de autenticação - API key inválida ou não configurada
+        logger.error(f"Erro de autenticação do Stripe: {str(e)}. Verifique se CONFIG_STRIPE_SECRET_KEY está configurado corretamente.")
+        from django.contrib import messages
+        messages.error(request, "Erro de configuração do sistema de pagamento. Por favor, entre em contato com o suporte.")
+        return redirect("payment:stripe_pagamento_erro")
     except stripe.error.InvalidRequestError as e:
         # Session ID inválido - possível tentativa de falsificação
         logger.warning(f"Session ID inválido: {session_id}")
@@ -177,6 +213,8 @@ def stripe_pagamento_sucesso(request):
         return redirect("payment:stripe_pagamento_erro")
     except Exception as e:
         logger.exception("Erro ao processar sucesso do Stripe.")
+        from django.contrib import messages
+        messages.error(request, "Erro ao processar pagamento. Por favor, tente novamente.")
         return redirect("payment:stripe_pagamento_erro")
 
 

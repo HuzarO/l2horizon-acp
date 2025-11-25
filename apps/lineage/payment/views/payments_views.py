@@ -13,9 +13,41 @@ from apps.main.home.models import PerfilGamer
 from apps.lineage.wallet.utils import calcular_bonus_compra
 from decimal import Decimal
 from django.urls import reverse
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Configura a chave do Stripe apenas se estiver configurada
+if settings.STRIPE_SECRET_KEY:
+    stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+def validar_mercado_pago():
+    """
+    Valida se o Mercado Pago está configurado e ativado.
+    Retorna (is_valid, error_message)
+    """
+    if not getattr(settings, 'MERCADO_PAGO_ACTIVATE_PAYMENTS', False):
+        return False, "O método de pagamento Mercado Pago está desativado no momento."
+    
+    if not getattr(settings, 'MERCADO_PAGO_ACCESS_TOKEN', None):
+        return False, "O Mercado Pago não está configurado corretamente. Entre em contato com o suporte."
+    
+    return True, None
+
+
+def validar_stripe():
+    """
+    Valida se o Stripe está configurado e ativado.
+    Retorna (is_valid, error_message)
+    """
+    if not getattr(settings, 'STRIPE_ACTIVATE_PAYMENTS', False):
+        return False, "O método de pagamento Stripe está desativado no momento."
+    
+    if not getattr(settings, 'STRIPE_SECRET_KEY', None):
+        return False, "O Stripe não está configurado corretamente. Entre em contato com o suporte."
+    
+    return True, None
 
 
 @conditional_otp_required
@@ -60,13 +92,17 @@ def criar_ou_reaproveitar_pedido(request):
         if metodo not in settings.METHODS_PAYMENTS:  # Expanda conforme necessário
             return HttpResponse("Método de pagamento inválido", status=400)
         
-        if metodo == "MercadoPago" and not settings.MERCADO_PAGO_ACTIVATE_PAYMENTS:
-            messages.error(request, "Método de pagamento desativado.")
-            return redirect('payment:novo_pedido')
+        if metodo == "MercadoPago":
+            is_valid, error_msg = validar_mercado_pago()
+            if not is_valid:
+                messages.error(request, error_msg)
+                return redirect('payment:novo_pedido')
         
-        if metodo == "Stripe" and not settings.STRIPE_ACTIVATE_PAYMENTS:
-            messages.error(request, "Método de pagamento desativado.")
-            return redirect('payment:novo_pedido')
+        if metodo == "Stripe":
+            is_valid, error_msg = validar_stripe()
+            if not is_valid:
+                messages.error(request, error_msg)
+                return redirect('payment:novo_pedido')
 
         usuario = request.user
         duas_horas_atras = now() - timedelta(hours=2)
@@ -131,6 +167,11 @@ def confirmar_pagamento(request, pedido_id):
             pagamento = Pagamento.objects.filter(pedido_pagamento=pedido).first()
             if pagamento:
                 if pedido.metodo == "MercadoPago" and pagamento.transaction_code:
+                    is_valid, error_msg = validar_mercado_pago()
+                    if not is_valid:
+                        messages.error(request, error_msg)
+                        return redirect('payment:pedidos_pendentes')
+                    
                     sdk = mercadopago.SDK(settings.MERCADO_PAGO_ACCESS_TOKEN)
                     preference_response = sdk.preference().get(pagamento.transaction_code)
 
@@ -141,6 +182,11 @@ def confirmar_pagamento(request, pedido_id):
                     return redirect(preference["init_point"])
 
                 if pedido.metodo == "Stripe" and pagamento.transaction_code:
+                    is_valid, error_msg = validar_stripe()
+                    if not is_valid:
+                        messages.error(request, error_msg)
+                        return redirect('payment:pedidos_pendentes')
+                    
                     return redirect(f"https://checkout.stripe.com/pay/{pagamento.transaction_code}")
 
                 return HttpResponse("Já existe um pagamento iniciado para este pedido.", status=400)
@@ -153,10 +199,13 @@ def confirmar_pagamento(request, pedido_id):
             )
 
             if pedido.metodo == "MercadoPago":
-                # Valida token antes de chamar o SDK
-                access_token = getattr(settings, 'MERCADO_PAGO_ACCESS_TOKEN', None)
-                if not access_token:
-                    return HttpResponse("Configuração ausente: MERCADO_PAGO_ACCESS_TOKEN", status=500)
+                # Valida se Mercado Pago está configurado e ativado
+                is_valid, error_msg = validar_mercado_pago()
+                if not is_valid:
+                    messages.error(request, error_msg)
+                    return redirect('payment:pedidos_pendentes')
+                
+                access_token = settings.MERCADO_PAGO_ACCESS_TOKEN
 
                 sdk = mercadopago.SDK(access_token)
                 pending_url = request.build_absolute_uri(
@@ -223,6 +272,12 @@ def confirmar_pagamento(request, pedido_id):
                 return redirect(preference["init_point"])
 
             elif pedido.metodo == "Stripe":
+                # Valida se Stripe está configurado e ativado
+                is_valid, error_msg = validar_stripe()
+                if not is_valid:
+                    messages.error(request, error_msg)
+                    return redirect('payment:pedidos_pendentes')
+                
                 product_name = f"Crédito para carteira virtual - {getattr(settings, 'PROJECT_NAME', 'PDL')}"
 
                 # Constrói URLs com base no host atual (evita inconsistência de domínio)
@@ -240,7 +295,8 @@ def confirmar_pagamento(request, pedido_id):
                 # Idempotência: amarra criação da sessão ao pagamento
                 idempotency_key = f"checkout_session_{pagamento.id}"
 
-                session = stripe.checkout.Session.create(
+                try:
+                    session = stripe.checkout.Session.create(
                     payment_method_types=['card'],
                     mode='payment',
                     allow_promotion_codes=True,
@@ -265,6 +321,18 @@ def confirmar_pagamento(request, pedido_id):
                         }
                     }
                 , idempotency_key=idempotency_key)
+                except stripe.error.AuthenticationError as e:
+                    logger.error(f"Erro de autenticação do Stripe: {str(e)}")
+                    messages.error(request, "Erro de configuração do sistema de pagamento. Por favor, entre em contato com o suporte.")
+                    return redirect('payment:pedidos_pendentes')
+                except stripe.error.InvalidRequestError as e:
+                    logger.error(f"Erro na requisição do Stripe: {str(e)}")
+                    messages.error(request, "Erro ao processar pagamento. Por favor, tente novamente.")
+                    return redirect('payment:pedidos_pendentes')
+                except Exception as e:
+                    logger.error(f"Erro inesperado ao criar sessão do Stripe: {str(e)}")
+                    messages.error(request, "Erro ao processar pagamento. Por favor, tente novamente.")
+                    return redirect('payment:pedidos_pendentes')
 
                 pagamento.transaction_code = session.id
                 pagamento.save()
@@ -431,26 +499,35 @@ def cancelar_pedido(request, pedido_id):
         if pagamento and pedido.metodo == 'Stripe' and pagamento.transaction_code:
             # Consulta a sessão do Stripe para confirmar status
             try:
-                session = stripe.checkout.Session.retrieve(pagamento.transaction_code)
-                # Stripe: payment_status 'paid' ou status 'complete' indicam sucesso
-                if getattr(session, 'payment_status', None) == 'paid' or getattr(session, 'status', None) == 'complete':
-                    from apps.lineage.wallet.models import Wallet
-                    from apps.lineage.wallet.utils import aplicar_compra_com_bonus
-                    from decimal import Decimal
-                    with transaction.atomic():
-                        wallet, _ = Wallet.objects.get_or_create(usuario=pagamento.usuario)
-                        valor_total, valor_bonus, _ = aplicar_compra_com_bonus(
-                            wallet, Decimal(str(pagamento.valor)), 'Stripe'
-                        )
-                        from django.utils import timezone as dj_timezone
-                        pagamento.status = 'paid'
-                        pagamento.processado_em = dj_timezone.now()
-                        pagamento.save()
-                        pedido.bonus_aplicado = valor_bonus
-                        pedido.total_creditado = valor_total
-                        pedido.status = 'CONCLUÍDO'
-                        pedido.save()
-                    return HttpResponse("Pagamento aprovado. Pedido concluído. Cancelamento não permitido.", status=400)
+                is_valid, error_msg = validar_stripe()
+                if not is_valid:
+                    # Se Stripe não está configurado, não tenta consultar
+                    pass
+                else:
+                    session = stripe.checkout.Session.retrieve(pagamento.transaction_code)
+                    # Stripe: payment_status 'paid' ou status 'complete' indicam sucesso
+                    if getattr(session, 'payment_status', None) == 'paid' or getattr(session, 'status', None) == 'complete':
+                        from apps.lineage.wallet.models import Wallet
+                        from apps.lineage.wallet.utils import aplicar_compra_com_bonus
+                        from decimal import Decimal
+                        with transaction.atomic():
+                            wallet, _ = Wallet.objects.get_or_create(usuario=pagamento.usuario)
+                            valor_total, valor_bonus, _ = aplicar_compra_com_bonus(
+                                wallet, Decimal(str(pagamento.valor)), 'Stripe'
+                            )
+                            from django.utils import timezone as dj_timezone
+                            pagamento.status = 'paid'
+                            pagamento.processado_em = dj_timezone.now()
+                            pagamento.save()
+                            pedido.bonus_aplicado = valor_bonus
+                            pedido.total_creditado = valor_total
+                            pedido.status = 'CONCLUÍDO'
+                            pedido.save()
+                        return HttpResponse("Pagamento aprovado. Pedido concluído. Cancelamento não permitido.", status=400)
+            except stripe.error.AuthenticationError as e:
+                logger.error(f"Erro de autenticação do Stripe ao consultar sessão: {str(e)}")
+                # Se não conseguir consultar o Stripe, segue o fluxo padrão
+                pass
             except Exception:
                 # Se não conseguir consultar o Stripe, segue o fluxo padrão
                 pass
