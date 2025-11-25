@@ -19,9 +19,33 @@ echo "=============================="
 echo "Pulling latest changes from Git..."
 git pull origin main || { echo "Failed to pull from Git repository"; exit 1; }
 
-# Activate virtualenv (must exist)
+# Verificar e validar versão do Python no .venv
+echo "Checking Python version in virtual environment..."
+SYSTEM_PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' || python --version 2>&1 | awk '{print $2}')
+
+if [ -d ".venv" ]; then
+  # Verifica se o .venv existe e obtém a versão do Python dele
+  VENV_PYTHON_VERSION=$(.venv/bin/python --version 2>&1 | awk '{print $2}' 2>/dev/null || echo "")
+  
+  if [ -z "$VENV_PYTHON_VERSION" ] || [ "$VENV_PYTHON_VERSION" != "$SYSTEM_PYTHON_VERSION" ]; then
+    echo "Virtual environment Python version mismatch or invalid."
+    echo "System Python: $SYSTEM_PYTHON_VERSION"
+    echo "VENV Python: ${VENV_PYTHON_VERSION:-not found}"
+    echo "Removing old virtual environment..."
+    rm -rf .venv
+    echo "Creating new virtual environment with Python $SYSTEM_PYTHON_VERSION..."
+    python3 -m venv .venv || { echo "Failed to create virtual environment"; exit 1; }
+  else
+    echo "Virtual environment Python version matches: $VENV_PYTHON_VERSION"
+  fi
+else
+  echo "Virtual environment not found. Creating new one with Python $SYSTEM_PYTHON_VERSION..."
+  python3 -m venv .venv || { echo "Failed to create virtual environment"; exit 1; }
+fi
+
+# Activate virtualenv
 echo "Activating virtual environment..."
-source .venv/bin/activate || { echo "Virtualenv not found. Please create it with 'python -m venv .venv'"; exit 1; }
+source .venv/bin/activate || { echo "Failed to activate virtual environment"; exit 1; }
 
 # Upgrade pip
 echo "Upgrading pip..."
