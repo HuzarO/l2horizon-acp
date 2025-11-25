@@ -189,7 +189,7 @@ if [ ! -f "$INSTALL_DIR/system_ready" ]; then
     echo "Python $SYSTEM_PYTHON_VERSION atende aos requisitos, mas instalando Python 3.13 para garantir compatibilidade..."
   fi
   
-  sudo apt install -y python3.13 python3.13-venv python3.13-dev python3.13-distutils
+  sudo apt install -y python3.13 python3.13-venv python3.13-dev
   sudo apt install -y apt-transport-https ca-certificates curl gettext
   
   # Configurar python3.13 como padrão usando update-alternatives

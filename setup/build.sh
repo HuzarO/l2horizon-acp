@@ -55,7 +55,7 @@ check_and_install_python() {
       sudo apt update
       
       echo "Instalando Python 3.13 e dependências..."
-      sudo apt install -y python3.13 python3.13-venv python3.13-dev python3.13-distutils
+      sudo apt install -y python3.13 python3.13-venv python3.13-dev
     fi
     
     # Configurar python3.13 como padrão usando update-alternatives
