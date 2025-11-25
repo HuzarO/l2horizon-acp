@@ -705,47 +705,93 @@ generate_s3_config() {
 
 # Função para gerar configuração de Pagamentos
 generate_payments_config() {
-    add_section "PAYMENT CONFIGURATION"
+    local edit_mode="${1:-false}"
+    if [ "$edit_mode" = "false" ]; then
+        add_section "PAYMENT CONFIGURATION"
+    fi
     
     # Mercado Pago
     echo
     log_info "Configuração do Mercado Pago:"
-    if ask_yes_no "Habilitar pagamentos via Mercado Pago?" "n"; then
-        add_var "CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS" "True"
-        CONFIG_MERCADO_PAGO_ACCESS_TOKEN=$(ask_value "Mercado Pago Access Token" "APP_USR-0000000000000000-000000-00000000000000000000000000000000-000000000")
-        CONFIG_MERCADO_PAGO_PUBLIC_KEY=$(ask_value "Mercado Pago Public Key" "APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
-        CONFIG_MERCADO_PAGO_CLIENT_ID=$(ask_value "Mercado Pago Client ID" "0000000000000000")
-        CONFIG_MERCADO_PAGO_CLIENT_SECRET=$(ask_value "Mercado Pago Client Secret" "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-        CONFIG_MERCADO_PAGO_SIGNATURE=$(ask_value "Mercado Pago Signature" "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+    local existing_mp_activate=$(get_existing_value "CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS" 2>/dev/null || echo "False")
+    local existing_mp_token=$(get_existing_value "CONFIG_MERCADO_PAGO_ACCESS_TOKEN" 2>/dev/null | sed 's/"//g' || echo "APP_USR-0000000000000000-000000-00000000000000000000000000000000-000000000")
+    local existing_mp_public=$(get_existing_value "CONFIG_MERCADO_PAGO_PUBLIC_KEY" 2>/dev/null | sed 's/"//g' || echo "APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
+    local existing_mp_client=$(get_existing_value "CONFIG_MERCADO_PAGO_CLIENT_ID" 2>/dev/null | sed 's/"//g' || echo "0000000000000000")
+    local existing_mp_secret=$(get_existing_value "CONFIG_MERCADO_PAGO_CLIENT_SECRET" 2>/dev/null | sed 's/"//g' || echo "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+    local existing_mp_signature=$(get_existing_value "CONFIG_MERCADO_PAGO_SIGNATURE" 2>/dev/null | sed 's/"//g' || echo "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+    
+    local mp_activate_default=$(echo "$existing_mp_activate" | tr '[:upper:]' '[:lower:]')
+    if ask_yes_no "Habilitar pagamentos via Mercado Pago?" "$mp_activate_default"; then
+        CONFIG_MERCADO_PAGO_ACCESS_TOKEN=$(ask_value "Mercado Pago Access Token" "$existing_mp_token")
+        CONFIG_MERCADO_PAGO_PUBLIC_KEY=$(ask_value "Mercado Pago Public Key" "$existing_mp_public")
+        CONFIG_MERCADO_PAGO_CLIENT_ID=$(ask_value "Mercado Pago Client ID" "$existing_mp_client")
+        CONFIG_MERCADO_PAGO_CLIENT_SECRET=$(ask_value "Mercado Pago Client Secret" "$existing_mp_secret")
+        CONFIG_MERCADO_PAGO_SIGNATURE=$(ask_value "Mercado Pago Signature" "$existing_mp_signature")
         
-        add_var "CONFIG_MERCADO_PAGO_ACCESS_TOKEN" "\"$CONFIG_MERCADO_PAGO_ACCESS_TOKEN\""
-        add_var "CONFIG_MERCADO_PAGO_PUBLIC_KEY" "\"$CONFIG_MERCADO_PAGO_PUBLIC_KEY\""
-        add_var "CONFIG_MERCADO_PAGO_CLIENT_ID" "\"$CONFIG_MERCADO_PAGO_CLIENT_ID\""
-        add_var "CONFIG_MERCADO_PAGO_CLIENT_SECRET" "\"$CONFIG_MERCADO_PAGO_CLIENT_SECRET\""
-        add_var "CONFIG_MERCADO_PAGO_SIGNATURE" "\"$CONFIG_MERCADO_PAGO_SIGNATURE\""
+        if [ "$edit_mode" = "true" ]; then
+            update_var "CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS" "True"
+            update_var "CONFIG_MERCADO_PAGO_ACCESS_TOKEN" "\"$CONFIG_MERCADO_PAGO_ACCESS_TOKEN\""
+            update_var "CONFIG_MERCADO_PAGO_PUBLIC_KEY" "\"$CONFIG_MERCADO_PAGO_PUBLIC_KEY\""
+            update_var "CONFIG_MERCADO_PAGO_CLIENT_ID" "\"$CONFIG_MERCADO_PAGO_CLIENT_ID\""
+            update_var "CONFIG_MERCADO_PAGO_CLIENT_SECRET" "\"$CONFIG_MERCADO_PAGO_CLIENT_SECRET\""
+            update_var "CONFIG_MERCADO_PAGO_SIGNATURE" "\"$CONFIG_MERCADO_PAGO_SIGNATURE\""
+        else
+            add_var "CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS" "True"
+            add_var "CONFIG_MERCADO_PAGO_ACCESS_TOKEN" "\"$CONFIG_MERCADO_PAGO_ACCESS_TOKEN\""
+            add_var "CONFIG_MERCADO_PAGO_PUBLIC_KEY" "\"$CONFIG_MERCADO_PAGO_PUBLIC_KEY\""
+            add_var "CONFIG_MERCADO_PAGO_CLIENT_ID" "\"$CONFIG_MERCADO_PAGO_CLIENT_ID\""
+            add_var "CONFIG_MERCADO_PAGO_CLIENT_SECRET" "\"$CONFIG_MERCADO_PAGO_CLIENT_SECRET\""
+            add_var "CONFIG_MERCADO_PAGO_SIGNATURE" "\"$CONFIG_MERCADO_PAGO_SIGNATURE\""
+        fi
     else
-        add_var "CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS" "False"
-        add_var "CONFIG_MERCADO_PAGO_ACCESS_TOKEN" "\"APP_USR-0000000000000000-000000-00000000000000000000000000000000-000000000\""
-        add_var "CONFIG_MERCADO_PAGO_PUBLIC_KEY" "\"APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\""
-        add_var "CONFIG_MERCADO_PAGO_CLIENT_ID" "\"0000000000000000\""
-        add_var "CONFIG_MERCADO_PAGO_CLIENT_SECRET" "\"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\""
-        add_var "CONFIG_MERCADO_PAGO_SIGNATURE" "\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\""
+        if [ "$edit_mode" = "true" ]; then
+            update_var "CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS" "False"
+            update_var "CONFIG_MERCADO_PAGO_ACCESS_TOKEN" "\"$existing_mp_token\""
+            update_var "CONFIG_MERCADO_PAGO_PUBLIC_KEY" "\"$existing_mp_public\""
+            update_var "CONFIG_MERCADO_PAGO_CLIENT_ID" "\"$existing_mp_client\""
+            update_var "CONFIG_MERCADO_PAGO_CLIENT_SECRET" "\"$existing_mp_secret\""
+            update_var "CONFIG_MERCADO_PAGO_SIGNATURE" "\"$existing_mp_signature\""
+        else
+            add_var "CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS" "False"
+            add_var "CONFIG_MERCADO_PAGO_ACCESS_TOKEN" "\"APP_USR-0000000000000000-000000-00000000000000000000000000000000-000000000\""
+            add_var "CONFIG_MERCADO_PAGO_PUBLIC_KEY" "\"APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\""
+            add_var "CONFIG_MERCADO_PAGO_CLIENT_ID" "\"0000000000000000\""
+            add_var "CONFIG_MERCADO_PAGO_CLIENT_SECRET" "\"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\""
+            add_var "CONFIG_MERCADO_PAGO_SIGNATURE" "\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\""
+        fi
     fi
     
     # Stripe
     echo
     log_info "Configuração do Stripe:"
-    if ask_yes_no "Habilitar pagamentos via Stripe?" "n"; then
-        add_var "CONFIG_STRIPE_ACTIVATE_PAYMENTS" "True"
-        CONFIG_STRIPE_SECRET_KEY=$(ask_value "Stripe Secret Key" "sk_test_51RK0cORmyaPSbmPDEMjN0DaasdasdadadasdafgagdhhfasdfsfnbgRrtdKRwHRakfrQub9SQ5jQEUNvTfrcFxbw00gsqFR09W")
-        CONFIG_STRIPE_WEBHOOK_SECRET=$(ask_value "Stripe Webhook Secret" "whsec_5dzjceF7LgeYzasdasdasdZpSuPq")
+    local existing_stripe_activate=$(get_existing_value "CONFIG_STRIPE_ACTIVATE_PAYMENTS" 2>/dev/null || echo "False")
+    local existing_stripe_secret=$(get_existing_value "CONFIG_STRIPE_SECRET_KEY" 2>/dev/null | sed "s/'//g" || echo "sk_test_51RK0cORmyaPSbmPDEMjN0DaasdasdadadasdafgagdhhfasdfsfnbgRrtdKRwHRakfrQub9SQ5jQEUNvTfrcFxbw00gsqFR09W")
+    local existing_stripe_webhook=$(get_existing_value "CONFIG_STRIPE_WEBHOOK_SECRET" 2>/dev/null | sed "s/'//g" || echo "whsec_5dzjceF7LgeYzasdasdasdZpSuPq")
+    
+    local stripe_activate_default=$(echo "$existing_stripe_activate" | tr '[:upper:]' '[:lower:]')
+    if ask_yes_no "Habilitar pagamentos via Stripe?" "$stripe_activate_default"; then
+        CONFIG_STRIPE_SECRET_KEY=$(ask_value "Stripe Secret Key" "$existing_stripe_secret")
+        CONFIG_STRIPE_WEBHOOK_SECRET=$(ask_value "Stripe Webhook Secret" "$existing_stripe_webhook")
         
-        add_var "CONFIG_STRIPE_SECRET_KEY" "'$CONFIG_STRIPE_SECRET_KEY'"
-        add_var "CONFIG_STRIPE_WEBHOOK_SECRET" "'$CONFIG_STRIPE_WEBHOOK_SECRET'"
+        if [ "$edit_mode" = "true" ]; then
+            update_var "CONFIG_STRIPE_ACTIVATE_PAYMENTS" "True"
+            update_var "CONFIG_STRIPE_SECRET_KEY" "'$CONFIG_STRIPE_SECRET_KEY'"
+            update_var "CONFIG_STRIPE_WEBHOOK_SECRET" "'$CONFIG_STRIPE_WEBHOOK_SECRET'"
+        else
+            add_var "CONFIG_STRIPE_ACTIVATE_PAYMENTS" "True"
+            add_var "CONFIG_STRIPE_SECRET_KEY" "'$CONFIG_STRIPE_SECRET_KEY'"
+            add_var "CONFIG_STRIPE_WEBHOOK_SECRET" "'$CONFIG_STRIPE_WEBHOOK_SECRET'"
+        fi
     else
-        add_var "CONFIG_STRIPE_ACTIVATE_PAYMENTS" "False"
-        add_var "CONFIG_STRIPE_SECRET_KEY" "'sk_test_51RK0cORmyaPSbmPDEMjN0DaasdasdadadasdafgagdhhfasdfsfnbgRrtdKRwHRakfrQub9SQ5jQEUNvTfrcFxbw00gsqFR09W'"
-        add_var "CONFIG_STRIPE_WEBHOOK_SECRET" "'whsec_5dzjceF7LgeYzasdasdasdZpSuPq'"
+        if [ "$edit_mode" = "true" ]; then
+            update_var "CONFIG_STRIPE_ACTIVATE_PAYMENTS" "False"
+            update_var "CONFIG_STRIPE_SECRET_KEY" "'$existing_stripe_secret'"
+            update_var "CONFIG_STRIPE_WEBHOOK_SECRET" "'$existing_stripe_webhook'"
+        else
+            add_var "CONFIG_STRIPE_ACTIVATE_PAYMENTS" "False"
+            add_var "CONFIG_STRIPE_SECRET_KEY" "'sk_test_51RK0cORmyaPSbmPDEMjN0DaasdasdadadasdafgagdhhfasdfsfnbgRrtdKRwHRakfrQub9SQ5jQEUNvTfrcFxbw00gsqFR09W'"
+            add_var "CONFIG_STRIPE_WEBHOOK_SECRET" "'whsec_5dzjceF7LgeYzasdasdasdZpSuPq'"
+        fi
     fi
 }
 
