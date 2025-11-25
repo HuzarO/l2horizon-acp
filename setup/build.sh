@@ -313,12 +313,17 @@ for vol_name in static_data media_data; do
           echo 'Removing conflicting file: /data/pwa'
           rm -f /data/pwa
         fi
+        if [ -f /data/jazzmin ]; then
+          echo 'Removing conflicting file: /data/jazzmin'
+          rm -f /data/jazzmin
+        fi
         # Cria diretórios necessários (pwa/icons primeiro, depois os outros)
         echo 'Creating directory: /data/pwa/icons'
         mkdir -p /data/pwa/icons
         mkdir -p /data/admin 2>/dev/null || true
         mkdir -p /data/rest_framework 2>/dev/null || true
         mkdir -p /data/pwa 2>/dev/null || true
+        mkdir -p /data/jazzmin 2>/dev/null || true
         # Define permissões
         chmod -R 755 /data 2>/dev/null || true
         # Verifica se o diretório foi criado corretamente
