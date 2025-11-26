@@ -192,6 +192,18 @@ if [ ! -f "$INSTALL_DIR/system_ready" ]; then
   sudo apt install -y python3.13 python3.13-venv python3.13-dev
   sudo apt install -y apt-transport-https ca-certificates curl gettext
   
+  # Instalar passlib e bcrypt no Python do sistema para uso em scripts
+  echo "📦 Instalando passlib e bcrypt no Python do sistema..."
+  python3 -m pip install --user --break-system-packages passlib bcrypt 2>/dev/null || \
+  python3 -m pip install --user passlib bcrypt 2>/dev/null || \
+  sudo python3 -m pip install passlib bcrypt 2>/dev/null || true
+  
+  if python3 -c "import passlib" 2>/dev/null; then
+    echo "✅ passlib instalado no Python do sistema"
+  else
+    echo "⚠️  Não foi possível instalar passlib no Python do sistema (será instalado no venv)"
+  fi
+  
   # NÃO configurar Python 3.13 como padrão do sistema
   # O sistema operacional deve continuar usando Python 3.10 (ou 3.11) para ferramentas do sistema
   # Python 3.13 será usado apenas explicitamente no virtual environment do projeto
@@ -723,16 +735,45 @@ if [ ! -f "$INSTALL_DIR/htpasswd_created" ]; then
     source .venv/bin/activate 2>/dev/null || true
   fi
   
-  # Usar Python do venv se disponível, caso contrário usar python3 do sistema
-  if command -v python &> /dev/null && python -c "import passlib" 2>/dev/null; then
-    PYTHON_CMD="python"
-  elif [ -f ".venv/bin/python" ]; then
+  # Determinar qual Python usar e garantir que passlib está disponível
+  PYTHON_CMD=""
+  
+  # Tentar Python do venv primeiro
+  if [ -f ".venv/bin/python" ] && .venv/bin/python -c "import passlib" 2>/dev/null; then
     PYTHON_CMD=".venv/bin/python"
-  else
+    echo "ℹ️  Usando Python do virtual environment"
+  elif command -v python &> /dev/null && python -c "import passlib" 2>/dev/null; then
+    PYTHON_CMD="python"
+    echo "ℹ️  Usando Python do venv (ativado)"
+  elif python3 -c "import passlib" 2>/dev/null; then
     PYTHON_CMD="python3"
-    log_warning "Virtual environment não encontrado, usando Python do sistema"
-    log_info "Instalando passlib temporariamente no sistema..."
-    $PYTHON_CMD -m pip install --user passlib bcrypt 2>/dev/null || true
+    echo "ℹ️  Usando Python do sistema"
+  else
+    # passlib não está disponível, tentar instalar
+    echo "📦 passlib não encontrado, instalando..."
+    
+    # Tentar instalar no venv primeiro
+    if [ -f ".venv/bin/python" ]; then
+      .venv/bin/python -m pip install passlib bcrypt 2>/dev/null && \
+      .venv/bin/python -c "import passlib" 2>/dev/null && \
+      PYTHON_CMD=".venv/bin/python" && \
+      echo "✅ passlib instalado no virtual environment"
+    fi
+    
+    # Se não funcionou, tentar instalar no sistema
+    if [ -z "$PYTHON_CMD" ]; then
+      python3 -m pip install --user --break-system-packages passlib bcrypt 2>/dev/null || \
+      python3 -m pip install --user passlib bcrypt 2>/dev/null || \
+      sudo python3 -m pip install passlib bcrypt 2>/dev/null || true
+      
+      if python3 -c "import passlib" 2>/dev/null; then
+        PYTHON_CMD="python3"
+        echo "✅ passlib instalado no Python do sistema"
+      else
+        log_error "Não foi possível instalar passlib. Instale manualmente: pip install passlib bcrypt"
+        exit 1
+      fi
+    fi
   fi
   
   read -p "👤 Digite o login para o admin: " ADMIN_USER
