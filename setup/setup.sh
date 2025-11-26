@@ -192,47 +192,42 @@ if [ ! -f "$INSTALL_DIR/system_ready" ]; then
   sudo apt install -y python3.13 python3.13-venv python3.13-dev
   sudo apt install -y apt-transport-https ca-certificates curl gettext
   
-  # Configurar python3.13 como padrão usando update-alternatives
-  if command -v update-alternatives &> /dev/null; then
-    echo "Configurando Python 3.13 como padrão..."
+  # NÃO configurar Python 3.13 como padrão do sistema
+  # O sistema operacional deve continuar usando Python 3.10 (ou 3.11) para ferramentas do sistema
+  # Python 3.13 será usado apenas explicitamente no virtual environment do projeto
+  
+  # Garantir que Python 3.10 (ou versão do sistema) continue como padrão
+  SYSTEM_PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' 2>/dev/null || echo "")
+  SYSTEM_PYTHON_MAJOR=$(echo "$SYSTEM_PYTHON_VERSION" | cut -d. -f1)
+  SYSTEM_PYTHON_MINOR=$(echo "$SYSTEM_PYTHON_VERSION" | cut -d. -f2)
+  
+  # Se Python 3.13 foi configurado como padrão anteriormente, reverter
+  if [ "$SYSTEM_PYTHON_MAJOR" = "3" ] && [ "$SYSTEM_PYTHON_MINOR" = "13" ]; then
+    echo "⚠️  Python 3.13 está configurado como padrão do sistema"
+    echo "Revertendo para Python do sistema (3.10/3.11) para manter compatibilidade com ferramentas do sistema..."
     
-    # Detectar qual é o Python do sistema original (antes de mudar)
-    SYSTEM_PYTHON_ORIGINAL=$(readlink -f /usr/bin/python3 2>/dev/null | grep -oE "python3\.[0-9]+" || \
-                             ls -la /usr/bin/python3.* 2>/dev/null | grep -E "python3\.(10|11)" | head -1 | awk '{print $NF}' | xargs basename || \
-                             echo "python3.10")
+    # Encontrar Python do sistema (3.10 ou 3.11)
+    SYSTEM_PYTHON_ORIGINAL=$(ls -1 /usr/bin/python3.* 2>/dev/null | grep -E "python3\.(10|11)" | head -1 | xargs basename 2>/dev/null || echo "python3.10")
     
-    sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 1 2>/dev/null || true
-    sudo update-alternatives --set python3 /usr/bin/python3.13 2>/dev/null || true
-    echo "Python 3.13 configurado como padrão"
-    
-    # Resolver problema do apt_pkg: ajustar scripts do sistema para usar Python original
-    echo "Ajustando ferramentas do sistema para usar Python $SYSTEM_PYTHON_ORIGINAL..."
-    
-    SYSTEM_PYTHON_PATH="/usr/bin/$SYSTEM_PYTHON_ORIGINAL"
-    if [ ! -f "$SYSTEM_PYTHON_PATH" ]; then
-      # Tentar encontrar o caminho correto
-      SYSTEM_PYTHON_PATH=$(which "$SYSTEM_PYTHON_ORIGINAL" 2>/dev/null || echo "/usr/bin/$SYSTEM_PYTHON_ORIGINAL")
-    fi
-    
-    if [ -f "$SYSTEM_PYTHON_PATH" ] && [ -f "/usr/lib/cnf-update-db" ]; then
-      # Fazer backup do cnf-update-db original
-      if [ ! -f "/usr/lib/cnf-update-db.backup" ]; then
-        sudo cp /usr/lib/cnf-update-db /usr/lib/cnf-update-db.backup 2>/dev/null || true
+    if [ -f "/usr/bin/$SYSTEM_PYTHON_ORIGINAL" ]; then
+      if command -v update-alternatives &> /dev/null; then
+        # Adicionar Python do sistema como alternativa se não existir
+        sudo update-alternatives --install /usr/bin/python3 python3 "/usr/bin/$SYSTEM_PYTHON_ORIGINAL" 10 2>/dev/null || true
+        # Configurar Python do sistema como padrão
+        sudo update-alternatives --set python3 "/usr/bin/$SYSTEM_PYTHON_ORIGINAL" 2>/dev/null || true
+        echo "✅ Python do sistema ($SYSTEM_PYTHON_ORIGINAL) configurado como padrão"
+      else
+        # Se update-alternatives não estiver disponível, criar symlink direto
+        sudo ln -sf "/usr/bin/$SYSTEM_PYTHON_ORIGINAL" /usr/bin/python3 2>/dev/null || true
+        echo "✅ Python do sistema ($SYSTEM_PYTHON_ORIGINAL) configurado como padrão via symlink"
       fi
-      
-      # Modificar o shebang para usar o Python do sistema
-      sudo sed -i "1s|^#!.*|#!$SYSTEM_PYTHON_PATH|" /usr/lib/cnf-update-db 2>/dev/null && \
-        echo "✅ Ajustado /usr/lib/cnf-update-db para usar $SYSTEM_PYTHON_ORIGINAL" || \
-        echo "⚠️  Não foi possível ajustar cnf-update-db automaticamente"
-    fi
-    
-    # Verificar se python3-apt funciona
-    if python3 -c "import apt_pkg" 2>/dev/null; then
-      echo "✅ python3-apt está funcionando com Python 3.13"
-    else
-      echo "ℹ️  python3-apt não está disponível para Python 3.13, mas ferramentas do sistema foram ajustadas"
     fi
   fi
+  
+  # Verificar versão final do Python padrão
+  FINAL_PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' 2>/dev/null || echo "desconhecida")
+  echo "ℹ️  Python padrão do sistema: $FINAL_PYTHON_VERSION (para ferramentas do sistema)"
+  echo "ℹ️  Python 3.13 instalado e disponível via 'python3.13' (será usado no virtual environment do projeto)"
   
   touch "$INSTALL_DIR/system_ready"
 fi
