@@ -192,16 +192,20 @@ if [ ! -f "$INSTALL_DIR/system_ready" ]; then
   sudo apt install -y python3.13 python3.13-venv python3.13-dev
   sudo apt install -y apt-transport-https ca-certificates curl gettext
   
-  # Instalar passlib e bcrypt no Python do sistema para uso em scripts
-  echo "📦 Instalando passlib e bcrypt no Python do sistema..."
-  python3 -m pip install --user --break-system-packages passlib bcrypt 2>/dev/null || \
-  python3 -m pip install --user passlib bcrypt 2>/dev/null || \
-  sudo python3 -m pip install passlib bcrypt 2>/dev/null || true
+  # Instalar bcrypt e passlib no Python do sistema para uso em scripts
+  echo "📦 Instalando bcrypt e passlib no Python do sistema..."
+  # Instalar bcrypt (versão mais recente) e passlib como fallback
+  python3 -m pip install --user --break-system-packages bcrypt "passlib==1.7.4" 2>/dev/null || \
+  python3 -m pip install --user bcrypt "passlib==1.7.4" 2>/dev/null || \
+  sudo python3 -m pip install bcrypt "passlib==1.7.4" 2>/dev/null || true
   
-  if python3 -c "import passlib" 2>/dev/null; then
-    echo "✅ passlib instalado no Python do sistema"
+  # Instalar htpasswd do sistema como alternativa
+  sudo apt install -y apache2-utils 2>/dev/null || true
+  
+  if python3 -c "import bcrypt" 2>/dev/null || python3 -c "import passlib" 2>/dev/null; then
+    echo "✅ bcrypt/passlib instalado no Python do sistema"
   else
-    echo "⚠️  Não foi possível instalar passlib no Python do sistema (será instalado no venv)"
+    echo "⚠️  Não foi possível instalar bcrypt/passlib no Python do sistema (será instalado no venv ou usado htpasswd)"
   fi
   
   # NÃO configurar Python 3.13 como padrão do sistema
@@ -735,43 +739,58 @@ if [ ! -f "$INSTALL_DIR/htpasswd_created" ]; then
     source .venv/bin/activate 2>/dev/null || true
   fi
   
-  # Determinar qual Python usar e garantir que passlib está disponível
+  # Determinar qual Python usar e garantir que bcrypt/passlib está disponível
   PYTHON_CMD=""
   
-  # Tentar Python do venv primeiro
-  if [ -f ".venv/bin/python" ] && .venv/bin/python -c "import passlib" 2>/dev/null; then
+  # Tentar Python do venv primeiro (verificar bcrypt primeiro, mais confiável)
+  if [ -f ".venv/bin/python" ] && .venv/bin/python -c "import bcrypt" 2>/dev/null; then
     PYTHON_CMD=".venv/bin/python"
-    echo "ℹ️  Usando Python do virtual environment"
+    echo "ℹ️  Usando Python do virtual environment (bcrypt disponível)"
+  elif [ -f ".venv/bin/python" ] && .venv/bin/python -c "import passlib" 2>/dev/null; then
+    PYTHON_CMD=".venv/bin/python"
+    echo "ℹ️  Usando Python do virtual environment (passlib disponível)"
+  elif command -v python &> /dev/null && python -c "import bcrypt" 2>/dev/null; then
+    PYTHON_CMD="python"
+    echo "ℹ️  Usando Python do venv (ativado, bcrypt disponível)"
   elif command -v python &> /dev/null && python -c "import passlib" 2>/dev/null; then
     PYTHON_CMD="python"
-    echo "ℹ️  Usando Python do venv (ativado)"
+    echo "ℹ️  Usando Python do venv (ativado, passlib disponível)"
+  elif python3 -c "import bcrypt" 2>/dev/null; then
+    PYTHON_CMD="python3"
+    echo "ℹ️  Usando Python do sistema (bcrypt disponível)"
   elif python3 -c "import passlib" 2>/dev/null; then
     PYTHON_CMD="python3"
-    echo "ℹ️  Usando Python do sistema"
+    echo "ℹ️  Usando Python do sistema (passlib disponível)"
   else
-    # passlib não está disponível, tentar instalar
-    echo "📦 passlib não encontrado, instalando..."
+    # bcrypt/passlib não está disponível, tentar instalar
+    echo "📦 bcrypt/passlib não encontrado, instalando..."
     
     # Tentar instalar no venv primeiro
     if [ -f ".venv/bin/python" ]; then
-      .venv/bin/python -m pip install passlib bcrypt 2>/dev/null && \
-      .venv/bin/python -c "import passlib" 2>/dev/null && \
+      .venv/bin/python -m pip install bcrypt "passlib==1.7.4" 2>/dev/null && \
+      (.venv/bin/python -c "import bcrypt" 2>/dev/null || .venv/bin/python -c "import passlib" 2>/dev/null) && \
       PYTHON_CMD=".venv/bin/python" && \
-      echo "✅ passlib instalado no virtual environment"
+      echo "✅ bcrypt/passlib instalado no virtual environment"
     fi
     
     # Se não funcionou, tentar instalar no sistema
     if [ -z "$PYTHON_CMD" ]; then
-      python3 -m pip install --user --break-system-packages passlib bcrypt 2>/dev/null || \
-      python3 -m pip install --user passlib bcrypt 2>/dev/null || \
-      sudo python3 -m pip install passlib bcrypt 2>/dev/null || true
+      python3 -m pip install --user --break-system-packages bcrypt "passlib==1.7.4" 2>/dev/null || \
+      python3 -m pip install --user bcrypt "passlib==1.7.4" 2>/dev/null || \
+      sudo python3 -m pip install bcrypt "passlib==1.7.4" 2>/dev/null || true
       
-      if python3 -c "import passlib" 2>/dev/null; then
+      if python3 -c "import bcrypt" 2>/dev/null || python3 -c "import passlib" 2>/dev/null; then
         PYTHON_CMD="python3"
-        echo "✅ passlib instalado no Python do sistema"
+        echo "✅ bcrypt/passlib instalado no Python do sistema"
       else
-        log_error "Não foi possível instalar passlib. Instale manualmente: pip install passlib bcrypt"
-        exit 1
+        # Fallback: usar htpasswd do sistema
+        if command -v htpasswd &> /dev/null; then
+          PYTHON_CMD="htpasswd"
+          echo "ℹ️  Usando htpasswd do sistema como alternativa"
+        else
+          log_error "Não foi possível instalar bcrypt/passlib. Instale manualmente: pip install bcrypt passlib"
+          exit 1
+        fi
       fi
     fi
   fi
@@ -781,18 +800,58 @@ if [ ! -f "$INSTALL_DIR/htpasswd_created" ]; then
   echo
   mkdir -p nginx
   
-  HASHED_PASS=$($PYTHON_CMD - <<EOF
-from passlib.hash import bcrypt
-print(bcrypt.using(rounds=10).hash("$ADMIN_PASS"))
+  # Gerar hash da senha
+  if [ "$PYTHON_CMD" = "htpasswd" ]; then
+    # Usar htpasswd do sistema
+    echo "$ADMIN_PASS" | htpasswd -ciB nginx/.htpasswd "$ADMIN_USER" 2>/dev/null || \
+    htpasswd -cbB nginx/.htpasswd "$ADMIN_USER" "$ADMIN_PASS" 2>/dev/null
+    if [ $? -eq 0 ]; then
+      echo "✅ Hash gerado usando htpasswd do sistema"
+    else
+      log_error "Falha ao gerar hash com htpasswd"
+      exit 1
+    fi
+  else
+    # Usar Python - tentar bcrypt direto primeiro (mais confiável)
+    HASHED_PASS=$($PYTHON_CMD - <<EOF
+import sys
+try:
+    # Tentar usar bcrypt diretamente (mais confiável e compatível)
+    import bcrypt
+    salt = bcrypt.gensalt(rounds=10)
+    hashed = bcrypt.hashpw("$ADMIN_PASS".encode('utf-8'), salt)
+    print(hashed.decode('utf-8'))
+except ImportError:
+    # Se bcrypt não estiver disponível, tentar passlib
+    try:
+        from passlib.hash import bcrypt as passlib_bcrypt
+        print(passlib_bcrypt.using(rounds=10).hash("$ADMIN_PASS"))
+    except Exception as e2:
+        print(f"ERROR: Não foi possível importar bcrypt ou passlib: {e2}", file=sys.stderr)
+        sys.exit(1)
+except Exception as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+    sys.exit(1)
 EOF
 )
-  
-  if [ -z "$HASHED_PASS" ]; then
-    log_error "Falha ao gerar hash da senha. Verifique se passlib está instalado."
-    exit 1
+    
+    if [ -z "$HASHED_PASS" ] || echo "$HASHED_PASS" | grep -q "ERROR"; then
+      log_error "Falha ao gerar hash da senha. Tentando com htpasswd do sistema..."
+      if command -v htpasswd &> /dev/null; then
+        echo "$ADMIN_PASS" | htpasswd -ciB nginx/.htpasswd "$ADMIN_USER" 2>/dev/null || \
+        htpasswd -cbB nginx/.htpasswd "$ADMIN_USER" "$ADMIN_PASS" 2>/dev/null
+        if [ $? -ne 0 ]; then
+          log_error "Falha ao gerar hash da senha com ambos os métodos."
+          exit 1
+        fi
+      else
+        log_error "Falha ao gerar hash da senha e htpasswd não está disponível."
+        exit 1
+      fi
+    else
+      echo "$ADMIN_USER:$HASHED_PASS" > nginx/.htpasswd
+    fi
   fi
-  
-  echo "$ADMIN_USER:$HASHED_PASS" > nginx/.htpasswd
   echo "✅ Arquivo nginx/.htpasswd criado."
   touch "$INSTALL_DIR/htpasswd_created"
 fi
