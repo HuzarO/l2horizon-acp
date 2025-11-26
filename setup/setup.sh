@@ -618,7 +618,17 @@ if [ ! -f "$INSTALL_DIR/env_created" ]; then
   if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
     log_warning "ENCRYPTION_KEY não encontrada no .env. Gerando..."
     backup_env_file ".env"
-    FERNET_KEY=$(python3 - <<EOF
+    
+    # Usar Python do venv se disponível
+    if [ -f ".venv/bin/python" ]; then
+      PYTHON_ENV_CMD=".venv/bin/python"
+    elif command -v python &> /dev/null; then
+      PYTHON_ENV_CMD="python"
+    else
+      PYTHON_ENV_CMD="python3"
+    fi
+    
+    FERNET_KEY=$($PYTHON_ENV_CMD - <<EOF
 from cryptography.fernet import Fernet
 print(Fernet.generate_key().decode())
 EOF
@@ -640,7 +650,17 @@ EOF
   if ! grep -q "^SECRET_KEY=" .env 2>/dev/null; then
     log_warning "SECRET_KEY não encontrada no .env. Gerando..."
     backup_env_file ".env"
-    SECRET_KEY=$(python3 - <<EOF
+    
+    # Usar Python do venv se disponível
+    if [ -f ".venv/bin/python" ]; then
+      PYTHON_ENV_CMD=".venv/bin/python"
+    elif command -v python &> /dev/null; then
+      PYTHON_ENV_CMD="python"
+    else
+      PYTHON_ENV_CMD="python3"
+    fi
+    
+    SECRET_KEY=$($PYTHON_ENV_CMD - <<EOF
 from django.core.management.utils import get_random_secret_key
 print(get_random_secret_key())
 EOF
@@ -666,7 +686,17 @@ fi
 if [ -f ".env" ] && ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
   log_warning "ENCRYPTION_KEY não encontrada no .env existente. Gerando..."
   backup_env_file ".env"
-  FERNET_KEY=$(python3 - <<EOF
+  
+  # Usar Python do venv se disponível
+  if [ -f ".venv/bin/python" ]; then
+    PYTHON_ENV_CMD=".venv/bin/python"
+  elif command -v python &> /dev/null; then
+    PYTHON_ENV_CMD="python"
+  else
+    PYTHON_ENV_CMD="python3"
+  fi
+  
+  FERNET_KEY=$($PYTHON_ENV_CMD - <<EOF
 from cryptography.fernet import Fernet
 print(Fernet.generate_key().decode())
 EOF
@@ -687,15 +717,40 @@ fi
 if [ ! -f "$INSTALL_DIR/htpasswd_created" ]; then
   echo
   echo "🔐 Configurando autenticação básica (.htpasswd)..."
+  
+  # Garantir que o venv está ativado
+  if [ -d ".venv" ]; then
+    source .venv/bin/activate 2>/dev/null || true
+  fi
+  
+  # Usar Python do venv se disponível, caso contrário usar python3 do sistema
+  if command -v python &> /dev/null && python -c "import passlib" 2>/dev/null; then
+    PYTHON_CMD="python"
+  elif [ -f ".venv/bin/python" ]; then
+    PYTHON_CMD=".venv/bin/python"
+  else
+    PYTHON_CMD="python3"
+    log_warning "Virtual environment não encontrado, usando Python do sistema"
+    log_info "Instalando passlib temporariamente no sistema..."
+    $PYTHON_CMD -m pip install --user passlib bcrypt 2>/dev/null || true
+  fi
+  
   read -p "👤 Digite o login para o admin: " ADMIN_USER
   read -s -p "🔒 Digite a senha para o admin: " ADMIN_PASS
   echo
   mkdir -p nginx
-  HASHED_PASS=$(python3 - <<EOF
+  
+  HASHED_PASS=$($PYTHON_CMD - <<EOF
 from passlib.hash import bcrypt
 print(bcrypt.using(rounds=10).hash("$ADMIN_PASS"))
 EOF
 )
+  
+  if [ -z "$HASHED_PASS" ]; then
+    log_error "Falha ao gerar hash da senha. Verifique se passlib está instalado."
+    exit 1
+  fi
+  
   echo "$ADMIN_USER:$HASHED_PASS" > nginx/.htpasswd
   echo "✅ Arquivo nginx/.htpasswd criado."
   touch "$INSTALL_DIR/htpasswd_created"
@@ -707,7 +762,17 @@ if [ ! -f "$INSTALL_DIR/fernet_key_generated" ]; then
   # Só substitui a chave placeholder padrão na primeira instalação (quando não há dados ainda)
   if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
     log_info "ENCRYPTION_KEY não encontrada. Gerando..."
-    FERNET_KEY=$(python3 - <<EOF
+    
+    # Usar Python do venv se disponível
+    if [ -f ".venv/bin/python" ]; then
+      PYTHON_ENV_CMD=".venv/bin/python"
+    elif command -v python &> /dev/null; then
+      PYTHON_ENV_CMD="python"
+    else
+      PYTHON_ENV_CMD="python3"
+    fi
+    
+    FERNET_KEY=$($PYTHON_ENV_CMD - <<EOF
 from cryptography.fernet import Fernet
 print(Fernet.generate_key().decode())
 EOF
@@ -740,7 +805,17 @@ EOF
     if [ ! -f "$INSTALL_DIR/.install_done" ] && [ ! -f "$INSTALL_DIR/build_executed" ] && [ "$has_running_containers" = "false" ] && [ "$has_preserved_key" = "false" ]; then
       log_warning "ENCRYPTION_KEY é a chave padrão/placeholder. Gerando nova chave (primeira instalação)..."
       backup_env_file ".env"
-      FERNET_KEY=$(python3 - <<EOF
+      
+      # Usar Python do venv se disponível
+      if [ -f ".venv/bin/python" ]; then
+        PYTHON_ENV_CMD=".venv/bin/python"
+      elif command -v python &> /dev/null; then
+        PYTHON_ENV_CMD="python"
+      else
+        PYTHON_ENV_CMD="python3"
+      fi
+      
+      FERNET_KEY=$($PYTHON_ENV_CMD - <<EOF
 from cryptography.fernet import Fernet
 print(Fernet.generate_key().decode())
 EOF
