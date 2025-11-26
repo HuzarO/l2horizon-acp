@@ -20,6 +20,20 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
+def validar_mercado_pago():
+    """
+    Valida se o Mercado Pago está configurado e ativado.
+    Retorna (is_valid, error_message)
+    """
+    if not getattr(settings, 'MERCADO_PAGO_ACTIVATE_PAYMENTS', False):
+        return False, "O método de pagamento Mercado Pago está desativado no momento."
+    
+    if not getattr(settings, 'MERCADO_PAGO_ACCESS_TOKEN', None):
+        return False, "O Mercado Pago não está configurado corretamente. Entre em contato com o suporte."
+    
+    return True, None
+
+
 def validar_assinatura_hmac(request):
     x_signature = request.headers.get("x-signature")
     x_request_id = request.headers.get("x-request-id")
@@ -113,6 +127,14 @@ def validar_assinatura_hmac(request):
 
 
 def pagamento_sucesso(request):
+    # Valida se Mercado Pago está configurado e ativado
+    is_valid, error_msg = validar_mercado_pago()
+    if not is_valid:
+        logger.error(f"Tentativa de acessar sucesso do Mercado Pago mas não está configurado: {error_msg}")
+        from django.contrib import messages
+        messages.error(request, error_msg)
+        return redirect("payment:pagamento_erro")
+    
     payment_id = request.GET.get("payment_id")
     status = request.GET.get("status")
 
@@ -202,6 +224,12 @@ def pagamento_pendente(request):
 @csrf_exempt
 @require_POST
 def notificacao_mercado_pago(request):
+    # Valida se Mercado Pago está configurado antes de processar webhook
+    is_valid, error_msg = validar_mercado_pago()
+    if not is_valid:
+        logger.error(f"Webhook do Mercado Pago recebido mas não está configurado: {error_msg}")
+        return HttpResponse(status=503)  # Service Unavailable
+    
     # A validação já registra tentativas de falsificação internamente
     if not validar_assinatura_hmac(request):
         return HttpResponse("Assinatura inválida", status=400)
