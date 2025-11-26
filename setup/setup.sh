@@ -195,9 +195,43 @@ if [ ! -f "$INSTALL_DIR/system_ready" ]; then
   # Configurar python3.13 como padrão usando update-alternatives
   if command -v update-alternatives &> /dev/null; then
     echo "Configurando Python 3.13 como padrão..."
+    
+    # Detectar qual é o Python do sistema original (antes de mudar)
+    SYSTEM_PYTHON_ORIGINAL=$(readlink -f /usr/bin/python3 2>/dev/null | grep -oE "python3\.[0-9]+" || \
+                             ls -la /usr/bin/python3.* 2>/dev/null | grep -E "python3\.(10|11)" | head -1 | awk '{print $NF}' | xargs basename || \
+                             echo "python3.10")
+    
     sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 1 2>/dev/null || true
     sudo update-alternatives --set python3 /usr/bin/python3.13 2>/dev/null || true
     echo "Python 3.13 configurado como padrão"
+    
+    # Resolver problema do apt_pkg: ajustar scripts do sistema para usar Python original
+    echo "Ajustando ferramentas do sistema para usar Python $SYSTEM_PYTHON_ORIGINAL..."
+    
+    SYSTEM_PYTHON_PATH="/usr/bin/$SYSTEM_PYTHON_ORIGINAL"
+    if [ ! -f "$SYSTEM_PYTHON_PATH" ]; then
+      # Tentar encontrar o caminho correto
+      SYSTEM_PYTHON_PATH=$(which "$SYSTEM_PYTHON_ORIGINAL" 2>/dev/null || echo "/usr/bin/$SYSTEM_PYTHON_ORIGINAL")
+    fi
+    
+    if [ -f "$SYSTEM_PYTHON_PATH" ] && [ -f "/usr/lib/cnf-update-db" ]; then
+      # Fazer backup do cnf-update-db original
+      if [ ! -f "/usr/lib/cnf-update-db.backup" ]; then
+        sudo cp /usr/lib/cnf-update-db /usr/lib/cnf-update-db.backup 2>/dev/null || true
+      fi
+      
+      # Modificar o shebang para usar o Python do sistema
+      sudo sed -i "1s|^#!.*|#!$SYSTEM_PYTHON_PATH|" /usr/lib/cnf-update-db 2>/dev/null && \
+        echo "✅ Ajustado /usr/lib/cnf-update-db para usar $SYSTEM_PYTHON_ORIGINAL" || \
+        echo "⚠️  Não foi possível ajustar cnf-update-db automaticamente"
+    fi
+    
+    # Verificar se python3-apt funciona
+    if python3 -c "import apt_pkg" 2>/dev/null; then
+      echo "✅ python3-apt está funcionando com Python 3.13"
+    else
+      echo "ℹ️  python3-apt não está disponível para Python 3.13, mas ferramentas do sistema foram ajustadas"
+    fi
   fi
   
   touch "$INSTALL_DIR/system_ready"
