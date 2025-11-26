@@ -377,39 +377,77 @@ if [ ! -f "$INSTALL_DIR/python_ready" ]; then
 import sys
 import re
 
+def detect_encoding(file_path):
+    """Detecta o encoding do arquivo"""
+    encodings = ['utf-8', 'utf-16', 'utf-16le', 'utf-16be', 'latin-1', 'cp1252']
+    
+    # Verificar BOM (Byte Order Mark)
+    try:
+        with open(file_path, 'rb') as f:
+            bom = f.read(4)
+            if bom.startswith(b'\xff\xfe'):
+                return 'utf-16le'
+            elif bom.startswith(b'\xfe\xff'):
+                return 'utf-16be'
+            elif bom.startswith(b'\xef\xbb\xbf'):
+                return 'utf-8-sig'
+    except:
+        pass
+    
+    # Tentar cada encoding
+    for encoding in encodings:
+        try:
+            with open(file_path, 'r', encoding=encoding) as f:
+                f.read()
+            return encoding
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    
+    return 'utf-8'  # fallback
+
+def clean_line(line):
+    """Remove caracteres nulos e normaliza a linha"""
+    # Remover caracteres nulos (\x00)
+    line = line.replace('\x00', '')
+    # Remover BOM se presente
+    if line.startswith('\ufeff'):
+        line = line[1:]
+    return line.strip()
+
 def is_valid_requirement_line(line):
     """Verifica se a linha é válida para requirements.txt"""
-    line = line.strip()
+    line = clean_line(line)
     if not line:  # Linha vazia é válida (mas vamos remover no final)
         return True
     # Linha válida deve começar com letra, número, #, -, git+, ou http
     if re.match(r'^[a-zA-Z0-9#\-]|^git\+|^http', line):
-        # Verificar se não contém caracteres de controle ou inválidos
-        try:
-            # Tentar codificar como UTF-8 válido
-            line.encode('utf-8')
+        # Verificar se não contém caracteres de controle inválidos (exceto \n, \r, \t)
+        if all(ord(c) >= 32 or c in '\n\r\t' for c in line):
             return True
-        except:
-            return False
     return False
 
 try:
-    # Ler arquivo com tratamento de encoding
-    try:
-        with open('requirements.txt', 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-    except UnicodeDecodeError:
-        # Se falhar, tentar com errors='ignore'
-        with open('requirements.txt', 'r', encoding='utf-8', errors='ignore') as f:
-            lines = f.readlines()
+    # Detectar encoding do arquivo
+    detected_encoding = detect_encoding('requirements.txt')
     
-    # Filtrar linhas válidas
+    # Ler arquivo com encoding detectado
+    try:
+        with open('requirements.txt', 'r', encoding=detected_encoding) as f:
+            raw_content = f.read()
+    except Exception as e:
+        # Se falhar, tentar com errors='replace' para substituir caracteres inválidos
+        with open('requirements.txt', 'r', encoding=detected_encoding, errors='replace') as f:
+            raw_content = f.read()
+    
+    # Dividir em linhas e limpar
+    lines = raw_content.splitlines()
+    
+    # Filtrar e limpar linhas válidas
     valid_lines = []
     for line in lines:
-        cleaned_line = line.rstrip('\n\r')
+        cleaned_line = clean_line(line)
         if is_valid_requirement_line(cleaned_line):
             valid_lines.append(cleaned_line)
-        # Se a linha tem caracteres inválidos, pular
     
     # Remover django-encrypted-fields-and-files se existir
     valid_lines = [l for l in valid_lines if 'django-encrypted-fields-and-files' not in l]
@@ -424,33 +462,56 @@ try:
         valid_lines.append("")
         valid_lines.append(github_repo)
     
-    # Escrever arquivo limpo
+    # Escrever arquivo limpo em UTF-8
     with open('requirements.txt', 'w', encoding='utf-8', newline='\n') as f:
         for line in valid_lines:
             f.write(line + '\n')
     
-    print(f"✅ requirements.txt limpo e atualizado ({len(valid_lines)} linhas válidas)")
+    print(f"✅ requirements.txt limpo e atualizado ({len(valid_lines)} linhas válidas, encoding convertido de {detected_encoding} para UTF-8)")
     sys.exit(0)
 except Exception as e:
     print(f"❌ Erro ao limpar requirements.txt: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc()
     sys.exit(1)
 PYTHON_CLEAN
   
   if [ $? -ne 0 ]; then
-    log_warning "Falha ao limpar requirements.txt, tentando método alternativo..."
-    # Método alternativo simples: usar grep para filtrar linhas válidas
+    log_warning "Falha ao limpar requirements.txt com Python, tentando método alternativo..."
+    
+    # Método alternativo: converter encoding e limpar
     if [ -f "requirements.txt.bak" ]; then
-      # Manter apenas linhas que começam com caracteres válidos
-      grep -E '^[a-zA-Z0-9#\-]|^git\+|^http' requirements.txt.bak | \
-        grep -v 'django-encrypted-fields-and-files' > requirements.txt.clean 2>/dev/null || true
+      # Tentar converter de UTF-16 para UTF-8 usando iconv (se disponível)
+      if command -v iconv &> /dev/null; then
+        # Tentar UTF-16LE primeiro (mais comum no Windows)
+        iconv -f UTF-16LE -t UTF-8 requirements.txt.bak 2>/dev/null | \
+          tr -d '\x00' > requirements.txt.clean 2>/dev/null || \
+        iconv -f UTF-16 -t UTF-8 requirements.txt.bak 2>/dev/null | \
+          tr -d '\x00' > requirements.txt.clean 2>/dev/null || true
+      fi
       
+      # Se iconv não funcionou ou não está disponível, usar tr para remover \x00
+      if [ ! -f "requirements.txt.clean" ] || [ ! -s "requirements.txt.clean" ]; then
+        tr -d '\x00' < requirements.txt.bak > requirements.txt.clean 2>/dev/null || true
+      fi
+      
+      # Filtrar linhas válidas
       if [ -f "requirements.txt.clean" ] && [ -s "requirements.txt.clean" ]; then
-        mv requirements.txt.clean requirements.txt
-        echo "" >> requirements.txt
-        echo "git+https://github.com/D3NKYT0/django-encrypted-fields.git" >> requirements.txt
-        log_info "requirements.txt limpo usando método alternativo"
+        # Manter apenas linhas que começam com caracteres válidos
+        grep -E '^[a-zA-Z0-9#\-]|^git\+|^http' requirements.txt.clean | \
+          grep -v 'django-encrypted-fields-and-files' > requirements.txt.tmp 2>/dev/null || true
+        
+        if [ -f "requirements.txt.tmp" ] && [ -s "requirements.txt.tmp" ]; then
+          mv requirements.txt.tmp requirements.txt
+          echo "" >> requirements.txt
+          echo "git+https://github.com/D3NKYT0/django-encrypted-fields.git" >> requirements.txt
+          log_info "requirements.txt limpo usando método alternativo (encoding convertido)"
+        else
+          log_error "Não foi possível extrair linhas válidas do requirements.txt"
+          exit 1
+        fi
       else
-        log_error "Não foi possível limpar requirements.txt"
+        log_error "Não foi possível converter encoding do requirements.txt"
         exit 1
       fi
     else
