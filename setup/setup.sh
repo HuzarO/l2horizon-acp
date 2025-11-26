@@ -383,10 +383,40 @@ if [ ! -f "$INSTALL_DIR/python_ready" ]; then
   # Modificar requirements.txt para incluir o repositório do GitHub
   echo "📦 Atualizando requirements.txt..."
   
-  # Fazer backup do requirements.txt original
-  if [ ! -f "requirements.txt.bak" ]; then
-    cp requirements.txt requirements.txt.bak 2>/dev/null || true
+  # Verificar se o arquivo já está correto (UTF-8, sem caracteres nulos, tem o repositório do GitHub)
+  NEEDS_CLEANUP=false
+  HAS_GITHUB_REPO=false
+  
+  if [ -f "requirements.txt" ]; then
+    # Verificar se tem caracteres nulos (UTF-16) - ler primeiros bytes
+    if python3 -c "with open('requirements.txt', 'rb') as f: data=f.read(1000); exit(0 if b'\x00' in data else 1)" 2>/dev/null; then
+      NEEDS_CLEANUP=true
+      echo "⚠️  Detectado encoding UTF-16 ou caracteres inválidos, será necessário limpar o arquivo"
+    fi
+    
+    # Verificar se já tem o repositório do GitHub
+    if grep -q "git+https://github.com/D3NKYT0/django-encrypted-fields.git" requirements.txt 2>/dev/null; then
+      HAS_GITHUB_REPO=true
+    fi
+    
+    # Verificar se tem django-encrypted-fields-and-files (precisa remover)
+    if grep -q "django-encrypted-fields-and-files" requirements.txt 2>/dev/null; then
+      NEEDS_CLEANUP=true
+      echo "ℹ️  Precisa remover django-encrypted-fields-and-files e adicionar repositório do GitHub"
+    fi
   fi
+  
+  # Se não precisa limpar e já tem o repositório, apenas pular
+  if [ "$NEEDS_CLEANUP" = "false" ] && [ "$HAS_GITHUB_REPO" = "true" ]; then
+    echo "✅ requirements.txt já está atualizado, não é necessário modificar"
+  else
+    # Precisa limpar ou adicionar repositório
+    # Fazer backup do requirements.txt original
+    if [ ! -f "requirements.txt.bak" ]; then
+      cp requirements.txt requirements.txt.bak 2>/dev/null || true
+    fi
+    
+    if [ "$NEEDS_CLEANUP" = "true" ]; then
   
   # Limpar o arquivo usando Python para garantir encoding correto
   python3 << 'PYTHON_CLEAN'
@@ -492,7 +522,7 @@ except Exception as e:
     sys.exit(1)
 PYTHON_CLEAN
   
-  if [ $? -ne 0 ]; then
+    if [ $? -ne 0 ]; then
     log_warning "Falha ao limpar requirements.txt com Python, tentando método alternativo..."
     
     # Método alternativo: converter encoding e limpar
@@ -533,6 +563,19 @@ PYTHON_CLEAN
     else
       log_error "Backup do requirements.txt não encontrado"
       exit 1
+    fi
+    fi
+    else
+      # Não precisa limpar, apenas adicionar repositório do GitHub se não estiver presente
+      if [ "$HAS_GITHUB_REPO" = "false" ]; then
+        echo "ℹ️  Adicionando repositório do GitHub ao requirements.txt..."
+        # Remover django-encrypted-fields-and-files se existir
+        sed -i '/django-encrypted-fields-and-files/d' requirements.txt 2>/dev/null || true
+        # Adicionar repositório do GitHub no final
+        echo "" >> requirements.txt
+        echo "git+https://github.com/D3NKYT0/django-encrypted-fields.git" >> requirements.txt
+        echo "✅ Repositório do GitHub adicionado ao requirements.txt"
+      fi
     fi
   fi
 
