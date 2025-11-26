@@ -371,9 +371,98 @@ if [ ! -f "$INSTALL_DIR/python_ready" ]; then
 
   # Modificar requirements.txt para incluir o repositório do GitHub
   echo "📦 Atualizando requirements.txt..."
-  sed -i '/django-encrypted-fields-and-files/d' requirements.txt
-  echo "" >> requirements.txt
-  echo "git+https://github.com/D3NKYT0/django-encrypted-fields.git" >> requirements.txt
+  
+  # Fazer backup do requirements.txt original
+  if [ ! -f "requirements.txt.bak" ]; then
+    cp requirements.txt requirements.txt.bak 2>/dev/null || true
+  fi
+  
+  # Limpar o arquivo usando Python para garantir encoding correto
+  python3 << 'PYTHON_CLEAN'
+import sys
+import re
+
+def is_valid_requirement_line(line):
+    """Verifica se a linha é válida para requirements.txt"""
+    line = line.strip()
+    if not line:  # Linha vazia é válida (mas vamos remover no final)
+        return True
+    # Linha válida deve começar com letra, número, #, -, git+, ou http
+    if re.match(r'^[a-zA-Z0-9#\-]|^git\+|^http', line):
+        # Verificar se não contém caracteres de controle ou inválidos
+        try:
+            # Tentar codificar como UTF-8 válido
+            line.encode('utf-8')
+            return True
+        except:
+            return False
+    return False
+
+try:
+    # Ler arquivo com tratamento de encoding
+    try:
+        with open('requirements.txt', 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+    except UnicodeDecodeError:
+        # Se falhar, tentar com errors='ignore'
+        with open('requirements.txt', 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+    
+    # Filtrar linhas válidas
+    valid_lines = []
+    for line in lines:
+        cleaned_line = line.rstrip('\n\r')
+        if is_valid_requirement_line(cleaned_line):
+            valid_lines.append(cleaned_line)
+        # Se a linha tem caracteres inválidos, pular
+    
+    # Remover django-encrypted-fields-and-files se existir
+    valid_lines = [l for l in valid_lines if 'django-encrypted-fields-and-files' not in l]
+    
+    # Remover linhas vazias no final
+    while valid_lines and not valid_lines[-1].strip():
+        valid_lines.pop()
+    
+    # Adicionar linha vazia e o repositório do GitHub se não estiver presente
+    github_repo = "git+https://github.com/D3NKYT0/django-encrypted-fields.git"
+    if github_repo not in valid_lines:
+        valid_lines.append("")
+        valid_lines.append(github_repo)
+    
+    # Escrever arquivo limpo
+    with open('requirements.txt', 'w', encoding='utf-8', newline='\n') as f:
+        for line in valid_lines:
+            f.write(line + '\n')
+    
+    print(f"✅ requirements.txt limpo e atualizado ({len(valid_lines)} linhas válidas)")
+    sys.exit(0)
+except Exception as e:
+    print(f"❌ Erro ao limpar requirements.txt: {e}", file=sys.stderr)
+    sys.exit(1)
+PYTHON_CLEAN
+  
+  if [ $? -ne 0 ]; then
+    log_warning "Falha ao limpar requirements.txt, tentando método alternativo..."
+    # Método alternativo simples: usar grep para filtrar linhas válidas
+    if [ -f "requirements.txt.bak" ]; then
+      # Manter apenas linhas que começam com caracteres válidos
+      grep -E '^[a-zA-Z0-9#\-]|^git\+|^http' requirements.txt.bak | \
+        grep -v 'django-encrypted-fields-and-files' > requirements.txt.clean 2>/dev/null || true
+      
+      if [ -f "requirements.txt.clean" ] && [ -s "requirements.txt.clean" ]; then
+        mv requirements.txt.clean requirements.txt
+        echo "" >> requirements.txt
+        echo "git+https://github.com/D3NKYT0/django-encrypted-fields.git" >> requirements.txt
+        log_info "requirements.txt limpo usando método alternativo"
+      else
+        log_error "Não foi possível limpar requirements.txt"
+        exit 1
+      fi
+    else
+      log_error "Backup do requirements.txt não encontrado"
+      exit 1
+    fi
+  fi
 
   # Instalar dependências
   echo "📦 Instalando dependências Python..."
