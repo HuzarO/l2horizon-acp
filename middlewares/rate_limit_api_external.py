@@ -377,9 +377,13 @@ class RateLimitMiddleware:
 
                     reset_time = usage['time_left']
 
-                    # Detecta se é requisição de navegador ou app
-                    if self.is_browser_request(request):
-                        # Retorna HTML bonito para navegador
+                    # Para rotas de autenticação web, sempre retornar HTML
+                    # Para outras rotas, detecta se é requisição de navegador ou app
+                    group = config.get('group', '')
+                    is_auth_web = group == 'auth-web'
+                    
+                    if is_auth_web or self.is_browser_request(request):
+                        # Retorna HTML bonito para navegador ou rotas web
                         html_content = self.get_rate_limit_html(config, reset_time)
                         return HttpResponse(html_content, status=429, content_type='text/html')
                     else:
