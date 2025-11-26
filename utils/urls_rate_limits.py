@@ -48,14 +48,14 @@ URL_RATE_LIMITS_DICT = {
         
     # =========================== AUTENTICAÇÃO WEB ===========================
     # Rotas críticas de autenticação que precisam de rate limiting rigoroso
-    '/accounts/login/':                {'rate': '5/m', 'key': 'ip', 'group': 'auth-web', 'method': 'POST'},
-    '/accounts/register/':            {'rate': '3/h', 'key': 'ip', 'group': 'auth-web', 'method': 'POST'},
-    '/accounts/password-reset/':       {'rate': '5/h', 'key': 'ip', 'group': 'auth-web', 'method': 'POST'},
+    '/accounts/login/':                {'rate': '10/m', 'key': 'user', 'group': 'auth-web', 'method': 'POST'},
+    '/accounts/register/':            {'rate': '1/m', 'key': 'ip', 'group': 'auth-web', 'method': 'POST'},
+    '/accounts/password-reset/':       {'rate': '10/h', 'key': 'user', 'group': 'auth-web', 'method': 'POST'},
     '/accounts/password-change/':     {'rate': '5/m', 'key': 'user', 'group': 'auth-web', 'method': 'POST'},
-    '/accounts/password-reset-confirm/': {'rate': '5/h', 'key': 'ip', 'group': 'auth-web', 'method': 'POST'},
-    '/verify/':                       {'rate': '10/h', 'key': 'ip', 'group': 'auth-web'},
-    '/resend-verify/':                {'rate': '5/h', 'key': 'ip', 'group': 'auth-web', 'method': 'POST'},
-    '/accounts/2fa/':                 {'rate': '10/m', 'key': 'ip', 'group': 'auth-web', 'method': 'POST'},
+    '/accounts/password-reset-confirm/': {'rate': '10/h', 'key': 'user', 'group': 'auth-web', 'method': 'POST'},
+    '/verify/':                       {'rate': '10/h', 'key': 'user', 'group': 'auth-web'},
+    '/resend-verify/':                {'rate': '10/h', 'key': 'user', 'group': 'auth-web', 'method': 'POST'},
+    '/accounts/2fa/':                 {'rate': '10/m', 'key': 'user', 'group': 'auth-web', 'method': 'POST'},
     
     # =========================== PAGAMENTOS ===========================
     # Rotas críticas de pagamento que precisam de proteção
