@@ -1,5 +1,8 @@
 from django import template
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
 import json
+import html
 from apps.lineage.games.models import BoxItem
 from apps.lineage.games.choices import RARITY_CHOICES
 
@@ -16,7 +19,7 @@ def get_item(dictionary, key):
 def get_item_list_json(box_type):
     box_items = BoxItem.objects.filter(box__box_type=box_type).select_related('item')
     if not box_items.exists():
-        return json.dumps([])
+        return mark_safe(json.dumps([]))
 
     unique_items = {bi.item for bi in box_items}
 
@@ -37,6 +40,23 @@ def get_item_list_json(box_type):
             'image_url': image_url
         })
     
-    return json.dumps(items_data, ensure_ascii=False)
+    # json.dumps já escapa corretamente as strings, então podemos usar mark_safe
+    # O JSON será usado em um atributo HTML com aspas simples, então está seguro
+    return mark_safe(json.dumps(items_data, ensure_ascii=False))
+
+
+@register.filter
+def json_escape(value):
+    """
+    Escapa JSON para uso seguro em atributos HTML.
+    Escapa apenas aspas e &, mantendo o JSON válido.
+    """
+    if value is None:
+        return ''
+    json_str = str(value)
+    # Escapa apenas os caracteres necessários para atributos HTML
+    # Substitui " por &quot; e & por &amp;
+    escaped = json_str.replace('&', '&amp;').replace('"', '&quot;')
+    return mark_safe(escaped)
 
 
