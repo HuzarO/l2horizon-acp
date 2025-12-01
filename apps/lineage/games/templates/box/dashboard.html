@@ -135,6 +135,10 @@
                                     {% trans "Resetar" %}
                                 </button>
                             </div>
+                            <button class="btn btn-outline-info mt-2" data-bs-toggle="modal" data-bs-target="#itemsModal"
+                                data-box-name="{{ box_type.name|escape }}" data-box-type-id="{{ box_type.id }}">
+                                {% trans "Ver Itens" %}
+                            </button>
                         {% else %}
                             {% if user_fichas > 0 %}
                                 <button class="btn btn-primary mt-auto" data-bs-toggle="modal" data-bs-target="#confirmBoxModal" data-box-id="{{ box_type.id }}" data-has-fichas="true">
@@ -147,10 +151,6 @@
                             {% endif %}
                         {% endif %}
                     {% endwith %}
-                    <button class="btn btn-outline-info mt-2" data-bs-toggle="modal" data-bs-target="#itemsModal"
-                        data-box-name="{{ box_type.name|escape }}" data-box-type-id="{{ box_type.id }}">
-                        {% trans "Ver Itens" %}
-                    </button>
                     <script type="application/json" id="box-items-{{ box_type.id }}">{{ box_type|get_item_list_json|safe }}</script>
                 </div>
             </div>
