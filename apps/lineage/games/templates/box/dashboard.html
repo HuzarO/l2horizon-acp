@@ -148,9 +148,10 @@
                         {% endif %}
                     {% endwith %}
                     <button class="btn btn-outline-info mt-2" data-bs-toggle="modal" data-bs-target="#itemsModal"
-                        data-box-name="{{ box_type.name|escape }}" data-items='{{ box_type|get_item_list_json|safe }}'>
+                        data-box-name="{{ box_type.name|escape }}" data-box-type-id="{{ box_type.id }}">
                         {% trans "Ver Itens" %}
                     </button>
+                    <script type="application/json" id="box-items-{{ box_type.id }}">{{ box_type|get_item_list_json|safe }}</script>
                 </div>
             </div>
         </div>
@@ -355,7 +356,23 @@
   itemsModal.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     const boxName = button.getAttribute('data-box-name');
-    const itemsData = JSON.parse(button.getAttribute('data-items'));
+    const boxTypeId = button.getAttribute('data-box-type-id');
+    
+    // Busca o JSON do script tag correspondente
+    const scriptTag = document.getElementById('box-items-' + boxTypeId);
+    if (!scriptTag) {
+      console.error('Script tag não encontrado para box type:', boxTypeId);
+      return;
+    }
+    
+    let itemsData;
+    try {
+      itemsData = JSON.parse(scriptTag.textContent);
+    } catch (e) {
+      console.error('Erro ao fazer parse do JSON:', e);
+      console.error('Conteúdo do script tag:', scriptTag.textContent);
+      return;
+    }
     
     // Atualiza título do modal
     document.getElementById('boxNameTitle').textContent = "Caixa: " + boxName;
