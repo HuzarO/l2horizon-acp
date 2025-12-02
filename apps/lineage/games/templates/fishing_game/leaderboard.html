@@ -1,0 +1,116 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Fishing Leaderboard" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .leaderboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .leaderboard-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .rank-1 { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #000; }
+    .rank-2 { background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%); color: #000; }
+    .rank-3 { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; }
+
+    .player-row {
+        border-bottom: 1px solid #eee;
+        padding: 15px 0;
+    }
+
+    .player-row:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="leaderboard-container">
+    <h1 class="text-center mb-4">🏆 {% trans "Fishing Leaderboard" %}</h1>
+
+    <!-- Top Anglers by Rod Level -->
+    <div class="leaderboard-card">
+        <h3>🎣 {% trans "Top Pescadores (Nível de Vara)" %}</h3>
+        {% if top_anglers %}
+            {% for angler in top_anglers %}
+            <div class="player-row d-flex justify-content-between align-items-center {% if forloop.counter <= 3 %}rank-{{ forloop.counter }} rounded p-3{% endif %}">
+                <div>
+                    <span class="badge bg-primary me-2">#{{ forloop.counter }}</span>
+                    <strong>{{ angler.user.username }}</strong>
+                </div>
+                <div>
+                    <span class="badge bg-info">Level {{ angler.level }}</span>
+                    <span class="text-muted ms-2">{{ angler.experience }} XP</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">{% trans "Nenhum pescador ainda." %}</p>
+        {% endif %}
+    </div>
+
+    <!-- Top Legendary Hunters -->
+    <div class="leaderboard-card">
+        <h3>💎 {% trans "Top Caçadores de Lendários" %}</h3>
+        {% if top_legendary_hunters %}
+            {% for hunter in top_legendary_hunters %}
+            <div class="player-row d-flex justify-content-between align-items-center {% if forloop.counter <= 3 %}rank-{{ forloop.counter }} rounded p-3{% endif %}">
+                <div>
+                    <span class="badge bg-primary me-2">#{{ forloop.counter }}</span>
+                    <strong>{{ hunter.user__username }}</strong>
+                </div>
+                <div>
+                    <span class="badge" style="background: #fbbf24; color: black;">
+                        {{ hunter.legendary_count }} {% trans "Lendários" %}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">{% trans "Ninguém capturou peixes lendários ainda." %}</p>
+        {% endif %}
+    </div>
+
+    <!-- Top Fishers by Total Catches -->
+    <div class="leaderboard-card">
+        <h3>🐟 {% trans "Top Pescadores (Total de Capturas)" %}</h3>
+        {% if top_fishers %}
+            {% for fisher in top_fishers %}
+            <div class="player-row d-flex justify-content-between align-items-center {% if forloop.counter <= 3 %}rank-{{ forloop.counter }} rounded p-3{% endif %}">
+                <div>
+                    <span class="badge bg-primary me-2">#{{ forloop.counter }}</span>
+                    <strong>{{ fisher.user__username }}</strong>
+                </div>
+                <div>
+                    <span class="badge bg-success">{{ fisher.total_catches }} {% trans "capturas" %}</span>
+                    <span class="badge bg-warning ms-2">{{ fisher.rare_catches }} {% trans "raros+" %}</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">{% trans "Nenhuma captura ainda." %}</p>
+        {% endif %}
+    </div>
+
+    <div class="text-center mt-5">
+        <a href="{% url 'games:fishing_game_page' %}" class="btn btn-primary btn-lg rounded-pill me-2">
+            🎣 {% trans "Voltar para Pescar" %}
+        </a>
+        <a href="{% url 'games:fishing_collection' %}" class="btn btn-secondary btn-lg rounded-pill">
+            📚 {% trans "Ver Coleção" %}
+        </a>
+    </div>
+</div>
+{% endblock %}
+

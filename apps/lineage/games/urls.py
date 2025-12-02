@@ -1,5 +1,10 @@
 from django.urls import path
-from .views import views, manager_box_views, battle_pass, economy_game_view, daily_bonus_manager, roulette_manager, economy_manager
+from .views import (
+    views, manager_box_views, battle_pass, economy_game_view, 
+    daily_bonus_manager, roulette_manager, economy_manager, 
+    slot_machine_views, dice_game_views, fishing_game_views,
+    slot_machine_manager, dice_game_manager, fishing_game_manager
+)
 
 
 app_name = "games"
@@ -54,4 +59,27 @@ urlpatterns = [
     path('battle-pass/buy-premium/', battle_pass.buy_battle_pass_premium_view, name='buy_battle_pass_premium'),
     path('battle-pass/exchange/', battle_pass.exchange_items_view, name='exchange_items'),
     path('battle-pass/exchange/<int:exchange_id>/', battle_pass.exchange_item, name='exchange_item'),
+
+    # Slot Machine
+    path('slot-machine/', slot_machine_views.slot_machine_page, name='slot_machine_page'),
+    path('slot-machine/spin/', slot_machine_views.slot_machine_spin, name='slot_machine_spin'),
+    path('slot-machine/leaderboard/', slot_machine_views.slot_machine_leaderboard, name='slot_machine_leaderboard'),
+
+    # Dice Game
+    path('dice-game/', dice_game_views.dice_game_page, name='dice_game_page'),
+    path('dice-game/play/', dice_game_views.dice_game_play, name='dice_game_play'),
+    path('dice-game/leaderboard/', dice_game_views.dice_game_leaderboard, name='dice_game_leaderboard'),
+    path('dice-game/statistics/', dice_game_views.dice_game_statistics, name='dice_game_statistics'),
+
+    # Fishing Game
+    path('fishing/', fishing_game_views.fishing_game_page, name='fishing_game_page'),
+    path('fishing/cast/', fishing_game_views.fishing_game_cast, name='fishing_game_cast'),
+    path('fishing/buy-bait/', fishing_game_views.fishing_buy_bait, name='fishing_buy_bait'),
+    path('fishing/leaderboard/', fishing_game_views.fishing_leaderboard, name='fishing_leaderboard'),
+    path('fishing/collection/', fishing_game_views.fishing_collection, name='fishing_collection'),
+
+    # Managers
+    path('slot-machine/manager/', slot_machine_manager.dashboard, name='slot_machine_manager'),
+    path('dice-game/manager/', dice_game_manager.dashboard, name='dice_game_manager'),
+    path('fishing/manager/', fishing_game_manager.dashboard, name='fishing_game_manager'),
 ]

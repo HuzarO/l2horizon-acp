@@ -1,0 +1,425 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Dice Game" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .dice-game-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .dice-game-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        margin-bottom: 30px;
+    }
+
+    .dice-display {
+        width: 150px;
+        height: 150px;
+        background: white;
+        border: 5px solid #333;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 5rem;
+        margin: 30px auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        transition: transform 0.5s;
+    }
+
+    .dice-display.rolling {
+        animation: roll 0.5s linear infinite;
+    }
+
+    @keyframes roll {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .bet-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin: 30px 0;
+    }
+
+    .bet-option {
+        background: rgba(255, 255, 255, 0.9);
+        border: 3px solid transparent;
+        border-radius: 15px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .bet-option:hover {
+        transform: scale(1.05);
+        border-color: #f093fb;
+    }
+
+    .bet-option.selected {
+        border-color: #f5576c;
+        background: rgba(245, 87, 108, 0.2);
+    }
+
+    .bet-option .multiplier {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #f5576c;
+    }
+
+    .bet-amount-container {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 20px;
+        border-radius: 15px;
+        margin: 20px 0;
+    }
+
+    .bet-amount-input {
+        width: 100%;
+        padding: 15px;
+        font-size: 1.2rem;
+        border: 3px solid #fff;
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    .play-button {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border: none;
+        color: white;
+        padding: 20px 60px;
+        font-size: 1.5rem;
+        font-weight: bold;
+        border-radius: 50px;
+        cursor: pointer;
+        box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        transition: all 0.3s;
+        display: block;
+        margin: 20px auto;
+    }
+
+    .play-button:hover:not(:disabled) {
+        transform: scale(1.05);
+        box-shadow: 0 8px 20px rgba(245, 87, 108, 0.6);
+    }
+
+    .play-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .fichas-display {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 15px 30px;
+        border-radius: 10px;
+        text-align: center;
+        color: white;
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+    }
+
+    .stats-box {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-top: 30px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+
+    .number-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px;
+        margin: 20px 0;
+    }
+
+    .number-btn {
+        padding: 15px;
+        font-size: 1.5rem;
+        background: white;
+        border: 3px solid #ddd;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .number-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .number-btn.selected {
+        border-color: #f5576c;
+        background: rgba(245, 87, 108, 0.2);
+    }
+
+    .result-message {
+        text-align: center;
+        color: white;
+        font-size: 1.8rem;
+        margin: 20px 0;
+        min-height: 60px;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dice-game-container">
+    <h1 class="text-center mb-4">🎲 {% trans "Dice Game" %}</h1>
+
+    <div class="dice-game-box">
+        <!-- Fichas Display -->
+        <div class="fichas-display">
+            <strong>💰 {% trans "Suas Fichas" %}:</strong> 
+            <span id="user-fichas">{{ user_fichas }}</span>
+        </div>
+
+        <!-- Dice Display -->
+        <div class="dice-display" id="dice-display">🎲</div>
+
+        <!-- Result Message -->
+        <div class="result-message" id="result-message"></div>
+
+        <!-- Bet Type Selection -->
+        <h4 class="text-white text-center">{% trans "Escolha seu tipo de aposta:" %}</h4>
+        <div class="bet-options">
+            <div class="bet-option" onclick="selectBetType('even')">
+                <div class="multiplier">x{{ config.even_odd_multiplier }}</div>
+                <div><strong>{% trans "Par" %}</strong></div>
+                <div class="text-muted">2, 4, 6</div>
+            </div>
+            <div class="bet-option" onclick="selectBetType('odd')">
+                <div class="multiplier">x{{ config.even_odd_multiplier }}</div>
+                <div><strong>{% trans "Ímpar" %}</strong></div>
+                <div class="text-muted">1, 3, 5</div>
+            </div>
+            <div class="bet-option" onclick="selectBetType('high')">
+                <div class="multiplier">x{{ config.high_low_multiplier }}</div>
+                <div><strong>{% trans "Alto" %}</strong></div>
+                <div class="text-muted">4, 5, 6</div>
+            </div>
+            <div class="bet-option" onclick="selectBetType('low')">
+                <div class="multiplier">x{{ config.high_low_multiplier }}</div>
+                <div><strong>{% trans "Baixo" %}</strong></div>
+                <div class="text-muted">1, 2, 3</div>
+            </div>
+            <div class="bet-option" onclick="selectBetType('number')" style="grid-column: span 2;">
+                <div class="multiplier">x{{ config.specific_number_multiplier }}</div>
+                <div><strong>{% trans "Número Específico" %}</strong></div>
+                <div class="text-muted">{% trans "Escolha 1-6" %}</div>
+            </div>
+        </div>
+
+        <!-- Number Selection (hidden by default) -->
+        <div id="number-selection" style="display: none;">
+            <h5 class="text-white text-center">{% trans "Escolha um número:" %}</h5>
+            <div class="number-grid">
+                <button class="number-btn" onclick="selectNumber(1)">1</button>
+                <button class="number-btn" onclick="selectNumber(2)">2</button>
+                <button class="number-btn" onclick="selectNumber(3)">3</button>
+                <button class="number-btn" onclick="selectNumber(4)">4</button>
+                <button class="number-btn" onclick="selectNumber(5)">5</button>
+                <button class="number-btn" onclick="selectNumber(6)">6</button>
+            </div>
+        </div>
+
+        <!-- Bet Amount -->
+        <div class="bet-amount-container">
+            <label class="text-white" style="display: block; text-align: center; margin-bottom: 10px;">
+                <strong>{% trans "Valor da Aposta" %} ({{ config.min_bet }}-{{ config.max_bet }} fichas):</strong>
+            </label>
+            <input type="number" id="bet-amount" class="bet-amount-input" 
+                   min="{{ config.min_bet }}" max="{{ config.max_bet }}" value="{{ config.min_bet }}">
+        </div>
+
+        <!-- Play Button -->
+        <button class="play-button" id="play-button" onclick="playDiceGame()">
+            🎲 {% trans "JOGAR" %}
+        </button>
+    </div>
+
+    <!-- Statistics -->
+    <div class="stats-box">
+        <h3>📊 {% trans "Suas Estatísticas" %}</h3>
+        <div class="stat-item">
+            <span>{% trans "Total de Jogos" %}:</span>
+            <strong>{{ stats.total_games|default:0 }}</strong>
+        </div>
+        <div class="stat-item">
+            <span>{% trans "Vitórias" %}:</span>
+            <strong class="text-success">{{ stats.total_won|default:0 }}</strong>
+        </div>
+        <div class="stat-item">
+            <span>{% trans "Taxa de Vitória" %}:</span>
+            <strong>{{ win_rate }}%</strong>
+        </div>
+        <div class="stat-item">
+            <span>{% trans "Lucro/Prejuízo" %}:</span>
+            <strong class="{% if profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                {% if profit >= 0 %}+{% endif %}{{ profit }}
+            </strong>
+        </div>
+    </div>
+
+    <!-- Recent History -->
+    <div class="stats-box">
+        <h3>📋 {% trans "Histórico Recente" %}</h3>
+        {% if user_history %}
+            {% for history in user_history %}
+            <div class="stat-item">
+                <span>
+                    {{ history.created_at|date:"d/m/Y H:i" }} - 
+                    {{ history.get_bet_type_display }}
+                    {% if history.bet_value %}({{ history.bet_value }}){% endif %}
+                    - Resultado: <strong>{{ history.dice_result }}</strong>
+                </span>
+                <span class="{% if history.won %}text-success{% else %}text-danger{% endif %}">
+                    {% if history.won %}
+                        +{{ history.prize_amount }} fichas
+                    {% else %}
+                        -{{ history.bet_amount }} fichas
+                    {% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">{% trans "Você ainda não jogou." %}</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+let selectedBetType = null;
+let selectedNumber = null;
+let isPlaying = false;
+
+function selectBetType(type) {
+    selectedBetType = type;
+    
+    // Update UI
+    document.querySelectorAll('.bet-option').forEach(el => el.classList.remove('selected'));
+    event.target.closest('.bet-option').classList.add('selected');
+    
+    // Show/hide number selection
+    if (type === 'number') {
+        document.getElementById('number-selection').style.display = 'block';
+    } else {
+        document.getElementById('number-selection').style.display = 'none';
+        selectedNumber = null;
+    }
+}
+
+function selectNumber(num) {
+    selectedNumber = num;
+    
+    // Update UI
+    document.querySelectorAll('.number-btn').forEach(el => el.classList.remove('selected'));
+    event.target.classList.add('selected');
+}
+
+function playDiceGame() {
+    if (isPlaying) return;
+    
+    if (!selectedBetType) {
+        alert('{% trans "Selecione um tipo de aposta!" %}');
+        return;
+    }
+    
+    if (selectedBetType === 'number' && !selectedNumber) {
+        alert('{% trans "Selecione um número!" %}');
+        return;
+    }
+    
+    const betAmount = document.getElementById('bet-amount').value;
+    
+    isPlaying = true;
+    const button = document.getElementById('play-button');
+    const diceDisplay = document.getElementById('dice-display');
+    const messageEl = document.getElementById('result-message');
+    
+    button.disabled = true;
+    messageEl.textContent = '';
+    diceDisplay.classList.add('rolling');
+    diceDisplay.textContent = '🎲';
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('bet_type', selectedBetType);
+    formData.append('bet_amount', betAmount);
+    if (selectedNumber) {
+        formData.append('bet_value', selectedNumber);
+    }
+    
+    // Make AJAX request
+    fetch('{% url "games:dice_game_play" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            diceDisplay.classList.remove('rolling');
+            button.disabled = false;
+            isPlaying = false;
+            return;
+        }
+        
+        setTimeout(() => {
+            diceDisplay.classList.remove('rolling');
+            diceDisplay.textContent = '⚅'.repeat(data.dice_result).slice(-1) || data.dice_result;
+            
+            // Update fichas
+            document.getElementById('user-fichas').textContent = data.user_fichas;
+            
+            // Show result
+            if (data.won) {
+                messageEl.innerHTML = '🎉 ' + data.message;
+                messageEl.style.color = '#4ade80';
+            } else {
+                messageEl.innerHTML = '😢 ' + data.message;
+                messageEl.style.color = '#f87171';
+            }
+            
+            button.disabled = false;
+            isPlaying = false;
+            
+            // Reload page after 2 seconds to update history
+            setTimeout(() => location.reload(), 2000);
+        }, 1500);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('{% trans "Erro ao jogar. Tente novamente." %}');
+        diceDisplay.classList.remove('rolling');
+        button.disabled = false;
+        isPlaying = false;
+    });
+}
+</script>
+{% endblock %}
+

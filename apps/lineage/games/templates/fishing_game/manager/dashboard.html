@@ -1,0 +1,521 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Fishing Game Manager" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+.mgr-bg { 
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); 
+    min-height: 100vh; 
+    padding: 30px 0; 
+}
+.card-glow { 
+    background: linear-gradient(to bottom right, #1a1a2e, #121220); 
+    border: 2px solid #6f42c1; 
+    border-radius: 12px; 
+    box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); 
+}
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 20px;
+    color: white;
+    margin-bottom: 20px;
+}
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+.form-dark {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+}
+.form-dark:focus {
+    background: rgba(255,255,255,0.08);
+    border-color: #6f42c1;
+    color: white;
+}
+.rarity-badge-common { background: #9ca3af; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; }
+.rarity-badge-rare { background: #3b82f6; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; }
+.rarity-badge-epic { background: #a855f7; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; }
+.rarity-badge-legendary { background: #fbbf24; color: black; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; }
+.btn-delete {
+    background: #dc3545;
+    border: none;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 5px;
+    font-size: 0.875rem;
+}
+.btn-delete:hover {
+    background: #c82333;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mgr-bg">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4 text-white">
+            <h3 class="m-0">🎣 {% trans "Gerenciar Fishing Game" %}</h3>
+            <div>
+                {% if total_fish == 0 %}
+                <form method="post" style="display: inline;" class="me-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="quick_setup">
+                    <button type="submit" class="btn btn-success rounded-pill">
+                        ⚡ {% trans "Setup Rápido Completo" %}
+                    </button>
+                </form>
+                {% endif %}
+                <a href="{% url 'games:fishing_game_page' %}" class="btn btn-outline-info rounded-pill">
+                    {% trans "Ver Fishing Game" %}
+                </a>
+            </div>
+        </div>
+
+        <!-- Alerta se não tiver peixes -->
+        {% if total_fish == 0 %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading">⚠️ {% trans "Peixes não configurados!" %}</h5>
+            <p>{% trans "Você precisa adicionar peixes antes de usar o Fishing Game." %}</p>
+            <hr>
+            <div class="d-flex gap-2">
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="auto_populate_fish">
+                    <button type="submit" class="btn btn-success">
+                        ✨ {% trans "Popular 12 Peixes Automaticamente" %}
+                    </button>
+                </form>
+                <small class="text-muted align-self-center">
+                    {% trans "Ou adicione manualmente abaixo" %}
+                </small>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+        <!-- Alerta se não tiver iscas -->
+        {% if total_baits == 0 %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading">💡 {% trans "Iscas não configuradas!" %}</h5>
+            <p>{% trans "Iscas são opcionais, mas melhoram a experiência dos jogadores." %}</p>
+            <hr>
+            <div class="d-flex gap-2">
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="auto_populate_baits">
+                    <button type="submit" class="btn btn-success">
+                        ✨ {% trans "Popular 4 Iscas Automaticamente" %}
+                    </button>
+                </form>
+                <small class="text-muted align-self-center">
+                    {% trans "Ou adicione manualmente abaixo" %}
+                </small>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+        <!-- Estatísticas Principais -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div>{% trans "Total de Pescarias" %}</div>
+                    <div class="stat-value">{{ total_catches }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div>{% trans "Capturas Bem-sucedidas" %}</div>
+                    <div class="stat-value">{{ successful_catches }}</div>
+                    <small>{{ success_rate }}% taxa de sucesso</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div>{% trans "Pescadores Ativos" %}</div>
+                    <div class="stat-value">{{ total_rods }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div>{% trans "Nível Máximo de Vara" %}</div>
+                    <div class="stat-value">{{ max_rod_level }}</div>
+                    <small>Média: {{ avg_rod_level }}</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- GERENCIAR PEIXES -->
+        <div class="card card-glow mb-4">
+            <div class="card-header text-white d-flex justify-content-between align-items-center">
+                <strong>🐟 {% trans "Gerenciar Peixes" %} ({{ total_fish }})</strong>
+                <div>
+                    {% if total_fish == 0 %}
+                    <form method="post" style="display: inline;" class="me-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="auto_populate_fish">
+                        <button type="submit" class="btn btn-sm btn-warning">
+                            ✨ {% trans "Popular Auto" %}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <button class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#addFish">
+                        ➕ {% trans "Adicionar" %}
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Formulário Adicionar Peixe -->
+            <div class="collapse" id="addFish">
+                <div class="card-body border-bottom border-secondary">
+                    <form method="post" enctype="multipart/form-data" class="row g-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_fish">
+                        
+                        <div class="col-md-3">
+                            <label class="text-white">{% trans "Nome do Peixe" %}</label>
+                            {{ fish_form.name }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Imagem" %}</label>
+                            {{ fish_form.image }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Raridade" %}</label>
+                            {{ fish_form.rarity }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Nível Mín." %}</label>
+                            {{ fish_form.min_rod_level }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Peso" %}</label>
+                            {{ fish_form.weight }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "XP" %}</label>
+                            {{ fish_form.experience_reward }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Fichas" %}</label>
+                            {{ fish_form.fichas_reward }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="text-white">{% trans "Item (opcional)" %}</label>
+                            {{ fish_form.item_reward }}
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">➕ {% trans "Adicionar" %}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Lista de Peixes -->
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Peixe" %}</th>
+                                <th>{% trans "Raridade" %}</th>
+                                <th>{% trans "Nível Mín." %}</th>
+                                <th>{% trans "Peso" %}</th>
+                                <th>{% trans "Recompensas" %}</th>
+                                <th class="text-end">{% trans "Ações" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fish in all_fish %}
+                            <tr>
+                                <td>
+                                    {% if fish.image %}
+                                        <img src="{{ fish.image.url }}" alt="{{ fish.name }}" 
+                                             style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 10px;">
+                                    {% else %}
+                                        <span style="font-size: 2rem; margin-right: 10px;">{{ fish.icon }}</span>
+                                    {% endif %}
+                                    <strong>{{ fish.name }}</strong>
+                                </td>
+                                <td>
+                                    <span class="rarity-badge-{{ fish.rarity }}">
+                                        {{ fish.get_rarity_display|upper }}
+                                    </span>
+                                </td>
+                                <td>Level {{ fish.min_rod_level }}+</td>
+                                <td>{{ fish.weight }}</td>
+                                <td>
+                                    {{ fish.experience_reward }} XP
+                                    {% if fish.fichas_reward > 0 %}, {{ fish.fichas_reward }} fichas{% endif %}
+                                    {% if fish.item_reward %}, {{ fish.item_reward.name }}{% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Tem certeza que deseja remover este peixe?" %}');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_fish">
+                                        <input type="hidden" name="fish_id" value="{{ fish.id }}">
+                                        <button type="submit" class="btn-delete">🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">{% trans "Nenhum peixe configurado" %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- GERENCIAR ISCAS -->
+        <div class="card card-glow mb-4">
+            <div class="card-header text-white d-flex justify-content-between align-items-center">
+                <strong>✨ {% trans "Gerenciar Iscas" %} ({{ total_baits }})</strong>
+                <div>
+                    {% if total_baits == 0 %}
+                    <form method="post" style="display: inline;" class="me-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="auto_populate_baits">
+                        <button type="submit" class="btn btn-sm btn-warning">
+                            ✨ {% trans "Popular Auto" %}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <button class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#addBait">
+                        ➕ {% trans "Adicionar" %}
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Formulário Adicionar Isca -->
+            <div class="collapse" id="addBait">
+                <div class="card-body border-bottom border-secondary">
+                    <form method="post" class="row g-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_bait">
+                        
+                        <div class="col-md-3">
+                            <label class="text-white">{% trans "Nome da Isca" %}</label>
+                            {{ bait_form.name }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="text-white">{% trans "Descrição" %}</label>
+                            {{ bait_form.description }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Preço (Fichas)" %}</label>
+                            {{ bait_form.price }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Raridade Beneficiada" %}</label>
+                            {{ bait_form.rarity_boost }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Bônus (%)" %}</label>
+                            {{ bait_form.boost_percentage }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Duração (min)" %}</label>
+                            {{ bait_form.duration_minutes }}
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">➕ {% trans "Adicionar" %}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Lista de Iscas -->
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Nome" %}</th>
+                                <th>{% trans "Descrição" %}</th>
+                                <th>{% trans "Preço" %}</th>
+                                <th>{% trans "Benefício" %}</th>
+                                <th>{% trans "Duração" %}</th>
+                                <th class="text-end">{% trans "Ações" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bait in all_baits %}
+                            <tr>
+                                <td><strong>{{ bait.name }}</strong></td>
+                                <td class="text-muted small">{{ bait.description|truncatewords:10 }}</td>
+                                <td>{{ bait.price }} fichas</td>
+                                <td>
+                                    +{{ bait.boost_percentage }}% para
+                                    <span class="rarity-badge-{{ bait.rarity_boost }}">
+                                        {{ bait.get_rarity_boost_display|upper }}
+                                    </span>
+                                </td>
+                                <td>{{ bait.duration_minutes }} min</td>
+                                <td class="text-end">
+                                    <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Tem certeza que deseja remover esta isca?" %}');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_bait">
+                                        <input type="hidden" name="bait_id" value="{{ bait.id }}">
+                                        <button type="submit" class="btn-delete">🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">{% trans "Nenhuma isca configurada" %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Top Pescadores -->
+            <div class="col-md-6 mb-4">
+                <div class="card card-glow">
+                    <div class="card-header text-white-50">
+                        <strong>🏆 {% trans "Top 10 Pescadores" %}</strong>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>{% trans "Jogador" %}</th>
+                                        <th>{% trans "Nível" %}</th>
+                                        <th>{% trans "XP" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for angler in top_anglers %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ angler.user.username }}</td>
+                                        <td><span class="badge bg-info">{{ angler.level }}</span></td>
+                                        <td>{{ angler.experience }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Peixes Mais Capturados -->
+            <div class="col-md-6 mb-4">
+                <div class="card card-glow">
+                    <div class="card-header text-white-50">
+                        <strong>🐟 {% trans "Top 10 Peixes Mais Capturados" %}</strong>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>{% trans "Peixe" %}</th>
+                                        <th>{% trans "Raridade" %}</th>
+                                        <th>{% trans "Capturas" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for fish in most_caught_fish %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ fish.fish__icon|default:"🐟" }} {{ fish.fish__name }}</td>
+                                        <td>
+                                            <span class="rarity-badge-{{ fish.fish__rarity }}">
+                                                {{ fish.fish__rarity|upper }}
+                                            </span>
+                                        </td>
+                                        <td>{{ fish.count }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Últimas Pescarias -->
+        <div class="card card-glow">
+            <div class="card-header text-white-50">
+                <strong>📋 {% trans "Últimas 20 Pescarias" %}</strong>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Data" %}</th>
+                                <th>{% trans "Pescador" %}</th>
+                                <th>{% trans "Peixe" %}</th>
+                                <th>{% trans "Raridade" %}</th>
+                                <th>{% trans "Nível Vara" %}</th>
+                                <th>{% trans "Resultado" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for catch in recent_catches %}
+                            <tr>
+                                <td>{{ catch.created_at|date:"d/m/Y H:i" }}</td>
+                                <td>{{ catch.user.username }}</td>
+                                <td>
+                                    {% if catch.fish.image %}
+                                        <img src="{{ catch.fish.image.url }}" alt="{{ catch.fish.name }}" 
+                                             style="width: 40px; height: 40px; object-fit: cover; border-radius: 5px; margin-right: 8px;">
+                                    {% else %}
+                                        <span style="font-size: 1.5rem; margin-right: 8px;">{{ catch.fish.icon }}</span>
+                                    {% endif %}
+                                    {{ catch.fish.name }}
+                                </td>
+                                <td>
+                                    <span class="rarity-badge-{{ catch.fish.rarity }}">
+                                        {{ catch.fish.get_rarity_display|upper }}
+                                    </span>
+                                </td>
+                                <td>{{ catch.rod_level }}</td>
+                                <td>
+                                    {% if catch.success %}
+                                        <span class="badge bg-success">✅ Capturado</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">❌ Escapou</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <p class="text-white-50">
+                💡 {% trans "Dica: Use itens do sistema existente como recompensa dos peixes!" %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Aplicar classes aos forms
+document.querySelectorAll('.form-control, .form-select, textarea').forEach(el => {
+    el.classList.add('form-dark');
+});
+</script>
+{% endblock %}

@@ -578,3 +578,238 @@ class BattlePassItemExchangeAdmin(BaseModelAdmin):
             'description': _('Defina 0 em max_exchanges para trocas ilimitadas')
         }),
     )
+
+
+# ==============================
+# Slot Machine Admin
+# ==============================
+
+@admin.register(SlotMachineConfig)
+class SlotMachineConfigAdmin(BaseModelAdmin):
+    list_display = ('name', 'cost_per_spin', 'is_active', 'jackpot_amount', 'jackpot_chance', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name',)
+    ordering = ('-is_active', 'name')
+    
+    fieldsets = (
+        (_('Informações'), {
+            'fields': ('name', 'cost_per_spin', 'is_active')
+        }),
+        (_('Jackpot'), {
+            'fields': ('jackpot_amount', 'jackpot_chance'),
+            'description': _('Configure o jackpot progressivo')
+        }),
+        (_('Datas'), {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(SlotMachineSymbol)
+class SlotMachineSymbolAdmin(BaseModelAdmin):
+    list_display = ('symbol', 'icon', 'weight', 'created_at')
+    list_filter = ('symbol', 'weight')
+    search_fields = ('symbol',)
+    ordering = ('symbol',)
+    
+    fieldsets = (
+        (_('Informações do Símbolo'), {
+            'fields': ('symbol', 'icon', 'weight')
+        }),
+    )
+
+
+@admin.register(SlotMachinePrize)
+class SlotMachinePrizeAdmin(BaseModelAdmin):
+    list_display = ('config', 'symbol', 'matches_required', 'item', 'fichas_prize', 'created_at')
+    list_filter = ('config', 'matches_required', 'symbol')
+    search_fields = ('symbol__symbol', 'item__name')
+    ordering = ('config', 'matches_required')
+    
+    fieldsets = (
+        (_('Configuração e Símbolo'), {
+            'fields': ('config', 'symbol', 'matches_required')
+        }),
+        (_('Prêmios'), {
+            'fields': ('item', 'fichas_prize'),
+            'description': _('Item ou fichas como prêmio')
+        }),
+    )
+
+
+@admin.register(SlotMachineHistory)
+class SlotMachineHistoryAdmin(BaseModelAdmin):
+    list_display = ('user', 'config', 'symbols_result', 'prize_won', 'is_jackpot', 'fichas_won', 'created_at')
+    list_filter = ('is_jackpot', 'created_at', 'config')
+    search_fields = ('user__username',)
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
+    
+    fieldsets = (
+        (_('Usuário e Configuração'), {
+            'fields': ('user', 'config', 'symbols_result')
+        }),
+        (_('Resultado'), {
+            'fields': ('prize_won', 'is_jackpot', 'fichas_won')
+        }),
+        (_('Data'), {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+# ==============================
+# Dice Game Admin
+# ==============================
+
+@admin.register(DiceGameConfig)
+class DiceGameConfigAdmin(BaseModelAdmin):
+    list_display = ('min_bet', 'max_bet', 'is_active', 'specific_number_multiplier', 'even_odd_multiplier', 'high_low_multiplier')
+    list_filter = ('is_active',)
+    
+    fieldsets = (
+        (_('Configurações de Aposta'), {
+            'fields': ('min_bet', 'max_bet', 'is_active')
+        }),
+        (_('Multiplicadores'), {
+            'fields': ('specific_number_multiplier', 'even_odd_multiplier', 'high_low_multiplier'),
+            'description': _('Configure os multiplicadores de cada tipo de aposta')
+        }),
+    )
+
+
+@admin.register(DiceGameHistory)
+class DiceGameHistoryAdmin(BaseModelAdmin):
+    list_display = ('user', 'bet_type', 'bet_value', 'bet_amount', 'dice_result', 'won', 'prize_amount', 'created_at')
+    list_filter = ('bet_type', 'won', 'created_at')
+    search_fields = ('user__username',)
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
+    
+    fieldsets = (
+        (_('Usuário e Aposta'), {
+            'fields': ('user', 'bet_type', 'bet_value', 'bet_amount')
+        }),
+        (_('Resultado'), {
+            'fields': ('dice_result', 'won', 'prize_amount')
+        }),
+        (_('Data'), {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+# ==============================
+# Fishing Game Admin
+# ==============================
+
+@admin.register(FishingRod)
+class FishingRodAdmin(BaseModelAdmin):
+    list_display = ('user', 'level', 'experience', 'created_at')
+    search_fields = ('user__username',)
+    list_filter = ('level', 'created_at')
+    ordering = ('-level', '-experience')
+    
+    fieldsets = (
+        (_('Usuário'), {
+            'fields': ('user',)
+        }),
+        (_('Progresso'), {
+            'fields': ('level', 'experience'),
+            'description': _('Nível e experiência da vara de pesca')
+        }),
+    )
+
+
+@admin.register(Fish)
+class FishAdmin(BaseModelAdmin):
+    list_display = ('name', 'image_preview', 'rarity', 'min_rod_level', 'weight', 'experience_reward', 'fichas_reward', 'item_reward')
+    list_filter = ('rarity', 'min_rod_level')
+    search_fields = ('name',)
+    ordering = ('rarity', 'min_rod_level', 'name')
+    
+    fieldsets = (
+        (_('Informações do Peixe'), {
+            'fields': ('name', 'image', 'icon', 'rarity', 'min_rod_level')
+        }),
+        (_('Captura'), {
+            'fields': ('weight',),
+            'description': _('Peso para chance de captura')
+        }),
+        (_('Recompensas'), {
+            'fields': ('experience_reward', 'fichas_reward', 'item_reward'),
+            'description': _('Recompensas ao capturar o peixe')
+        }),
+    )
+    
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" width="50" height="50" style="object-fit: cover; border-radius: 8px;" />',
+                obj.image.url
+            )
+        return obj.icon or '🐟'
+    image_preview.short_description = _('Imagem')
+
+
+@admin.register(FishingHistory)
+class FishingHistoryAdmin(BaseModelAdmin):
+    list_display = ('user', 'fish', 'rod_level', 'success', 'created_at')
+    list_filter = ('success', 'fish__rarity', 'created_at')
+    search_fields = ('user__username', 'fish__name')
+    readonly_fields = ('created_at',)
+    ordering = ('-created_at',)
+    
+    fieldsets = (
+        (_('Usuário e Peixe'), {
+            'fields': ('user', 'fish', 'rod_level')
+        }),
+        (_('Resultado'), {
+            'fields': ('success',)
+        }),
+        (_('Data'), {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(FishingBait)
+class FishingBaitAdmin(BaseModelAdmin):
+    list_display = ('name', 'price', 'rarity_boost', 'boost_percentage', 'duration_minutes', 'created_at')
+    list_filter = ('rarity_boost', 'duration_minutes')
+    search_fields = ('name', 'description')
+    ordering = ('name',)
+    
+    fieldsets = (
+        (_('Informações da Isca'), {
+            'fields': ('name', 'description', 'price')
+        }),
+        (_('Bônus'), {
+            'fields': ('rarity_boost', 'boost_percentage', 'duration_minutes'),
+            'description': _('Configure o bônus de captura da isca')
+        }),
+    )
+
+
+@admin.register(UserFishingBait)
+class UserFishingBaitAdmin(BaseModelAdmin):
+    list_display = ('user', 'bait', 'activated_at', 'expires_at', 'is_active')
+    list_filter = ('is_active', 'activated_at', 'expires_at')
+    search_fields = ('user__username', 'bait__name')
+    readonly_fields = ('activated_at',)
+    ordering = ('-activated_at',)
+    
+    fieldsets = (
+        (_('Usuário e Isca'), {
+            'fields': ('user', 'bait', 'is_active')
+        }),
+        (_('Duração'), {
+            'fields': ('activated_at', 'expires_at'),
+            'description': _('Período de ativação da isca')
+        }),
+    )
