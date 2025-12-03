@@ -1,7 +1,7 @@
 from django import forms
 from django.utils.translation import gettext_lazy as _
 from .models import (
-    Prize, Item, BoxType, SlotMachineConfig, SlotMachineSymbol, 
+    Prize, Item, Box, BoxType, SlotMachineConfig, SlotMachineSymbol, 
     SlotMachinePrize, DiceGameConfig, DiceGamePrize, FishingGameConfig, Fish, FishingBait,
     DailyBonusSeason, DailyBonusPoolEntry, DailyBonusDay,
     Monster, RewardItem
@@ -27,6 +27,30 @@ class PrizeForm(forms.ModelForm):
         }
 
 
+class ItemForm(forms.ModelForm):
+    class Meta:
+        model = Item
+        fields = ['name', 'enchant', 'item_id', 'image', 'description', 'rarity', 'can_be_populated']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'enchant': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'item_id': forms.NumberInput(attrs={'class': 'form-control'}),
+            'image': forms.FileInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'rarity': forms.Select(attrs={'class': 'form-select'}),
+            'can_be_populated': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'name': _('Nome'),
+            'enchant': _('Nível de Encantamento'),
+            'item_id': _('ID do Item'),
+            'image': _('Imagem'),
+            'description': _('Descrição'),
+            'rarity': _('Raridade'),
+            'can_be_populated': _('Pode ser Populado'),
+        }
+
+
 class BoxTypeAdminForm(forms.ModelForm):
     class Meta:
         model = BoxType
@@ -46,6 +70,26 @@ class BoxTypeAdminForm(forms.ModelForm):
             )
 
         return cleaned_data
+
+
+# Alias for backward compatibility
+BoxTypeForm = BoxTypeAdminForm
+
+
+class BoxForm(forms.ModelForm):
+    class Meta:
+        model = Box
+        fields = ['user', 'box_type', 'opened']
+        widgets = {
+            'user': forms.Select(attrs={'class': 'form-select'}),
+            'box_type': forms.Select(attrs={'class': 'form-select'}),
+            'opened': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'user': _('Usuário'),
+            'box_type': _('Tipo de Caixa'),
+            'opened': _('Aberto'),
+        }
 
 
 # ==============================
