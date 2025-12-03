@@ -476,16 +476,30 @@ class PrizeManagerForm(forms.ModelForm):
     item = forms.ModelChoiceField(
         queryset=Item.objects.filter(can_be_populated=True),
         required=True,
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        label=_('Item')
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+        }),
+        label=_('Item'),
+        help_text=_('Selecione o item que será adicionado à roleta')
+    )
+    
+    weight = forms.IntegerField(
+        initial=1,
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': '1',
+            'value': '1',
+            'placeholder': '1'
+        }),
+        label=_('Peso (Chance)'),
+        help_text=_('Quanto maior o peso, maior a chance do item sair na roleta')
     )
     
     class Meta:
         model = Prize
         fields = ['item', 'weight']
-        widgets = {
-            'weight': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-        }
         labels = {
+            'item': _('Item'),
             'weight': _('Peso (Chance)'),
         }
