@@ -28,19 +28,86 @@
     font-weight: bold;
 }
 .form-dark {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: white;
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: white !important;
 }
 .form-dark:focus {
-    background: rgba(255,255,255,0.08);
-    border-color: #6f42c1;
-    color: white;
+    background: rgba(255,255,255,0.08) !important;
+    border-color: #6f42c1 !important;
+    color: white !important;
+    box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25) !important;
 }
-.rarity-badge-common { background: #9ca3af; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; }
-.rarity-badge-rare { background: #3b82f6; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; }
-.rarity-badge-epic { background: #a855f7; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; }
-.rarity-badge-legendary { background: #fbbf24; color: black; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; }
+/* Estilos específicos para select */
+.form-select.form-dark,
+select.form-dark {
+    background: rgba(30, 30, 50, 0.95) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: white !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+}
+.form-select.form-dark option,
+select.form-dark option {
+    background: #1a1a2e !important;
+    color: white !important;
+    padding: 8px !important;
+}
+.form-select.form-dark:focus,
+select.form-dark:focus {
+    background: rgba(30, 30, 50, 1) !important;
+    border-color: #6f42c1 !important;
+    color: white !important;
+    box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25) !important;
+}
+/* Estilos para textarea */
+textarea.form-dark {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: white !important;
+    resize: vertical;
+}
+textarea.form-dark:focus {
+    background: rgba(255,255,255,0.08) !important;
+    border-color: #6f42c1 !important;
+    color: white !important;
+}
+/* Estilos para input file */
+input[type="file"].form-dark {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: white !important;
+}
+input[type="file"].form-dark::file-selector-button {
+    background: #6f42c1;
+    color: white;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    margin-right: 0.75rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+input[type="file"].form-dark::file-selector-button:hover {
+    background: #5a32a3;
+}
+.form-check-input {
+    background-color: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.3);
+}
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+.rarity-badge-common { background: #9ca3af; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 600; }
+.rarity-badge-rare { background: #3b82f6; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 600; }
+.rarity-badge-epic { background: #a855f7; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 600; }
+.rarity-badge-legendary { background: #fbbf24; color: black; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 600; }
+.btn-sm {
+    font-size: 0.875rem;
+    padding: 5px 10px;
+}
 .btn-delete {
     background: #dc3545;
     border: none;
@@ -48,9 +115,44 @@
     padding: 5px 15px;
     border-radius: 5px;
     font-size: 0.875rem;
+    cursor: pointer;
 }
 .btn-delete:hover {
     background: #c82333;
+}
+.edit-form-row {
+    background: rgba(255, 193, 7, 0.1);
+    animation: slideIn 0.3s ease-in-out;
+}
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+/* Labels e textos */
+.text-white, label.text-white {
+    color: white !important;
+}
+label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+/* Placeholder */
+.form-dark::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+/* Prevenir mudança de cor no autocomplete */
+.form-dark:-webkit-autofill,
+.form-dark:-webkit-autofill:hover,
+.form-dark:-webkit-autofill:focus {
+    -webkit-text-fill-color: white !important;
+    -webkit-box-shadow: 0 0 0px 1000px rgba(30, 30, 50, 0.95) inset !important;
+    transition: background-color 5000s ease-in-out 0s;
 }
 </style>
 {% endblock %}
@@ -75,6 +177,23 @@
                 </a>
             </div>
         </div>
+
+        <!-- Alerta se não tiver configuração -->
+        {% if not config %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading">⚠️ {% trans "Jogo não configurado!" %}</h5>
+            <p>{% trans "Você precisa criar uma configuração antes de usar o Fishing Game." %}</p>
+            <hr>
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_default_config">
+                <button type="submit" class="btn btn-danger">
+                    ⚙️ {% trans "Criar Configuração Padrão" %}
+                </button>
+            </form>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
 
         <!-- Alerta se não tiver peixes -->
         {% if total_fish == 0 %}
@@ -147,6 +266,84 @@
                     <div class="stat-value">{{ max_rod_level }}</div>
                     <small>Média: {{ avg_rod_level }}</small>
                 </div>
+            </div>
+        </div>
+
+        <!-- CONFIGURAÇÃO DO JOGO -->
+        <div class="card card-glow mb-4" style="border-color: #fbbf24 !important; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4) !important;">
+            <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <strong style="font-size: 1.2rem;">⚙️ {% trans "CONFIGURAÇÃO DO JOGO" %}</strong>
+                {% if not config %}
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create_default_config">
+                    <button type="submit" class="btn btn-sm btn-light">
+                        ➕ {% trans "Criar Configuração" %}
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="card-body" style="background: rgba(251, 191, 36, 0.05);">
+                {% if config %}
+                <form method="post" class="row g-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_config">
+                    <input type="hidden" name="config_id" value="{{ config.id }}">
+                    
+                    <div class="col-md-4">
+                        <label class="form-label text-white">
+                            <strong>{% trans "Nome da Configuração" %}</strong>
+                        </label>
+                        <input type="text" name="name" class="form-control form-dark" value="{{ config.name }}" required>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label text-white">
+                            <strong>{% trans "Custo por Lançamento (Fichas)" %}</strong>
+                        </label>
+                        <input type="number" name="cost_per_cast" class="form-control form-dark" value="{{ config.cost_per_cast }}" min="1" required>
+                        <small class="text-muted d-block mt-1">{% trans "Custo em fichas por tentativa de pesca" %}</small>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label text-white">
+                            <strong>{% trans "Status do Jogo" %}</strong>
+                        </label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_active" id="id_is_active" {% if config.is_active %}checked{% endif %}>
+                            <label class="form-check-label text-white ms-2" for="id_is_active">
+                                {% if config.is_active %}
+                                    <span class="badge bg-success">✅ {% trans "Ativo" %}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">❌ {% trans "Inativo" %}</span>
+                                {% endif %}
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            💾 {% trans "Salvar" %}
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="mt-3 p-3 bg-dark bg-opacity-25 rounded">
+                    <small class="text-muted">
+                        <strong>{% trans "Status:" %}</strong>
+                        {% if config.is_active %}
+                            <span class="text-success">✅ {% trans "O jogo está disponível para os jogadores" %}</span>
+                        {% else %}
+                            <span class="text-danger">❌ {% trans "O jogo está desativado e não aparecerá para os jogadores" %}</span>
+                        {% endif %}
+                    </small>
+                </div>
+                {% else %}
+                <div class="alert alert-warning mb-0">
+                    <h5 class="alert-heading">⚠️ {% trans "Configuração não encontrada" %}</h5>
+                    <p class="mb-0">{% trans "Crie uma configuração para ativar o Fishing Game." %}</p>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -255,11 +452,82 @@
                                     {% if fish.item_reward %}, {{ fish.item_reward.name }}{% endif %}
                                 </td>
                                 <td class="text-end">
+                                    <button class="btn btn-sm btn-warning me-2" data-bs-toggle="collapse" data-bs-target="#editFish{{ fish.id }}">
+                                        ✏️ {% trans "Editar" %}
+                                    </button>
                                     <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Tem certeza que deseja remover este peixe?" %}');">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete_fish">
                                         <input type="hidden" name="fish_id" value="{{ fish.id }}">
                                         <button type="submit" class="btn-delete">🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <!-- Formulário de Edição (Colapsável) -->
+                            <tr class="collapse" id="editFish{{ fish.id }}">
+                                <td colspan="6" style="background: rgba(255, 193, 7, 0.1); padding: 20px;">
+                                    <form method="post" enctype="multipart/form-data" class="row g-3">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="edit_fish">
+                                        <input type="hidden" name="fish_id" value="{{ fish.id }}">
+                                        
+                                        <div class="col-12 mb-2">
+                                            <strong class="text-warning">✏️ {% trans "Editando:" %} {{ fish.name }}</strong>
+                                        </div>
+                                        
+                                        <div class="col-md-3">
+                                            <label class="text-white">{% trans "Nome do Peixe" %}</label>
+                                            <input type="text" name="name" class="form-control form-dark" value="{{ fish.name }}" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Ícone" %}</label>
+                                            <input type="text" name="icon" class="form-control form-dark" value="{{ fish.icon }}" maxlength="10">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Imagem" %}</label>
+                                            <input type="file" name="image" class="form-control form-dark" accept="image/*">
+                                            {% if fish.image %}
+                                            <small class="text-muted">{% trans "Atual:" %} <a href="{{ fish.image.url }}" target="_blank">{% trans "Ver" %}</a></small>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Raridade" %}</label>
+                                            <select name="rarity" class="form-select form-dark" required>
+                                                <option value="common" {% if fish.rarity == 'common' %}selected{% endif %}>{% trans "Comum" %}</option>
+                                                <option value="rare" {% if fish.rarity == 'rare' %}selected{% endif %}>{% trans "Raro" %}</option>
+                                                <option value="epic" {% if fish.rarity == 'epic' %}selected{% endif %}>{% trans "Épico" %}</option>
+                                                <option value="legendary" {% if fish.rarity == 'legendary' %}selected{% endif %}>{% trans "Lendário" %}</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Nível Mín. Vara" %}</label>
+                                            <input type="number" name="min_rod_level" class="form-control form-dark" value="{{ fish.min_rod_level }}" min="1" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Peso" %}</label>
+                                            <input type="number" name="weight" class="form-control form-dark" value="{{ fish.weight }}" min="1" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "XP" %}</label>
+                                            <input type="number" name="experience_reward" class="form-control form-dark" value="{{ fish.experience_reward }}" min="0" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Fichas" %}</label>
+                                            <input type="number" name="fichas_reward" class="form-control form-dark" value="{{ fish.fichas_reward }}" min="0" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="text-white">{% trans "Item (opcional)" %}</label>
+                                            <select name="item_reward" class="form-select form-dark">
+                                                <option value="">-- {% trans "Nenhum" %} --</option>
+                                                {% for item in items %}
+                                                <option value="{{ item.id }}" {% if fish.item_reward.id == item.id %}selected{% endif %}>{{ item.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 d-flex align-items-end gap-2">
+                                            <button type="submit" class="btn btn-success">💾 {% trans "Salvar" %}</button>
+                                            <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#editFish{{ fish.id }}">❌ {% trans "Cancelar" %}</button>
+                                        </div>
                                     </form>
                                 </td>
                             </tr>
@@ -360,11 +628,62 @@
                                 </td>
                                 <td>{{ bait.duration_minutes }} min</td>
                                 <td class="text-end">
+                                    <button class="btn btn-sm btn-warning me-2" data-bs-toggle="collapse" data-bs-target="#editBait{{ bait.id }}">
+                                        ✏️ {% trans "Editar" %}
+                                    </button>
                                     <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Tem certeza que deseja remover esta isca?" %}');">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete_bait">
                                         <input type="hidden" name="bait_id" value="{{ bait.id }}">
                                         <button type="submit" class="btn-delete">🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <!-- Formulário de Edição (Colapsável) -->
+                            <tr class="collapse" id="editBait{{ bait.id }}">
+                                <td colspan="6" style="background: rgba(255, 193, 7, 0.1); padding: 20px;">
+                                    <form method="post" class="row g-3">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="edit_bait">
+                                        <input type="hidden" name="bait_id" value="{{ bait.id }}">
+                                        
+                                        <div class="col-12 mb-2">
+                                            <strong class="text-warning">✏️ {% trans "Editando:" %} {{ bait.name }}</strong>
+                                        </div>
+                                        
+                                        <div class="col-md-3">
+                                            <label class="text-white">{% trans "Nome da Isca" %}</label>
+                                            <input type="text" name="name" class="form-control form-dark" value="{{ bait.name }}" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="text-white">{% trans "Descrição" %}</label>
+                                            <textarea name="description" class="form-control form-dark" rows="1" required>{{ bait.description }}</textarea>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Preço (Fichas)" %}</label>
+                                            <input type="number" name="price" class="form-control form-dark" value="{{ bait.price }}" min="1" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Raridade Beneficiada" %}</label>
+                                            <select name="rarity_boost" class="form-select form-dark" required>
+                                                <option value="common" {% if bait.rarity_boost == 'common' %}selected{% endif %}>{% trans "Comum" %}</option>
+                                                <option value="rare" {% if bait.rarity_boost == 'rare' %}selected{% endif %}>{% trans "Raro" %}</option>
+                                                <option value="epic" {% if bait.rarity_boost == 'epic' %}selected{% endif %}>{% trans "Épico" %}</option>
+                                                <option value="legendary" {% if bait.rarity_boost == 'legendary' %}selected{% endif %}>{% trans "Lendário" %}</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Bônus (%)" %}</label>
+                                            <input type="number" name="boost_percentage" class="form-control form-dark" value="{{ bait.boost_percentage }}" min="0" step="0.1" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Duração (min)" %}</label>
+                                            <input type="number" name="duration_minutes" class="form-control form-dark" value="{{ bait.duration_minutes }}" min="1" required>
+                                        </div>
+                                        <div class="col-md-3 d-flex align-items-end gap-2">
+                                            <button type="submit" class="btn btn-success">💾 {% trans "Salvar" %}</button>
+                                            <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#editBait{{ bait.id }}">❌ {% trans "Cancelar" %}</button>
+                                        </div>
                                     </form>
                                 </td>
                             </tr>

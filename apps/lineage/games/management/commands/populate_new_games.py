@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from apps.lineage.games.models import (
     SlotMachineConfig, SlotMachineSymbol, SlotMachinePrize,
-    DiceGameConfig, Fish, FishingBait, Item
+    DiceGameConfig, FishingGameConfig, Fish, FishingBait, Item
 )
 
 
@@ -104,14 +104,32 @@ class Command(BaseCommand):
     def populate_dice_game(self):
         self.stdout.write('🎲 Configurando Dice Game...')
         
-        config, created = DiceGameConfig.objects.get_or_create(
+        # Verificar se já existe alguma configuração
+        existing_config = DiceGameConfig.objects.first()
+        if existing_config:
+            self.stdout.write(self.style.WARNING('  ⚠ Configuração já existe'))
+            created = False
+        else:
+            config = DiceGameConfig.objects.create(
+                min_bet=1,
+                max_bet=100,
+                is_active=True,
+                specific_number_multiplier=5.0,
+                even_odd_multiplier=2.0,
+                high_low_multiplier=2.0
+            )
+            self.stdout.write(self.style.SUCCESS('  ✓ Configuração criada'))
+            created = True
+
+    def populate_fishing_game(self):
+        self.stdout.write('🎣 Configurando Fishing Game...')
+        
+        # Criar configuração
+        config, created = FishingGameConfig.objects.get_or_create(
+            name='Fishing Game Principal',
             defaults={
-                'min_bet': 1,
-                'max_bet': 100,
-                'is_active': True,
-                'specific_number_multiplier': 5.0,
-                'even_odd_multiplier': 2.0,
-                'high_low_multiplier': 2.0
+                'cost_per_cast': 1,
+                'is_active': True
             }
         )
         
@@ -119,9 +137,6 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS('  ✓ Configuração criada'))
         else:
             self.stdout.write(self.style.WARNING('  ⚠ Configuração já existe'))
-
-    def populate_fishing_game(self):
-        self.stdout.write('🎣 Configurando Fishing Game...')
         
         # Criar peixes
         fishes_data = [

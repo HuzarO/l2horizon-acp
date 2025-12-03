@@ -5,9 +5,9 @@ from django.db.models import Count, Sum, Avg, Max, Q
 from django.contrib import messages
 
 from ..models import (
-    FishingRod, Fish, FishingHistory, FishingBait, UserFishingBait, Item
+    FishingGameConfig, FishingRod, Fish, FishingHistory, FishingBait, UserFishingBait, Item
 )
-from ..forms import FishForm, FishingBaitForm
+from ..forms import FishingGameConfigForm, FishForm, FishingBaitForm
 
 
 @staff_member_required
@@ -18,9 +18,55 @@ def dashboard(request):
     if request.method == 'POST':
         action = request.POST.get('action')
         
-        if action == 'quick_setup':
-            # Setup completo: peixes + iscas
-            # 1. Popular peixes
+        if action == 'create_default_config':
+            # Criar configuração padrão
+            config, created = FishingGameConfig.objects.get_or_create(
+                name='Fishing Game Principal',
+                defaults={
+                    'cost_per_cast': 1,
+                    'is_active': True
+                }
+            )
+            
+            if created:
+                messages.success(request, _('✅ Configuração criada com sucesso!'))
+            else:
+                messages.info(request, _('Configuração já existe!'))
+            return redirect('games:fishing_game_manager')
+        
+        elif action == 'update_config':
+            config_id = request.POST.get('config_id')
+            if config_id:
+                config = get_object_or_404(FishingGameConfig, id=config_id)
+                
+                # Atualizar campos manualmente para garantir que checkbox funcione
+                config.name = request.POST.get('name', config.name)
+                config.cost_per_cast = int(request.POST.get('cost_per_cast', config.cost_per_cast))
+                config.is_active = request.POST.get('is_active') == 'on'  # Checkbox
+                config.save()
+                
+                messages.success(request, _('Configuração atualizada com sucesso!'))
+            else:
+                form = FishingGameConfigForm(request.POST)
+                if form.is_valid():
+                    form.save()
+                    messages.success(request, _('Configuração criada com sucesso!'))
+                else:
+                    messages.error(request, _('Erro ao criar configuração.'))
+            return redirect('games:fishing_game_manager')
+        
+        elif action == 'quick_setup':
+            # Setup completo: configuração + peixes + iscas
+            # 1. Criar configuração
+            config, config_created = FishingGameConfig.objects.get_or_create(
+                name='Fishing Game Principal',
+                defaults={
+                    'cost_per_cast': 1,
+                    'is_active': True
+                }
+            )
+            
+            # 2. Popular peixes
             fishes_data = [
                 {'name': 'Peixinho', 'rarity': 'common', 'icon': '🐟', 'min_level': 1, 'weight': 50, 'xp': 10, 'fichas': 5},
                 {'name': 'Sardinha', 'rarity': 'common', 'icon': '🐠', 'min_level': 1, 'weight': 45, 'xp': 12, 'fichas': 6},
@@ -52,7 +98,7 @@ def dashboard(request):
                 if created:
                     fish_count += 1
             
-            # 2. Popular iscas
+            # 3. Popular iscas
             baits_data = [
                 {'name': 'Isca Comum', 'description': 'Aumenta a chance de pegar peixes comuns', 'price': 20, 'rarity_boost': 'common', 'boost_percentage': 50.0, 'duration_minutes': 30},
                 {'name': 'Isca Rara', 'description': 'Aumenta a chance de pegar peixes raros', 'price': 50, 'rarity_boost': 'rare', 'boost_percentage': 50.0, 'duration_minutes': 30},
@@ -69,7 +115,13 @@ def dashboard(request):
                 if created:
                     baits_count += 1
             
-            messages.success(request, _('✅ Setup completo! Criados: {} peixes, {} iscas!').format(fish_count, baits_count))
+            msg_parts = []
+            if config_created:
+                msg_parts.append(_('configuração'))
+            msg_parts.append(_('{} peixes').format(fish_count))
+            msg_parts.append(_('{} iscas').format(baits_count))
+            
+            messages.success(request, _('✅ Setup completo! Criados: {}').format(', '.join(msg_parts)))
             return redirect('games:fishing_game_manager')
         
         elif action == 'auto_populate_fish':
@@ -142,6 +194,17 @@ def dashboard(request):
                 messages.error(request, _('Erro ao adicionar peixe.'))
             return redirect('games:fishing_game_manager')
         
+        elif action == 'edit_fish':
+            fish_id = request.POST.get('fish_id')
+            fish = get_object_or_404(Fish, id=fish_id)
+            form = FishForm(request.POST, request.FILES, instance=fish)
+            if form.is_valid():
+                form.save()
+                messages.success(request, _('Peixe atualizado com sucesso!'))
+            else:
+                messages.error(request, _('Erro ao atualizar peixe.'))
+            return redirect('games:fishing_game_manager')
+        
         elif action == 'delete_fish':
             fish_id = request.POST.get('fish_id')
             fish = get_object_or_404(Fish, id=fish_id)
@@ -158,12 +221,28 @@ def dashboard(request):
                 messages.error(request, _('Erro ao adicionar isca.'))
             return redirect('games:fishing_game_manager')
         
+        elif action == 'edit_bait':
+            bait_id = request.POST.get('bait_id')
+            bait = get_object_or_404(FishingBait, id=bait_id)
+            form = FishingBaitForm(request.POST, instance=bait)
+            if form.is_valid():
+                form.save()
+                messages.success(request, _('Isca atualizada com sucesso!'))
+            else:
+                messages.error(request, _('Erro ao atualizar isca.'))
+            return redirect('games:fishing_game_manager')
+        
         elif action == 'delete_bait':
             bait_id = request.POST.get('bait_id')
             bait = get_object_or_404(FishingBait, id=bait_id)
             bait.delete()
             messages.success(request, _('Isca removida com sucesso!'))
             return redirect('games:fishing_game_manager')
+    
+    # Configurações
+    config = FishingGameConfig.objects.filter(is_active=True).first()
+    all_configs = FishingGameConfig.objects.all()
+    config_form = FishingGameConfigForm(instance=config) if config else FishingGameConfigForm()
     
     # Formulários
     fish_form = FishForm()
@@ -253,6 +332,9 @@ def dashboard(request):
     all_baits = FishingBait.objects.all().order_by('name')
     
     context = {
+        'config': config,
+        'all_configs': all_configs,
+        'config_form': config_form,
         'fish_form': fish_form,
         'bait_form': bait_form,
         'items': items,

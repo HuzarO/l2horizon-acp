@@ -178,12 +178,16 @@ def dashboard(request):
         elif action == 'update_config':
             config_id = request.POST.get('config_id')
             config = get_object_or_404(SlotMachineConfig, id=config_id)
-            form = SlotMachineConfigForm(request.POST, instance=config)
-            if form.is_valid():
-                form.save()
-                messages.success(request, _('Configuração atualizada com sucesso!'))
-            else:
-                messages.error(request, _('Erro ao atualizar configuração.'))
+            
+            # Atualizar campos manualmente para garantir que checkbox funcione
+            config.name = request.POST.get('name', config.name)
+            config.cost_per_spin = int(request.POST.get('cost_per_spin', config.cost_per_spin))
+            config.jackpot_amount = int(request.POST.get('jackpot_amount', config.jackpot_amount))
+            config.jackpot_chance = float(request.POST.get('jackpot_chance', config.jackpot_chance))
+            config.is_active = request.POST.get('is_active') == 'on'  # Checkbox
+            config.save()
+            
+            messages.success(request, _('Configuração atualizada com sucesso!'))
             return redirect('games:slot_machine_manager')
         
         elif action == 'add_symbol':
@@ -193,6 +197,17 @@ def dashboard(request):
                 messages.success(request, _('Símbolo adicionado com sucesso!'))
             else:
                 messages.error(request, _('Erro ao adicionar símbolo.'))
+            return redirect('games:slot_machine_manager')
+        
+        elif action == 'edit_symbol':
+            symbol_id = request.POST.get('symbol_id')
+            symbol = get_object_or_404(SlotMachineSymbol, id=symbol_id)
+            form = SlotMachineSymbolForm(request.POST, instance=symbol)
+            if form.is_valid():
+                form.save()
+                messages.success(request, _('Símbolo atualizado com sucesso!'))
+            else:
+                messages.error(request, _('Erro ao atualizar símbolo.'))
             return redirect('games:slot_machine_manager')
         
         elif action == 'delete_symbol':
@@ -213,6 +228,17 @@ def dashboard(request):
                 messages.success(request, _('Prêmio adicionado com sucesso!'))
             else:
                 messages.error(request, _('Erro ao adicionar prêmio.'))
+            return redirect('games:slot_machine_manager')
+        
+        elif action == 'edit_prize':
+            prize_id = request.POST.get('prize_id')
+            prize = get_object_or_404(SlotMachinePrize, id=prize_id)
+            form = SlotMachinePrizeForm(request.POST, instance=prize)
+            if form.is_valid():
+                form.save()
+                messages.success(request, _('Prêmio atualizado com sucesso!'))
+            else:
+                messages.error(request, _('Erro ao atualizar prêmio.'))
             return redirect('games:slot_machine_manager')
         
         elif action == 'delete_prize':

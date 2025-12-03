@@ -639,6 +639,24 @@ class DiceGameConfig(BaseModel):
         return f"Dice Game Config (Min: {self.min_bet}, Max: {self.max_bet})"
 
 
+class DiceGamePrize(BaseModel):
+    """Prêmios especiais para o Dice Game"""
+    name = models.CharField(max_length=100, verbose_name=_("Prize Name"))
+    description = models.TextField(blank=True, verbose_name=_("Description"))
+    drop_chance = models.FloatField(default=5.0, verbose_name=_("Drop Chance (%)"),
+                                     help_text=_("Chance de ganhar este prêmio em uma vitória"))
+    fichas_bonus = models.PositiveIntegerField(default=0, verbose_name=_("Bonus Fichas"))
+    item = models.ForeignKey(Item, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Item"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
+    
+    class Meta:
+        verbose_name = _("Dice Game Prize")
+        verbose_name_plural = _("Dice Game Prizes")
+    
+    def __str__(self):
+        return f"{self.name} ({self.drop_chance}%)"
+
+
 class DiceGameHistory(BaseModel):
     """Histórico de jogadas no Dice Game"""
     BET_TYPE_CHOICES = [
@@ -656,6 +674,8 @@ class DiceGameHistory(BaseModel):
     dice_result = models.PositiveIntegerField(verbose_name=_("Dice Result"))
     won = models.BooleanField(default=False, verbose_name=_("Won"))
     prize_amount = models.PositiveIntegerField(default=0, verbose_name=_("Prize Amount"))
+    bonus_prize = models.ForeignKey('DiceGamePrize', on_delete=models.SET_NULL, null=True, blank=True, 
+                                     verbose_name=_("Bonus Prize Won"))
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created At"))
 
     class Meta:
@@ -669,6 +689,20 @@ class DiceGameHistory(BaseModel):
 # ==============================
 # Fishing Game System
 # ==============================
+
+class FishingGameConfig(BaseModel):
+    """Configuração do Fishing Game"""
+    name = models.CharField(max_length=100, default="Fishing Game", verbose_name=_("Name"))
+    cost_per_cast = models.PositiveIntegerField(default=1, verbose_name=_("Cost per Cast (Fichas)"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
+    
+    class Meta:
+        verbose_name = _("Fishing Game Config")
+        verbose_name_plural = _("Fishing Game Configs")
+    
+    def __str__(self):
+        return f"{self.name} - {'Active' if self.is_active else 'Inactive'}"
+
 
 class FishingRod(BaseModel):
     """Vara de pesca do jogador"""

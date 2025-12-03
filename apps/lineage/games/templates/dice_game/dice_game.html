@@ -6,6 +6,11 @@
 
 {% block extrastyle %}
 <style>
+    body {
+        background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%);
+        min-height: 100vh;
+    }
+
     .dice-game-container {
         max-width: 1200px;
         margin: 0 auto;
@@ -13,26 +18,28 @@
     }
 
     .dice-game-box {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(to bottom right, #1a1a2e, #121220);
+        border: 2px solid #6f42c1;
         border-radius: 20px;
         padding: 40px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3);
         margin-bottom: 30px;
     }
 
     .dice-display {
         width: 150px;
         height: 150px;
-        background: white;
-        border: 5px solid #333;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: 3px solid #6f42c1;
         border-radius: 20px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 5rem;
         margin: 30px auto;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 0 20px rgba(111, 66, 193, 0.6);
         transition: transform 0.5s;
+        color: white;
     }
 
     .dice-display.rolling {
@@ -52,33 +59,60 @@
     }
 
     .bet-option {
-        background: rgba(255, 255, 255, 0.9);
-        border: 3px solid transparent;
+        background: linear-gradient(to bottom right, #1a1a2e, #121220);
+        border: 2px solid rgba(111, 66, 193, 0.4);
         border-radius: 15px;
         padding: 20px;
         text-align: center;
         cursor: pointer;
         transition: all 0.3s;
+        color: white;
     }
 
     .bet-option:hover {
         transform: scale(1.05);
-        border-color: #f093fb;
+        border-color: #6f42c1;
+        box-shadow: 0 0 15px rgba(111, 66, 193, 0.5);
     }
 
     .bet-option.selected {
         border-color: #f5576c;
-        background: rgba(245, 87, 108, 0.2);
+        background: linear-gradient(135deg, rgba(245, 87, 108, 0.3), rgba(240, 147, 251, 0.3));
+        box-shadow: 0 0 20px rgba(245, 87, 108, 0.6);
+    }
+
+    .bet-option.disabled {
+        opacity: 0.4;
+        cursor: not-allowed !important;
+        pointer-events: none;
+        filter: grayscale(80%);
+    }
+
+    .bet-option.forced {
+        border-color: #fbbf24 !important;
+        background: linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(245, 158, 11, 0.3));
+        box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+        animation: pulse-forced 1.5s infinite;
+    }
+
+    @keyframes pulse-forced {
+        0%, 100% {
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+        }
+        50% {
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.9);
+        }
     }
 
     .bet-option .multiplier {
         font-size: 1.5rem;
         font-weight: bold;
-        color: #f5576c;
+        color: #f093fb;
     }
 
     .bet-amount-container {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(111, 66, 193, 0.2);
+        border: 1px solid rgba(111, 66, 193, 0.4);
         padding: 20px;
         border-radius: 15px;
         margin: 20px 0;
@@ -88,9 +122,18 @@
         width: 100%;
         padding: 15px;
         font-size: 1.2rem;
-        border: 3px solid #fff;
+        border: 2px solid rgba(111, 66, 193, 0.5);
         border-radius: 10px;
         text-align: center;
+        background: rgba(255, 255, 255, 0.05);
+        color: white;
+    }
+
+    .bet-amount-input:focus {
+        outline: none;
+        border-color: #6f42c1;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 0 10px rgba(111, 66, 193, 0.4);
     }
 
     .play-button {
@@ -119,28 +162,36 @@
     }
 
     .fichas-display {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(111, 66, 193, 0.3);
+        border: 2px solid rgba(111, 66, 193, 0.5);
         padding: 15px 30px;
         border-radius: 10px;
         text-align: center;
         color: white;
         font-size: 1.2rem;
         margin-bottom: 20px;
+        box-shadow: 0 0 10px rgba(111, 66, 193, 0.3);
     }
 
     .stats-box {
-        background: white;
+        background: linear-gradient(to bottom right, #1a1a2e, #121220);
+        border: 2px solid #6f42c1;
         border-radius: 15px;
         padding: 20px;
         margin-top: 30px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 0 15px rgba(111,66,193,.5);
+        color: white;
+    }
+
+    .stats-box h4 {
+        color: white;
     }
 
     .stat-item {
         display: flex;
         justify-content: space-between;
         padding: 10px 0;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid rgba(111, 66, 193, 0.3);
     }
 
     .stat-item:last-child {
@@ -157,20 +208,25 @@
     .number-btn {
         padding: 15px;
         font-size: 1.5rem;
-        background: white;
-        border: 3px solid #ddd;
+        background: linear-gradient(to bottom right, #1a1a2e, #121220);
+        border: 2px solid rgba(111, 66, 193, 0.4);
         border-radius: 10px;
         cursor: pointer;
         transition: all 0.3s;
+        color: white;
+        font-weight: bold;
     }
 
     .number-btn:hover {
         transform: scale(1.1);
+        border-color: #6f42c1;
+        box-shadow: 0 0 15px rgba(111, 66, 193, 0.5);
     }
 
     .number-btn.selected {
         border-color: #f5576c;
-        background: rgba(245, 87, 108, 0.2);
+        background: linear-gradient(135deg, rgba(245, 87, 108, 0.3), rgba(240, 147, 251, 0.3));
+        box-shadow: 0 0 20px rgba(245, 87, 108, 0.6);
     }
 
     .result-message {
@@ -180,6 +236,197 @@
         margin: 20px 0;
         min-height: 60px;
         font-weight: bold;
+    }
+
+    /* Títulos e textos gerais */
+    h1, h2, h3, h4, h5, h6 {
+        color: white !important;
+    }
+
+    .text-muted {
+        color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    .text-white {
+        color: white !important;
+    }
+
+    /* Cards */
+    .card {
+        background: linear-gradient(to bottom right, #1a1a2e, #121220);
+        border: 2px solid #6f42c1;
+        box-shadow: 0 0 15px rgba(111,66,193,.5);
+        color: white;
+    }
+
+    .card-header {
+        background: rgba(111, 66, 193, 0.2);
+        border-bottom: 1px solid rgba(111, 66, 193, 0.4);
+        color: white;
+    }
+
+    .card-body {
+        color: white;
+    }
+
+    /* Tabelas */
+    .table {
+        color: white;
+    }
+
+    .table-dark {
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .table-dark th,
+    .table-dark td {
+        border-color: rgba(111, 66, 193, 0.3);
+    }
+
+    /* Lista */
+    .list-group-item {
+        background: rgba(111, 66, 193, 0.1);
+        border: 1px solid rgba(111, 66, 193, 0.3);
+        color: white;
+        margin-bottom: 5px;
+        border-radius: 8px;
+    }
+
+    /* Classes de texto colorido */
+    .text-success {
+        color: #22c55e !important;
+    }
+
+    .text-danger {
+        color: #ef4444 !important;
+    }
+
+    .text-warning {
+        color: #fbbf24 !important;
+    }
+
+    .text-info {
+        color: #3b82f6 !important;
+    }
+
+    /* Alertas */
+    .alert {
+        border-radius: 10px;
+        border: 1px solid;
+    }
+
+    .alert-info {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.5);
+        color: white;
+    }
+
+    .alert-success {
+        background: rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.5);
+        color: white;
+    }
+
+    .alert-warning {
+        background: rgba(251, 191, 36, 0.2);
+        border-color: rgba(251, 191, 36, 0.5);
+        color: white;
+    }
+
+    .alert-danger {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: rgba(239, 68, 68, 0.5);
+        color: white;
+    }
+
+    .alert-secondary {
+        background: rgba(108, 117, 125, 0.2);
+        border-color: rgba(108, 117, 125, 0.5);
+        color: white;
+    }
+
+    .alert ul {
+        padding-left: 1.5rem;
+        margin-bottom: 0;
+    }
+
+    .alert h6 {
+        color: white !important;
+        font-weight: bold;
+    }
+
+    /* Pequenos ajustes */
+    .small, small {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+
+    strong {
+        color: white;
+    }
+
+    /* Links */
+    a {
+        color: #60a5fa;
+        text-decoration: none;
+    }
+
+    a:hover {
+        color: #93c5fd;
+        text-decoration: underline;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(111, 66, 193, 0.6);
+        border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(111, 66, 193, 0.8);
+    }
+
+    /* Labels */
+    label {
+        color: white !important;
+    }
+
+    /* Badges */
+    .badge {
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-weight: 600;
+    }
+
+    .bg-success {
+        background: rgba(34, 197, 94, 0.8) !important;
+    }
+
+    .bg-danger {
+        background: rgba(239, 68, 68, 0.8) !important;
+    }
+
+    .bg-warning {
+        background: rgba(251, 191, 36, 0.9) !important;
+        color: black !important;
+    }
+
+    .bg-info {
+        background: rgba(59, 130, 246, 0.8) !important;
+    }
+
+    /* Placeholder dos inputs */
+    .bet-amount-input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
     }
 </style>
 {% endblock %}
@@ -201,33 +448,72 @@
         <!-- Result Message -->
         <div class="result-message" id="result-message"></div>
 
+        <!-- Regras e Avisos -->
+        <div class="alert alert-info mb-3">
+            <h6 class="mb-2">📋 {% trans "Regras do Jogo:" %}</h6>
+            <ul class="mb-0" style="font-size: 0.9rem;">
+                <li>❌ {% trans "Não pode escolher a mesma modalidade duas vezes seguidas" %}</li>
+                <li>🎯 {% trans "A cada 5 jogadas, você DEVE escolher 'Número Específico'" %}</li>
+                <li>💰 {% trans "Aposta mínima para 'Número Específico': 10 fichas" %}</li>
+            </ul>
+        </div>
+
+        {% if must_play_number %}
+        <div class="alert alert-warning mb-3">
+            <strong>⚠️ {% trans "ATENÇÃO!" %}</strong> {% trans "Esta é sua" %} {{ total_plays|add:1 }}ª {% trans "jogada. Você DEVE escolher 'Número Específico'!" %}
+        </div>
+        {% endif %}
+
+        {% if last_bet_type %}
+        <div class="alert alert-secondary mb-3">
+            <strong>ℹ️ {% trans "Última jogada:" %}</strong> {{ last_bet_type|upper }}. {% trans "Escolha uma modalidade diferente!" %}
+        </div>
+        {% endif %}
+
         <!-- Bet Type Selection -->
         <h4 class="text-white text-center">{% trans "Escolha seu tipo de aposta:" %}</h4>
         <div class="bet-options">
-            <div class="bet-option" onclick="selectBetType('even')">
+            <div class="bet-option {% if must_play_number or last_bet_type == 'even' %}disabled{% endif %}" 
+                 data-bet-type="even" 
+                 onclick="selectBetType('even')">
                 <div class="multiplier">x{{ config.even_odd_multiplier }}</div>
                 <div><strong>{% trans "Par" %}</strong></div>
                 <div class="text-muted">2, 4, 6</div>
+                {% if last_bet_type == 'even' %}<div class="text-danger small">❌ {% trans "Última jogada" %}</div>{% endif %}
             </div>
-            <div class="bet-option" onclick="selectBetType('odd')">
+            <div class="bet-option {% if must_play_number or last_bet_type == 'odd' %}disabled{% endif %}" 
+                 data-bet-type="odd" 
+                 onclick="selectBetType('odd')">
                 <div class="multiplier">x{{ config.even_odd_multiplier }}</div>
                 <div><strong>{% trans "Ímpar" %}</strong></div>
                 <div class="text-muted">1, 3, 5</div>
+                {% if last_bet_type == 'odd' %}<div class="text-danger small">❌ {% trans "Última jogada" %}</div>{% endif %}
             </div>
-            <div class="bet-option" onclick="selectBetType('high')">
+            <div class="bet-option {% if must_play_number or last_bet_type == 'high' %}disabled{% endif %}" 
+                 data-bet-type="high" 
+                 onclick="selectBetType('high')">
                 <div class="multiplier">x{{ config.high_low_multiplier }}</div>
                 <div><strong>{% trans "Alto" %}</strong></div>
                 <div class="text-muted">4, 5, 6</div>
+                {% if last_bet_type == 'high' %}<div class="text-danger small">❌ {% trans "Última jogada" %}</div>{% endif %}
             </div>
-            <div class="bet-option" onclick="selectBetType('low')">
+            <div class="bet-option {% if must_play_number or last_bet_type == 'low' %}disabled{% endif %}" 
+                 data-bet-type="low" 
+                 onclick="selectBetType('low')">
                 <div class="multiplier">x{{ config.high_low_multiplier }}</div>
                 <div><strong>{% trans "Baixo" %}</strong></div>
                 <div class="text-muted">1, 2, 3</div>
+                {% if last_bet_type == 'low' %}<div class="text-danger small">❌ {% trans "Última jogada" %}</div>{% endif %}
             </div>
-            <div class="bet-option" onclick="selectBetType('number')" style="grid-column: span 2;">
+            <div class="bet-option {% if last_bet_type == 'number' and not must_play_number %}disabled{% endif %} {% if must_play_number %}forced{% endif %}" 
+                 data-bet-type="number" 
+                 onclick="selectBetType('number')" 
+                 style="grid-column: span 2;">
                 <div class="multiplier">x{{ config.specific_number_multiplier }}</div>
                 <div><strong>{% trans "Número Específico" %}</strong></div>
                 <div class="text-muted">{% trans "Escolha 1-6" %}</div>
+                {% if must_play_number %}<div class="text-warning small">⚠️ {% trans "OBRIGATÓRIO!" %}</div>{% endif %}
+                {% if last_bet_type == 'number' and not must_play_number %}<div class="text-danger small">❌ {% trans "Última jogada" %}</div>{% endif %}
             </div>
         </div>
 
@@ -313,20 +599,39 @@
 let selectedBetType = null;
 let selectedNumber = null;
 let isPlaying = false;
+const minBetForNumber = {{ min_bet_for_number }};
+const normalMinBet = {{ config.min_bet }};
 
 function selectBetType(type) {
+    // Verificar se a opção está desabilitada
+    const clickedOption = event.target.closest('.bet-option');
+    if (clickedOption.classList.contains('disabled')) {
+        alert('{% trans "Esta opção está bloqueada pelas regras do jogo!" %}');
+        return;
+    }
+    
     selectedBetType = type;
     
     // Update UI
     document.querySelectorAll('.bet-option').forEach(el => el.classList.remove('selected'));
-    event.target.closest('.bet-option').classList.add('selected');
+    clickedOption.classList.add('selected');
     
-    // Show/hide number selection
+    // Ajustar aposta mínima e label
+    const betAmountInput = document.getElementById('bet-amount');
+    const betAmountLabel = document.querySelector('.bet-amount-container label strong');
+    
     if (type === 'number') {
         document.getElementById('number-selection').style.display = 'block';
+        betAmountInput.min = minBetForNumber;
+        if (parseInt(betAmountInput.value) < minBetForNumber) {
+            betAmountInput.value = minBetForNumber;
+        }
+        betAmountLabel.textContent = '{% trans "Valor da Aposta" %} (' + minBetForNumber + '-{{ config.max_bet }} fichas):';
     } else {
         document.getElementById('number-selection').style.display = 'none';
         selectedNumber = null;
+        betAmountInput.min = normalMinBet;
+        betAmountLabel.textContent = '{% trans "Valor da Aposta" %} (' + normalMinBet + '-{{ config.max_bet }} fichas):';
     }
 }
 

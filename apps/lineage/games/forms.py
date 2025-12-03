@@ -2,7 +2,7 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 from .models import (
     Prize, Item, BoxType, SlotMachineConfig, SlotMachineSymbol, 
-    SlotMachinePrize, DiceGameConfig, Fish, FishingBait,
+    SlotMachinePrize, DiceGameConfig, DiceGamePrize, FishingGameConfig, Fish, FishingBait,
     DailyBonusSeason, DailyBonusPoolEntry, DailyBonusDay,
     Monster, RewardItem
 )
@@ -139,9 +139,54 @@ class DiceGameConfigForm(forms.ModelForm):
         }
 
 
+class DiceGamePrizeForm(forms.ModelForm):
+    item = forms.ModelChoiceField(
+        queryset=Item.objects.filter(can_be_populated=True),
+        required=False,
+        empty_label=_('-- Nenhum item --'),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label=_('Item (Opcional)')
+    )
+    
+    class Meta:
+        model = DiceGamePrize
+        fields = ['name', 'description', 'drop_chance', 'fichas_bonus', 'item', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'drop_chance': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'max': '100', 'step': '0.1'}),
+            'fichas_bonus': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'name': _('Nome do Prêmio'),
+            'description': _('Descrição'),
+            'drop_chance': _('Chance de Drop (%)'),
+            'fichas_bonus': _('Fichas Bônus'),
+            'item': _('Item'),
+            'is_active': _('Ativo'),
+        }
+
+
 # ==============================
 # Fishing Game Forms
 # ==============================
+
+class FishingGameConfigForm(forms.ModelForm):
+    class Meta:
+        model = FishingGameConfig
+        fields = ['name', 'cost_per_cast', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'cost_per_cast': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'name': _('Nome da Configuração'),
+            'cost_per_cast': _('Custo por Lançamento (Fichas)'),
+            'is_active': _('Ativo'),
+        }
+
 
 class FishForm(forms.ModelForm):
     item_reward = forms.ModelChoiceField(

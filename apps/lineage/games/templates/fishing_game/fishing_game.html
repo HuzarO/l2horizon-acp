@@ -6,6 +6,11 @@
 
 {% block extrastyle %}
 <style>
+    body {
+        background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%);
+        min-height: 100vh;
+    }
+
     .fishing-container {
         max-width: 1400px;
         margin: 0 auto;
@@ -13,10 +18,11 @@
     }
 
     .fishing-main {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(to bottom right, #1a1a2e, #121220);
+        border: 2px solid #6f42c1;
         border-radius: 20px;
         padding: 40px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3);
         margin-bottom: 30px;
         position: relative;
         overflow: hidden;
@@ -26,13 +32,14 @@
         content: '🌊';
         position: absolute;
         font-size: 10rem;
-        opacity: 0.1;
+        opacity: 0.05;
         right: -50px;
         bottom: -50px;
     }
 
     .rod-info {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(111, 66, 193, 0.2);
+        border: 1px solid rgba(111, 66, 193, 0.4);
         border-radius: 15px;
         padding: 20px;
         margin-bottom: 30px;
@@ -128,26 +135,54 @@
 
     .fish-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 20px;
         margin-top: 20px;
+    }
+    
+    @media (min-width: 768px) {
+        .fish-grid {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        }
+    }
+    
+    @media (min-width: 1200px) {
+        .fish-grid {
+            grid-template-columns: repeat(6, 1fr);
+        }
     }
 
     .fish-card {
-        background: white;
-        border-radius: 10px;
-        padding: 15px;
+        background: linear-gradient(to bottom right, #1a1a2e, #121220);
+        border: 2px solid rgba(111, 66, 193, 0.3);
+        border-radius: 12px;
+        padding: 20px 15px;
         text-align: center;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+        transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+        color: white;
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
     }
 
     .fish-card:hover {
-        transform: translateY(-5px);
+        transform: translateY(-8px);
+        box-shadow: 0 8px 25px rgba(111, 66, 193, 0.5);
+        border-color: rgba(111, 66, 193, 0.6);
     }
 
     .fish-icon {
-        font-size: 3rem;
+        font-size: 4rem;
+        margin-bottom: 5px;
+        line-height: 1;
+    }
+    
+    .fish-card strong {
+        font-size: 1.1rem;
     }
 
     .rarity-common { border-left: 5px solid #9ca3af; }
@@ -157,31 +192,52 @@
 
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 15px;
         margin-top: 20px;
+        margin-bottom: 30px;
+    }
+
+    @media (min-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(5, 1fr);
+        }
     }
 
     .stat-card {
-        background: white;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 10px;
         padding: 20px;
         text-align: center;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+        color: white;
     }
 
     .stat-value {
         font-size: 2rem;
         font-weight: bold;
-        color: #667eea;
+        color: white;
+    }
+    
+    .stat-card small {
+        color: rgba(255, 255, 255, 0.8);
     }
 
     .bait-shop {
-        background: white;
+        background: linear-gradient(to bottom right, #1a1a2e, #121220);
+        border: 2px solid #6f42c1;
         border-radius: 15px;
         padding: 20px;
         margin-top: 30px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 0 15px rgba(111,66,193,.5);
+        color: white;
+    }
+
+    .bait-shop h4 {
+        color: white;
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+        font-weight: bold;
     }
 
     .bait-item {
@@ -189,7 +245,10 @@
         justify-content: space-between;
         align-items: center;
         padding: 15px;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid rgba(111, 66, 193, 0.3);
+        background: rgba(111, 66, 193, 0.05);
+        border-radius: 8px;
+        margin-bottom: 10px;
     }
 
     .bait-item:last-child {
@@ -197,22 +256,24 @@
     }
 
     .buy-bait-btn {
-        background: #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
         padding: 10px 20px;
         border-radius: 8px;
         cursor: pointer;
         transition: all 0.3s;
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
     }
 
     .buy-bait-btn:hover {
-        background: #5568d3;
+        background: linear-gradient(135deg, #5568d3 0%, #5a32a3 100%);
         transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.6);
     }
 
     .active-bait {
-        background: #dcfce7;
+        background: rgba(34, 197, 94, 0.2);
         border: 2px solid #22c55e;
     }
 
@@ -222,6 +283,260 @@
         font-size: 1.5rem;
         margin: 20px 0;
         min-height: 50px;
+    }
+
+    /* Títulos e textos gerais */
+    h1, h2, h3, h4, h5, h6 {
+        color: white !important;
+    }
+
+    .text-muted {
+        color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    /* Cards de seção */
+    .card {
+        background: linear-gradient(to bottom right, #1a1a2e, #121220);
+        border: 2px solid #6f42c1;
+        box-shadow: 0 0 15px rgba(111,66,193,.5);
+        color: white;
+    }
+
+    .card-header {
+        background: rgba(111, 66, 193, 0.2);
+        border-bottom: 1px solid rgba(111, 66, 193, 0.4);
+        color: white;
+    }
+
+    .card-body {
+        color: white;
+    }
+
+    /* Badges de raridade */
+    .badge {
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .badge-common {
+        background: #9ca3af;
+        color: white;
+    }
+
+    .badge-rare {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .badge-epic {
+        background: #a855f7;
+        color: white;
+    }
+
+    .badge-legendary {
+        background: #fbbf24;
+        color: black;
+    }
+
+    /* Tabelas */
+    .table {
+        color: white;
+    }
+
+    .table-dark {
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .table-dark th,
+    .table-dark td {
+        border-color: rgba(111, 66, 193, 0.3);
+    }
+
+    /* Lista de histórico */
+    .list-group-item {
+        background: rgba(111, 66, 193, 0.1);
+        border: 1px solid rgba(111, 66, 193, 0.3);
+        color: white;
+        margin-bottom: 5px;
+        border-radius: 8px;
+    }
+
+    /* Abas/Tabs */
+    .nav-tabs {
+        border-bottom: 2px solid rgba(111, 66, 193, 0.4);
+    }
+
+    .nav-tabs .nav-link {
+        color: rgba(255, 255, 255, 0.7);
+        border: none;
+        background: transparent;
+    }
+
+    .nav-tabs .nav-link:hover {
+        color: white;
+        background: rgba(111, 66, 193, 0.2);
+    }
+
+    .nav-tabs .nav-link.active {
+        color: white;
+        background: rgba(111, 66, 193, 0.3);
+        border: 1px solid rgba(111, 66, 193, 0.4);
+        border-bottom: none;
+    }
+
+    /* Botões secundários */
+    .btn-secondary {
+        background: rgba(111, 66, 193, 0.6);
+        border: 1px solid rgba(111, 66, 193, 0.8);
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: rgba(111, 66, 193, 0.8);
+        border: 1px solid rgba(111, 66, 193, 1);
+    }
+
+    /* Alertas */
+    .alert {
+        border-radius: 10px;
+        border: 1px solid;
+    }
+
+    .alert-info {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: rgba(59, 130, 246, 0.5);
+        color: white;
+    }
+
+    .alert-success {
+        background: rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.5);
+        color: white;
+    }
+
+    .alert-warning {
+        background: rgba(251, 191, 36, 0.2);
+        border-color: rgba(251, 191, 36, 0.5);
+        color: white;
+    }
+
+    /* Pond - Lagoa de pesca */
+    .fishing-pond {
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.6) 0%, rgba(30, 64, 175, 0.8) 100%);
+        border: 3px solid rgba(30, 58, 138, 0.8);
+    }
+
+    /* Classes de texto colorido */
+    .text-success {
+        color: #22c55e !important;
+    }
+
+    .text-danger {
+        color: #ef4444 !important;
+    }
+
+    .text-warning {
+        color: #fbbf24 !important;
+    }
+
+    .text-info {
+        color: #3b82f6 !important;
+    }
+
+    /* Links */
+    a {
+        color: #60a5fa;
+        text-decoration: none;
+    }
+
+    a:hover {
+        color: #93c5fd;
+        text-decoration: underline;
+    }
+
+    /* Scrollbar customizada */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(111, 66, 193, 0.6);
+        border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(111, 66, 193, 0.8);
+    }
+
+    /* Pequenos ajustes finais */
+    .small, small {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+
+    strong {
+        color: white;
+    }
+
+    /* Background do badge padrão */
+    .bg-secondary {
+        background: rgba(108, 117, 125, 0.8) !important;
+    }
+
+    /* Peixes bloqueados */
+    .locked-fish {
+        opacity: 0.7;
+        position: relative;
+    }
+
+    .locked-fish::after {
+        content: '🔒';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 1.5rem;
+        opacity: 0.8;
+    }
+
+    .locked-fish:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+    }
+
+    /* Separadores de seções */
+    h6.text-success,
+    h6.text-warning {
+        font-size: 1.1rem;
+        font-weight: bold;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    h6.text-success {
+        background: rgba(34, 197, 94, 0.15);
+        border-left: 4px solid #22c55e;
+    }
+    
+    h6.text-warning {
+        background: rgba(251, 191, 36, 0.15);
+        border-left: 4px solid #fbbf24;
+    }
+
+    /* Badge de level */
+    .badge.bg-success {
+        background: rgba(34, 197, 94, 0.8) !important;
+    }
+
+    .badge.bg-warning {
+        background: rgba(251, 191, 36, 0.9) !important;
     }
 </style>
 {% endblock %}
@@ -266,7 +581,7 @@
 
                 <!-- Cast Button -->
                 <button class="cast-button" id="cast-button" onclick="castLine()">
-                    🎣 {% trans "LANÇAR LINHA" %} (1 {% trans "Ficha" %})
+                    🎣 {% trans "LANÇAR LINHA" %} ({{ config.cost_per_cast }} {% if config.cost_per_cast == 1 %}{% trans "Ficha" %}{% else %}{% trans "Fichas" %}{% endif %})
                 </button>
 
                 <!-- Active Baits -->
@@ -332,28 +647,61 @@
                     <p class="text-muted">{% trans "Nenhuma isca disponível." %}</p>
                 {% endif %}
             </div>
+        </div>
+    </div>
 
-            <!-- Available Fish -->
-            <div class="bait-shop mt-3">
-                <h4>🐟 {% trans "Peixes Disponíveis" %}</h4>
-                <div class="fish-grid">
-                    {% for fish in available_fish %}
-                    <div class="fish-card rarity-{{ fish.rarity }}">
-                        <div class="fish-icon">
-                            {% if fish.image %}
-                                <img src="{{ fish.image.url }}" alt="{{ fish.name }}" 
-                                     style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">
-                            {% else %}
-                                {{ fish.icon }}
-                            {% endif %}
-                        </div>
-                        <div><strong>{{ fish.name }}</strong></div>
-                        <div class="text-muted small">{{ fish.get_rarity_display }}</div>
+    <!-- Available Fish - Movido para baixo -->
+    <div class="bait-shop mt-4" style="max-width: 100%; padding: 30px;">
+        <h4 class="mb-4">🐟 {% trans "Todos os Peixes" %}</h4>
+        
+        <!-- Peixes Disponíveis -->
+        {% if available_fish %}
+        <div class="mb-4">
+            <h6 class="text-success mb-3">✅ {% trans "Disponíveis para Pescar" %} ({% trans "Seu nível" %}: {{ rod.level }})</h6>
+            <div class="fish-grid">
+                {% for fish in available_fish %}
+                <div class="fish-card rarity-{{ fish.rarity }}">
+                    <div class="fish-icon">
+                        {% if fish.image %}
+                            <img src="{{ fish.image.url }}" alt="{{ fish.name }}" 
+                                 style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">
+                        {% else %}
+                            {{ fish.icon }}
+                        {% endif %}
                     </div>
-                    {% endfor %}
+                    <div><strong>{{ fish.name }}</strong></div>
+                    <div class="text-muted small">{{ fish.get_rarity_display }}</div>
+                    <div class="badge bg-success mt-1">Level {{ fish.min_rod_level }}+</div>
                 </div>
+                {% endfor %}
             </div>
         </div>
+        {% endif %}
+        
+        <!-- Peixes Bloqueados -->
+        {% if locked_fish %}
+        <div class="mt-5">
+            <hr style="border-color: rgba(111, 66, 193, 0.3); margin: 30px 0;">
+            <h6 class="text-warning mb-3">🔒 {% trans "Bloqueados" %} ({% trans "Aumente o nível da sua vara" %})</h6>
+            <div class="fish-grid">
+                {% for fish in locked_fish %}
+                <div class="fish-card rarity-{{ fish.rarity }} locked-fish">
+                    <div class="fish-icon" style="opacity: 0.5; filter: grayscale(70%);">
+                        {% if fish.image %}
+                            <img src="{{ fish.image.url }}" alt="{{ fish.name }}" 
+                                 style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">
+                        {% else %}
+                            {{ fish.icon }}
+                        {% endif %}
+                    </div>
+                    <div><strong>{{ fish.name }}</strong></div>
+                    <div class="text-muted small">{{ fish.get_rarity_display }}</div>
+                    <div class="badge bg-warning text-dark mt-1">🔒 Level {{ fish.min_rod_level }}+</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Fishing History -->

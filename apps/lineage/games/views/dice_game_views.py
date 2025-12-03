@@ -6,7 +6,7 @@ from django.utils.translation import gettext as _
 from apps.main.home.decorator import conditional_otp_required
 import random
 
-from ..models import DiceGameConfig, DiceGameHistory
+from ..models import DiceGameConfig, DiceGameHistory, DiceGamePrize, Bag, BagItem
 
 
 @conditional_otp_required
@@ -40,6 +40,12 @@ def dice_game_page(request):
     # Lucro/Prejuízo
     profit = (stats['total_prize'] or 0) - (stats['total_bet'] or 0)
     
+    # Informações para as regras
+    total_plays = stats['total_games'] or 0
+    last_play = user_history.first()
+    last_bet_type = last_play.bet_type if last_play else None
+    must_play_number = (total_plays + 1) % 5 == 0  # Próxima jogada é múltiplo de 5
+    
     context = {
         'config': config,
         'user_history': user_history,
@@ -47,6 +53,10 @@ def dice_game_page(request):
         'stats': stats,
         'win_rate': round(win_rate, 2),
         'profit': profit,
+        'last_bet_type': last_bet_type,
+        'must_play_number': must_play_number,
+        'total_plays': total_plays,
+        'min_bet_for_number': 10,
     }
     
     return render(request, 'dice_game/dice_game.html', context)
@@ -77,7 +87,35 @@ def dice_game_play(request):
     if bet_type not in valid_bet_types:
         return JsonResponse({'error': _('Tipo de aposta inválido')}, status=400)
     
-    # Validar valor da aposta
+    user = request.user
+    
+    # Verificar histórico do jogador
+    user_history = DiceGameHistory.objects.filter(user=user).order_by('-created_at')
+    total_plays = user_history.count()
+    
+    # REGRA 1: Não pode escolher a mesma modalidade duas vezes seguidas
+    last_play = user_history.first()
+    if last_play and last_play.bet_type == bet_type:
+        return JsonResponse({
+            'error': _('Você não pode escolher a mesma modalidade duas vezes seguidas! Escolha outra opção.')
+        }, status=400)
+    
+    # REGRA 2: A cada 5 jogadas, deve escolher "Número Específico"
+    if (total_plays + 1) % 5 == 0:  # Próxima jogada será múltiplo de 5
+        if bet_type != 'number':
+            return JsonResponse({
+                'error': _('A cada 5 jogadas você deve escolher "Número Específico"! Esta é sua {}ª jogada.').format(total_plays + 1)
+            }, status=400)
+    
+    # REGRA 3: Aposta mínima de 10 fichas para número específico
+    min_bet_for_number = 10
+    if bet_type == 'number':
+        if bet_amount < min_bet_for_number:
+            return JsonResponse({
+                'error': _('A aposta mínima para "Número Específico" é {} fichas.').format(min_bet_for_number)
+            }, status=400)
+    
+    # Validar valor da aposta (limites gerais)
     if bet_amount < config.min_bet or bet_amount > config.max_bet:
         return JsonResponse({
             'error': _('Aposta deve estar entre {} e {} fichas').format(
@@ -86,7 +124,6 @@ def dice_game_play(request):
         }, status=400)
     
     # Verificar fichas do usuário
-    user = request.user
     if user.fichas < bet_amount:
         return JsonResponse({
             'error': _('Você não tem fichas suficientes')
@@ -136,10 +173,46 @@ def dice_game_play(request):
     
     # Calcular prêmio
     prize_amount = 0
+    bonus_prize = None
+    bonus_item = None
+    bonus_fichas = 0
+    
     if won:
         prize_amount = int(bet_amount * multiplier)
         user.fichas += prize_amount
         user.save(update_fields=['fichas'])
+        
+        # Verificar prêmios bonus
+        active_prizes = DiceGamePrize.objects.filter(is_active=True)
+        for prize in active_prizes:
+            # Verificar se ganha o prêmio pela chance
+            if random.random() * 100 <= prize.drop_chance:
+                bonus_prize = prize
+                
+                # Adicionar fichas bonus
+                if prize.fichas_bonus > 0:
+                    bonus_fichas = prize.fichas_bonus
+                    user.fichas += bonus_fichas
+                    user.save(update_fields=['fichas'])
+                
+                # Adicionar item à bag
+                if prize.item:
+                    bonus_item = prize.item
+                    bag, bag_created = Bag.objects.get_or_create(user=user)
+                    bag_item, created = BagItem.objects.get_or_create(
+                        bag=bag,
+                        item_id=prize.item.item_id,
+                        enchant=prize.item.enchant,
+                        defaults={
+                            'item_name': prize.item.name,
+                            'quantity': 1,
+                        }
+                    )
+                    if not created:
+                        bag_item.quantity += 1
+                        bag_item.save()
+                
+                break  # Apenas um prêmio bonus por vitória
     
     # Salvar histórico
     history = DiceGameHistory.objects.create(
@@ -149,8 +222,23 @@ def dice_game_play(request):
         bet_amount=bet_amount,
         dice_result=dice_result,
         won=won,
-        prize_amount=prize_amount
+        prize_amount=prize_amount,
+        bonus_prize=bonus_prize
     )
+    
+    # Construir mensagem
+    message = ''
+    if won:
+        message = _('Parabéns! Você ganhou {} fichas!').format(prize_amount)
+        if bonus_prize:
+            if bonus_fichas > 0 and bonus_item:
+                message += _(' 🎁 Prêmio Bonus: {} fichas + {}!').format(bonus_fichas, bonus_item.name)
+            elif bonus_fichas > 0:
+                message += _(' 🎁 Prêmio Bonus: {} fichas!').format(bonus_fichas)
+            elif bonus_item:
+                message += _(' 🎁 Prêmio Bonus: {}!').format(bonus_item.name)
+    else:
+        message = _('Não foi dessa vez!')
     
     response_data = {
         'success': True,
@@ -159,7 +247,16 @@ def dice_game_play(request):
         'prize_amount': prize_amount,
         'user_fichas': user.fichas,
         'multiplier': multiplier if won else 0,
-        'message': _('Parabéns! Você ganhou {} fichas!').format(prize_amount) if won else _('Não foi dessa vez!')
+        'message': message,
+        'bonus_prize': {
+            'name': bonus_prize.name if bonus_prize else None,
+            'fichas': bonus_fichas,
+            'item': {
+                'name': bonus_item.name,
+                'enchant': bonus_item.enchant,
+                'rarity': bonus_item.rarity
+            } if bonus_item else None
+        } if bonus_prize else None
     }
     
     return JsonResponse(response_data)

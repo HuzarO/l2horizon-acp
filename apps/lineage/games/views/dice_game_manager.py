@@ -4,8 +4,8 @@ from django.utils.translation import gettext as _
 from django.db.models import Count, Sum, Avg, Q, F
 from django.contrib import messages
 
-from ..models import DiceGameConfig, DiceGameHistory
-from ..forms import DiceGameConfigForm
+from ..models import DiceGameConfig, DiceGameHistory, DiceGamePrize, Item
+from ..forms import DiceGameConfigForm, DiceGamePrizeForm
 
 
 @staff_member_required
@@ -17,43 +17,84 @@ def dashboard(request):
         action = request.POST.get('action')
         
         if action == 'create_default_config':
-            # Criar configuração padrão
-            config, created = DiceGameConfig.objects.get_or_create(
-                defaults={
-                    'min_bet': 1,
-                    'max_bet': 100,
-                    'is_active': True,
-                    'specific_number_multiplier': 5.0,
-                    'even_odd_multiplier': 2.0,
-                    'high_low_multiplier': 2.0
-                }
-            )
-            
-            if created:
-                messages.success(request, _('✅ Configuração criada com sucesso!'))
-            else:
+            # Criar configuração padrão apenas se não existir nenhuma
+            existing_config = DiceGameConfig.objects.first()
+            if existing_config:
                 messages.info(request, _('Configuração já existe!'))
+            else:
+                config = DiceGameConfig.objects.create(
+                    min_bet=1,
+                    max_bet=100,
+                    is_active=True,
+                    specific_number_multiplier=5.0,
+                    even_odd_multiplier=2.0,
+                    high_low_multiplier=2.0
+                )
+                messages.success(request, _('✅ Configuração criada com sucesso!'))
             return redirect('games:dice_game_manager')
         
         elif action == 'update_config':
             config_id = request.POST.get('config_id')
             if config_id:
                 config = get_object_or_404(DiceGameConfig, id=config_id)
-                form = DiceGameConfigForm(request.POST, instance=config)
-            else:
-                form = DiceGameConfigForm(request.POST)
-            
-            if form.is_valid():
-                form.save()
+                
+                # Atualizar campos manualmente para garantir que checkbox funcione
+                config.min_bet = int(request.POST.get('min_bet', config.min_bet))
+                config.max_bet = int(request.POST.get('max_bet', config.max_bet))
+                config.specific_number_multiplier = float(request.POST.get('specific_number_multiplier', config.specific_number_multiplier))
+                config.even_odd_multiplier = float(request.POST.get('even_odd_multiplier', config.even_odd_multiplier))
+                config.high_low_multiplier = float(request.POST.get('high_low_multiplier', config.high_low_multiplier))
+                config.is_active = request.POST.get('is_active') == 'on'  # Checkbox
+                config.save()
+                
                 messages.success(request, _('Configuração atualizada com sucesso!'))
             else:
-                messages.error(request, _('Erro ao atualizar configuração.'))
+                form = DiceGameConfigForm(request.POST)
+                if form.is_valid():
+                    form.save()
+                    messages.success(request, _('Configuração criada com sucesso!'))
+                else:
+                    messages.error(request, _('Erro ao criar configuração.'))
+            return redirect('games:dice_game_manager')
+        
+        elif action == 'add_prize':
+            form = DiceGamePrizeForm(request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, _('Prêmio adicionado com sucesso!'))
+            else:
+                messages.error(request, _('Erro ao adicionar prêmio.'))
+            return redirect('games:dice_game_manager')
+        
+        elif action == 'edit_prize':
+            prize_id = request.POST.get('prize_id')
+            prize = get_object_or_404(DiceGamePrize, id=prize_id)
+            form = DiceGamePrizeForm(request.POST, instance=prize)
+            if form.is_valid():
+                form.save()
+                messages.success(request, _('Prêmio atualizado com sucesso!'))
+            else:
+                messages.error(request, _('Erro ao atualizar prêmio.'))
+            return redirect('games:dice_game_manager')
+        
+        elif action == 'delete_prize':
+            prize_id = request.POST.get('prize_id')
+            prize = get_object_or_404(DiceGamePrize, id=prize_id)
+            prize.delete()
+            messages.success(request, _('Prêmio removido com sucesso!'))
             return redirect('games:dice_game_manager')
     
     # Configurações
     config = DiceGameConfig.objects.filter(is_active=True).first()
     all_configs = DiceGameConfig.objects.all()
     config_form = DiceGameConfigForm(instance=config) if config else DiceGameConfigForm()
+    
+    # Prêmios
+    all_prizes = DiceGamePrize.objects.all().order_by('-drop_chance')
+    prize_form = DiceGamePrizeForm()
+    
+    # Items disponíveis
+    items = Item.objects.filter(can_be_populated=True).order_by('name')
     
     # Estatísticas gerais
     total_games = DiceGameHistory.objects.count()
@@ -114,6 +155,9 @@ def dashboard(request):
         'config': config,
         'all_configs': all_configs,
         'config_form': config_form,
+        'all_prizes': all_prizes,
+        'prize_form': prize_form,
+        'items': items,
         'total_games': total_games,
         'total_wins': total_wins,
         'win_rate': round((total_wins / total_games * 100) if total_games > 0 else 0, 2),

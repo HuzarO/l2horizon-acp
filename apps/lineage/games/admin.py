@@ -681,9 +681,26 @@ class DiceGameConfigAdmin(BaseModelAdmin):
     )
 
 
+@admin.register(DiceGamePrize)
+class DiceGamePrizeAdmin(BaseModelAdmin):
+    list_display = ('name', 'drop_chance', 'fichas_bonus', 'item', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name', 'description')
+    ordering = ('-drop_chance',)
+    
+    fieldsets = (
+        (_('Informações do Prêmio'), {
+            'fields': ('name', 'description', 'is_active')
+        }),
+        (_('Chance e Recompensas'), {
+            'fields': ('drop_chance', 'fichas_bonus', 'item')
+        }),
+    )
+
+
 @admin.register(DiceGameHistory)
 class DiceGameHistoryAdmin(BaseModelAdmin):
-    list_display = ('user', 'bet_type', 'bet_value', 'bet_amount', 'dice_result', 'won', 'prize_amount', 'created_at')
+    list_display = ('user', 'bet_type', 'bet_value', 'bet_amount', 'dice_result', 'won', 'prize_amount', 'bonus_prize', 'created_at')
     list_filter = ('bet_type', 'won', 'created_at')
     search_fields = ('user__username',)
     readonly_fields = ('created_at',)
@@ -694,7 +711,7 @@ class DiceGameHistoryAdmin(BaseModelAdmin):
             'fields': ('user', 'bet_type', 'bet_value', 'bet_amount')
         }),
         (_('Resultado'), {
-            'fields': ('dice_result', 'won', 'prize_amount')
+            'fields': ('dice_result', 'won', 'prize_amount', 'bonus_prize')
         }),
         (_('Data'), {
             'fields': ('created_at',),
@@ -706,6 +723,20 @@ class DiceGameHistoryAdmin(BaseModelAdmin):
 # ==============================
 # Fishing Game Admin
 # ==============================
+
+@admin.register(FishingGameConfig)
+class FishingGameConfigAdmin(BaseModelAdmin):
+    list_display = ('name', 'cost_per_cast', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('name',)
+    ordering = ('-is_active', 'name')
+    
+    fieldsets = (
+        (_('Configurações'), {
+            'fields': ('name', 'cost_per_cast', 'is_active')
+        }),
+    )
+
 
 @admin.register(FishingRod)
 class FishingRodAdmin(BaseModelAdmin):

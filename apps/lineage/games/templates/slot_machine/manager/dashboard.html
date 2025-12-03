@@ -28,14 +28,45 @@
     font-weight: bold;
 }
 .form-dark {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: white;
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: white !important;
 }
 .form-dark:focus {
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.08) !important;
+    border-color: #6f42c1 !important;
+    color: white !important;
+    box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25) !important;
+}
+.form-select.form-dark,
+select.form-dark {
+    background: rgba(30, 30, 50, 0.95) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: white !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+}
+.form-select.form-dark option,
+select.form-dark option {
+    background: #1a1a2e !important;
+    color: white !important;
+}
+.form-check-input {
+    background-color: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.3);
+    width: 3em;
+    height: 1.5em;
+    cursor: pointer;
+}
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+.form-check-input:focus {
     border-color: #6f42c1;
-    color: white;
+    box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25);
 }
 .btn-delete {
     background: #dc3545;
@@ -44,9 +75,18 @@
     padding: 5px 15px;
     border-radius: 5px;
     font-size: 0.875rem;
+    cursor: pointer;
 }
 .btn-delete:hover {
     background: #c82333;
+}
+.btn-sm {
+    font-size: 0.875rem;
+    padding: 5px 10px;
+}
+.badge {
+    font-size: 0.875rem;
+    padding: 0.35em 0.65em;
 }
 </style>
 {% endblock %}
@@ -166,26 +206,34 @@
 
         <!-- Configuração Ativa -->
         {% if active_config %}
-        <div class="card card-glow mb-4">
-            <div class="card-header text-white d-flex justify-content-between align-items-center">
-                <strong>⚙️ {% trans "Configuração Ativa" %}</strong>
-                <button class="btn btn-sm btn-warning" data-bs-toggle="collapse" data-bs-target="#editConfig">
-                    {% trans "Editar" %}
+        <div class="card card-glow mb-4" style="border-color: #fbbf24 !important; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4) !important;">
+            <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <strong style="font-size: 1.2rem;">⚙️ {% trans "CONFIGURAÇÃO DO JOGO" %}</strong>
+                <button class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#editConfig">
+                    ✏️ {% trans "Editar" %}
                 </button>
             </div>
-            <div class="card-body">
-                <div class="row text-white">
+            <div class="card-body" style="background: rgba(251, 191, 36, 0.05);">
+                <div class="row text-white align-items-center">
+                    <div class="col-md-2">
+                        <strong>{% trans "Status" %}:</strong>
+                        {% if active_config.is_active %}
+                            <span class="badge bg-success">✅ {% trans "Ativo" %}</span>
+                        {% else %}
+                            <span class="badge bg-danger">❌ {% trans "Inativo" %}</span>
+                        {% endif %}
+                    </div>
                     <div class="col-md-3">
                         <strong>{% trans "Nome" %}:</strong> {{ active_config.name }}
                     </div>
-                    <div class="col-md-3">
-                        <strong>{% trans "Custo por Giro" %}:</strong> {{ active_config.cost_per_spin }} fichas
+                    <div class="col-md-2">
+                        <strong>{% trans "Custo/Giro" %}:</strong> {{ active_config.cost_per_spin }} fichas
+                    </div>
+                    <div class="col-md-2">
+                        <strong>{% trans "Jackpot" %}:</strong> {{ active_config.jackpot_amount }}
                     </div>
                     <div class="col-md-3">
-                        <strong>{% trans "Jackpot Atual" %}:</strong> {{ active_config.jackpot_amount }} fichas
-                    </div>
-                    <div class="col-md-3">
-                        <strong>{% trans "Chance de Jackpot" %}:</strong> {{ active_config.jackpot_chance }}%
+                        <strong>{% trans "Chance Jackpot" %}:</strong> {{ active_config.jackpot_chance }}%
                     </div>
                 </div>
                 
@@ -198,29 +246,45 @@
                         <input type="hidden" name="config_id" value="{{ active_config.id }}">
                         
                         <div class="col-md-3">
-                            <label class="text-white">{% trans "Nome" %}</label>
-                            {{ config_form.name }}
+                            <label class="text-white"><strong>{% trans "Nome" %}</strong></label>
+                            <input type="text" name="name" class="form-control form-dark" value="{{ active_config.name }}" required>
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Custo por Giro" %}</label>
-                            {{ config_form.cost_per_spin }}
+                            <label class="text-white"><strong>{% trans "Custo por Giro" %}</strong></label>
+                            <input type="number" name="cost_per_spin" class="form-control form-dark" value="{{ active_config.cost_per_spin }}" min="1" required>
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Jackpot Atual" %}</label>
-                            {{ config_form.jackpot_amount }}
+                            <label class="text-white"><strong>{% trans "Jackpot Atual" %}</strong></label>
+                            <input type="number" name="jackpot_amount" class="form-control form-dark" value="{{ active_config.jackpot_amount }}" min="0" required>
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Chance Jackpot (%)" %}</label>
-                            {{ config_form.jackpot_chance }}
+                            <label class="text-white"><strong>{% trans "Chance Jackpot (%)" %}</strong></label>
+                            <input type="number" name="jackpot_chance" class="form-control form-dark" value="{{ active_config.jackpot_chance }}" min="0" max="100" step="0.01" required>
                         </div>
-                        <div class="col-md-1">
-                            <label class="text-white">{% trans "Ativo" %}</label><br>
-                            {{ config_form.is_active }}
+                        <div class="col-md-2">
+                            <label class="text-white"><strong>{% trans "Status" %}</strong></label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="id_is_active" {% if active_config.is_active %}checked{% endif %}>
+                                <label class="form-check-label text-white ms-2" for="id_is_active">
+                                    {% trans "Jogo Ativo" %}
+                                </label>
+                            </div>
                         </div>
-                        <div class="col-md-2 d-flex align-items-end">
+                        <div class="col-md-1 d-flex align-items-end">
                             <button type="submit" class="btn btn-success w-100">💾 {% trans "Salvar" %}</button>
                         </div>
                     </form>
+                    
+                    <div class="mt-3 p-3 bg-dark bg-opacity-25 rounded">
+                        <small class="text-muted">
+                            <strong>{% trans "Status:" %}</strong>
+                            {% if active_config.is_active %}
+                                <span class="text-success">✅ {% trans "O jogo está disponível para os jogadores" %}</span>
+                            {% else %}
+                                <span class="text-danger">❌ {% trans "O jogo está desativado e não aparecerá para os jogadores" %}</span>
+                            {% endif %}
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -293,11 +357,45 @@
                                         <td>{{ symbol.get_symbol_display }}</td>
                                         <td>{{ symbol.weight }}</td>
                                         <td class="text-end">
+                                            <button class="btn btn-sm btn-warning me-2" data-bs-toggle="collapse" data-bs-target="#editSymbol{{ symbol.id }}">
+                                                ✏️ {% trans "Editar" %}
+                                            </button>
                                             <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Tem certeza que deseja remover este símbolo?" %}');">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="action" value="delete_symbol">
                                                 <input type="hidden" name="symbol_id" value="{{ symbol.id }}">
                                                 <button type="submit" class="btn-delete">🗑️</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <!-- Formulário de Edição -->
+                                    <tr class="collapse" id="editSymbol{{ symbol.id }}">
+                                        <td colspan="4" style="background: rgba(255, 193, 7, 0.1); padding: 20px;">
+                                            <form method="post" class="row g-3">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="edit_symbol">
+                                                <input type="hidden" name="symbol_id" value="{{ symbol.id }}">
+                                                
+                                                <div class="col-12 mb-2">
+                                                    <strong class="text-warning">✏️ {% trans "Editando:" %} {{ symbol.get_symbol_display }}</strong>
+                                                </div>
+                                                
+                                                <div class="col-md-4">
+                                                    <label class="text-white">{% trans "Símbolo" %}</label>
+                                                    <input type="text" name="symbol" class="form-control form-dark" value="{{ symbol.symbol }}" required>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="text-white">{% trans "Ícone/Emoji" %}</label>
+                                                    <input type="text" name="icon" class="form-control form-dark" value="{{ symbol.icon }}" maxlength="10">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="text-white">{% trans "Peso (Probabilidade)" %}</label>
+                                                    <input type="number" name="weight" class="form-control form-dark" value="{{ symbol.weight }}" min="1" required>
+                                                </div>
+                                                <div class="col-md-2 d-flex align-items-end gap-2">
+                                                    <button type="submit" class="btn btn-success">💾 {% trans "Salvar" %}</button>
+                                                    <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#editSymbol{{ symbol.id }}">❌</button>
+                                                </div>
                                             </form>
                                         </td>
                                     </tr>
@@ -392,11 +490,60 @@
                                             {% endif %}
                                         </td>
                                         <td class="text-end">
+                                            <button class="btn btn-sm btn-warning me-2" data-bs-toggle="collapse" data-bs-target="#editPrize{{ prize.id }}">
+                                                ✏️ {% trans "Editar" %}
+                                            </button>
                                             <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Tem certeza que deseja remover este prêmio?" %}');">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="action" value="delete_prize">
                                                 <input type="hidden" name="prize_id" value="{{ prize.id }}">
-                                                <button type="submit" class="btn-delete">🗑️ {% trans "Remover" %}</button>
+                                                <button type="submit" class="btn-delete">🗑️</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <!-- Formulário de Edição -->
+                                    <tr class="collapse" id="editPrize{{ prize.id }}">
+                                        <td colspan="4" style="background: rgba(255, 193, 7, 0.1); padding: 20px;">
+                                            <form method="post" class="row g-3">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="edit_prize">
+                                                <input type="hidden" name="prize_id" value="{{ prize.id }}">
+                                                
+                                                <div class="col-12 mb-2">
+                                                    <strong class="text-warning">✏️ {% trans "Editando prêmio:" %} {{ prize.symbol.get_symbol_display }}</strong>
+                                                </div>
+                                                
+                                                <div class="col-md-3">
+                                                    <label class="text-white">{% trans "Símbolo" %}</label>
+                                                    <select name="symbol" class="form-select form-dark" required>
+                                                        {% for sym in symbols %}
+                                                        <option value="{{ sym.id }}" {% if prize.symbol.id == sym.id %}selected{% endif %}>
+                                                            {{ sym.icon }} {{ sym.get_symbol_display }}
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="text-white">{% trans "Combinações" %}</label>
+                                                    <input type="number" name="matches_required" class="form-control form-dark" value="{{ prize.matches_required }}" min="1" max="3" required>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="text-white">{% trans "Item (opcional)" %}</label>
+                                                    <select name="item" class="form-select form-dark">
+                                                        <option value="">-- {% trans "Nenhum" %} --</option>
+                                                        {% for item in items %}
+                                                        <option value="{{ item.id }}" {% if prize.item and prize.item.id == item.id %}selected{% endif %}>{{ item.name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="text-white">{% trans "Fichas" %}</label>
+                                                    <input type="number" name="fichas_prize" class="form-control form-dark" value="{{ prize.fichas_prize }}" min="0" required>
+                                                </div>
+                                                <div class="col-md-2 d-flex align-items-end gap-2">
+                                                    <button type="submit" class="btn btn-success">💾 {% trans "Salvar" %}</button>
+                                                    <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#editPrize{{ prize.id }}">❌</button>
+                                                </div>
                                             </form>
                                         </td>
                                     </tr>
