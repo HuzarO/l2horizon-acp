@@ -1,0 +1,117 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Dice Game Leaderboard" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .leaderboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .leaderboard-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .rank-1 { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #000; }
+    .rank-2 { background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%); color: #000; }
+    .rank-3 { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; }
+
+    .player-row {
+        border-bottom: 1px solid #eee;
+        padding: 15px 0;
+    }
+
+    .player-row:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="leaderboard-container">
+    <h1 class="text-center mb-4">🏆 {% trans "Dice Game Leaderboard" %}</h1>
+
+    <!-- Top Winners by Profit -->
+    <div class="leaderboard-card">
+        <h3>💰 {% trans "Top 10 Maiores Lucros" %}</h3>
+        {% if top_winners %}
+            {% for winner in top_winners %}
+            <div class="player-row d-flex justify-content-between align-items-center {% if forloop.counter <= 3 %}rank-{{ forloop.counter }} rounded p-3{% endif %}">
+                <div>
+                    <span class="badge bg-primary me-2">#{{ forloop.counter }}</span>
+                    <strong>{{ winner.user__username }}</strong>
+                </div>
+                <div>
+                    <span class="badge {% if winner.profit >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                        {% if winner.profit >= 0 %}+{% endif %}{{ winner.profit }} fichas
+                    </span>
+                    <span class="text-muted ms-2">{{ winner.win_rate }}% win rate</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">{% trans "Nenhum jogador ainda." %}</p>
+        {% endif %}
+    </div>
+
+    <!-- Top Players -->
+    <div class="leaderboard-card">
+        <h3>🎲 {% trans "Top 10 Apostadores (Mais Jogos)" %}</h3>
+        {% if top_players %}
+            {% for player in top_players %}
+            <div class="player-row d-flex justify-content-between align-items-center {% if forloop.counter <= 3 %}rank-{{ forloop.counter }} rounded p-3{% endif %}">
+                <div>
+                    <span class="badge bg-primary me-2">#{{ forloop.counter }}</span>
+                    <strong>{{ player.user__username }}</strong>
+                </div>
+                <div>
+                    <span class="badge bg-info">{{ player.total_games }} jogadas</span>
+                    <span class="text-muted ms-2">{{ player.win_rate }}% win rate</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">{% trans "Nenhum jogador ainda." %}</p>
+        {% endif %}
+    </div>
+
+    <!-- Biggest Wins -->
+    <div class="leaderboard-card">
+        <h3>💎 {% trans "Top 10 Maiores Vitórias Individuais" %}</h3>
+        {% if biggest_wins %}
+            {% for win in biggest_wins %}
+            <div class="player-row d-flex justify-content-between align-items-center {% if forloop.counter <= 3 %}rank-{{ forloop.counter }} rounded p-3{% endif %}">
+                <div>
+                    <span class="badge bg-primary me-2">#{{ forloop.counter }}</span>
+                    <strong>{{ win.user.username }}</strong>
+                </div>
+                <div>
+                    <span class="badge bg-success">{{ win.prize_amount }} fichas</span>
+                    <small class="text-muted ms-2">{{ win.created_at|date:"d/m/Y H:i" }}</small>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">{% trans "Nenhuma vitória ainda." %}</p>
+        {% endif %}
+    </div>
+
+    <div class="text-center mt-5">
+        <a href="{% url 'games:dice_game_page' %}" class="btn btn-primary btn-lg rounded-pill me-2">
+            🎲 {% trans "Voltar para Dice Game" %}
+        </a>
+        <a href="{% url 'games:dice_game_statistics' %}" class="btn btn-secondary btn-lg rounded-pill">
+            📊 {% trans "Ver Estatísticas" %}
+        </a>
+    </div>
+</div>
+{% endblock %}
+

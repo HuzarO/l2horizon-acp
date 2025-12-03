@@ -1,0 +1,114 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Slot Machine Leaderboard" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+    .leaderboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .leaderboard-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .rank-1 { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #000; }
+    .rank-2 { background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%); color: #000; }
+    .rank-3 { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; }
+
+    .player-row {
+        border-bottom: 1px solid #eee;
+        padding: 15px 0;
+    }
+
+    .player-row:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="leaderboard-container">
+    <h1 class="text-center mb-4">🏆 {% trans "Slot Machine Leaderboard" %}</h1>
+
+    <!-- Top Winners -->
+    <div class="leaderboard-card">
+        <h3>💰 {% trans "Top 10 Maiores Ganhadores" %}</h3>
+        {% if top_winners %}
+            {% for winner in top_winners %}
+            <div class="player-row d-flex justify-content-between align-items-center {% if forloop.counter <= 3 %}rank-{{ forloop.counter }} rounded p-3{% endif %}">
+                <div>
+                    <span class="badge bg-primary me-2">#{{ forloop.counter }}</span>
+                    <strong>{{ winner.user__username }}</strong>
+                </div>
+                <div>
+                    <span class="badge bg-success">{{ winner.total_won }} fichas</span>
+                    <span class="text-muted ms-2">{{ winner.total_plays }} jogadas</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">{% trans "Nenhum ganhador ainda." %}</p>
+        {% endif %}
+    </div>
+
+    <!-- Top Players -->
+    <div class="leaderboard-card">
+        <h3>🎰 {% trans "Top 10 Jogadores (Mais Jogadas)" %}</h3>
+        {% if top_players %}
+            {% for player in top_players %}
+            <div class="player-row d-flex justify-content-between align-items-center {% if forloop.counter <= 3 %}rank-{{ forloop.counter }} rounded p-3{% endif %}">
+                <div>
+                    <span class="badge bg-primary me-2">#{{ forloop.counter }}</span>
+                    <strong>{{ player.user__username }}</strong>
+                </div>
+                <div>
+                    <span class="badge bg-info">{{ player.total_plays }} jogadas</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">{% trans "Nenhum jogador ainda." %}</p>
+        {% endif %}
+    </div>
+
+    <!-- Biggest Wins -->
+    <div class="leaderboard-card">
+        <h3>💎 {% trans "Top 10 Maiores Prêmios Individuais" %}</h3>
+        {% if biggest_wins %}
+            {% for win in biggest_wins %}
+            <div class="player-row d-flex justify-content-between align-items-center {% if forloop.counter <= 3 %}rank-{{ forloop.counter }} rounded p-3{% endif %}">
+                <div>
+                    <span class="badge bg-primary me-2">#{{ forloop.counter }}</span>
+                    <strong>{{ win.user.username }}</strong>
+                    {% if win.is_jackpot %}
+                        <span class="badge bg-warning ms-2">💎 JACKPOT</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <span class="badge bg-success">{{ win.fichas_won }} fichas</span>
+                    <small class="text-muted ms-2">{{ win.created_at|date:"d/m/Y H:i" }}</small>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">{% trans "Nenhum prêmio ainda." %}</p>
+        {% endif %}
+    </div>
+
+    <div class="text-center mt-5">
+        <a href="{% url 'games:slot_machine_page' %}" class="btn btn-primary btn-lg rounded-pill">
+            🎰 {% trans "Voltar para Slot Machine" %}
+        </a>
+    </div>
+</div>
+{% endblock %}
+

@@ -533,3 +533,277 @@ class BattlePassItemExchange(BaseModel):
             return False, _("Você não possui progresso no Battle Pass atual.")
         except Exception as e:
             return False, str(e)
+
+
+# ==============================
+# Slot Machine System
+# ==============================
+
+class SlotMachineConfig(BaseModel):
+    """Configuração da Slot Machine"""
+    name = models.CharField(max_length=100, verbose_name=_("Name"))
+    cost_per_spin = models.PositiveIntegerField(default=1, verbose_name=_("Cost per Spin (Fichas)"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
+    jackpot_amount = models.PositiveIntegerField(default=0, verbose_name=_("Jackpot Amount"))
+    jackpot_chance = models.FloatField(default=0.1, verbose_name=_("Jackpot Chance (%)"))
+
+    class Meta:
+        verbose_name = _("Slot Machine Config")
+        verbose_name_plural = _("Slot Machine Configs")
+
+    def __str__(self):
+        return self.name
+
+
+class SlotMachineSymbol(BaseModel):
+    """Símbolos disponíveis na Slot Machine"""
+    SYMBOL_CHOICES = [
+        ('sword', _('Espada')),
+        ('shield', _('Escudo')),
+        ('potion', _('Poção')),
+        ('gem', _('Gema')),
+        ('gold', _('Ouro')),
+        ('armor', _('Armadura')),
+        ('bow', _('Arco')),
+        ('staff', _('Cajado')),
+        ('jackpot', _('Jackpot')),
+    ]
+    
+    symbol = models.CharField(max_length=20, choices=SYMBOL_CHOICES, unique=True, verbose_name=_("Symbol"))
+    weight = models.PositiveIntegerField(default=10, verbose_name=_("Weight"))
+    icon = models.CharField(max_length=50, default='🎰', verbose_name=_("Icon/Emoji"))
+    
+    class Meta:
+        verbose_name = _("Slot Machine Symbol")
+        verbose_name_plural = _("Slot Machine Symbols")
+
+    def __str__(self):
+        return f"{self.get_symbol_display()} ({self.icon})"
+
+
+class SlotMachinePrize(BaseModel):
+    """Prêmios da Slot Machine baseados em combinações"""
+    config = models.ForeignKey(SlotMachineConfig, on_delete=models.CASCADE, related_name='prizes', verbose_name=_("Config"))
+    symbol = models.ForeignKey(SlotMachineSymbol, on_delete=models.CASCADE, verbose_name=_("Symbol"))
+    matches_required = models.PositiveIntegerField(default=3, verbose_name=_("Matches Required"))
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, null=True, blank=True, verbose_name=_("Item"))
+    fichas_prize = models.PositiveIntegerField(default=0, verbose_name=_("Fichas Prize"))
+    
+    class Meta:
+        verbose_name = _("Slot Machine Prize")
+        verbose_name_plural = _("Slot Machine Prizes")
+        unique_together = ('config', 'symbol', 'matches_required')
+
+    def __str__(self):
+        return f"{self.matches_required}x {self.symbol.get_symbol_display()}"
+
+
+class SlotMachineHistory(BaseModel):
+    """Histórico de jogadas na Slot Machine"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    config = models.ForeignKey(SlotMachineConfig, on_delete=models.CASCADE, verbose_name=_("Config"))
+    symbols_result = models.CharField(max_length=100, verbose_name=_("Symbols Result"))
+    prize_won = models.ForeignKey(SlotMachinePrize, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Prize Won"))
+    is_jackpot = models.BooleanField(default=False, verbose_name=_("Is Jackpot"))
+    fichas_won = models.PositiveIntegerField(default=0, verbose_name=_("Fichas Won"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created At"))
+
+    class Meta:
+        verbose_name = _("Slot Machine History")
+        verbose_name_plural = _("Slot Machine Histories")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.symbols_result}"
+
+
+# ==============================
+# Dice Game System
+# ==============================
+
+class DiceGameConfig(BaseModel):
+    """Configuração do Dice Game"""
+    min_bet = models.PositiveIntegerField(default=1, verbose_name=_("Minimum Bet"))
+    max_bet = models.PositiveIntegerField(default=100, verbose_name=_("Maximum Bet"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
+    
+    # Multiplicadores
+    specific_number_multiplier = models.FloatField(default=5.0, verbose_name=_("Specific Number Multiplier"))
+    even_odd_multiplier = models.FloatField(default=2.0, verbose_name=_("Even/Odd Multiplier"))
+    high_low_multiplier = models.FloatField(default=2.0, verbose_name=_("High/Low Multiplier"))
+    
+    class Meta:
+        verbose_name = _("Dice Game Config")
+        verbose_name_plural = _("Dice Game Configs")
+
+    def __str__(self):
+        return f"Dice Game Config (Min: {self.min_bet}, Max: {self.max_bet})"
+
+
+class DiceGamePrize(BaseModel):
+    """Prêmios especiais para o Dice Game"""
+    name = models.CharField(max_length=100, verbose_name=_("Prize Name"))
+    description = models.TextField(blank=True, verbose_name=_("Description"))
+    drop_chance = models.FloatField(default=5.0, verbose_name=_("Drop Chance (%)"),
+                                     help_text=_("Chance de ganhar este prêmio em uma vitória"))
+    fichas_bonus = models.PositiveIntegerField(default=0, verbose_name=_("Bonus Fichas"))
+    item = models.ForeignKey(Item, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Item"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
+    
+    class Meta:
+        verbose_name = _("Dice Game Prize")
+        verbose_name_plural = _("Dice Game Prizes")
+    
+    def __str__(self):
+        return f"{self.name} ({self.drop_chance}%)"
+
+
+class DiceGameHistory(BaseModel):
+    """Histórico de jogadas no Dice Game"""
+    BET_TYPE_CHOICES = [
+        ('number', _('Número Específico')),
+        ('even', _('Par')),
+        ('odd', _('Ímpar')),
+        ('high', _('Alto (4-6)')),
+        ('low', _('Baixo (1-3)')),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    bet_type = models.CharField(max_length=10, choices=BET_TYPE_CHOICES, verbose_name=_("Bet Type"))
+    bet_value = models.PositiveIntegerField(null=True, blank=True, verbose_name=_("Bet Value"))
+    bet_amount = models.PositiveIntegerField(verbose_name=_("Bet Amount (Fichas)"))
+    dice_result = models.PositiveIntegerField(verbose_name=_("Dice Result"))
+    won = models.BooleanField(default=False, verbose_name=_("Won"))
+    prize_amount = models.PositiveIntegerField(default=0, verbose_name=_("Prize Amount"))
+    bonus_prize = models.ForeignKey('DiceGamePrize', on_delete=models.SET_NULL, null=True, blank=True, 
+                                     verbose_name=_("Bonus Prize Won"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created At"))
+
+    class Meta:
+        verbose_name = _("Dice Game History")
+        verbose_name_plural = _("Dice Game Histories")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_bet_type_display()} - {'Won' if self.won else 'Lost'}"
+
+
+# ==============================
+# Fishing Game System
+# ==============================
+
+class FishingGameConfig(BaseModel):
+    """Configuração do Fishing Game"""
+    name = models.CharField(max_length=100, default="Fishing Game", verbose_name=_("Name"))
+    cost_per_cast = models.PositiveIntegerField(default=1, verbose_name=_("Cost per Cast (Fichas)"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
+    
+    class Meta:
+        verbose_name = _("Fishing Game Config")
+        verbose_name_plural = _("Fishing Game Configs")
+    
+    def __str__(self):
+        return f"{self.name} - {'Active' if self.is_active else 'Inactive'}"
+
+
+class FishingRod(BaseModel):
+    """Vara de pesca do jogador"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    level = models.PositiveIntegerField(default=1, verbose_name=_("Level"))
+    experience = models.PositiveIntegerField(default=0, verbose_name=_("Experience"))
+    
+    class Meta:
+        verbose_name = _("Fishing Rod")
+        verbose_name_plural = _("Fishing Rods")
+
+    def __str__(self):
+        return f"{self.user.username} - Rod Level {self.level}"
+
+    def add_experience(self, amount):
+        """Adiciona experiência e verifica se sobe de nível"""
+        self.experience += amount
+        # A cada 100 XP sobe um nível
+        while self.experience >= (self.level * 100):
+            self.experience -= (self.level * 100)
+            self.level += 1
+        self.save()
+
+
+class Fish(BaseModel):
+    """Tipos de peixes disponíveis"""
+    RARITY_CHOICES = [
+        ('common', _('Comum')),
+        ('rare', _('Raro')),
+        ('epic', _('Épico')),
+        ('legendary', _('Lendário')),
+    ]
+    
+    name = models.CharField(max_length=100, verbose_name=_("Name"))
+    rarity = models.CharField(max_length=20, choices=RARITY_CHOICES, verbose_name=_("Rarity"))
+    icon = models.CharField(max_length=10, default='🐟', verbose_name=_("Icon"), blank=True)
+    image = models.ImageField(upload_to='fish/', null=True, blank=True, verbose_name=_("Image"))
+    min_rod_level = models.PositiveIntegerField(default=1, verbose_name=_("Min Rod Level"))
+    weight = models.PositiveIntegerField(default=10, verbose_name=_("Catch Weight"))
+    experience_reward = models.PositiveIntegerField(default=10, verbose_name=_("Experience Reward"))
+    item_reward = models.ForeignKey(Item, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Item Reward"))
+    fichas_reward = models.PositiveIntegerField(default=0, verbose_name=_("Fichas Reward"))
+    
+    class Meta:
+        verbose_name = _("Fish")
+        verbose_name_plural = _("Fishes")
+
+    def get_display_image(self):
+        """Retorna URL da imagem ou ícone como fallback"""
+        if self.image:
+            return self.image.url
+        return None
+
+    def __str__(self):
+        return f"{self.icon if self.icon else '🐟'} {self.name} ({self.get_rarity_display()})"
+
+
+class FishingHistory(BaseModel):
+    """Histórico de pescarias"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    fish = models.ForeignKey(Fish, on_delete=models.CASCADE, verbose_name=_("Fish"))
+    rod_level = models.PositiveIntegerField(verbose_name=_("Rod Level"))
+    success = models.BooleanField(default=True, verbose_name=_("Success"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created At"))
+
+    class Meta:
+        verbose_name = _("Fishing History")
+        verbose_name_plural = _("Fishing Histories")
+
+    def __str__(self):
+        return f"{self.user.username} caught {self.fish.name}"
+
+
+class FishingBait(BaseModel):
+    """Iscas especiais para aumentar chances"""
+    name = models.CharField(max_length=100, verbose_name=_("Name"))
+    description = models.TextField(verbose_name=_("Description"))
+    price = models.PositiveIntegerField(verbose_name=_("Price (Fichas)"))
+    rarity_boost = models.CharField(max_length=20, choices=Fish.RARITY_CHOICES, verbose_name=_("Rarity Boost"))
+    boost_percentage = models.FloatField(default=10.0, verbose_name=_("Boost Percentage"))
+    duration_minutes = models.PositiveIntegerField(default=30, verbose_name=_("Duration (minutes)"))
+    
+    class Meta:
+        verbose_name = _("Fishing Bait")
+        verbose_name_plural = _("Fishing Baits")
+
+    def __str__(self):
+        return self.name
+
+
+class UserFishingBait(BaseModel):
+    """Iscas ativas do usuário"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    bait = models.ForeignKey(FishingBait, on_delete=models.CASCADE, verbose_name=_("Bait"))
+    activated_at = models.DateTimeField(verbose_name=_("Activated At"))
+    expires_at = models.DateTimeField(verbose_name=_("Expires At"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
+
+    class Meta:
+        verbose_name = _("User Fishing Bait")
+        verbose_name_plural = _("User Fishing Baits")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.bait.name}"

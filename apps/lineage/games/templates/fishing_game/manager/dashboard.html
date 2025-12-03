@@ -1,0 +1,840 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Fishing Game Manager" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+.mgr-bg { 
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); 
+    min-height: 100vh; 
+    padding: 30px 0; 
+}
+.card-glow { 
+    background: linear-gradient(to bottom right, #1a1a2e, #121220); 
+    border: 2px solid #6f42c1; 
+    border-radius: 12px; 
+    box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); 
+}
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 20px;
+    color: white;
+    margin-bottom: 20px;
+}
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+.form-dark {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: white !important;
+}
+.form-dark:focus {
+    background: rgba(255,255,255,0.08) !important;
+    border-color: #6f42c1 !important;
+    color: white !important;
+    box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25) !important;
+}
+/* Estilos específicos para select */
+.form-select.form-dark,
+select.form-dark {
+    background: rgba(30, 30, 50, 0.95) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: white !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+}
+.form-select.form-dark option,
+select.form-dark option {
+    background: #1a1a2e !important;
+    color: white !important;
+    padding: 8px !important;
+}
+.form-select.form-dark:focus,
+select.form-dark:focus {
+    background: rgba(30, 30, 50, 1) !important;
+    border-color: #6f42c1 !important;
+    color: white !important;
+    box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25) !important;
+}
+/* Estilos para textarea */
+textarea.form-dark {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: white !important;
+    resize: vertical;
+}
+textarea.form-dark:focus {
+    background: rgba(255,255,255,0.08) !important;
+    border-color: #6f42c1 !important;
+    color: white !important;
+}
+/* Estilos para input file */
+input[type="file"].form-dark {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: white !important;
+}
+input[type="file"].form-dark::file-selector-button {
+    background: #6f42c1;
+    color: white;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    margin-right: 0.75rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+input[type="file"].form-dark::file-selector-button:hover {
+    background: #5a32a3;
+}
+.form-check-input {
+    background-color: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.3);
+}
+.form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+.rarity-badge-common { background: #9ca3af; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 600; }
+.rarity-badge-rare { background: #3b82f6; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 600; }
+.rarity-badge-epic { background: #a855f7; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 600; }
+.rarity-badge-legendary { background: #fbbf24; color: black; padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; font-weight: 600; }
+.btn-sm {
+    font-size: 0.875rem;
+    padding: 5px 10px;
+}
+.btn-delete {
+    background: #dc3545;
+    border: none;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 5px;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+.btn-delete:hover {
+    background: #c82333;
+}
+.edit-form-row {
+    background: rgba(255, 193, 7, 0.1);
+    animation: slideIn 0.3s ease-in-out;
+}
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+/* Labels e textos */
+.text-white, label.text-white {
+    color: white !important;
+}
+label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+/* Placeholder */
+.form-dark::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+/* Prevenir mudança de cor no autocomplete */
+.form-dark:-webkit-autofill,
+.form-dark:-webkit-autofill:hover,
+.form-dark:-webkit-autofill:focus {
+    -webkit-text-fill-color: white !important;
+    -webkit-box-shadow: 0 0 0px 1000px rgba(30, 30, 50, 0.95) inset !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mgr-bg">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4 text-white">
+            <h3 class="m-0">🎣 {% trans "Gerenciar Fishing Game" %}</h3>
+            <div>
+                {% if total_fish == 0 %}
+                <form method="post" style="display: inline;" class="me-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="quick_setup">
+                    <button type="submit" class="btn btn-success rounded-pill">
+                        ⚡ {% trans "Setup Rápido Completo" %}
+                    </button>
+                </form>
+                {% endif %}
+                <a href="{% url 'games:fishing_game_page' %}" class="btn btn-outline-info rounded-pill">
+                    {% trans "Ver Fishing Game" %}
+                </a>
+            </div>
+        </div>
+
+        <!-- Alerta se não tiver configuração -->
+        {% if not config %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading">⚠️ {% trans "Jogo não configurado!" %}</h5>
+            <p>{% trans "Você precisa criar uma configuração antes de usar o Fishing Game." %}</p>
+            <hr>
+            <form method="post" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_default_config">
+                <button type="submit" class="btn btn-danger">
+                    ⚙️ {% trans "Criar Configuração Padrão" %}
+                </button>
+            </form>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+        <!-- Alerta se não tiver peixes -->
+        {% if total_fish == 0 %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading">⚠️ {% trans "Peixes não configurados!" %}</h5>
+            <p>{% trans "Você precisa adicionar peixes antes de usar o Fishing Game." %}</p>
+            <hr>
+            <div class="d-flex gap-2">
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="auto_populate_fish">
+                    <button type="submit" class="btn btn-success">
+                        ✨ {% trans "Popular 12 Peixes Automaticamente" %}
+                    </button>
+                </form>
+                <small class="text-muted align-self-center">
+                    {% trans "Ou adicione manualmente abaixo" %}
+                </small>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+        <!-- Alerta se não tiver iscas -->
+        {% if total_baits == 0 %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading">💡 {% trans "Iscas não configuradas!" %}</h5>
+            <p>{% trans "Iscas são opcionais, mas melhoram a experiência dos jogadores." %}</p>
+            <hr>
+            <div class="d-flex gap-2">
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="auto_populate_baits">
+                    <button type="submit" class="btn btn-success">
+                        ✨ {% trans "Popular 4 Iscas Automaticamente" %}
+                    </button>
+                </form>
+                <small class="text-muted align-self-center">
+                    {% trans "Ou adicione manualmente abaixo" %}
+                </small>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+        <!-- Estatísticas Principais -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div>{% trans "Total de Pescarias" %}</div>
+                    <div class="stat-value">{{ total_catches }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div>{% trans "Capturas Bem-sucedidas" %}</div>
+                    <div class="stat-value">{{ successful_catches }}</div>
+                    <small>{{ success_rate }}% taxa de sucesso</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div>{% trans "Pescadores Ativos" %}</div>
+                    <div class="stat-value">{{ total_rods }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div>{% trans "Nível Máximo de Vara" %}</div>
+                    <div class="stat-value">{{ max_rod_level }}</div>
+                    <small>Média: {{ avg_rod_level }}</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONFIGURAÇÃO DO JOGO -->
+        <div class="card card-glow mb-4" style="border-color: #fbbf24 !important; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4) !important;">
+            <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <strong style="font-size: 1.2rem;">⚙️ {% trans "CONFIGURAÇÃO DO JOGO" %}</strong>
+                {% if not config %}
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create_default_config">
+                    <button type="submit" class="btn btn-sm btn-light">
+                        ➕ {% trans "Criar Configuração" %}
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="card-body" style="background: rgba(251, 191, 36, 0.05);">
+                {% if config %}
+                <form method="post" class="row g-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_config">
+                    <input type="hidden" name="config_id" value="{{ config.id }}">
+                    
+                    <div class="col-md-4">
+                        <label class="form-label text-white">
+                            <strong>{% trans "Nome da Configuração" %}</strong>
+                        </label>
+                        <input type="text" name="name" class="form-control form-dark" value="{{ config.name }}" required>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label text-white">
+                            <strong>{% trans "Custo por Lançamento (Fichas)" %}</strong>
+                        </label>
+                        <input type="number" name="cost_per_cast" class="form-control form-dark" value="{{ config.cost_per_cast }}" min="1" required>
+                        <small class="text-muted d-block mt-1">{% trans "Custo em fichas por tentativa de pesca" %}</small>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label text-white">
+                            <strong>{% trans "Status do Jogo" %}</strong>
+                        </label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_active" id="id_is_active" {% if config.is_active %}checked{% endif %}>
+                            <label class="form-check-label text-white ms-2" for="id_is_active">
+                                {% if config.is_active %}
+                                    <span class="badge bg-success">✅ {% trans "Ativo" %}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">❌ {% trans "Inativo" %}</span>
+                                {% endif %}
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            💾 {% trans "Salvar" %}
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="mt-3 p-3 bg-dark bg-opacity-25 rounded">
+                    <small class="text-muted">
+                        <strong>{% trans "Status:" %}</strong>
+                        {% if config.is_active %}
+                            <span class="text-success">✅ {% trans "O jogo está disponível para os jogadores" %}</span>
+                        {% else %}
+                            <span class="text-danger">❌ {% trans "O jogo está desativado e não aparecerá para os jogadores" %}</span>
+                        {% endif %}
+                    </small>
+                </div>
+                {% else %}
+                <div class="alert alert-warning mb-0">
+                    <h5 class="alert-heading">⚠️ {% trans "Configuração não encontrada" %}</h5>
+                    <p class="mb-0">{% trans "Crie uma configuração para ativar o Fishing Game." %}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- GERENCIAR PEIXES -->
+        <div class="card card-glow mb-4">
+            <div class="card-header text-white d-flex justify-content-between align-items-center">
+                <strong>🐟 {% trans "Gerenciar Peixes" %} ({{ total_fish }})</strong>
+                <div>
+                    {% if total_fish == 0 %}
+                    <form method="post" style="display: inline;" class="me-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="auto_populate_fish">
+                        <button type="submit" class="btn btn-sm btn-warning">
+                            ✨ {% trans "Popular Auto" %}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <button class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#addFish">
+                        ➕ {% trans "Adicionar" %}
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Formulário Adicionar Peixe -->
+            <div class="collapse" id="addFish">
+                <div class="card-body border-bottom border-secondary">
+                    <form method="post" enctype="multipart/form-data" class="row g-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_fish">
+                        
+                        <div class="col-md-3">
+                            <label class="text-white">{% trans "Nome do Peixe" %}</label>
+                            {{ fish_form.name }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Imagem" %}</label>
+                            {{ fish_form.image }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Raridade" %}</label>
+                            {{ fish_form.rarity }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Nível Mín." %}</label>
+                            {{ fish_form.min_rod_level }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Peso" %}</label>
+                            {{ fish_form.weight }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "XP" %}</label>
+                            {{ fish_form.experience_reward }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Fichas" %}</label>
+                            {{ fish_form.fichas_reward }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="text-white">{% trans "Item (opcional)" %}</label>
+                            {{ fish_form.item_reward }}
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">➕ {% trans "Adicionar" %}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Lista de Peixes -->
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Peixe" %}</th>
+                                <th>{% trans "Raridade" %}</th>
+                                <th>{% trans "Nível Mín." %}</th>
+                                <th>{% trans "Peso" %}</th>
+                                <th>{% trans "Recompensas" %}</th>
+                                <th class="text-end">{% trans "Ações" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fish in all_fish %}
+                            <tr>
+                                <td>
+                                    {% if fish.image %}
+                                        <img src="{{ fish.image.url }}" alt="{{ fish.name }}" 
+                                             style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 10px;">
+                                    {% else %}
+                                        <span style="font-size: 2rem; margin-right: 10px;">{{ fish.icon }}</span>
+                                    {% endif %}
+                                    <strong>{{ fish.name }}</strong>
+                                </td>
+                                <td>
+                                    <span class="rarity-badge-{{ fish.rarity }}">
+                                        {{ fish.get_rarity_display|upper }}
+                                    </span>
+                                </td>
+                                <td>Level {{ fish.min_rod_level }}+</td>
+                                <td>{{ fish.weight }}</td>
+                                <td>
+                                    {{ fish.experience_reward }} XP
+                                    {% if fish.fichas_reward > 0 %}, {{ fish.fichas_reward }} fichas{% endif %}
+                                    {% if fish.item_reward %}, {{ fish.item_reward.name }}{% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-warning me-2" data-bs-toggle="collapse" data-bs-target="#editFish{{ fish.id }}">
+                                        ✏️ {% trans "Editar" %}
+                                    </button>
+                                    <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Tem certeza que deseja remover este peixe?" %}');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_fish">
+                                        <input type="hidden" name="fish_id" value="{{ fish.id }}">
+                                        <button type="submit" class="btn-delete">🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <!-- Formulário de Edição (Colapsável) -->
+                            <tr class="collapse" id="editFish{{ fish.id }}">
+                                <td colspan="6" style="background: rgba(255, 193, 7, 0.1); padding: 20px;">
+                                    <form method="post" enctype="multipart/form-data" class="row g-3">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="edit_fish">
+                                        <input type="hidden" name="fish_id" value="{{ fish.id }}">
+                                        
+                                        <div class="col-12 mb-2">
+                                            <strong class="text-warning">✏️ {% trans "Editando:" %} {{ fish.name }}</strong>
+                                        </div>
+                                        
+                                        <div class="col-md-3">
+                                            <label class="text-white">{% trans "Nome do Peixe" %}</label>
+                                            <input type="text" name="name" class="form-control form-dark" value="{{ fish.name }}" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Ícone" %}</label>
+                                            <input type="text" name="icon" class="form-control form-dark" value="{{ fish.icon }}" maxlength="10">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Imagem" %}</label>
+                                            <input type="file" name="image" class="form-control form-dark" accept="image/*">
+                                            {% if fish.image %}
+                                            <small class="text-muted">{% trans "Atual:" %} <a href="{{ fish.image.url }}" target="_blank">{% trans "Ver" %}</a></small>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Raridade" %}</label>
+                                            <select name="rarity" class="form-select form-dark" required>
+                                                <option value="common" {% if fish.rarity == 'common' %}selected{% endif %}>{% trans "Comum" %}</option>
+                                                <option value="rare" {% if fish.rarity == 'rare' %}selected{% endif %}>{% trans "Raro" %}</option>
+                                                <option value="epic" {% if fish.rarity == 'epic' %}selected{% endif %}>{% trans "Épico" %}</option>
+                                                <option value="legendary" {% if fish.rarity == 'legendary' %}selected{% endif %}>{% trans "Lendário" %}</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Nível Mín. Vara" %}</label>
+                                            <input type="number" name="min_rod_level" class="form-control form-dark" value="{{ fish.min_rod_level }}" min="1" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Peso" %}</label>
+                                            <input type="number" name="weight" class="form-control form-dark" value="{{ fish.weight }}" min="1" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "XP" %}</label>
+                                            <input type="number" name="experience_reward" class="form-control form-dark" value="{{ fish.experience_reward }}" min="0" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Fichas" %}</label>
+                                            <input type="number" name="fichas_reward" class="form-control form-dark" value="{{ fish.fichas_reward }}" min="0" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="text-white">{% trans "Item (opcional)" %}</label>
+                                            <select name="item_reward" class="form-select form-dark">
+                                                <option value="">-- {% trans "Nenhum" %} --</option>
+                                                {% for item in items %}
+                                                <option value="{{ item.id }}" {% if fish.item_reward.id == item.id %}selected{% endif %}>{{ item.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 d-flex align-items-end gap-2">
+                                            <button type="submit" class="btn btn-success">💾 {% trans "Salvar" %}</button>
+                                            <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#editFish{{ fish.id }}">❌ {% trans "Cancelar" %}</button>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">{% trans "Nenhum peixe configurado" %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- GERENCIAR ISCAS -->
+        <div class="card card-glow mb-4">
+            <div class="card-header text-white d-flex justify-content-between align-items-center">
+                <strong>✨ {% trans "Gerenciar Iscas" %} ({{ total_baits }})</strong>
+                <div>
+                    {% if total_baits == 0 %}
+                    <form method="post" style="display: inline;" class="me-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="auto_populate_baits">
+                        <button type="submit" class="btn btn-sm btn-warning">
+                            ✨ {% trans "Popular Auto" %}
+                        </button>
+                    </form>
+                    {% endif %}
+                    <button class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#addBait">
+                        ➕ {% trans "Adicionar" %}
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Formulário Adicionar Isca -->
+            <div class="collapse" id="addBait">
+                <div class="card-body border-bottom border-secondary">
+                    <form method="post" class="row g-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_bait">
+                        
+                        <div class="col-md-3">
+                            <label class="text-white">{% trans "Nome da Isca" %}</label>
+                            {{ bait_form.name }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="text-white">{% trans "Descrição" %}</label>
+                            {{ bait_form.description }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Preço (Fichas)" %}</label>
+                            {{ bait_form.price }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Raridade Beneficiada" %}</label>
+                            {{ bait_form.rarity_boost }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Bônus (%)" %}</label>
+                            {{ bait_form.boost_percentage }}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="text-white">{% trans "Duração (min)" %}</label>
+                            {{ bait_form.duration_minutes }}
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">➕ {% trans "Adicionar" %}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Lista de Iscas -->
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Nome" %}</th>
+                                <th>{% trans "Descrição" %}</th>
+                                <th>{% trans "Preço" %}</th>
+                                <th>{% trans "Benefício" %}</th>
+                                <th>{% trans "Duração" %}</th>
+                                <th class="text-end">{% trans "Ações" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bait in all_baits %}
+                            <tr>
+                                <td><strong>{{ bait.name }}</strong></td>
+                                <td class="text-muted small">{{ bait.description|truncatewords:10 }}</td>
+                                <td>{{ bait.price }} fichas</td>
+                                <td>
+                                    +{{ bait.boost_percentage }}% para
+                                    <span class="rarity-badge-{{ bait.rarity_boost }}">
+                                        {{ bait.get_rarity_boost_display|upper }}
+                                    </span>
+                                </td>
+                                <td>{{ bait.duration_minutes }} min</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-warning me-2" data-bs-toggle="collapse" data-bs-target="#editBait{{ bait.id }}">
+                                        ✏️ {% trans "Editar" %}
+                                    </button>
+                                    <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Tem certeza que deseja remover esta isca?" %}');">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_bait">
+                                        <input type="hidden" name="bait_id" value="{{ bait.id }}">
+                                        <button type="submit" class="btn-delete">🗑️</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <!-- Formulário de Edição (Colapsável) -->
+                            <tr class="collapse" id="editBait{{ bait.id }}">
+                                <td colspan="6" style="background: rgba(255, 193, 7, 0.1); padding: 20px;">
+                                    <form method="post" class="row g-3">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="edit_bait">
+                                        <input type="hidden" name="bait_id" value="{{ bait.id }}">
+                                        
+                                        <div class="col-12 mb-2">
+                                            <strong class="text-warning">✏️ {% trans "Editando:" %} {{ bait.name }}</strong>
+                                        </div>
+                                        
+                                        <div class="col-md-3">
+                                            <label class="text-white">{% trans "Nome da Isca" %}</label>
+                                            <input type="text" name="name" class="form-control form-dark" value="{{ bait.name }}" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="text-white">{% trans "Descrição" %}</label>
+                                            <textarea name="description" class="form-control form-dark" rows="1" required>{{ bait.description }}</textarea>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Preço (Fichas)" %}</label>
+                                            <input type="number" name="price" class="form-control form-dark" value="{{ bait.price }}" min="1" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Raridade Beneficiada" %}</label>
+                                            <select name="rarity_boost" class="form-select form-dark" required>
+                                                <option value="common" {% if bait.rarity_boost == 'common' %}selected{% endif %}>{% trans "Comum" %}</option>
+                                                <option value="rare" {% if bait.rarity_boost == 'rare' %}selected{% endif %}>{% trans "Raro" %}</option>
+                                                <option value="epic" {% if bait.rarity_boost == 'epic' %}selected{% endif %}>{% trans "Épico" %}</option>
+                                                <option value="legendary" {% if bait.rarity_boost == 'legendary' %}selected{% endif %}>{% trans "Lendário" %}</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Bônus (%)" %}</label>
+                                            <input type="number" name="boost_percentage" class="form-control form-dark" value="{{ bait.boost_percentage }}" min="0" step="0.1" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="text-white">{% trans "Duração (min)" %}</label>
+                                            <input type="number" name="duration_minutes" class="form-control form-dark" value="{{ bait.duration_minutes }}" min="1" required>
+                                        </div>
+                                        <div class="col-md-3 d-flex align-items-end gap-2">
+                                            <button type="submit" class="btn btn-success">💾 {% trans "Salvar" %}</button>
+                                            <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#editBait{{ bait.id }}">❌ {% trans "Cancelar" %}</button>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">{% trans "Nenhuma isca configurada" %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Top Pescadores -->
+            <div class="col-md-6 mb-4">
+                <div class="card card-glow">
+                    <div class="card-header text-white-50">
+                        <strong>🏆 {% trans "Top 10 Pescadores" %}</strong>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>{% trans "Jogador" %}</th>
+                                        <th>{% trans "Nível" %}</th>
+                                        <th>{% trans "XP" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for angler in top_anglers %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ angler.user.username }}</td>
+                                        <td><span class="badge bg-info">{{ angler.level }}</span></td>
+                                        <td>{{ angler.experience }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Peixes Mais Capturados -->
+            <div class="col-md-6 mb-4">
+                <div class="card card-glow">
+                    <div class="card-header text-white-50">
+                        <strong>🐟 {% trans "Top 10 Peixes Mais Capturados" %}</strong>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>{% trans "Peixe" %}</th>
+                                        <th>{% trans "Raridade" %}</th>
+                                        <th>{% trans "Capturas" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for fish in most_caught_fish %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ fish.fish__icon|default:"🐟" }} {{ fish.fish__name }}</td>
+                                        <td>
+                                            <span class="rarity-badge-{{ fish.fish__rarity }}">
+                                                {{ fish.fish__rarity|upper }}
+                                            </span>
+                                        </td>
+                                        <td>{{ fish.count }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Últimas Pescarias -->
+        <div class="card card-glow">
+            <div class="card-header text-white-50">
+                <strong>📋 {% trans "Últimas 20 Pescarias" %}</strong>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Data" %}</th>
+                                <th>{% trans "Pescador" %}</th>
+                                <th>{% trans "Peixe" %}</th>
+                                <th>{% trans "Raridade" %}</th>
+                                <th>{% trans "Nível Vara" %}</th>
+                                <th>{% trans "Resultado" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for catch in recent_catches %}
+                            <tr>
+                                <td>{{ catch.created_at|date:"d/m/Y H:i" }}</td>
+                                <td>{{ catch.user.username }}</td>
+                                <td>
+                                    {% if catch.fish.image %}
+                                        <img src="{{ catch.fish.image.url }}" alt="{{ catch.fish.name }}" 
+                                             style="width: 40px; height: 40px; object-fit: cover; border-radius: 5px; margin-right: 8px;">
+                                    {% else %}
+                                        <span style="font-size: 1.5rem; margin-right: 8px;">{{ catch.fish.icon }}</span>
+                                    {% endif %}
+                                    {{ catch.fish.name }}
+                                </td>
+                                <td>
+                                    <span class="rarity-badge-{{ catch.fish.rarity }}">
+                                        {{ catch.fish.get_rarity_display|upper }}
+                                    </span>
+                                </td>
+                                <td>{{ catch.rod_level }}</td>
+                                <td>
+                                    {% if catch.success %}
+                                        <span class="badge bg-success">✅ Capturado</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">❌ Escapou</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <p class="text-white-50">
+                💡 {% trans "Dica: Use itens do sistema existente como recompensa dos peixes!" %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Aplicar classes aos forms
+document.querySelectorAll('.form-control, .form-select, textarea').forEach(el => {
+    el.classList.add('form-dark');
+});
+</script>
+{% endblock %}
