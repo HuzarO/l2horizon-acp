@@ -52,9 +52,94 @@ class ItemForm(forms.ModelForm):
 
 
 class BoxTypeAdminForm(forms.ModelForm):
+    allowed_items = forms.ModelMultipleChoiceField(
+        queryset=Item.objects.filter(can_be_populated=True),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label=_('Itens Permitidos'),
+        help_text=_('Selecione os itens que podem aparecer neste tipo de caixa')
+    )
+    
     class Meta:
         model = BoxType
         fields = '__all__'
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: Caixa Premium'
+            }),
+            'price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'step': '0.01',
+                'placeholder': '0.00'
+            }),
+            'boosters_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'placeholder': '5'
+            }),
+            'chance_common': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'max': '100',
+                'step': '0.01',
+                'placeholder': '60.00'
+            }),
+            'chance_rare': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'max': '100',
+                'step': '0.01',
+                'placeholder': '25.00'
+            }),
+            'chance_epic': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'max': '100',
+                'step': '0.01',
+                'placeholder': '10.00'
+            }),
+            'chance_legendary': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'max': '100',
+                'step': '0.01',
+                'placeholder': '5.00'
+            }),
+            'max_epic_items': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'placeholder': '0'
+            }),
+            'max_legendary_items': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'placeholder': '0'
+            }),
+        }
+        labels = {
+            'name': _('Nome do Tipo de Caixa'),
+            'price': _('Preço (R$)'),
+            'boosters_amount': _('Quantidade de Boosters'),
+            'chance_common': _('Chance de Comum (%)'),
+            'chance_rare': _('Chance de Raro (%)'),
+            'chance_epic': _('Chance de Épico (%)'),
+            'chance_legendary': _('Chance de Lendário (%)'),
+            'max_epic_items': _('Máximo de Itens Épicos'),
+            'max_legendary_items': _('Máximo de Itens Lendários'),
+        }
+        help_texts = {
+            'name': _('Nome que será exibido para os usuários'),
+            'price': _('Valor em reais que a caixa custará'),
+            'boosters_amount': _('Quantidade de itens que o jogador receberá'),
+            'chance_common': _('Probabilidade de receber itens comuns'),
+            'chance_rare': _('Probabilidade de receber itens raros'),
+            'chance_epic': _('Probabilidade de receber itens épicos'),
+            'chance_legendary': _('Probabilidade de receber itens lendários'),
+            'max_epic_items': _('Limite máximo de itens épicos por caixa (0 = ilimitado)'),
+            'max_legendary_items': _('Limite máximo de itens lendários por caixa (0 = ilimitado)'),
+        }
 
     def clean(self):
         cleaned_data = super().clean()
