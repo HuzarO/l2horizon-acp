@@ -8,8 +8,10 @@ import yaml
 import json
 from typing import Dict, Any
 from datetime import datetime
-from class_templates import (
+from classes import (
+    get_lineage_stats_template,
     get_lineage_services_template,
+    get_lineage_account_template,
     get_transfer_wallet_to_char_template,
     get_transfer_char_to_wallet_template,
     get_lineage_marketplace_template,
@@ -111,325 +113,50 @@ import hashlib
 '''
     
     def generate_lineage_stats_class(self) -> str:
-        """Gera a classe LineageStats com todos os métodos de estatísticas"""
+        """Gera a classe LineageStats usando template"""
         char_id = self._get_char_id_column()
         access_level = self._get_access_level_column()
         has_subclass = self._has_subclass_table()
         subclass_char_id = self._get_subclass_char_id()
         clan_structure = self._get_clan_structure()
         
-        # Determinar como fazer JOIN com clan
-        if clan_structure['clan_name_source'] == 'clan_data':
-            clan_join = """
-            LEFT JOIN clan_data D ON D.clan_id = C.clanid"""
-            clan_name_field = "D.clan_name"
-            ally_field = "D.ally_id"
-        else:
-            clan_join = """
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.sub_pledge_id = 0
-            LEFT JOIN clan_data CD ON CD.clan_id = C.clanid"""
-            clan_name_field = "D.name AS clan_name"
-            ally_field = "CD.ally_id"
-        
-        # Subclass JOIN
-        subclass_join = ""
-        level_source = "C.level"
-        if has_subclass:
-            subclass_join = f"""
-            LEFT JOIN character_subclasses CS ON CS.{subclass_char_id} = C.{char_id} AND CS.class_index = 0"""
-            level_source = "CS.level"
-        
-        code = f'''class LineageStats:
-
-    @staticmethod
-    def _run_query(sql, params=None, use_cache=True):
-        return LineageDB().select(sql, params=params, use_cache=use_cache)
-    
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def get_crests(ids, type='clan'):
-        if not ids:
-            return []
-
-        table = 'clan_data'
-        id_column = 'clan_id'
-        crest_column = 'crest_id'
-
-        sql = f"""
-            SELECT {{id_column}}, {{crest_column}}
-            FROM {{table}}
-            WHERE {{id_column}} IN :ids
-        """
-        return LineageStats._run_query(sql, {{"ids": tuple(ids)}})
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def players_online():
-        sql = "SELECT COUNT(*) AS quant FROM characters WHERE online > 0 AND {access_level} = '0'"
-        return LineageStats._run_query(sql)
-    
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def top_pvp(limit=10):
-        sql = """
-            SELECT 
-                C.char_name, 
-                C.pvpkills, 
-                C.pkkills, 
-                C.online, 
-                C.onlinetime,
-                {level_source},
-                C.classid AS base,
-                {clan_name_field},
-                C.clanid AS clan_id,
-                {ally_field} AS ally_id
-            FROM characters C{subclass_join}{clan_join}
-            WHERE C.{access_level} = '0'
-            ORDER BY pvpkills DESC, pkkills DESC, onlinetime DESC, char_name ASC
-            LIMIT :limit
-        """
-        return LineageStats._run_query(sql, {{"limit": limit}})
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def top_pk(limit=10):
-        sql = """
-            SELECT 
-                C.char_name, 
-                C.pvpkills, 
-                C.pkkills, 
-                C.online, 
-                C.onlinetime,
-                {level_source},
-                C.classid AS base,
-                {clan_name_field},
-                C.clanid AS clan_id,
-                {ally_field} AS ally_id
-            FROM characters C{subclass_join}{clan_join}
-            WHERE C.{access_level} = '0'
-            ORDER BY pkkills DESC, pvpkills DESC, onlinetime DESC, char_name ASC
-            LIMIT :limit
-        """
-        return LineageStats._run_query(sql, {{"limit": limit}})
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def top_online(limit=10):
-        sql = """
-            SELECT 
-                C.char_name, 
-                C.pvpkills, 
-                C.pkkills, 
-                C.online, 
-                C.onlinetime,
-                {level_source},
-                C.classid AS base,
-                {clan_name_field},
-                C.clanid AS clan_id,
-                {ally_field} AS ally_id
-            FROM characters C{subclass_join}{clan_join}
-            WHERE C.{access_level} = '0'
-            ORDER BY onlinetime DESC, pvpkills DESC, pkkills DESC, char_name ASC
-            LIMIT :limit
-        """
-        return LineageStats._run_query(sql, {{"limit": limit}})
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def top_level(limit=10):
-        sql = """
-            SELECT 
-                C.char_name, 
-                C.pvpkills, 
-                C.pkkills, 
-                C.online, 
-                C.onlinetime, 
-                {level_source},
-                {clan_name_field},
-                C.clanid AS clan_id,
-                {ally_field} AS ally_id
-            FROM characters C{subclass_join}{clan_join}
-            WHERE C.{access_level} = '0'
-            ORDER BY {level_source} DESC, C.onlinetime DESC, C.char_name ASC
-            LIMIT :limit
-        """
-        return LineageStats._run_query(sql, {{"limit": limit}})
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def top_adena(limit=10, adn_billion_item=0, value_item=1000000):
-        item_bonus_sql = ""
-        if adn_billion_item != 0:
-            item_bonus_sql = f"""
-                IFNULL((SELECT SUM(I2.count) * :value_item
-                        FROM items I2
-                        WHERE I2.owner_id = C.{char_id} AND I2.item_id = :adn_billion_item
-                        GROUP BY I2.owner_id), 0) +
-            """
-        sql = f"""
-            SELECT 
-                C.char_name, 
-                C.online, 
-                C.onlinetime, 
-                {level_source}, 
-                {clan_name_field},
-                C.clanid AS clan_id,
-                {ally_field} AS ally_id,
-                (
-                    {{item_bonus_sql}}
-                    IFNULL((SELECT SUM(I1.count)
-                            FROM items I1
-                            WHERE I1.owner_id = C.{char_id} AND I1.item_id = '57'
-                            GROUP BY I1.owner_id), 0)
-                ) AS adenas
-            FROM characters C{subclass_join}{clan_join}
-            WHERE C.{access_level} = '0'
-            ORDER BY adenas DESC, onlinetime DESC, char_name ASC
-            LIMIT :limit
-        """
-        return LineageStats._run_query(sql, {{
-            "limit": limit,
-            "adn_billion_item": adn_billion_item,
-            "value_item": value_item
-        }})
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def top_clans(limit=10):
-        sql = """
-            SELECT 
-                C.clan_id, 
-                C.clan_name, 
-                C.clan_level, 
-                C.reputation_score, 
-                C.ally_name,
-                C.ally_id,
-                P.char_name, 
-                (SELECT COUNT(*) FROM characters WHERE clanid = C.clan_id) AS membros
-            FROM clan_data C
-            LEFT JOIN characters P ON P.{char_id} = C.leader_id
-            ORDER BY C.clan_level DESC, C.reputation_score DESC, membros DESC
-            LIMIT :limit
-        """
-        return LineageStats._run_query(sql, {{"limit": limit}})
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def olympiad_ranking():
-        sql = """
-            SELECT 
-                C.char_name, 
-                C.online, 
-                {clan_name_field},
-                C.clanid AS clan_id,
-                {ally_field} AS ally_id,
-                C.classid AS base, 
-                O.olympiad_points
-            FROM olympiad_nobles O
-            LEFT JOIN characters C ON C.{char_id} = O.char_id{clan_join}
-            ORDER BY olympiad_points DESC, base ASC, char_name ASC
-        """
-        return LineageStats._run_query(sql)
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def olympiad_all_heroes():
-        sql = """
-            SELECT 
-                C.char_name, 
-                C.online, 
-                {clan_name_field}, 
-                C.clanid AS clan_id,
-                {ally_field} AS ally_id,
-                C.classid AS base, 
-                H.count
-            FROM heroes H
-            LEFT JOIN characters C ON C.{char_id} = H.char_id{clan_join}
-            WHERE H.played > 0 AND H.count > 0
-            ORDER BY H.count DESC, base ASC, char_name ASC
-        """
-        return LineageStats._run_query(sql)
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def olympiad_current_heroes():
-        sql = """
-            SELECT 
-                C.char_name, 
-                C.online, 
-                {clan_name_field},
-                C.clanid AS clan_id,
-                {ally_field} AS ally_id,
-                C.classid AS base
-            FROM heroes H
-            LEFT JOIN characters C ON C.{char_id} = H.char_id{clan_join}
-            WHERE H.played > 0 AND H.count > 0
-            ORDER BY base ASC
-        """
-        return LineageStats._run_query(sql)
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def grandboss_status():
-        sql = """
-            SELECT boss_id, respawn_time AS respawn
-            FROM grandboss_data
-            ORDER BY respawn_time DESC
-        """
-        return LineageStats._run_query(sql)
-
-    @staticmethod
-    @cache_lineage_result(timeout=300)
-    def siege():
-        sql = """
-            SELECT 
-                W.id, 
-                W.name, 
-                W.siegeDate AS sdate, 
-                W.treasury AS stax,
-                P.char_name, 
-                C.clan_name,
-                C.clan_id,
-                C.ally_id,
-                C.ally_name
-            FROM castle W
-            LEFT JOIN clan_data C ON C.hasCastle = W.id
-            LEFT JOIN characters P ON P.{char_id} = C.leader_id
-        """
-        return LineageStats._run_query(sql)
-
-
-'''
-        return code
+        return get_lineage_stats_template(char_id, access_level, has_subclass, 
+                                          subclass_char_id, clan_structure)
     
     def generate_lineage_services_class(self) -> str:
-        """Gera a classe LineageServices"""
+        """Gera a classe LineageServices usando template"""
         char_id = self._get_char_id_column()
-        return get_lineage_services_template(char_id)
+        has_subclass = self._has_subclass_table()
+        subclass_char_id = self._get_subclass_char_id()
+        return get_lineage_services_template(char_id, has_subclass, subclass_char_id)
+    
+    def generate_lineage_account_class(self) -> str:
+        """Gera a classe LineageAccount usando template"""
+        return get_lineage_account_template()
     
     def generate_transfer_wallet_to_char_class(self) -> str:
-        """Gera a classe TransferFromWalletToChar"""
+        """Gera a classe TransferFromWalletToChar usando template"""
         char_id = self._get_char_id_column()
         return get_transfer_wallet_to_char_template(char_id)
     
     def generate_transfer_char_to_wallet_class(self) -> str:
-        """Gera a classe TransferFromCharToWallet"""
+        """Gera a classe TransferFromCharToWallet usando template"""
         char_id = self._get_char_id_column()
         return get_transfer_char_to_wallet_template(char_id)
     
     def generate_lineage_marketplace_class(self) -> str:
-        """Gera a classe LineageMarketplace"""
+        """Gera a classe LineageMarketplace usando template"""
         char_id = self._get_char_id_column()
         return get_lineage_marketplace_template(char_id)
     
     def generate_lineage_inflation_class(self) -> str:
-        """Gera a classe LineageInflation"""
+        """Gera a classe LineageInflation usando template"""
         char_id = self._get_char_id_column()
         access_level = self._get_access_level_column()
         return get_lineage_inflation_template(char_id, access_level)
     
-    def generate_lineage_account_class(self) -> str:
-        """Gera a classe LineageAccount"""
+    def XXXgenerate_lineage_account_class_OLD_REMOVE_ME(self) -> str:
+        """CÓDIGO ANTIGO - IGNORAR - SERÁ REMOVIDO"""
         return '''
 class LineageAccount:
     _checked_columns = False
@@ -455,9 +182,130 @@ class LineageAccount:
             return None
 
     @staticmethod
+    @cache_lineage_result(timeout=300)
+    def find_accounts_by_email(email):
+        sql = """
+            SELECT *
+            FROM accounts
+            WHERE email = :email
+        """
+        try:
+            return LineageDB().select(sql, {"email": email})
+        except:
+            return []
+
+    @staticmethod
+    @cache_lineage_result(timeout=300)
+    def get_account_by_login_and_email(login, email):
+        sql = """
+            SELECT *
+            FROM accounts
+            WHERE login = :login AND email = :email
+            LIMIT 1
+        """
+        try:
+            result = LineageDB().select(sql, {"login": login, "email": email})
+            return result[0] if result else None
+        except:
+            return None
+
+    @staticmethod
+    @cache_lineage_result(timeout=60, use_cache=False)
+    def link_account_to_user(login, user_uuid):
+        try:
+            sql = """
+                UPDATE accounts
+                SET linked_uuid = :uuid
+                WHERE login = :login AND (linked_uuid IS NULL OR linked_uuid = '')
+                LIMIT 1
+            """
+            params = {
+                "uuid": str(user_uuid),
+                "login": login
+            }
+            return LineageDB().update(sql, params)
+        except Exception as e:
+            print(f"Erro ao vincular conta Lineage a UUID: {e}")
+            return None
+
+    @staticmethod
+    @cache_lineage_result(timeout=60, use_cache=False)
+    def unlink_account_from_user(login, user_uuid):
+        """Desvincula uma conta do Lineage de um UUID de usuário."""
+        try:
+            sql = """
+                UPDATE accounts
+                SET linked_uuid = NULL
+                WHERE login = :login
+            """
+            params = {"login": str(login).strip()}
+            result = LineageDB().update(sql, params)
+            return result is not None and result > 0
+        except Exception as e:
+            print(f"Erro ao desvincular conta Lineage do UUID: {e}")
+            return False
+
+    @staticmethod
+    @cache_lineage_result(timeout=300)
+    def ensure_columns():
+        if LineageAccount._checked_columns:
+            return
+
+        lineage_db = LineageDB()
+        
+        if not lineage_db.enabled:
+            LineageAccount._checked_columns = True
+            return
+            
+        columns = lineage_db.get_table_columns("accounts")
+
+        try:
+            if "email" not in columns:
+                sql = """
+                    ALTER TABLE accounts
+                    ADD COLUMN email VARCHAR(100) NOT NULL DEFAULT '';
+                """
+                if lineage_db.execute_raw(sql):
+                    print("✅ Coluna 'email' adicionada com sucesso.")
+
+            if "created_time" not in columns:
+                sql = """
+                    ALTER TABLE accounts
+                    ADD COLUMN created_time INT(11) NULL DEFAULT NULL;
+                """
+                if lineage_db.execute_raw(sql):
+                    print("✅ Coluna 'created_time' adicionada com sucesso.")
+
+            if "linked_uuid" not in columns:
+                sql = """
+                    ALTER TABLE accounts
+                    ADD COLUMN linked_uuid VARCHAR(36) NULL DEFAULT NULL;
+                """
+                if lineage_db.execute_raw(sql):
+                    print("✅ Coluna 'linked_uuid' adicionada com sucesso.")
+
+            LineageAccount._checked_columns = True
+
+        except Exception as e:
+            print(f"❌ Erro ao alterar tabela 'accounts': {e}")
+
+    @staticmethod
+    @cache_lineage_result(timeout=300, use_cache=False)
+    def check_login_exists(login):
+        sql = "SELECT * FROM accounts WHERE login = :login LIMIT 1"
+        return LineageDB().select(sql, {"login": login})
+
+    @staticmethod
+    @cache_lineage_result(timeout=300)
+    def check_email_exists(email):
+        sql = "SELECT login, email FROM accounts WHERE email = :email"
+        return LineageDB().select(sql, {"email": email})
+
+    @staticmethod
     @cache_lineage_result(timeout=300, use_cache=False)
     def register(login, password, access_level, email):
         try:
+            LineageAccount.ensure_columns()
             hashed = base64.b64encode(hashlib.sha1(password.encode()).digest()).decode()
             sql = """
                 INSERT INTO accounts (login, password, accessLevel, email, created_time)
@@ -475,6 +323,78 @@ class LineageAccount:
         except Exception as e:
             print(f"Erro ao registrar conta: {e}")
             return None
+
+    @staticmethod
+    @cache_lineage_result(timeout=300)
+    def update_password(password, login):
+        try:
+            hashed = base64.b64encode(hashlib.sha1(password.encode()).digest()).decode()
+            sql = """
+                UPDATE accounts SET password = :password
+                WHERE login = :login LIMIT 1
+            """
+            params = {
+                "password": hashed,
+                "login": login
+            }
+            LineageDB().update(sql, params)
+            return True
+        except Exception as e:
+            print(f"Erro ao atualizar senha: {e}")
+            return None
+
+    @staticmethod
+    @cache_lineage_result(timeout=300)
+    def update_password_group(password, logins_list):
+        if not logins_list:
+            return None
+        try:
+            hashed = base64.b64encode(hashlib.sha1(password.encode()).digest()).decode()
+            sql = "UPDATE accounts SET password = :password WHERE login IN :logins"
+            params = {
+                "password": hashed,
+                "logins": logins_list
+            }
+            LineageDB().update(sql, params)
+            return True
+        except Exception as e:
+            print(f"Erro ao atualizar senhas em grupo: {e}")
+            return None
+
+    @staticmethod
+    @cache_lineage_result(timeout=300)
+    def update_access_level(access, login):
+        try:
+            sql = """
+                UPDATE accounts SET accessLevel = :access
+                WHERE login = :login LIMIT 1
+            """
+            params = {
+                "access": access,
+                "login": login
+            }
+            return LineageDB().update(sql, params)
+        except Exception as e:
+            print(f"Erro ao atualizar accessLevel: {e}")
+            return None
+
+    @staticmethod
+    @cache_lineage_result(timeout=60, use_cache=False)
+    def validate_credentials(login, password):
+        try:
+            sql = "SELECT password FROM accounts WHERE login = :login LIMIT 1"
+            result = LineageDB().select(sql, {"login": login})
+
+            if not result:
+                return False
+
+            hashed_input = base64.b64encode(hashlib.sha1(password.encode()).digest()).decode()
+            stored_hash = result[0]['password']
+            return hashed_input == stored_hash
+
+        except Exception as e:
+            print(f"Erro ao verificar senha: {e}")
+            return False
 
 
 '''
