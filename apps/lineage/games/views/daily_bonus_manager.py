@@ -47,6 +47,17 @@ def manager_dashboard(request):
                     else:
                         messages.error(request, _('Corrija os erros no formulário do pool.'))
 
+            elif action == 'edit_pool':
+                entry_id = request.POST.get('entry_id')
+                entry = get_object_or_404(DailyBonusPoolEntry, id=entry_id)
+                pool_form = DailyBonusPoolEntryForm(request.POST, instance=entry)
+                if pool_form.is_valid():
+                    pool_form.save()
+                    messages.success(request, _('Item atualizado com sucesso.'))
+                    return redirect('games:daily_bonus_manager')
+                else:
+                    messages.error(request, _('Corrija os erros no formulário do pool.'))
+
             elif action == 'delete_pool':
                 entry_id = request.POST.get('entry_id')
                 entry = get_object_or_404(DailyBonusPoolEntry, id=entry_id)

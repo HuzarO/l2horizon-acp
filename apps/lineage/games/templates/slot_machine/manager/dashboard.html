@@ -88,26 +88,330 @@ select.form-dark option {
     font-size: 0.875rem;
     padding: 0.35em 0.65em;
 }
+
+/* Melhorias na Configuração */
+.config-card {
+    border: 2px solid #f59e0b !important;
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.5) !important;
+}
+
+.config-card-header {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    padding: 1rem 1.5rem;
+}
+
+.config-card-body {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(217, 119, 6, 0.05) 100%);
+    padding: 1.5rem;
+}
+
+.config-info-row {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.config-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.config-label {
+    color: #cbd5e0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.config-value {
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.config-value .badge {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+}
+
+/* Legenda */
+.legend-box-slot {
+  background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-top: 1.5rem;
+  border: 2px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.legend-title-slot {
+  color: #f59e0b;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.legend-content-slot {
+  color: #cbd5e0;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
+.legend-item-slot {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.legend-item-slot:before {
+  content: "🎰";
+  position: absolute;
+  left: 0;
+  font-size: 1rem;
+}
+
+.legend-item-slot strong {
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+.legend-divider-slot {
+  border-top: 1px solid rgba(245, 158, 11, 0.3);
+  margin: 1rem 0;
+}
+
+/* Melhoria nas tabelas e cards */
+.card-glow .card-header {
+    color: #e2e8f0 !important;
+    font-weight: 600;
+    background: rgba(111, 66, 193, 0.15);
+    border-bottom: 1px solid rgba(111, 66, 193, 0.3);
+}
+
+.table-dark thead th {
+    color: #e2e8f0 !important;
+    font-weight: 600;
+    background: rgba(13, 202, 240, 0.1) !important;
+    border-bottom: 2px solid #0dcaf0 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.85rem;
+}
+
+.table-dark tbody td {
+    color: #cbd5e0 !important;
+    font-weight: 500;
+}
+
+.form-dark option {
+    padding: 0.5rem;
+}
+
+label.text-white {
+    color: #cbd5e0 !important;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.card-body label.text-white {
+    margin-bottom: 0.4rem;
+}
+
+.card-glow .card-body {
+    padding: 1.25rem;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border: none !important;
+    font-weight: 600 !important;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    border: none !important;
+    font-weight: 600 !important;
+}
+
+.btn-outline-info {
+    border: 2px solid #0dcaf0 !important;
+    color: #0dcaf0 !important;
+    font-weight: 600 !important;
+}
+
+.btn-outline-info:hover {
+    background: #0dcaf0 !important;
+    color: #0b132b !important;
+}
+
+.btn-edit-config {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 1.25rem !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn-edit-config:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 18px rgba(59, 130, 246, 0.6) !important;
+    color: #ffffff !important;
+}
+
+/* Legenda Símbolos */
+.legend-box-symbols {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(111, 66, 193, 0.3);
+}
+
+.legend-title-symbols {
+    color: #a855f7;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.legend-content-symbols {
+    color: #cbd5e0;
+    line-height: 1.6;
+    font-size: 0.85rem;
+}
+
+.legend-content-symbols strong {
+    color: #e2e8f0;
+}
+
+.legend-content-symbols p {
+    margin-bottom: 0.5rem;
+}
+
+.legend-example-symbols {
+    background: rgba(168, 85, 247, 0.15);
+    border-left: 3px solid #a855f7;
+    padding: 0.75rem 1rem;
+    margin-top: 0.5rem;
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.legend-example-symbols strong {
+    color: #a855f7;
+    font-size: 0.9rem;
+}
+
+/* Legenda Prêmios */
+.legend-box-prizes {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.legend-title-prizes {
+    color: #10b981;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.legend-content-prizes {
+    color: #cbd5e0;
+    line-height: 1.6;
+    font-size: 0.85rem;
+}
+
+.legend-content-prizes strong {
+    color: #e2e8f0;
+}
+
+.legend-content-prizes p {
+    margin-bottom: 0.5rem;
+}
+
+.legend-item-prizes {
+    margin-bottom: 0.6rem;
+    padding-left: 1.25rem;
+    position: relative;
+}
+
+.legend-item-prizes:before {
+    content: "🏆";
+    position: absolute;
+    left: 0;
+    font-size: 0.9rem;
+}
+
+.legend-item-prizes strong {
+    color: #10b981;
+}
+
+.legend-divider-prizes {
+    border-top: 1px solid rgba(16, 185, 129, 0.3);
+    margin: 0.75rem 0;
+}
+
+.legend-example-prizes {
+    background: rgba(16, 185, 129, 0.15);
+    border-left: 3px solid #10b981;
+    padding: 0.75rem 1rem;
+    margin-top: 0.5rem;
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.legend-example-prizes strong {
+    color: #10b981;
+    font-size: 0.9rem;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="mgr-bg">
-    <div class="container-fluid">
+    <div class="container-fluid" style="max-width: 1600px; padding: 0 2rem;">
         <div class="d-flex justify-content-between align-items-center mb-4 text-white">
-            <h3 class="m-0">🎰 {% trans "Gerenciar Slot Machine" %}</h3>
+            <h3 class="m-0" style="color: #e2e8f0; font-weight: 700;">
+                <i class="fas fa-gamepad me-2" style="color: #f59e0b;"></i>{% trans "Gerenciar Slot Machine" %}
+            </h3>
             <div>
                 {% if not active_config or total_symbols == 0 %}
                 <form method="post" style="display: inline;" class="me-2">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="quick_setup">
                     <button type="submit" class="btn btn-success rounded-pill">
-                        ⚡ {% trans "Setup Rápido Completo" %}
+                        <i class="fas fa-bolt me-1"></i>{% trans "Setup Rápido Completo" %}
                     </button>
                 </form>
                 {% endif %}
                 <a href="{% url 'games:slot_machine_page' %}" class="btn btn-outline-info rounded-pill">
-                    {% trans "Ver Slot Machine" %}
+                    <i class="fas fa-eye me-1"></i>{% trans "Ver Slot Machine" %}
                 </a>
             </div>
         </div>
@@ -206,34 +510,60 @@ select.form-dark option {
 
         <!-- Configuração Ativa -->
         {% if active_config %}
-        <div class="card card-glow mb-4" style="border-color: #fbbf24 !important; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4) !important;">
-            <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-                <strong style="font-size: 1.2rem;">⚙️ {% trans "CONFIGURAÇÃO DO JOGO" %}</strong>
-                <button class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#editConfig">
-                    ✏️ {% trans "Editar" %}
+        <div class="card card-glow config-card mb-4">
+            <div class="card-header config-card-header d-flex justify-content-between align-items-center">
+                <strong style="font-size: 1.2rem;">
+                    <i class="fas fa-cog me-2"></i>{% trans "CONFIGURAÇÃO DO JOGO" %}
+                </strong>
+                <button class="btn btn-sm btn-edit-config" data-bs-toggle="collapse" data-bs-target="#editConfig">
+                    <i class="fas fa-edit me-1"></i>{% trans "Editar" %}
                 </button>
             </div>
-            <div class="card-body" style="background: rgba(251, 191, 36, 0.05);">
-                <div class="row text-white align-items-center">
-                    <div class="col-md-2">
-                        <strong>{% trans "Status" %}:</strong>
-                        {% if active_config.is_active %}
-                            <span class="badge bg-success">✅ {% trans "Ativo" %}</span>
-                        {% else %}
-                            <span class="badge bg-danger">❌ {% trans "Inativo" %}</span>
-                        {% endif %}
+            <div class="card-body config-card-body">
+                <div class="config-info-row">
+                    <div class="config-item">
+                        <span class="config-label">
+                            <i class="fas fa-power-off me-1"></i>{% trans "Status" %}
+                        </span>
+                        <span class="config-value">
+                            {% if active_config.is_active %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i>{% trans "Ativo" %}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-times-circle me-1"></i>{% trans "Inativo" %}
+                                </span>
+                            {% endif %}
+                        </span>
                     </div>
-                    <div class="col-md-3">
-                        <strong>{% trans "Nome" %}:</strong> {{ active_config.name }}
+                    
+                    <div class="config-item">
+                        <span class="config-label">
+                            <i class="fas fa-tag me-1"></i>{% trans "Nome" %}
+                        </span>
+                        <span class="config-value">{{ active_config.name }}</span>
                     </div>
-                    <div class="col-md-2">
-                        <strong>{% trans "Custo/Giro" %}:</strong> {{ active_config.cost_per_spin }} fichas
+                    
+                    <div class="config-item">
+                        <span class="config-label">
+                            <i class="fas fa-coins me-1"></i>{% trans "Custo/Giro" %}
+                        </span>
+                        <span class="config-value" style="color: #fbbf24;">{{ active_config.cost_per_spin }} fichas</span>
                     </div>
-                    <div class="col-md-2">
-                        <strong>{% trans "Jackpot" %}:</strong> {{ active_config.jackpot_amount }}
+                    
+                    <div class="config-item">
+                        <span class="config-label">
+                            <i class="fas fa-trophy me-1"></i>{% trans "Jackpot" %}
+                        </span>
+                        <span class="config-value" style="color: #10b981;">{{ active_config.jackpot_amount }}</span>
                     </div>
-                    <div class="col-md-3">
-                        <strong>{% trans "Chance Jackpot" %}:</strong> {{ active_config.jackpot_chance }}%
+                    
+                    <div class="config-item">
+                        <span class="config-label">
+                            <i class="fas fa-percentage me-1"></i>{% trans "Chance Jackpot" %}
+                        </span>
+                        <span class="config-value" style="color: #3b82f6;">{{ active_config.jackpot_chance }}%</span>
                     </div>
                 </div>
                 
@@ -284,6 +614,43 @@ select.form-dark option {
                                 <span class="text-danger">❌ {% trans "O jogo está desativado e não aparecerá para os jogadores" %}</span>
                             {% endif %}
                         </small>
+                    </div>
+                </div>
+                
+                <!-- Legenda Explicativa -->
+                <div class="legend-box-slot">
+                    <div class="legend-title-slot">
+                        <i class="fas fa-book-open"></i>
+                        {% trans "Guia de Parâmetros" %}
+                    </div>
+                    <div class="legend-content-slot">
+                        <div class="legend-item-slot">
+                            <strong>{% trans "Status:" %}</strong> {% trans "Define se o Slot Machine está ativo e disponível para os jogadores. Quando inativo, o jogo não aparece no menu." %}
+                        </div>
+                        
+                        <div class="legend-item-slot">
+                            <strong>{% trans "Nome:" %}</strong> {% trans "Identificação da configuração do jogo. Útil para gerenciar múltiplas configurações." %}
+                        </div>
+                        
+                        <div class="legend-divider-slot"></div>
+                        
+                        <div class="legend-item-slot">
+                            <strong>{% trans "Custo por Giro:" %}</strong> {% trans "Quantidade de fichas que o jogador precisa gastar para dar uma rodada no Slot Machine. Cada giro consome essa quantidade." %}
+                        </div>
+                        
+                        <div class="legend-item-slot">
+                            <strong>{% trans "Jackpot Atual:" %}</strong> {% trans "Valor total do jackpot acumulado. Este é o prêmio máximo que um jogador pode ganhar ao acertar o jackpot. O valor aumenta progressivamente." %}
+                        </div>
+                        
+                        <div class="legend-item-slot">
+                            <strong>{% trans "Chance de Jackpot:" %}</strong> {% trans "Probabilidade percentual de ganhar o jackpot em cada rodada. Exemplo: 0,1% significa 1 chance em 1000 giros. Quanto menor o valor, mais raro é o jackpot." %}
+                        </div>
+                        
+                        <div class="legend-divider-slot"></div>
+                        
+                        <div class="legend-item-slot" style="color: #e2e8f0;">
+                            <strong style="color: #fbbf24;">{% trans "Dica:" %}</strong> {% trans "Configure os prêmios e símbolos nas seções abaixo para completar a configuração do jogo. Os prêmios definem o que os jogadores ganham ao combinar símbolos." %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -408,6 +775,34 @@ select.form-dark option {
                                     {% endfor %}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Legenda Peso dos Símbolos -->
+                    <div class="card-footer" style="background: rgba(111, 66, 193, 0.05); border-top: 1px solid rgba(111, 66, 193, 0.2);">
+                        <div class="legend-box-symbols">
+                            <div class="legend-title-symbols">
+                                <i class="fas fa-info-circle"></i>
+                                {% trans "Como funciona o Peso dos Símbolos?" %}
+                            </div>
+                            <div class="legend-content-symbols">
+                                <p class="mb-2">
+                                    {% trans "O <strong>peso</strong> determina a probabilidade de cada símbolo aparecer nos rolos do Slot Machine." %}
+                                </p>
+                                <p class="mb-2">
+                                    {% trans "Quanto maior o peso, maior a chance do símbolo aparecer. A probabilidade é calculada proporcionalmente em relação ao peso total de todos os símbolos." %}
+                                </p>
+                                <div class="legend-example-symbols">
+                                    <strong>{% trans "Exemplo:" %}</strong><br>
+                                    {% trans "• Símbolo 🍒 (peso 50) = 50/(50+30+20) = 50% de chance" %}<br>
+                                    {% trans "• Símbolo 💎 (peso 30) = 30/(50+30+20) = 30% de chance" %}<br>
+                                    {% trans "• Símbolo 🎰 (peso 20) = 20/(50+30+20) = 20% de chance" %}
+                                </div>
+                                <p class="mt-2 mb-0" style="color: #fbbf24; font-style: italic;">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    <strong>{% trans "Dica:" %}</strong> {% trans "Use pesos menores para símbolos mais raros e valiosos!" %}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -554,6 +949,49 @@ select.form-dark option {
                                     {% endfor %}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Legenda Prêmios -->
+                    <div class="card-footer" style="background: rgba(111, 66, 193, 0.05); border-top: 1px solid rgba(111, 66, 193, 0.2);">
+                        <div class="legend-box-prizes">
+                            <div class="legend-title-prizes">
+                                <i class="fas fa-trophy"></i>
+                                {% trans "Como funcionam os Prêmios?" %}
+                            </div>
+                            <div class="legend-content-prizes">
+                                <p class="mb-2">
+                                    {% trans "Os prêmios são ganhos quando o jogador consegue <strong>combinar símbolos iguais</strong> nos 3 rolos do Slot Machine." %}
+                                </p>
+                                
+                                <div class="legend-divider-prizes"></div>
+                                
+                                <div class="legend-item-prizes">
+                                    <strong>{% trans "Combinação:" %}</strong> {% trans "Define quantos símbolos iguais são necessários (1x, 2x ou 3x) e qual símbolo precisa aparecer para ganhar o prêmio." %}
+                                </div>
+                                
+                                <div class="legend-item-prizes">
+                                    <strong>{% trans "Prêmio Fichas:" %}</strong> {% trans "Quantidade de fichas que o jogador ganha ao acertar a combinação. Este valor é creditado automaticamente." %}
+                                </div>
+                                
+                                <div class="legend-item-prizes">
+                                    <strong>{% trans "Item (Opcional):" %}</strong> {% trans "Item adicional que o jogador recebe junto com as fichas. Deixe vazio se quiser dar apenas fichas como prêmio." %}
+                                </div>
+                                
+                                <div class="legend-divider-prizes"></div>
+                                
+                                <div class="legend-example-prizes">
+                                    <strong>{% trans "Exemplos de Configuração:" %}</strong><br>
+                                    {% trans "• 3x 💎 = 1000 fichas + Sword +5 (prêmio raro)" %}<br>
+                                    {% trans "• 3x 🍒 = 500 fichas (prêmio médio)" %}<br>
+                                    {% trans "• 2x 🎰 = 100 fichas (prêmio comum)" %}
+                                </div>
+                                
+                                <p class="mt-2 mb-0" style="color: #10b981; font-style: italic;">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    <strong>{% trans "Dica:" %}</strong> {% trans "Configure prêmios maiores para combinações de 3 símbolos raros e menores para 2 símbolos comuns!" %}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -154,26 +154,299 @@ label {
     -webkit-box-shadow: 0 0 0px 1000px rgba(30, 30, 50, 0.95) inset !important;
     transition: background-color 5000s ease-in-out 0s;
 }
+
+/* Melhorias de Cores */
+.config-card-fishing {
+    border: 2px solid #06b6d4 !important;
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.5) !important;
+}
+
+.config-card-header-fishing {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    padding: 1rem 1.5rem;
+}
+
+.config-card-body-fishing {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(8, 145, 178, 0.05) 100%);
+    padding: 1.5rem;
+}
+
+.config-info-row-fishing {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.config-item-fishing {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.config-label-fishing {
+    color: #cbd5e0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.config-value-fishing {
+    color: #ffffff;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.btn-edit-fishing {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 1.25rem !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn-edit-fishing:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 18px rgba(16, 185, 129, 0.6) !important;
+    color: #ffffff !important;
+}
+
+/* Legendas */
+.legend-box-fishing {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+    border: 2px solid rgba(6, 182, 212, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.legend-title-fishing {
+    color: #06b6d4;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.legend-content-fishing {
+    color: #cbd5e0;
+    line-height: 1.6;
+    font-size: 0.9rem;
+}
+
+.legend-item-fishing {
+    margin-bottom: 0.75rem;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+.legend-item-fishing:before {
+    content: "🎣";
+    position: absolute;
+    left: 0;
+    font-size: 1rem;
+}
+
+.legend-item-fishing strong {
+    color: #06b6d4;
+    font-weight: 700;
+}
+
+.legend-divider-fishing {
+    border-top: 1px solid rgba(6, 182, 212, 0.3);
+    margin: 1rem 0;
+}
+
+.legend-example-fishing {
+    background: rgba(6, 182, 212, 0.15);
+    border-left: 3px solid #06b6d4;
+    padding: 0.75rem 1rem;
+    margin-top: 0.75rem;
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.legend-example-fishing strong {
+    color: #06b6d4;
+    font-size: 0.95rem;
+}
+
+/* Legenda Peixes */
+.legend-box-fish {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.legend-title-fish {
+    color: #06b6d4;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.legend-content-fish {
+    color: #cbd5e0;
+    line-height: 1.6;
+    font-size: 0.85rem;
+}
+
+.legend-item-fish {
+    margin-bottom: 0.6rem;
+    padding-left: 1.25rem;
+    position: relative;
+}
+
+.legend-item-fish:before {
+    content: "🐟";
+    position: absolute;
+    left: 0;
+    font-size: 0.9rem;
+}
+
+.legend-item-fish strong {
+    color: #06b6d4;
+}
+
+/* Legenda Iscas */
+.legend-box-bait {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.legend-title-bait {
+    color: #a855f7;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.legend-content-bait {
+    color: #cbd5e0;
+    line-height: 1.6;
+    font-size: 0.85rem;
+}
+
+.legend-item-bait {
+    margin-bottom: 0.6rem;
+    padding-left: 1.25rem;
+    position: relative;
+}
+
+.legend-item-bait:before {
+    content: "✨";
+    position: absolute;
+    left: 0;
+    font-size: 0.9rem;
+}
+
+.legend-item-bait strong {
+    color: #a855f7;
+}
+
+/* Melhorias Gerais */
+.card-glow .card-header {
+    color: #e2e8f0 !important;
+    font-weight: 600;
+    background: rgba(111, 66, 193, 0.15);
+    border-bottom: 1px solid rgba(111, 66, 193, 0.3);
+}
+
+.table-dark thead th {
+    color: #e2e8f0 !important;
+    font-weight: 600;
+    background: rgba(13, 202, 240, 0.1) !important;
+    border-bottom: 2px solid #0dcaf0 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.85rem;
+}
+
+.table-dark tbody td {
+    color: #cbd5e0 !important;
+    font-weight: 500;
+}
+
+label.text-white {
+    color: #cbd5e0 !important;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border: none !important;
+    font-weight: 600 !important;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    border: none !important;
+    font-weight: 600 !important;
+}
+
+.btn-outline-info {
+    border: 2px solid #0dcaf0 !important;
+    color: #0dcaf0 !important;
+    font-weight: 600 !important;
+}
+
+.btn-outline-info:hover {
+    background: #0dcaf0 !important;
+    color: #0b132b !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    border: none !important;
+    font-weight: 600 !important;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="mgr-bg">
-    <div class="container-fluid">
+    <div class="container-fluid" style="max-width: 1600px; padding: 0 2rem;">
         <div class="d-flex justify-content-between align-items-center mb-4 text-white">
-            <h3 class="m-0">🎣 {% trans "Gerenciar Fishing Game" %}</h3>
+            <h3 class="m-0" style="color: #e2e8f0; font-weight: 700;">
+                <i class="fas fa-fish me-2" style="color: #06b6d4;"></i>{% trans "Gerenciar Fishing Game" %}
+            </h3>
             <div>
                 {% if total_fish == 0 %}
                 <form method="post" style="display: inline;" class="me-2">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="quick_setup">
                     <button type="submit" class="btn btn-success rounded-pill">
-                        ⚡ {% trans "Setup Rápido Completo" %}
+                        <i class="fas fa-bolt me-1"></i>{% trans "Setup Rápido Completo" %}
                     </button>
                 </form>
                 {% endif %}
                 <a href="{% url 'games:fishing_game_page' %}" class="btn btn-outline-info rounded-pill">
-                    {% trans "Ver Fishing Game" %}
+                    <i class="fas fa-eye me-1"></i>{% trans "Ver Fishing Game" %}
                 </a>
             </div>
         </div>
@@ -270,63 +543,102 @@ label {
         </div>
 
         <!-- CONFIGURAÇÃO DO JOGO -->
-        <div class="card card-glow mb-4" style="border-color: #fbbf24 !important; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4) !important;">
-            <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-                <strong style="font-size: 1.2rem;">⚙️ {% trans "CONFIGURAÇÃO DO JOGO" %}</strong>
+        <div class="card card-glow config-card-fishing mb-4">
+            <div class="card-header config-card-header-fishing d-flex justify-content-between align-items-center">
+                <strong style="font-size: 1.2rem;">
+                    <i class="fas fa-cog me-2"></i>{% trans "CONFIGURAÇÃO DO JOGO" %}
+                </strong>
                 {% if not config %}
                 <form method="post" style="display: inline;">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="create_default_config">
-                    <button type="submit" class="btn btn-sm btn-light">
-                        ➕ {% trans "Criar Configuração" %}
+                    <button type="submit" class="btn btn-sm btn-edit-fishing">
+                        <i class="fas fa-plus me-1"></i>{% trans "Criar Configuração" %}
                     </button>
                 </form>
                 {% endif %}
             </div>
-            <div class="card-body" style="background: rgba(251, 191, 36, 0.05);">
+            <div class="card-body config-card-body-fishing">
                 {% if config %}
-                <form method="post" class="row g-3">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="update_config">
-                    <input type="hidden" name="config_id" value="{{ config.id }}">
-                    
-                    <div class="col-md-4">
-                        <label class="form-label text-white">
-                            <strong>{% trans "Nome da Configuração" %}</strong>
-                        </label>
-                        <input type="text" name="name" class="form-control form-dark" value="{{ config.name }}" required>
+                <!-- Visualização das Configurações -->
+                <div class="config-info-row-fishing mb-3">
+                    <div class="config-item-fishing">
+                        <span class="config-label-fishing">
+                            <i class="fas fa-power-off me-1"></i>{% trans "Status" %}
+                        </span>
+                        <span class="config-value-fishing">
+                            {% if config.is_active %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i>{% trans "Ativo" %}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-times-circle me-1"></i>{% trans "Inativo" %}
+                                </span>
+                            {% endif %}
+                        </span>
                     </div>
                     
-                    <div class="col-md-3">
-                        <label class="form-label text-white">
-                            <strong>{% trans "Custo por Lançamento (Fichas)" %}</strong>
-                        </label>
-                        <input type="number" name="cost_per_cast" class="form-control form-dark" value="{{ config.cost_per_cast }}" min="1" required>
-                        <small class="text-muted d-block mt-1">{% trans "Custo em fichas por tentativa de pesca" %}</small>
+                    <div class="config-item-fishing">
+                        <span class="config-label-fishing">
+                            <i class="fas fa-tag me-1"></i>{% trans "Nome" %}
+                        </span>
+                        <span class="config-value-fishing">{{ config.name }}</span>
                     </div>
                     
-                    <div class="col-md-3">
-                        <label class="form-label text-white">
-                            <strong>{% trans "Status do Jogo" %}</strong>
-                        </label>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" name="is_active" id="id_is_active" {% if config.is_active %}checked{% endif %}>
-                            <label class="form-check-label text-white ms-2" for="id_is_active">
-                                {% if config.is_active %}
-                                    <span class="badge bg-success">✅ {% trans "Ativo" %}</span>
-                                {% else %}
-                                    <span class="badge bg-danger">❌ {% trans "Inativo" %}</span>
-                                {% endif %}
+                    <div class="config-item-fishing">
+                        <span class="config-label-fishing">
+                            <i class="fas fa-coins me-1"></i>{% trans "Custo por Lançamento" %}
+                        </span>
+                        <span class="config-value-fishing" style="color: #fbbf24;">{{ config.cost_per_cast }} fichas</span>
+                    </div>
+                </div>
+                
+                <button class="btn btn-sm btn-edit-fishing mb-3" data-bs-toggle="collapse" data-bs-target="#editConfigForm">
+                    <i class="fas fa-edit me-1"></i>{% trans "Editar Configuração" %}
+                </button>
+                
+                <!-- Formulário de Edição -->
+                <div class="collapse" id="editConfigForm">
+                    <hr class="bg-secondary">
+                    <form method="post" class="row g-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_config">
+                        <input type="hidden" name="config_id" value="{{ config.id }}">
+                        
+                        <div class="col-md-4">
+                            <label class="form-label text-white">
+                                <i class="fas fa-signature me-2"></i>{% trans "Nome da Configuração" %}
                             </label>
+                            <input type="text" name="name" class="form-control form-dark" value="{{ config.name }}" required>
                         </div>
-                    </div>
-                    
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">
-                            💾 {% trans "Salvar" %}
-                        </button>
-                    </div>
-                </form>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label text-white">
+                                <i class="fas fa-coins me-2"></i>{% trans "Custo por Lançamento (Fichas)" %}
+                            </label>
+                            <input type="number" name="cost_per_cast" class="form-control form-dark" value="{{ config.cost_per_cast }}" min="1" required>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label text-white">
+                                <i class="fas fa-power-off me-2"></i>{% trans "Status do Jogo" %}
+                            </label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="id_is_active" {% if config.is_active %}checked{% endif %}>
+                                <label class="form-check-label text-white ms-2" for="id_is_active">
+                                    {% trans "Jogo Ativo" %}
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-save me-1"></i>{% trans "Salvar" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
                 
                 <div class="mt-3 p-3 bg-dark bg-opacity-25 rounded">
                     <small class="text-muted">
@@ -337,6 +649,34 @@ label {
                             <span class="text-danger">❌ {% trans "O jogo está desativado e não aparecerá para os jogadores" %}</span>
                         {% endif %}
                     </small>
+                </div>
+                
+                <!-- Legenda Explicativa Configuração -->
+                <div class="legend-box-fishing">
+                    <div class="legend-title-fishing">
+                        <i class="fas fa-book-open"></i>
+                        {% trans "Guia de Parâmetros" %}
+                    </div>
+                    <div class="legend-content-fishing">
+                        <div class="legend-item-fishing">
+                            <strong>{% trans "Nome da Configuração:" %}</strong> {% trans "Identificação da configuração do jogo. Útil para gerenciar múltiplas configurações." %}
+                        </div>
+                        
+                        <div class="legend-item-fishing">
+                            <strong>{% trans "Custo por Lançamento:" %}</strong> {% trans "Quantidade de fichas que o jogador gasta cada vez que lança a vara de pesca. Cada tentativa consome essa quantidade." %}
+                        </div>
+                        
+                        <div class="legend-item-fishing">
+                            <strong>{% trans "Status do Jogo:" %}</strong> {% trans "Define se o jogo está ativo e visível para os jogadores. Quando inativo, o jogo não aparece no menu." %}
+                        </div>
+                        
+                        <div class="legend-divider-fishing"></div>
+                        
+                        <div class="legend-example-fishing">
+                            <strong>{% trans "Como funciona:" %}</strong><br>
+                            {% trans "Jogador paga o custo → Lança a vara → Sistema sorteia um peixe baseado nos pesos → Jogador recebe as recompensas do peixe pescado (XP, fichas, itens)" %}
+                        </div>
+                    </div>
                 </div>
                 {% else %}
                 <div class="alert alert-warning mb-0">
@@ -349,8 +689,11 @@ label {
 
         <!-- GERENCIAR PEIXES -->
         <div class="card card-glow mb-4">
-            <div class="card-header text-white d-flex justify-content-between align-items-center">
-                <strong>🐟 {% trans "Gerenciar Peixes" %} ({{ total_fish }})</strong>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong style="color: #e2e8f0;">
+                    <i class="fas fa-fish me-2"></i>{% trans "Gerenciar Peixes" %} 
+                    <span class="badge bg-info ms-2">{{ total_fish }}</span>
+                </strong>
                 <div>
                     {% if total_fish == 0 %}
                     <form method="post" style="display: inline;" class="me-2">
@@ -362,7 +705,7 @@ label {
                     </form>
                     {% endif %}
                     <button class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#addFish">
-                        ➕ {% trans "Adicionar" %}
+                        <i class="fas fa-plus me-1"></i>{% trans "Adicionar" %}
                     </button>
                 </div>
             </div>
@@ -375,39 +718,57 @@ label {
                         <input type="hidden" name="action" value="add_fish">
                         
                         <div class="col-md-3">
-                            <label class="text-white">{% trans "Nome do Peixe" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-signature me-1"></i>{% trans "Nome do Peixe" %}
+                            </label>
                             {{ fish_form.name }}
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Imagem" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-image me-1"></i>{% trans "Imagem" %}
+                            </label>
                             {{ fish_form.image }}
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Raridade" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-star me-1"></i>{% trans "Raridade" %}
+                            </label>
                             {{ fish_form.rarity }}
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Nível Mín." %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-level-up-alt me-1"></i>{% trans "Nível Mín." %}
+                            </label>
                             {{ fish_form.min_rod_level }}
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Peso" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-weight-hanging me-1"></i>{% trans "Peso" %}
+                            </label>
                             {{ fish_form.weight }}
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "XP" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-chart-line me-1"></i>{% trans "XP" %}
+                            </label>
                             {{ fish_form.experience_reward }}
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Fichas" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-coins me-1"></i>{% trans "Fichas" %}
+                            </label>
                             {{ fish_form.fichas_reward }}
                         </div>
                         <div class="col-md-3">
-                            <label class="text-white">{% trans "Item (opcional)" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-gift me-1"></i>{% trans "Item (opcional)" %}
+                            </label>
                             {{ fish_form.item_reward }}
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-success w-100">➕ {% trans "Adicionar" %}</button>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-plus me-1"></i>{% trans "Adicionar" %}
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -453,26 +814,30 @@ label {
                                 </td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-warning me-2" data-bs-toggle="collapse" data-bs-target="#editFish{{ fish.id }}">
-                                        ✏️ {% trans "Editar" %}
+                                        <i class="fas fa-edit me-1"></i>{% trans "Editar" %}
                                     </button>
                                     <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Tem certeza que deseja remover este peixe?" %}');">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete_fish">
                                         <input type="hidden" name="fish_id" value="{{ fish.id }}">
-                                        <button type="submit" class="btn-delete">🗑️</button>
+                                        <button type="submit" class="btn-delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
                             <!-- Formulário de Edição (Colapsável) -->
                             <tr class="collapse" id="editFish{{ fish.id }}">
-                                <td colspan="6" style="background: rgba(255, 193, 7, 0.1); padding: 20px;">
+                                <td colspan="6" style="background: rgba(6, 182, 212, 0.1); padding: 20px;">
                                     <form method="post" enctype="multipart/form-data" class="row g-3">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="edit_fish">
                                         <input type="hidden" name="fish_id" value="{{ fish.id }}">
                                         
                                         <div class="col-12 mb-2">
-                                            <strong class="text-warning">✏️ {% trans "Editando:" %} {{ fish.name }}</strong>
+                                            <strong style="color: #06b6d4;">
+                                                <i class="fas fa-edit me-2"></i>{% trans "Editando:" %} {{ fish.name }}
+                                            </strong>
                                         </div>
                                         
                                         <div class="col-md-3">
@@ -533,19 +898,67 @@ label {
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6" class="text-center text-muted">{% trans "Nenhum peixe configurado" %}</td>
+                                <td colspan="6" class="text-center py-5">
+                                    <div style="color: #94a3b8;">
+                                        <i class="fas fa-fish" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+                                        <div style="font-size: 1.1rem; font-weight: 500;">{% trans "Nenhum peixe configurado" %}</div>
+                                        <small style="color: #64748b;">{% trans "Use o formulário acima ou o botão 'Popular Auto' para adicionar peixes." %}</small>
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
+            
+            <!-- Legenda Peixes -->
+            <div class="card-footer" style="background: rgba(111, 66, 193, 0.05); border-top: 1px solid rgba(111, 66, 193, 0.2);">
+                <div class="legend-box-fish">
+                    <div class="legend-title-fish">
+                        <i class="fas fa-info-circle"></i>
+                        {% trans "Como funcionam os Peixes?" %}
+                    </div>
+                    <div class="legend-content-fish">
+                        <div class="legend-item-fish">
+                            <strong>{% trans "Nome do Peixe:" %}</strong> {% trans "Nome que aparecerá quando o jogador pescar." %}
+                        </div>
+                        
+                        <div class="legend-item-fish">
+                            <strong>{% trans "Raridade:" %}</strong> {% trans "Define a categoria do peixe. Peixes lendários são mais valiosos e raros que os comuns." %}
+                        </div>
+                        
+                        <div class="legend-item-fish">
+                            <strong>{% trans "Nível Mínimo de Vara:" %}</strong> {% trans "Nível necessário da vara do jogador para poder pescar este peixe. Peixes raros exigem varas de nível mais alto." %}
+                        </div>
+                        
+                        <div class="legend-item-fish">
+                            <strong>{% trans "Peso:" %}</strong> {% trans "Probabilidade do peixe ser pescado. Quanto maior o peso, maior a chance. Funciona igual ao sistema de sorteio: peso do peixe ÷ peso total de todos." %}
+                        </div>
+                        
+                        <div class="legend-item-fish">
+                            <strong>{% trans "XP:" %}</strong> {% trans "Experiência que o jogador ganha ao pescar. XP é usado para evoluir o nível da vara de pesca." %}
+                        </div>
+                        
+                        <div class="legend-item-fish">
+                            <strong>{% trans "Fichas:" %}</strong> {% trans "Fichas que o jogador recebe como recompensa." %}
+                        </div>
+                        
+                        <div class="legend-item-fish">
+                            <strong>{% trans "Item (Opcional):" %}</strong> {% trans "Item adicional que o jogador pode receber ao pescar. Deixe vazio para dar apenas XP e fichas." %}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- GERENCIAR ISCAS -->
         <div class="card card-glow mb-4">
-            <div class="card-header text-white d-flex justify-content-between align-items-center">
-                <strong>✨ {% trans "Gerenciar Iscas" %} ({{ total_baits }})</strong>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong style="color: #e2e8f0;">
+                    <i class="fas fa-magic me-2"></i>{% trans "Gerenciar Iscas" %} 
+                    <span class="badge bg-warning text-dark ms-2">{{ total_baits }}</span>
+                </strong>
                 <div>
                     {% if total_baits == 0 %}
                     <form method="post" style="display: inline;" class="me-2">
@@ -557,7 +970,7 @@ label {
                     </form>
                     {% endif %}
                     <button class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#addBait">
-                        ➕ {% trans "Adicionar" %}
+                        <i class="fas fa-plus me-1"></i>{% trans "Adicionar" %}
                     </button>
                 </div>
             </div>
@@ -570,31 +983,45 @@ label {
                         <input type="hidden" name="action" value="add_bait">
                         
                         <div class="col-md-3">
-                            <label class="text-white">{% trans "Nome da Isca" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-tag me-1"></i>{% trans "Nome da Isca" %}
+                            </label>
                             {{ bait_form.name }}
                         </div>
                         <div class="col-md-3">
-                            <label class="text-white">{% trans "Descrição" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-align-left me-1"></i>{% trans "Descrição" %}
+                            </label>
                             {{ bait_form.description }}
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Preço (Fichas)" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-dollar-sign me-1"></i>{% trans "Preço (Fichas)" %}
+                            </label>
                             {{ bait_form.price }}
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Raridade Beneficiada" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-gem me-1"></i>{% trans "Raridade Beneficiada" %}
+                            </label>
                             {{ bait_form.rarity_boost }}
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Bônus (%)" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-percentage me-1"></i>{% trans "Bônus (%)" %}
+                            </label>
                             {{ bait_form.boost_percentage }}
                         </div>
                         <div class="col-md-2">
-                            <label class="text-white">{% trans "Duração (min)" %}</label>
+                            <label class="text-white">
+                                <i class="fas fa-clock me-1"></i>{% trans "Duração (min)" %}
+                            </label>
                             {{ bait_form.duration_minutes }}
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-success w-100">➕ {% trans "Adicionar" %}</button>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-plus me-1"></i>{% trans "Adicionar" %}
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -629,26 +1056,30 @@ label {
                                 <td>{{ bait.duration_minutes }} min</td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-warning me-2" data-bs-toggle="collapse" data-bs-target="#editBait{{ bait.id }}">
-                                        ✏️ {% trans "Editar" %}
+                                        <i class="fas fa-edit me-1"></i>{% trans "Editar" %}
                                     </button>
                                     <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Tem certeza que deseja remover esta isca?" %}');">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete_bait">
                                         <input type="hidden" name="bait_id" value="{{ bait.id }}">
-                                        <button type="submit" class="btn-delete">🗑️</button>
+                                        <button type="submit" class="btn-delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
                             <!-- Formulário de Edição (Colapsável) -->
                             <tr class="collapse" id="editBait{{ bait.id }}">
-                                <td colspan="6" style="background: rgba(255, 193, 7, 0.1); padding: 20px;">
+                                <td colspan="6" style="background: rgba(168, 85, 247, 0.1); padding: 20px;">
                                     <form method="post" class="row g-3">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="edit_bait">
                                         <input type="hidden" name="bait_id" value="{{ bait.id }}">
                                         
                                         <div class="col-12 mb-2">
-                                            <strong class="text-warning">✏️ {% trans "Editando:" %} {{ bait.name }}</strong>
+                                            <strong style="color: #a855f7;">
+                                                <i class="fas fa-edit me-2"></i>{% trans "Editando:" %} {{ bait.name }}
+                                            </strong>
                                         </div>
                                         
                                         <div class="col-md-3">
@@ -696,14 +1127,60 @@ label {
                     </table>
                 </div>
             </div>
+            
+            <!-- Legenda Iscas -->
+            <div class="card-footer" style="background: rgba(111, 66, 193, 0.05); border-top: 1px solid rgba(111, 66, 193, 0.2);">
+                <div class="legend-box-bait">
+                    <div class="legend-title-bait">
+                        <i class="fas fa-magic"></i>
+                        {% trans "Como funcionam as Iscas?" %}
+                    </div>
+                    <div class="legend-content-bait">
+                        <p class="mb-2">
+                            {% trans "Iscas são itens <strong>opcionais</strong> que os jogadores podem comprar para aumentar suas chances de pescar peixes de raridades específicas." %}
+                        </p>
+                        
+                        <div class="legend-item-bait">
+                            <strong>{% trans "Nome da Isca:" %}</strong> {% trans "Nome do item que aparecerá na loja de iscas do jogo." %}
+                        </div>
+                        
+                        <div class="legend-item-bait">
+                            <strong>{% trans "Descrição:" %}</strong> {% trans "Texto que explica o efeito da isca para o jogador." %}
+                        </div>
+                        
+                        <div class="legend-item-bait">
+                            <strong>{% trans "Preço (Fichas):" %}</strong> {% trans "Custo em fichas para o jogador comprar e ativar a isca." %}
+                        </div>
+                        
+                        <div class="legend-item-bait">
+                            <strong>{% trans "Raridade Beneficiada:" %}</strong> {% trans "Tipo de peixe que terá chance aumentada. Exemplo: isca 'Lendário' aumenta chance de pescar peixes lendários." %}
+                        </div>
+                        
+                        <div class="legend-item-bait">
+                            <strong>{% trans "Bônus (%):" %}</strong> {% trans "Percentual de aumento no peso dos peixes da raridade beneficiada. Exemplo: 50% aumenta em 50% a chance de pescar aquela raridade." %}
+                        </div>
+                        
+                        <div class="legend-item-bait">
+                            <strong>{% trans "Duração (minutos):" %}</strong> {% trans "Tempo que o efeito da isca fica ativo. Durante esse período, todas as pescarias têm o bônus aplicado." %}
+                        </div>
+                        
+                        <p class="mt-2 mb-0" style="color: #10b981; font-style: italic;">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            <strong>{% trans "Dica:" %}</strong> {% trans "Iscas devem custar mais que uma pescaria simples, mas dar vantagens que justifiquem o investimento!" %}
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="row">
             <!-- Top Pescadores -->
             <div class="col-md-6 mb-4">
                 <div class="card card-glow">
-                    <div class="card-header text-white-50">
-                        <strong>🏆 {% trans "Top 10 Pescadores" %}</strong>
+                    <div class="card-header">
+                        <strong style="color: #e2e8f0;">
+                            <i class="fas fa-trophy me-2"></i>{% trans "Top 10 Pescadores" %}
+                        </strong>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -735,8 +1212,10 @@ label {
             <!-- Peixes Mais Capturados -->
             <div class="col-md-6 mb-4">
                 <div class="card card-glow">
-                    <div class="card-header text-white-50">
-                        <strong>🐟 {% trans "Top 10 Peixes Mais Capturados" %}</strong>
+                    <div class="card-header">
+                        <strong style="color: #e2e8f0;">
+                            <i class="fas fa-fish me-2"></i>{% trans "Top 10 Peixes Mais Capturados" %}
+                        </strong>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -772,8 +1251,10 @@ label {
 
         <!-- Últimas Pescarias -->
         <div class="card card-glow">
-            <div class="card-header text-white-50">
-                <strong>📋 {% trans "Últimas 20 Pescarias" %}</strong>
+            <div class="card-header">
+                <strong style="color: #e2e8f0;">
+                    <i class="fas fa-list me-2"></i>{% trans "Últimas 20 Pescarias" %}
+                </strong>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">

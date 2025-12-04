@@ -306,6 +306,52 @@
     background: rgba(111, 66, 193, 0.8);
   }
 
+  .weight-legend-box {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem;
+    border: 2px solid rgba(111, 66, 193, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  .weight-legend-title {
+    color: #00d9ff;
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Orbitron', sans-serif;
+  }
+  
+  .weight-legend-content {
+    color: #cbd5e0;
+    line-height: 1.7;
+    font-size: 0.95rem;
+  }
+  
+  .weight-legend-content strong {
+    color: #e2e8f0;
+  }
+  
+  .weight-legend-example {
+    background: rgba(111, 66, 193, 0.2);
+    border-left: 3px solid #a855f7;
+    padding: 0.75rem 1rem;
+    margin-top: 0.75rem;
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+  
+  .weight-legend-example strong {
+    color: #00d9ff;
+    font-size: 1rem;
+  }
+
   @media (max-width: 768px) {
     .roulette-manager-title {
       font-size: 2rem;
@@ -395,7 +441,8 @@
                   {{ form.weight.label }}
                 </label>
                 {{ form.weight }}
-                <small class="text-muted d-block mt-1">
+                <small class="d-block mt-1" style="color: #a0aec0; font-style: italic;">
+                  <i class="fas fa-lightbulb me-1" style="color: #ffc107;"></i>
                   {% trans "Quanto maior o peso, maior a chance de sair" %}
                 </small>
                 {% if form.weight.errors %}
@@ -506,6 +553,28 @@
                 <p>{% trans "Adicione prêmios usando o formulário ao lado" %}</p>
               </div>
             {% endif %}
+          </div>
+          
+          <!-- Legenda sobre o Peso -->
+          <div class="weight-legend-box">
+            <div class="weight-legend-title">
+              <i class="fas fa-info-circle"></i>
+              {% trans "Como funciona o Peso?" %}
+            </div>
+            <div class="weight-legend-content">
+              <p class="mb-2">
+                {% trans "O <strong>peso</strong> determina a probabilidade de cada prêmio ser sorteado na roleta." %}
+              </p>
+              <p class="mb-2">
+                {% trans "Quanto maior o peso, maior a chance do item ser sorteado. A probabilidade é calculada proporcionalmente em relação ao peso total de todos os prêmios." %}
+              </p>
+              <div class="weight-legend-example">
+                <strong>{% trans "Exemplo:" %}</strong><br>
+                {% trans "• Prêmio A (peso 5) = 5/(5+3+2) = 50% de chance" %}<br>
+                {% trans "• Prêmio B (peso 3) = 3/(5+3+2) = 30% de chance" %}<br>
+                {% trans "• Prêmio C (peso 2) = 2/(5+3+2) = 20% de chance" %}
+              </div>
+            </div>
           </div>
         </div>
       </div>
