@@ -1,7 +1,32 @@
 """Template da classe LineageMarketplace - Sistema de Marketplace"""
 
-def get_lineage_marketplace_template(char_id: str, access_level_column: str = 'accessLevel') -> str:
+def get_lineage_marketplace_template(char_id: str, access_level_column: str = 'accessLevel', clan_structure: dict = None) -> str:
     """Gera o código da classe LineageMarketplace"""
+    
+    # Construir clan join dinamicamente
+    if clan_structure:
+        if clan_structure['clan_name_source'] == 'clan_data':
+            clan_join = """
+            LEFT JOIN clan_data cd ON c.clanid = cd.clan_id"""
+            clan_name_field = "cd.clan_name"
+        elif clan_structure['clan_name_source'] == 'clan_subpledges_simple':
+            clan_join = """
+            LEFT JOIN clan_data cd ON c.clanid = cd.clan_id
+            LEFT JOIN clan_subpledges cs ON cs.clan_id = cd.clan_id"""
+            clan_name_field = "cs.name"
+        else:
+            # Com filtro
+            filter_col = clan_structure.get('subpledge_filter', 'sub_pledge_id')
+            clan_join = f"""
+            LEFT JOIN clan_data cd ON c.clanid = cd.clan_id
+            LEFT JOIN clan_subpledges cs ON cs.clan_id = cd.clan_id AND cs.{filter_col} = 0"""
+            clan_name_field = "cs.name"
+    else:
+        # Fallback antigo
+        clan_join = """
+            LEFT JOIN clan_data cd ON c.clanid = cd.clan_id
+            LEFT JOIN clan_subpledges cs ON cs.clan_id = cd.clan_id AND cs.sub_pledge_id = 0"""
+        clan_name_field = "cs.name"
     
     return f'''class LineageMarketplace:
     
@@ -18,14 +43,12 @@ def get_lineage_marketplace_template(char_id: str, access_level_column: str = 'a
                 c.pvpkills as pvp_kills,
                 c.pkkills as pk_count,
                 c.clanid,
-                COALESCE(cs.name, '') as clan_name,
-                c.accesslevel,
+                COALESCE({clan_name_field}, '') as clan_name,
+                c.{access_level_column},
                 c.online,
                 c.lastAccess,
                 c.account_name
-            FROM characters c
-            LEFT JOIN clan_data cd ON c.clanid = cd.clan_id
-            LEFT JOIN clan_subpledges cs ON cs.clan_id = cd.clan_id AND cs.sub_pledge_id = 0
+            FROM characters c{clan_join}
             WHERE c.account_name = :account_name
             ORDER BY c.level DESC, c.char_name ASC
         """
@@ -56,14 +79,12 @@ def get_lineage_marketplace_template(char_id: str, access_level_column: str = 'a
                 c.pvpkills as pvp_kills,
                 c.pkkills as pk_count,
                 c.clanid,
-                COALESCE(cs.name, '') as clan_name,
-                c.accesslevel,
+                COALESCE({clan_name_field}, '') as clan_name,
+                c.{access_level_column},
                 c.online,
                 c.lastAccess,
                 c.account_name
-            FROM characters c
-            LEFT JOIN clan_data cd ON c.clanid = cd.clan_id
-            LEFT JOIN clan_subpledges cs ON cs.clan_id = cd.clan_id AND cs.sub_pledge_id = 0
+            FROM characters c{clan_join}
             WHERE c.{char_id} = :char_id
         """
         result = LineageDB().select(sql, {{"char_id": char_id}})

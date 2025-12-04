@@ -1,7 +1,8 @@
 """Template da classe LineageStats - Rankings e Estatísticas"""
 
 def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bool, 
-                                subclass_char_id: str, clan_structure: dict, base_class_col: str = 'classid') -> str:
+                                subclass_char_id: str, clan_structure: dict, base_class_col: str = 'classid',
+                                clan_id_col: str = 'clan_id', crest_col: str = None) -> str:
     """
     Gera o código da classe LineageStats
     
@@ -12,6 +13,8 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
         subclass_char_id: Nome da coluna de ID na tabela de subclasses
         clan_structure: Dict com estrutura de clans
         base_class_col: Nome da coluna de classe base (classid, base_class)
+        clan_id_col: Nome da coluna de ID do clan (clan_id, clanId, id)
+        crest_col: Nome da coluna de crest (crest_id, crestId, crest) ou None se não existir
     """
     
     # Determinar JOIN com clan
@@ -29,10 +32,10 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
         clan_name_field = "D.name AS clan_name"
         ally_field = "CD.ally_id"
     else:
-        # clan_subpledges com filtro (sub_pledge_id = 0 OU type = 0)
-        filter_condition = clan_structure.get('subpledge_filter', 'sub_pledge_id = 0')
+        # clan_subpledges com filtro (sub_pledge_id ou type)
+        filter_col = clan_structure.get('subpledge_filter', 'sub_pledge_id')
         clan_join = f"""
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.{filter_condition}
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.{filter_col} = 0
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid"""
         clan_name_field = "D.name AS clan_name"
         ally_field = "CD.ally_id"
@@ -40,14 +43,20 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
     # Subclass JOIN
     subclass_join = ""
     level_source = "C.level"
-    class_source = f"C.{base_class_col}" if base_class_col else "CS.class_id"
+    class_source = f"C.{base_class_col}"
     
     if has_subclass:
-        # Detectar filtro de subclass (class_index = 0 OU isBase = '1')
         subclass_join = f"""
             LEFT JOIN character_subclasses CS ON CS.{subclass_char_id} = C.{char_id} AND CS.isBase = '1'"""
         level_source = "CS.level"
         class_source = "CS.class_id"
+    
+    # Construir query de get_crests baseada nas colunas reais
+    if crest_col:
+        crests_select = f"{clan_id_col}, {crest_col}"
+    else:
+        # Se não tem coluna de crest, retornar apenas o ID do clan
+        crests_select = clan_id_col
     
     return f'''class LineageStats:
 
@@ -61,14 +70,10 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
         if not ids:
             return []
 
-        table = 'clan_data'
-        id_column = 'clan_id'
-        crest_column = 'crest_id'
-
         sql = f"""
-            SELECT {{{{id_column}}}}, {{{{crest_column}}}}
-            FROM {{{{table}}}}
-            WHERE {{{{id_column}}}} IN :ids
+            SELECT {crests_select}
+            FROM clan_data
+            WHERE {clan_id_col} IN :ids
         """
         return LineageStats._run_query(sql, {{"ids": tuple(ids)}})
 

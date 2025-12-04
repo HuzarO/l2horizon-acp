@@ -205,10 +205,14 @@ def detectar_configuracoes(schema):
         'access_level': 'accesslevel',
         'has_subclass': False,
         'subclass_char_id': 'charId',
-        'base_class_col': 'classid',
+        'base_class_col': None,  # será detectado ou permanece None
         'clan_name_source': 'clan_subpledges',
         'subpledge_filter': 'sub_pledge_id',  # ou 'type' ou None
-        'has_ally_data': False
+        'has_ally_data': False,
+        'clan_id_col': 'clan_id',  # padrão
+        'crest_col': 'crest_id',  # padrão, pode ser None
+        'subclass_filter_base': "isBase = '1'",  # padrão para Mobius
+        'subclass_filter_sub': "isBase = '0'"  # padrão para Mobius
     }
     
     # Detectar char_id
@@ -229,11 +233,17 @@ def detectar_configuracoes(schema):
                 break
         
         # Detectar base_class
+        base_class_found = False
         for candidate in ['base_class', 'classid', 'class_id']:
             if candidate in char_cols:
                 config['base_class_col'] = candidate
-                print(f"   ✅ Coluna de classe: {candidate}")
+                print(f"   ✅ Coluna de classe em characters: {candidate}")
+                base_class_found = True
                 break
+        
+        if not base_class_found:
+            config['base_class_col'] = None
+            print(f"   ⚠️  Coluna de classe não encontrada em characters (será buscada em character_subclasses)")
     
     # Detectar subclass
     if 'character_subclasses' in schema:
@@ -254,12 +264,55 @@ def detectar_configuracoes(schema):
                 # Não sobrescrever base_class_col aqui, manter o de characters
                 print(f"   ℹ️  Coluna de classe em subclass: {candidate}")
                 break
+        
+        # Detectar filtro de subclass (isBase ou class_index)
+        if 'isBase' in subclass_cols:
+            config['subclass_filter_base'] = "isBase = '1'"
+            config['subclass_filter_sub'] = "isBase = '0'"
+            print(f"   ✅ Filtro de subclass: isBase")
+        elif 'class_index' in subclass_cols:
+            config['subclass_filter_base'] = "class_index = 0"
+            config['subclass_filter_sub'] = "class_index > 0"
+            print(f"   ✅ Filtro de subclass: class_index")
+        else:
+            # Fallback para isBase
+            config['subclass_filter_base'] = "isBase = '1'"
+            config['subclass_filter_sub'] = "isBase = '0'"
+            print(f"   ⚠️  Filtro de subclass não detectado, usando padrão: isBase")
     else:
         print(f"   ⚠️  Não tem tabela character_subclasses")
     
     # Detectar estrutura de clan
     if 'clan_data' in schema:
         clan_cols = schema['clan_data']['columns']
+        
+        # Detectar coluna de ID do clan
+        clan_id_detected = False
+        for candidate in ['clan_id', 'clanId', 'id']:
+            if candidate in clan_cols:
+                config['clan_id_col'] = candidate
+                print(f"   ✅ ID do clan: {candidate}")
+                clan_id_detected = True
+                break
+        
+        if not clan_id_detected:
+            # Usar primary key se não encontrou
+            if schema['clan_data'].get('primary_key'):
+                config['clan_id_col'] = schema['clan_data']['primary_key']
+                print(f"   ✅ ID do clan (PK): {config['clan_id_col']}")
+            else:
+                print(f"   ⚠️  ID do clan não detectado, usando padrão: {config['clan_id_col']}")
+        
+        # Detectar coluna de crest
+        for candidate in ['crest_id', 'crestId', 'crest', 'crestid']:
+            if candidate in clan_cols:
+                config['crest_col'] = candidate
+                print(f"   ✅ Coluna de crest: {candidate}")
+                break
+        else:
+            # Se não encontrou, usar None (não tem crest)
+            config['crest_col'] = None
+            print(f"   ⚠️  Coluna de crest não encontrada")
         
         # Verificar se tem clan_name diretamente em clan_data
         if 'clan_name' in clan_cols:
@@ -318,7 +371,9 @@ def gerar_arquivo_query(nome_projeto, schema, config):
         has_subclass=config['has_subclass'],
         subclass_char_id=config['subclass_char_id'],
         clan_structure=clan_structure,
-        base_class_col=config['base_class_col']
+        base_class_col=config['base_class_col'],
+        clan_id_col=config.get('clan_id_col', 'clan_id'),
+        crest_col=config.get('crest_col', 'crest_id')
     )
     
     print("   📝 Gerando classe LineageServices...")
@@ -327,7 +382,9 @@ def gerar_arquivo_query(nome_projeto, schema, config):
         has_subclass=config['has_subclass'],
         subclass_char_id=config['subclass_char_id'],
         base_class_col=config['base_class_col'],
-        clan_structure=clan_structure
+        clan_structure=clan_structure,
+        subclass_filter_base=config.get('subclass_filter_base', "isBase = '1'"),
+        subclass_filter_sub=config.get('subclass_filter_sub', "isBase = '0'")
     )
     
     print("   📝 Gerando classe LineageAccount...")
@@ -348,7 +405,8 @@ def gerar_arquivo_query(nome_projeto, schema, config):
     print("   📝 Gerando classe LineageMarketplace...")
     marketplace_code = get_lineage_marketplace_template(
         char_id=config['char_id'],
-        access_level_column=config['access_level']
+        access_level_column=config['access_level'],
+        clan_structure=clan_structure
     )
     
     print("   📝 Gerando classe LineageInflation...")
