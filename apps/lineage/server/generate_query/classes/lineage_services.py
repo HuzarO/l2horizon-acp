@@ -1,6 +1,6 @@
 """Template da classe LineageServices - Serviços de Personagens"""
 
-def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_char_id: str) -> str:
+def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_char_id: str, base_class_col: str = 'classid') -> str:
     """
     Gera o código da classe LineageServices
     
@@ -8,6 +8,7 @@ def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_cha
         char_id: Nome da coluna de ID do personagem
         has_subclass: Se tem tabela character_subclasses
         subclass_char_id: Nome da coluna de ID na tabela de subclasses
+        base_class_col: Nome da coluna de classe base
     """
     
     # Se tem subclass, busca as subclasses
@@ -47,7 +48,7 @@ def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_cha
         sql = """
             SELECT
                 C.*, 
-                C.classid AS base_class,
+                C.{base_class_col} AS base_class,
                 C.level AS base_level,{subclass_queries}
                 CS.name AS clan_name,
                 CLAN.ally_name

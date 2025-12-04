@@ -119,16 +119,18 @@ import hashlib
         has_subclass = self._has_subclass_table()
         subclass_char_id = self._get_subclass_char_id()
         clan_structure = self._get_clan_structure()
+        base_class_col = self._get_base_class_column()
         
         return get_lineage_stats_template(char_id, access_level, has_subclass, 
-                                          subclass_char_id, clan_structure)
+                                          subclass_char_id, clan_structure, base_class_col)
     
     def generate_lineage_services_class(self) -> str:
         """Gera a classe LineageServices usando template"""
         char_id = self._get_char_id_column()
         has_subclass = self._has_subclass_table()
         subclass_char_id = self._get_subclass_char_id()
-        return get_lineage_services_template(char_id, has_subclass, subclass_char_id)
+        base_class_col = self._get_base_class_column()
+        return get_lineage_services_template(char_id, has_subclass, subclass_char_id, base_class_col)
     
     def _get_account_access_level_column(self) -> str:
         """Detecta o nome da coluna de nível de acesso na tabela accounts"""
@@ -138,6 +140,15 @@ import hashlib
                 if candidate in columns:
                     return candidate
         return 'accessLevel'  # fallback
+    
+    def _get_base_class_column(self) -> str:
+        """Detecta o nome da coluna de classe base"""
+        if 'characters' in self.tables:
+            columns = self.tables['characters']['columns']
+            for candidate in ['classid', 'base_class', 'class_id']:
+                if candidate in columns:
+                    return candidate
+        return 'classid'  # fallback
     
     def generate_lineage_account_class(self) -> str:
         """Gera a classe LineageAccount usando template"""

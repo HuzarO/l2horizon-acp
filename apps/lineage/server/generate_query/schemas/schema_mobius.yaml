@@ -1,0 +1,174 @@
+# Schema L2 Mobius - Baseado na estrutura oficial
+# NOTA: Este schema foi criado baseado na documentação
+# Para mapear do banco REAL use: python mapear_banco_custom.py
+
+database_type: mobius
+
+tables:
+  characters:
+    columns:
+      charId: int
+      account_name: varchar(50)
+      char_name: varchar(35)
+      level: tinyint
+      maxHp: int
+      curHp: decimal(18,0)
+      maxCp: int
+      curCp: decimal(18,0)
+      maxMp: int
+      curMp: decimal(18,0)
+      face: tinyint
+      hairStyle: tinyint
+      hairColor: tinyint
+      sex: tinyint
+      heading: int
+      x: int
+      y: int
+      z: int
+      exp: bigint
+      expBeforeDeath: bigint
+      sp: bigint
+      karma: int
+      pvpkills: int
+      pkkills: int
+      clanid: int
+      race: tinyint
+      classid: int
+      base_class: int
+      deletetime: bigint
+      title: varchar(21)
+      accesslevel: int
+      online: tinyint
+      onlinetime: int
+      char_slot: tinyint
+      lastAccess: bigint
+      clan_privs: int
+    primary_key: charId
+
+  character_subclasses:
+    columns:
+      charId: int
+      class_id: int
+      exp: bigint
+      sp: bigint
+      level: tinyint
+      class_index: int
+    primary_key: charId
+
+  accounts:
+    columns:
+      login: varchar(45)
+      password: varchar(45)
+      accessLevel: int
+      lastactive: bigint
+      lastIP: varchar(20)
+      lastServer: tinyint
+    primary_key: login
+
+  clan_data:
+    columns:
+      clan_id: int
+      clan_name: varchar(45)
+      clan_level: int
+      reputation_score: int
+      hasCastle: int
+      ally_id: int
+      ally_name: varchar(45)
+      leader_id: int
+    primary_key: clan_id
+
+  clan_subpledges:
+    columns:
+      clan_id: int
+      sub_pledge_id: int
+      name: varchar(45)
+      leader_id: int
+    primary_key: clan_id
+
+  items:
+    columns:
+      owner_id: int
+      object_id: int
+      item_id: int
+      count: bigint
+      enchant_level: int
+      loc: varchar(10)
+      loc_data: int
+    primary_key: object_id
+
+  olympiad_nobles:
+    columns:
+      charId: int
+      class_id: int
+      olympiad_points: int
+      competitions_done: int
+      competitions_won: int
+      competitions_lost: int
+      competitions_drawn: int
+    primary_key: charId
+
+  heroes:
+    columns:
+      charId: int
+      char_name: varchar(35)
+      class_id: int
+      count: int
+      played: tinyint
+      claimed: tinyint
+      message: varchar(300)
+    primary_key: charId
+
+  grandboss_data:
+    columns:
+      boss_id: int
+      loc_x: int
+      loc_y: int
+      loc_z: int
+      heading: int
+      respawn_time: bigint
+      currentHP: decimal(30,15)
+      currentMP: decimal(30,15)
+      status: tinyint
+    primary_key: boss_id
+
+  raidboss_spawnlist:
+    columns:
+      boss_id: int
+      amount: int
+      loc_x: int
+      loc_y: int
+      loc_z: int
+      heading: int
+      respawn_time: bigint
+      currentHp: decimal(30,15)
+      currentMp: decimal(30,15)
+    primary_key: boss_id
+
+  castle:
+    columns:
+      id: int
+      name: varchar(25)
+      taxPercent: int
+      treasury: bigint
+      siegeDate: bigint
+      regTimeOver: enum('true','false')
+      regTimeEnd: bigint
+      showNpcCrest: enum('true','false')
+    primary_key: id
+
+  siege_clans:
+    columns:
+      castle_id: int
+      clan_id: int
+      type: int
+      castle_owner: int
+    primary_key: castle_id
+
+config:
+  has_subclass_table: true
+  clan_name_in_subpledges: false
+  custom_columns:
+    char_id_column: charId
+    access_level_column: accesslevel
+    base_class_column: classid
+

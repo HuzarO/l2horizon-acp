@@ -1,7 +1,7 @@
 """Template da classe LineageStats - Rankings e Estatísticas"""
 
 def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bool, 
-                                subclass_char_id: str, clan_structure: dict) -> str:
+                                subclass_char_id: str, clan_structure: dict, base_class_col: str = 'classid') -> str:
     """
     Gera o código da classe LineageStats
     
@@ -11,6 +11,7 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
         has_subclass: Se tem tabela character_subclasses
         subclass_char_id: Nome da coluna de ID na tabela de subclasses
         clan_structure: Dict com estrutura de clans
+        base_class_col: Nome da coluna de classe base (classid, base_class)
     """
     
     # Determinar JOIN com clan
@@ -29,7 +30,7 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
     # Subclass JOIN
     subclass_join = ""
     level_source = "C.level"
-    class_source = "C.classid"
+    class_source = f"C.{base_class_col}"
     
     if has_subclass:
         subclass_join = f"""
