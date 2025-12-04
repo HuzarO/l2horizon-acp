@@ -207,6 +207,7 @@ def detectar_configuracoes(schema):
         'subclass_char_id': 'charId',
         'base_class_col': 'classid',
         'clan_name_source': 'clan_subpledges',
+        'subpledge_filter': 'sub_pledge_id',  # ou 'type' ou None
         'has_ally_data': False
     }
     
@@ -265,8 +266,16 @@ def detectar_configuracoes(schema):
             config['clan_name_source'] = 'clan_data'
             print(f"   ✅ Nome do clan: clan_data.clan_name")
         elif 'clan_subpledges' in schema:
-            config['clan_name_source'] = 'clan_subpledges'
-            print(f"   ✅ Nome do clan: clan_subpledges.name (sub_pledge_id = 0)")
+            # Verificar se clan_subpledges tem sub_pledge_id
+            subpledge_cols = schema['clan_subpledges']['columns']
+            if 'sub_pledge_id' in subpledge_cols or 'type' in subpledge_cols:
+                config['clan_name_source'] = 'clan_subpledges'
+                config['subpledge_filter'] = 'sub_pledge_id' if 'sub_pledge_id' in subpledge_cols else 'type'
+                print(f"   ✅ Nome do clan: clan_subpledges.name ({config['subpledge_filter']} = 0)")
+            else:
+                # clan_subpledges sem filtro (só tem o nome do clan principal)
+                config['clan_name_source'] = 'clan_subpledges_simple'
+                print(f"   ✅ Nome do clan: clan_subpledges.name (sem filtro)")
         else:
             print(f"   ⚠️  Estrutura de clan não identificada")
     
@@ -297,6 +306,7 @@ def gerar_arquivo_query(nome_projeto, schema, config):
     # Preparar estrutura de clan
     clan_structure = {
         'clan_name_source': config['clan_name_source'],
+        'subpledge_filter': config.get('subpledge_filter', 'sub_pledge_id'),
         'has_ally_data': config['has_ally_data']
     }
     
@@ -316,7 +326,8 @@ def gerar_arquivo_query(nome_projeto, schema, config):
         char_id=config['char_id'],
         has_subclass=config['has_subclass'],
         subclass_char_id=config['subclass_char_id'],
-        base_class_col=config['base_class_col']
+        base_class_col=config['base_class_col'],
+        clan_structure=clan_structure
     )
     
     print("   📝 Gerando classe LineageAccount...")
@@ -388,7 +399,8 @@ HAS_SUBCLASS = {config['has_subclass']}            # Se tem tabela de subclass
 SUBCLASS_CHAR_ID = '{config['subclass_char_id']}'  # Coluna de ID na subclass
 
 # Estrutura de Clans
-CLAN_NAME_SOURCE = '{config['clan_name_source']}'  # clan_data ou clan_subpledges
+CLAN_NAME_SOURCE = '{config['clan_name_source']}'  # clan_data, clan_subpledges ou clan_subpledges_simple
+SUBPLEDGE_FILTER = '{config.get('subpledge_filter', 'sub_pledge_id')}'  # sub_pledge_id, type ou None
 HAS_ALLY_DATA = {config['has_ally_data']}          # Se tem tabela ally_data
 
 # ============================================================================
@@ -471,9 +483,12 @@ def main():
     print(f"   Projeto: {nome_projeto}")
     print(f"   Tabelas encontradas: {len(schema)}")
     print(f"   ID do personagem: {config['char_id']}")
+    print(f"   Coluna de classe: {config['base_class_col']}")
     print(f"   Access level: {config['access_level']}")
     print(f"   Tem subclass: {'Sim' if config['has_subclass'] else 'Não'}")
     print(f"   Nome do clan: {config['clan_name_source']}")
+    if config.get('subpledge_filter'):
+        print(f"   Filtro subpledge: {config['subpledge_filter']}")
     print()
     
     resposta = input("   Gerar arquivo query_" + nome_projeto + ".py? (s/n): ").lower()

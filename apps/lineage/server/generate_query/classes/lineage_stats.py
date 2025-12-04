@@ -15,17 +15,24 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
     """
     
     # Determinar JOIN com clan
-    # Nota: Mobius/L2J geralmente armazena clan name em clan_subpledges.name, não em clan_data.clan_name
     if clan_structure['clan_name_source'] == 'clan_data':
-        # Alguns bancos raros têm clan_name diretamente em clan_data
+        # clan_name diretamente em clan_data
         clan_join = """
             LEFT JOIN clan_data D ON D.clan_id = C.clanid"""
         clan_name_field = "D.clan_name"
         ally_field = "D.ally_id"
-    else:
-        # Estrutura padrão Mobius/L2J: nome está em clan_subpledges
+    elif clan_structure['clan_name_source'] == 'clan_subpledges_simple':
+        # clan_subpledges sem filtro (tabela simples)
         clan_join = """
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.sub_pledge_id = 0
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid
+            LEFT JOIN clan_data CD ON CD.clan_id = C.clanid"""
+        clan_name_field = "D.name AS clan_name"
+        ally_field = "CD.ally_id"
+    else:
+        # clan_subpledges com filtro (sub_pledge_id ou type)
+        filter_col = clan_structure.get('subpledge_filter', 'sub_pledge_id')
+        clan_join = f"""
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.{filter_col} = 0
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid"""
         clan_name_field = "D.name AS clan_name"
         ally_field = "CD.ally_id"

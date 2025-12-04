@@ -1,6 +1,6 @@
 """Template da classe LineageServices - Serviços de Personagens"""
 
-def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_char_id: str, base_class_col: str = 'classid') -> str:
+def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_char_id: str, base_class_col: str, clan_structure: dict) -> str:
     """
     Gera o código da classe LineageServices
     
@@ -9,6 +9,7 @@ def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_cha
         has_subclass: Se tem tabela character_subclasses
         subclass_char_id: Nome da coluna de ID na tabela de subclasses
         base_class_col: Nome da coluna de classe base
+        clan_structure: Estrutura de clans do banco
     """
     
     # Se tem subclass, busca as subclasses
@@ -40,6 +41,24 @@ def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_cha
                 LIMIT 2,1) AS subclass3_level,
 """
     
+    # Estrutura de clan
+    if clan_structure['clan_name_source'] == 'clan_data':
+        clan_join = """
+            LEFT JOIN clan_data CLAN ON CLAN.clan_id = C.clanid"""
+        clan_name = "CLAN.clan_name"
+    elif clan_structure['clan_name_source'] == 'clan_subpledges_simple':
+        clan_join = """
+            LEFT JOIN clan_subpledges CS ON CS.clan_id = C.clanid
+            LEFT JOIN clan_data CLAN ON CLAN.clan_id = C.clanid"""
+        clan_name = "CS.name AS clan_name"
+    else:
+        # clan_subpledges com filtro
+        filter_col = clan_structure.get('subpledge_filter', 'sub_pledge_id')
+        clan_join = f"""
+            LEFT JOIN clan_subpledges CS ON CS.clan_id = C.clanid AND CS.{filter_col} = 0
+            LEFT JOIN clan_data CLAN ON CLAN.clan_id = C.clanid"""
+        clan_name = "CS.name AS clan_name"
+    
     return f'''class LineageServices:
 
     @staticmethod
@@ -50,11 +69,9 @@ def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_cha
                 C.*, 
                 C.{base_class_col} AS base_class,
                 C.level AS base_level,{subclass_queries}
-                CS.name AS clan_name,
+                {clan_name},
                 CLAN.ally_name
-            FROM characters AS C
-            LEFT JOIN clan_data AS CLAN ON CLAN.clan_id = C.clanid
-            LEFT JOIN clan_subpledges AS CS ON CS.clan_id = CLAN.clan_id AND CS.sub_pledge_id = 0
+            FROM characters AS C{clan_join}
             WHERE C.account_name = :login
             LIMIT 7;
         """
