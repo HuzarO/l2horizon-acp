@@ -1,6 +1,11 @@
 """
 Templates das classes para geração de arquivos query
 Cada arquivo contém o template de uma classe específica
+
+Estrutura:
+- Cada classe em seu próprio arquivo
+- Funções recebem parâmetros do schema (char_id, access_level, etc)
+- Retornam string com código Python formatado
 """
 
 from .lineage_stats import get_lineage_stats_template
@@ -20,4 +25,5 @@ __all__ = [
     'get_lineage_marketplace_template',
     'get_lineage_inflation_template',
 ]
+
 

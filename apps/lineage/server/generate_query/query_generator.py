@@ -130,9 +130,19 @@ import hashlib
         subclass_char_id = self._get_subclass_char_id()
         return get_lineage_services_template(char_id, has_subclass, subclass_char_id)
     
+    def _get_account_access_level_column(self) -> str:
+        """Detecta o nome da coluna de nível de acesso na tabela accounts"""
+        if 'accounts' in self.tables:
+            columns = self.tables['accounts']['columns']
+            for candidate in ['accessLevel', 'access_level', 'accesslevel']:
+                if candidate in columns:
+                    return candidate
+        return 'accessLevel'  # fallback
+    
     def generate_lineage_account_class(self) -> str:
         """Gera a classe LineageAccount usando template"""
-        return get_lineage_account_template()
+        access_level_col = self._get_account_access_level_column()
+        return get_lineage_account_template(access_level_col)
     
     def generate_transfer_wallet_to_char_class(self) -> str:
         """Gera a classe TransferFromWalletToChar usando template"""
@@ -147,7 +157,8 @@ import hashlib
     def generate_lineage_marketplace_class(self) -> str:
         """Gera a classe LineageMarketplace usando template"""
         char_id = self._get_char_id_column()
-        return get_lineage_marketplace_template(char_id)
+        access_level_col = self._get_account_access_level_column()
+        return get_lineage_marketplace_template(char_id, access_level_col)
     
     def generate_lineage_inflation_class(self) -> str:
         """Gera a classe LineageInflation usando template"""

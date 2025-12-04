@@ -1,15 +1,20 @@
 """Template da classe LineageAccount - Gerenciamento de Contas"""
 
-def get_lineage_account_template() -> str:
-    """Gera o código da classe LineageAccount completa"""
+def get_lineage_account_template(access_level_column: str = 'accessLevel') -> str:
+    """
+    Gera o código da classe LineageAccount completa
     
-    return '''class LineageAccount:
+    Args:
+        access_level_column: Nome da coluna de access_level (accessLevel ou access_level)
+    """
+    
+    return f'''class LineageAccount:
     _checked_columns = False
 
     @staticmethod
     @cache_lineage_result(timeout=300)
     def get_acess_level():
-        return 'accessLevel'
+        return '{access_level_column}'
 
     @staticmethod
     @cache_lineage_result(timeout=300)
@@ -21,7 +26,7 @@ def get_lineage_account_template() -> str:
             LIMIT 1
         """
         try:
-            result = LineageDB().select(sql, {"login": login})
+            result = LineageDB().select(sql, {{"login": login}})
             return result[0] if result else None
         except:
             return None
@@ -35,7 +40,7 @@ def get_lineage_account_template() -> str:
             WHERE email = :email
         """
         try:
-            return LineageDB().select(sql, {"email": email})
+            return LineageDB().select(sql, {{"email": email}})
         except:
             return []
 
@@ -49,7 +54,7 @@ def get_lineage_account_template() -> str:
             LIMIT 1
         """
         try:
-            result = LineageDB().select(sql, {"login": login, "email": email})
+            result = LineageDB().select(sql, {{"login": login, "email": email}})
             return result[0] if result else None
         except:
             return None
@@ -64,13 +69,13 @@ def get_lineage_account_template() -> str:
                 WHERE login = :login AND (linked_uuid IS NULL OR linked_uuid = '')
                 LIMIT 1
             """
-            params = {
+            params = {{
                 "uuid": str(user_uuid),
                 "login": login
-            }
+            }}
             return LineageDB().update(sql, params)
         except Exception as e:
-            print(f"Erro ao vincular conta Lineage a UUID: {e}")
+            print(f"Erro ao vincular conta Lineage a UUID: {{e}}")
             return None
 
     @staticmethod
@@ -89,10 +94,10 @@ def get_lineage_account_template() -> str:
                 FROM accounts
                 WHERE login = :login
             """
-            check_result = LineageDB().select(check_sql, {"login": login_str})
+            check_result = LineageDB().select(check_sql, {{"login": login_str}})
             
             if not check_result or len(check_result) == 0:
-                logger.warning(f"Conta {login_str} não encontrada")
+                logger.warning(f"Conta {{login_str}} não encontrada")
                 return False
             
             account = check_result[0]
@@ -106,13 +111,13 @@ def get_lineage_account_template() -> str:
                 SET linked_uuid = NULL
                 WHERE login = :login
             """
-            result = LineageDB().update(sql, {"login": login_str})
+            result = LineageDB().update(sql, {{"login": login_str}})
             
             return result is not None and result > 0
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
-            logger.error(f"Erro ao desvincular conta: {e}")
+            logger.error(f"Erro ao desvincular conta: {{e}}")
             return False
 
     @staticmethod
@@ -157,19 +162,19 @@ def get_lineage_account_template() -> str:
             LineageAccount._checked_columns = True
 
         except Exception as e:
-            print(f"❌ Erro ao alterar tabela 'accounts': {e}")
+            print(f"❌ Erro ao alterar tabela 'accounts': {{e}}")
 
     @staticmethod
     @cache_lineage_result(timeout=300, use_cache=False)
     def check_login_exists(login):
         sql = "SELECT * FROM accounts WHERE login = :login LIMIT 1"
-        return LineageDB().select(sql, {"login": login})
+        return LineageDB().select(sql, {{"login": login}})
 
     @staticmethod
     @cache_lineage_result(timeout=300)
     def check_email_exists(email):
         sql = "SELECT login, email FROM accounts WHERE email = :email"
-        return LineageDB().select(sql, {"email": email})
+        return LineageDB().select(sql, {{"email": email}})
 
     @staticmethod
     @cache_lineage_result(timeout=300)
@@ -178,20 +183,20 @@ def get_lineage_account_template() -> str:
             LineageAccount.ensure_columns()
             hashed = base64.b64encode(hashlib.sha1(password.encode()).digest()).decode()
             sql = """
-                INSERT INTO accounts (login, password, accessLevel, email, created_time)
+                INSERT INTO accounts (login, password, {access_level_column}, email, created_time)
                 VALUES (:login, :password, :access_level, :email, :created_time)
             """
-            params = {
+            params = {{
                 "login": login,
                 "password": hashed,
                 "access_level": access_level,
                 "email": email,
                 "created_time": int(time.time())
-            }
+            }}
             LineageDB().insert(sql, params)
             return True
         except Exception as e:
-            print(f"Erro ao registrar conta: {e}")
+            print(f"Erro ao registrar conta: {{e}}")
             return None
 
     @staticmethod
@@ -203,14 +208,14 @@ def get_lineage_account_template() -> str:
                 UPDATE accounts SET password = :password
                 WHERE login = :login LIMIT 1
             """
-            params = {
+            params = {{
                 "password": hashed,
                 "login": login
-            }
+            }}
             LineageDB().update(sql, params)
             return True
         except Exception as e:
-            print(f"Erro ao atualizar senha: {e}")
+            print(f"Erro ao atualizar senha: {{e}}")
             return None
 
     @staticmethod
@@ -221,14 +226,14 @@ def get_lineage_account_template() -> str:
         try:
             hashed = base64.b64encode(hashlib.sha1(password.encode()).digest()).decode()
             sql = "UPDATE accounts SET password = :password WHERE login IN :logins"
-            params = {
+            params = {{
                 "password": hashed,
                 "logins": logins_list
-            }
+            }}
             LineageDB().update(sql, params)
             return True
         except Exception as e:
-            print(f"Erro ao atualizar senhas em grupo: {e}")
+            print(f"Erro ao atualizar senhas em grupo: {{e}}")
             return None
 
     @staticmethod
@@ -236,16 +241,16 @@ def get_lineage_account_template() -> str:
     def update_access_level(access, login):
         try:
             sql = """
-                UPDATE accounts SET accessLevel = :access
+                UPDATE accounts SET {access_level_column} = :access
                 WHERE login = :login LIMIT 1
             """
-            params = {
+            params = {{
                 "access": access,
                 "login": login
-            }
+            }}
             return LineageDB().update(sql, params)
         except Exception as e:
-            print(f"Erro ao atualizar accessLevel: {e}")
+            print(f"Erro ao atualizar accessLevel: {{e}}")
             return None
 
     @staticmethod
@@ -253,7 +258,7 @@ def get_lineage_account_template() -> str:
     def validate_credentials(login, password):
         try:
             sql = "SELECT password FROM accounts WHERE login = :login LIMIT 1"
-            result = LineageDB().select(sql, {"login": login})
+            result = LineageDB().select(sql, {{"login": login}})
 
             if not result:
                 return False
@@ -263,7 +268,7 @@ def get_lineage_account_template() -> str:
             return hashed_input == stored_hash
 
         except Exception as e:
-            print(f"Erro ao verificar senha: {e}")
+            print(f"Erro ao verificar senha: {{e}}")
             return False
 
 

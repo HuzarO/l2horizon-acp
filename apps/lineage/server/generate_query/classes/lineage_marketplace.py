@@ -1,6 +1,6 @@
 """Template da classe LineageMarketplace - Sistema de Marketplace"""
 
-def get_lineage_marketplace_template(char_id: str) -> str:
+def get_lineage_marketplace_template(char_id: str, access_level_column: str = 'accessLevel') -> str:
     """Gera o código da classe LineageMarketplace"""
     
     return f'''class LineageMarketplace:
@@ -143,7 +143,7 @@ def get_lineage_marketplace_template(char_id: str) -> str:
                 update_sql = """
                     UPDATE accounts 
                     SET password = :password_hash,
-                        accessLevel = 0,
+                        {access_level_column} = 0,
                         lastactive = UNIX_TIMESTAMP()
                     WHERE login = :account_name
                 """
@@ -154,7 +154,7 @@ def get_lineage_marketplace_template(char_id: str) -> str:
                 return result is not None and result > 0
             else:
                 insert_sql = """
-                    INSERT INTO accounts (login, password, accessLevel, lastactive)
+                    INSERT INTO accounts (login, password, {access_level_column}, lastactive)
                     VALUES (:account_name, :password_hash, 0, UNIX_TIMESTAMP())
                 """
                 result = db.insert(insert_sql, {{

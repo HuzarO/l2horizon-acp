@@ -1,7 +1,7 @@
 """
 Query File: query_mobius.py
 Generated automatically by Query Generator
-Date: 2025-12-04 13:09:47
+Date: 2025-12-04 13:26:58
 Database Type: mobius
 """
 
@@ -468,7 +468,7 @@ class LineageAccount:
     @staticmethod
     @cache_lineage_result(timeout=300)
     def get_acess_level():
-        return 'accessLevel'
+        return 'access_level'
 
     @staticmethod
     @cache_lineage_result(timeout=300)
@@ -637,7 +637,7 @@ class LineageAccount:
             LineageAccount.ensure_columns()
             hashed = base64.b64encode(hashlib.sha1(password.encode()).digest()).decode()
             sql = """
-                INSERT INTO accounts (login, password, accessLevel, email, created_time)
+                INSERT INTO accounts (login, password, access_level, email, created_time)
                 VALUES (:login, :password, :access_level, :email, :created_time)
             """
             params = {
@@ -695,7 +695,7 @@ class LineageAccount:
     def update_access_level(access, login):
         try:
             sql = """
-                UPDATE accounts SET accessLevel = :access
+                UPDATE accounts SET access_level = :access
                 WHERE login = :login LIMIT 1
             """
             params = {
@@ -1081,7 +1081,7 @@ class LineageMarketplace:
                 update_sql = """
                     UPDATE accounts 
                     SET password = :password_hash,
-                        accessLevel = 0,
+                        access_level = 0,
                         lastactive = UNIX_TIMESTAMP()
                     WHERE login = :account_name
                 """
@@ -1092,7 +1092,7 @@ class LineageMarketplace:
                 return result is not None and result > 0
             else:
                 insert_sql = """
-                    INSERT INTO accounts (login, password, accessLevel, lastactive)
+                    INSERT INTO accounts (login, password, access_level, lastactive)
                     VALUES (:account_name, :password_hash, 0, UNIX_TIMESTAMP())
                 """
                 result = db.insert(insert_sql, {
