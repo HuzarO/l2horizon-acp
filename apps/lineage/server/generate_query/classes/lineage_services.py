@@ -13,32 +13,57 @@ def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_cha
     """
     
     # Se tem subclass, busca as subclasses
+    # Mobius usa isBase='1'/isBase='0', outros usam class_index
+    subclass_base_class = ""
     subclass_queries = ""
+    
     if has_subclass:
+        # Base class (se characters não tem, pegar de subclass)
+        if not base_class_col or base_class_col == 'class_id':
+            subclass_base_class = f"""
+                (SELECT BS.class_id FROM character_subclasses AS BS 
+                WHERE BS.{subclass_char_id} = C.{char_id} AND BS.isBase = '1' 
+                LIMIT 1) AS base_class,
+                (SELECT BS.level FROM character_subclasses AS BS 
+                WHERE BS.{subclass_char_id} = C.{char_id} AND BS.isBase = '1' 
+                LIMIT 1) AS base_level,
+"""
+        else:
+            subclass_base_class = f"""
+                C.{base_class_col} AS base_class,
+                C.level AS base_level,
+"""
+        
+        # Subclasses (isBase = '0' para Mobius, class_index > 0 para outros)
         subclass_queries = f"""
                 -- Subclass 1
                 (SELECT S1.class_id FROM character_subclasses AS S1 
-                WHERE S1.{subclass_char_id} = C.{char_id} AND S1.class_index > 0 
+                WHERE S1.{subclass_char_id} = C.{char_id} AND S1.isBase = '0' 
                 LIMIT 0,1) AS subclass1,
                 (SELECT S1.level FROM character_subclasses AS S1 
-                WHERE S1.{subclass_char_id} = C.{char_id} AND S1.class_index > 0 
+                WHERE S1.{subclass_char_id} = C.{char_id} AND S1.isBase = '0' 
                 LIMIT 0,1) AS subclass1_level,
 
                 -- Subclass 2
                 (SELECT S2.class_id FROM character_subclasses AS S2 
-                WHERE S2.{subclass_char_id} = C.{char_id} AND S2.class_index > 0 
+                WHERE S2.{subclass_char_id} = C.{char_id} AND S2.isBase = '0' 
                 LIMIT 1,1) AS subclass2,
                 (SELECT S2.level FROM character_subclasses AS S2 
-                WHERE S2.{subclass_char_id} = C.{char_id} AND S2.class_index > 0 
+                WHERE S2.{subclass_char_id} = C.{char_id} AND S2.isBase = '0' 
                 LIMIT 1,1) AS subclass2_level,
 
                 -- Subclass 3
                 (SELECT S3.class_id FROM character_subclasses AS S3 
-                WHERE S3.{subclass_char_id} = C.{char_id} AND S3.class_index > 0 
+                WHERE S3.{subclass_char_id} = C.{char_id} AND S3.isBase = '0' 
                 LIMIT 2,1) AS subclass3,
                 (SELECT S3.level FROM character_subclasses AS S3 
-                WHERE S3.{subclass_char_id} = C.{char_id} AND S3.class_index > 0 
+                WHERE S3.{subclass_char_id} = C.{char_id} AND S3.isBase = '0' 
                 LIMIT 2,1) AS subclass3_level,
+"""
+    else:
+        subclass_base_class = f"""
+                C.{base_class_col} AS base_class,
+                C.level AS base_level,
 """
     
     # Estrutura de clan
@@ -52,10 +77,10 @@ def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_cha
             LEFT JOIN clan_data CLAN ON CLAN.clan_id = C.clanid"""
         clan_name = "CS.name AS clan_name"
     else:
-        # clan_subpledges com filtro
-        filter_col = clan_structure.get('subpledge_filter', 'sub_pledge_id')
+        # clan_subpledges com filtro (sub_pledge_id = 0 OU type = 0)
+        filter_condition = clan_structure.get('subpledge_filter', 'sub_pledge_id = 0')
         clan_join = f"""
-            LEFT JOIN clan_subpledges CS ON CS.clan_id = C.clanid AND CS.{filter_col} = 0
+            LEFT JOIN clan_subpledges CS ON CS.clan_id = C.clanid AND CS.{filter_condition}
             LEFT JOIN clan_data CLAN ON CLAN.clan_id = C.clanid"""
         clan_name = "CS.name AS clan_name"
     
@@ -66,9 +91,7 @@ def get_lineage_services_template(char_id: str, has_subclass: bool, subclass_cha
     def find_chars(login):
         sql = """
             SELECT
-                C.*, 
-                C.{base_class_col} AS base_class,
-                C.level AS base_level,{subclass_queries}
+                C.*,{subclass_base_class}{subclass_queries}
                 {clan_name},
                 CLAN.ally_name
             FROM characters AS C{clan_join}

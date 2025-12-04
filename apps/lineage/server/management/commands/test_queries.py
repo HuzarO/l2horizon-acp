@@ -68,7 +68,7 @@ class Command(BaseCommand):
         verbose = options.get('verbose', False)
         
         self.stdout.write("\n" + "=" * 70)
-        self.stdout.write(self.style.SUCCESS("🧪 TESTE DE QUERIES - Lineage 2"))
+        self.stdout.write(self.style.SUCCESS("TESTE DE QUERIES - Lineage 2"))
         self.stdout.write("=" * 70)
         
         # Verificar qual módulo está sendo usado
@@ -85,7 +85,7 @@ class Command(BaseCommand):
         # TESTE 1: LineageStats
         # ========================================================================
         self.stdout.write("\n" + "=" * 70)
-        self.stdout.write("📊 TESTANDO: LineageStats")
+        self.stdout.write("TESTANDO: LineageStats")
         self.stdout.write("=" * 70)
         
         try:
@@ -280,7 +280,7 @@ class Command(BaseCommand):
         # TESTE 2: LineageServices
         # ========================================================================
         self.stdout.write("\n" + "=" * 70)
-        self.stdout.write("🔧 TESTANDO: LineageServices")
+        self.stdout.write("TESTANDO: LineageServices")
         self.stdout.write("=" * 70)
         
         try:
@@ -332,7 +332,7 @@ class Command(BaseCommand):
         # TESTE 3: LineageAccount
         # ========================================================================
         self.stdout.write("\n" + "=" * 70)
-        self.stdout.write("👤 TESTANDO: LineageAccount")
+        self.stdout.write("TESTANDO: LineageAccount")
         self.stdout.write("=" * 70)
         
         try:
@@ -421,7 +421,7 @@ class Command(BaseCommand):
         # TESTE 4: TransferFromWalletToChar
         # ========================================================================
         self.stdout.write("\n" + "=" * 70)
-        self.stdout.write("💰 TESTANDO: TransferFromWalletToChar")
+        self.stdout.write("TESTANDO: TransferFromWalletToChar")
         self.stdout.write("=" * 70)
         
         try:
@@ -449,7 +449,7 @@ class Command(BaseCommand):
         # TESTE 5: TransferFromCharToWallet
         # ========================================================================
         self.stdout.write("\n" + "=" * 70)
-        self.stdout.write("💸 TESTANDO: TransferFromCharToWallet")
+        self.stdout.write("TESTANDO: TransferFromCharToWallet")
         self.stdout.write("=" * 70)
         
         try:
@@ -478,7 +478,7 @@ class Command(BaseCommand):
         # TESTE 6: LineageMarketplace
         # ========================================================================
         self.stdout.write("\n" + "=" * 70)
-        self.stdout.write("🛒 TESTANDO: LineageMarketplace")
+        self.stdout.write("TESTANDO: LineageMarketplace")
         self.stdout.write("=" * 70)
         
         try:
@@ -563,7 +563,7 @@ class Command(BaseCommand):
         # TESTE 7: LineageInflation
         # ========================================================================
         self.stdout.write("\n" + "=" * 70)
-        self.stdout.write("📈 TESTANDO: LineageInflation")
+        self.stdout.write("TESTANDO: LineageInflation")
         self.stdout.write("=" * 70)
         
         try:
@@ -655,7 +655,7 @@ class Command(BaseCommand):
         # TESTE 8: Constantes do Schema
         # ========================================================================
         self.stdout.write("\n" + "=" * 70)
-        self.stdout.write("⚙️  TESTANDO: Constantes do Schema (CHAR_ID, ACCESS_LEVEL, etc)")
+        self.stdout.write("TESTANDO: Constantes do Schema (CHAR_ID, ACCESS_LEVEL, etc)")
         self.stdout.write("=" * 70)
         
         try:
@@ -687,7 +687,7 @@ class Command(BaseCommand):
         # RESUMO
         # ========================================================================
         self.stdout.write("\n" + "=" * 70)
-        self.stdout.write("📊 RESUMO DOS TESTES")
+        self.stdout.write("RESUMO DOS TESTES")
         self.stdout.write("=" * 70)
         self.stdout.write(f"\n   Total de testes: {total_tests}")
         self.stdout.write(self.style.SUCCESS(f"   ✅ Passaram: {passed_tests}"))
@@ -708,15 +708,15 @@ class Command(BaseCommand):
         if failed_tests == 0:
             self.stdout.write(self.style.SUCCESS("✅ TODOS OS TESTES PASSARAM!"))
             self.stdout.write("=" * 70)
-            self.stdout.write("\n🎉 Todas as 7 classes e suas queries SQL estão funcionando!")
-            self.stdout.write(f"\n📦 Arquivo testado: query_{query_module}.py")
-            self.stdout.write("\n✅ Pronto para produção!\n")
+            self.stdout.write("\nTodas as 7 classes e suas queries SQL estão funcionando!")
+            self.stdout.write(f"\nArquivo testado: query_{query_module}.py")
+            self.stdout.write("\nPronto para producao!\n")
             return
         else:
             success_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
             self.stdout.write(self.style.WARNING(f"⚠️  ALGUNS TESTES FALHARAM ({success_rate:.1f}% de sucesso)"))
             self.stdout.write("=" * 70)
-            self.stdout.write("\n💡 Verifique os erros acima e regenere o arquivo query_*.py:")
+            self.stdout.write("\nVerifique os erros acima e regenere o arquivo query_*.py:")
             self.stdout.write("\n   cd apps/lineage/server/generate_query")
             self.stdout.write(f"\n   python gerar_query.py  # Digite: {query_module}")
             self.stdout.write("\n")

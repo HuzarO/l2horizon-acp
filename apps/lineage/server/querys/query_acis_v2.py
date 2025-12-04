@@ -24,6 +24,21 @@ def generate_password_hash(password: str) -> str:
     return hashed.decode()
 
 
+# ============================================================================
+# CONFIGURAÇÃO DO SCHEMA - ACIS v2
+# ============================================================================
+
+CHAR_ID = 'obj_Id'
+ACCESS_LEVEL = 'accesslevel'
+BASE_CLASS_COL = 'class_id'  # Vem de character_subclasses
+HAS_SUBCLASS = True
+SUBCLASS_CHAR_ID = 'char_obj_id'
+CLAN_NAME_SOURCE = 'clan_subpledges'
+HAS_ALLY_DATA = False
+
+# ============================================================================
+
+
 class LineageStats:
 
     @staticmethod

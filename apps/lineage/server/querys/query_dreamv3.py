@@ -8,6 +8,21 @@ import hashlib
 from apps.lineage.server.utils.password_hash import PasswordHash
 
 
+# ============================================================================
+# CONFIGURAÇÃO DO SCHEMA - Dream v3
+# ============================================================================
+
+CHAR_ID = 'obj_Id'  # Queries usam C.obj_Id
+ACCESS_LEVEL = 'accesslevel'
+BASE_CLASS_COL = 'class_id'  # Vem de character_subclasses
+HAS_SUBCLASS = True
+SUBCLASS_CHAR_ID = 'char_obj_id'
+CLAN_NAME_SOURCE = 'clan_subpledges'  # Usa D.name de clan_subpledges
+HAS_ALLY_DATA = False
+
+# ============================================================================
+
+
 def detect_and_hash(password, stored_hash, login=None):
     hash_len = len(stored_hash)
 

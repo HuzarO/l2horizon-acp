@@ -9,10 +9,10 @@ if os.getenv("LINEAGE_DB_ENABLED", "false").lower() == "true":
         LineageAccount = get_query_class("LineageAccount")
         LineageAccount.ensure_columns()
     except (SQLAlchemyError, OperationalError) as e:
-        print(f"⚠️ Não foi possível conectar ao banco do Lineage 2: {e}")
-        print("ℹ️ O sistema continuará funcionando normalmente, mas algumas funcionalidades podem estar indisponíveis.")
+        print(f"AVISO: Nao foi possivel conectar ao banco do Lineage 2: {e}")
+        print("INFO: O sistema continuara funcionando normalmente, mas algumas funcionalidades podem estar indisponiveis.")
     except Exception as e:
-        print(f"⚠️ Erro inesperado ao verificar colunas do banco: {e}")
-        print("ℹ️ O sistema continuará funcionando normalmente, mas algumas funcionalidades podem estar indisponíveis.")
+        print(f"AVISO: Erro inesperado ao verificar colunas do banco: {e}")
+        print("INFO: O sistema continuara funcionando normalmente, mas algumas funcionalidades podem estar indisponiveis.")
 else:
-    print("ℹ️ Banco Lineage desativado via configuração - pulando verificação de colunas")
+    print("INFO: Banco Lineage desativado via configuracao - pulando verificacao de colunas")

@@ -36,8 +36,14 @@ LineageServices = get_query_class("LineageServices")
 # Importar constantes do schema (nomes reais das colunas do banco)
 import importlib
 import os
-query_module_name = os.getenv('LINEAGE_QUERY_MODULE', 'dreamv3')
-query_module = importlib.import_module(f'apps.lineage.server.querys.query_{query_module_name}')
+query_module_name = os.getenv('LINEAGE_QUERY_MODULE', 'default')
+try:
+    query_module = importlib.import_module(f'apps.lineage.server.querys.query_{query_module_name}')
+except ModuleNotFoundError:
+    # Fallback para query_default se não encontrar o módulo
+    print(f"AVISO: query_{query_module_name} nao encontrado, usando query_default")
+    query_module = importlib.import_module(f'apps.lineage.server.querys.query_default')
+
 ACCESS_LEVEL = getattr(query_module, 'ACCESS_LEVEL', 'accesslevel')
 CHAR_ID = getattr(query_module, 'CHAR_ID', 'charId')
 BASE_CLASS_COL = getattr(query_module, 'BASE_CLASS_COL', 'classid')
