@@ -8,6 +8,13 @@ import yaml
 import json
 from typing import Dict, Any
 from datetime import datetime
+from class_templates import (
+    get_lineage_services_template,
+    get_transfer_wallet_to_char_template,
+    get_transfer_char_to_wallet_template,
+    get_lineage_marketplace_template,
+    get_lineage_inflation_template
+)
 
 
 class QueryGenerator:
@@ -395,6 +402,32 @@ import hashlib
 '''
         return code
     
+    def generate_lineage_services_class(self) -> str:
+        """Gera a classe LineageServices"""
+        char_id = self._get_char_id_column()
+        return get_lineage_services_template(char_id)
+    
+    def generate_transfer_wallet_to_char_class(self) -> str:
+        """Gera a classe TransferFromWalletToChar"""
+        char_id = self._get_char_id_column()
+        return get_transfer_wallet_to_char_template(char_id)
+    
+    def generate_transfer_char_to_wallet_class(self) -> str:
+        """Gera a classe TransferFromCharToWallet"""
+        char_id = self._get_char_id_column()
+        return get_transfer_char_to_wallet_template(char_id)
+    
+    def generate_lineage_marketplace_class(self) -> str:
+        """Gera a classe LineageMarketplace"""
+        char_id = self._get_char_id_column()
+        return get_lineage_marketplace_template(char_id)
+    
+    def generate_lineage_inflation_class(self) -> str:
+        """Gera a classe LineageInflation"""
+        char_id = self._get_char_id_column()
+        access_level = self._get_access_level_column()
+        return get_lineage_inflation_template(char_id, access_level)
+    
     def generate_lineage_account_class(self) -> str:
         """Gera a classe LineageAccount"""
         return '''
@@ -447,21 +480,31 @@ class LineageAccount:
 '''
     
     def generate_file(self, output_file: str = None, output_dir: str = None):
-        """Gera o arquivo query_*.py completo"""
+        """Gera o arquivo query_*.py completo com TODAS as 7 classes"""
         if output_file is None:
             output_file = f"query_{self.database_type}.py"
         
         print(f"🔨 Gerando arquivo: {output_file}")
+        print(f"📋 Gerando 7 classes completas...")
         
         content = self.generate_header()
         content += self.generate_lineage_stats_class()
+        content += self.generate_lineage_services_class()
         content += self.generate_lineage_account_class()
+        content += self.generate_transfer_wallet_to_char_class()
+        content += self.generate_transfer_char_to_wallet_class()
+        content += self.generate_lineage_marketplace_class()
+        content += self.generate_lineage_inflation_class()
         
         # Determinar diretório de saída
         if output_dir is None:
             # Por padrão, gera em ../querys/ (um nível acima de generate_query)
+            # Se estamos em generate_query/schemas/, subir 2 níveis
             current_dir = os.path.dirname(os.path.abspath(self.schema_file))
-            output_dir = os.path.join(current_dir, '..', 'querys')
+            if current_dir.endswith('schemas'):
+                output_dir = os.path.join(current_dir, '..', '..', 'querys')
+            else:
+                output_dir = os.path.join(current_dir, '..', 'querys')
         
         # Criar diretório se não existir
         os.makedirs(output_dir, exist_ok=True)
@@ -476,9 +519,14 @@ class LineageAccount:
             print(f"✅ Arquivo gerado com sucesso!")
             print(f"📁 Local: {os.path.abspath(output_path)}")
             print(f"📊 Database Type: {self.database_type}")
-            print(f"📋 Classes geradas:")
-            print("   - LineageStats (com métodos de ranking e estatísticas)")
-            print("   - LineageAccount (gerenciamento de contas)")
+            print(f"📋 Classes geradas (7 no total):")
+            print("   1. LineageStats - Rankings e estatísticas")
+            print("   2. LineageServices - Serviços de personagens")
+            print("   3. LineageAccount - Gerenciamento de contas")
+            print("   4. TransferFromWalletToChar - Wallet → Char")
+            print("   5. TransferFromCharToWallet - Char → Wallet")
+            print("   6. LineageMarketplace - Sistema de marketplace")
+            print("   7. LineageInflation - Análise de inflação")
             print("\n💡 Próximo passo: Revise o arquivo gerado e ajuste conforme necessário")
             
             return output_path
