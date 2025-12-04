@@ -228,7 +228,7 @@ def detectar_configuracoes(schema):
                 break
         
         # Detectar base_class
-        for candidate in ['classid', 'base_class', 'class_id']:
+        for candidate in ['base_class', 'classid', 'class_id']:
             if candidate in char_cols:
                 config['base_class_col'] = candidate
                 print(f"   ✅ Coluna de classe: {candidate}")
@@ -240,10 +240,18 @@ def detectar_configuracoes(schema):
         print(f"   ✅ Tem tabela character_subclasses")
         
         subclass_cols = schema['character_subclasses']['columns']
-        for candidate in ['char_obj_id', 'charId', 'char_id']:
+        # Tentar detectar a coluna de ID na tabela de subclass
+        for candidate in ['char_obj_id', 'charId', 'char_id', 'objId']:
             if candidate in subclass_cols:
                 config['subclass_char_id'] = candidate
                 print(f"   ✅ ID em subclass: {candidate}")
+                break
+        
+        # Detectar coluna de classe na subclass (pode ser diferente de characters)
+        for candidate in ['class_id', 'classid', 'base_class']:
+            if candidate in subclass_cols:
+                # Não sobrescrever base_class_col aqui, manter o de characters
+                print(f"   ℹ️  Coluna de classe em subclass: {candidate}")
                 break
     else:
         print(f"   ⚠️  Não tem tabela character_subclasses")
@@ -306,11 +314,15 @@ def gerar_arquivo_query(nome_projeto, schema, config):
     print("   📝 Gerando classe LineageServices...")
     services_code = get_lineage_services_template(
         char_id=config['char_id'],
-        clan_structure=clan_structure
+        has_subclass=config['has_subclass'],
+        subclass_char_id=config['subclass_char_id'],
+        base_class_col=config['base_class_col']
     )
     
     print("   📝 Gerando classe LineageAccount...")
-    account_code = get_lineage_account_template()
+    account_code = get_lineage_account_template(
+        access_level_column=config['access_level']
+    )
     
     print("   📝 Gerando classe TransferFromWalletToChar...")
     wallet_to_char_code = get_transfer_wallet_to_char_template(
@@ -324,12 +336,14 @@ def gerar_arquivo_query(nome_projeto, schema, config):
     
     print("   📝 Gerando classe LineageMarketplace...")
     marketplace_code = get_lineage_marketplace_template(
-        char_id=config['char_id']
+        char_id=config['char_id'],
+        access_level_column=config['access_level']
     )
     
     print("   📝 Gerando classe LineageInflation...")
     inflation_code = get_lineage_inflation_template(
-        char_id=config['char_id']
+        char_id=config['char_id'],
+        access_level=config['access_level']
     )
     
     # Montar arquivo completo
