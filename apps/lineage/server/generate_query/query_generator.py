@@ -79,16 +79,19 @@ class QueryGenerator:
         """Detecta a estrutura das tabelas de clan"""
         structure = {
             'has_subpledges': 'clan_subpledges' in self.tables,
-            'clan_name_source': 'clan_data',  # ou clan_subpledges
+            'clan_name_source': 'clan_subpledges',  # Default para Mobius/L2J
             'ally_name_column': 'ally_name'
         }
         
-        # Verifica se clan_data tem o campo name diretamente
+        # Verifica se clan_data tem o campo clan_name diretamente (raro)
+        # Nota: Mobius/L2J não tem clan_name em clan_data, apenas em clan_subpledges
         if 'clan_data' in self.tables:
             columns = self.tables['clan_data']['columns']
-            if 'clan_name' in columns or 'name' in columns:
+            if 'clan_name' in columns:
+                # Apenas se tiver especificamente 'clan_name' (não apenas 'name')
                 structure['clan_name_source'] = 'clan_data'
             else:
+                # Estrutura padrão Mobius/L2J: nome em clan_subpledges
                 structure['clan_name_source'] = 'clan_subpledges'
         
         return structure
