@@ -2,14 +2,45 @@
 Comando para testar todas as queries geradas automaticamente
 
 Testa todas as 7 classes do arquivo query_*.py:
-1. LineageStats - Rankings e estatísticas (13 métodos)
-2. LineageServices - Serviços de personagens (2 métodos)
-3. LineageAccount - Gerenciamento de contas (2 métodos)
-4. TransferFromWalletToChar - Wallet para char (1 método)
-5. TransferFromCharToWallet - Char para wallet (1 método)
-6. LineageMarketplace - Marketplace (5 métodos)
-7. LineageInflation - Análise de inflação (4 métodos)
-8. Constantes do Schema - CHAR_ID, ACCESS_LEVEL, etc (7 constantes)
+
+1. LineageStats (16 métodos testados)
+   - players_online, top_pvp, top_pk, top_online, top_level, top_adena
+   - top_clans, olympiad_ranking, olympiad_all_heroes, olympiad_current_heroes
+   - grandboss_status, raidboss_status, siege, siege_participants
+   - boss_jewel_locations, get_crests
+
+2. LineageServices (3 métodos testados + 3 skip)
+   - find_chars, check_name_exists, check_char
+   - SKIP: change_nickname, change_sex, unstuck (modificam banco)
+
+3. LineageAccount (5 métodos testados + 8 skip)
+   - get_account_by_login, check_login_exists, get_acess_level
+   - find_accounts_by_email, get_account_by_login_and_email, check_email_exists
+   - SKIP: register, update_password, link_account_to_user, etc (modificam banco)
+
+4. TransferFromWalletToChar (1 método testado + 2 skip)
+   - find_char
+   - SKIP: search_coin, insert_coin (modificam banco)
+
+5. TransferFromCharToWallet (1 método testado + 3 skip)
+   - find_char
+   - SKIP: list_items, check_ingame_coin, remove_ingame_coin
+
+6. LineageMarketplace (6 métodos testados + 2 skip)
+   - get_user_characters, verify_character_ownership, get_character_details
+   - get_character_items_count, count_characters_in_account, get_character_items
+   - SKIP: create_or_update_marketplace_account, transfer_character_to_account
+
+7. LineageInflation (7 métodos testados)
+   - get_all_items_by_location, get_items_summary_by_category
+   - get_top_items_by_quantity, get_items_by_location_summary
+   - get_items_by_character, get_site_items_count, get_inflation_comparison
+
+8. Constantes do Schema (7 constantes)
+   - CHAR_ID, ACCESS_LEVEL, BASE_CLASS_COL, HAS_SUBCLASS
+   - SUBCLASS_CHAR_ID, CLAN_NAME_SOURCE, HAS_ALLY_DATA
+
+TOTAL: ~46 testes (39 queries SQL + 7 constantes)
 
 Uso:
     python manage.py test_queries
@@ -207,6 +238,41 @@ class Command(BaseCommand):
                 errors.append(('LineageStats.siege', str(e)))
                 self.stdout.write(self.style.ERROR(f"   ❌ siege() - ERRO: {e}"))
             
+            # siege_participants
+            total_tests += 1
+            try:
+                result = LineageStats.siege_participants(castle_id=1)
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ siege_participants(1) - {len(result)} clans"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageStats.siege_participants', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ siege_participants() - ERRO: {e}"))
+            
+            # boss_jewel_locations
+            total_tests += 1
+            try:
+                # Testar com IDs de boss jewels comuns
+                jewel_ids = [6656, 6657, 6658]  # QA, Core, Orfen jewels
+                result = LineageStats.boss_jewel_locations(jewel_ids)
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ boss_jewel_locations([...]) - {len(result)} resultados"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageStats.boss_jewel_locations', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ boss_jewel_locations() - ERRO: {e}"))
+            
+            # get_crests
+            total_tests += 1
+            try:
+                result = LineageStats.get_crests([1, 2, 3], type='clan')
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ get_crests([1,2,3]) - {len(result)} crests"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageStats.get_crests', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ get_crests() - ERRO: {e}"))
+            
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"   ❌ ERRO ao importar LineageStats: {e}"))
         
@@ -243,6 +309,22 @@ class Command(BaseCommand):
                 errors.append(('LineageServices.check_name_exists', str(e)))
                 self.stdout.write(self.style.ERROR(f"   ❌ check_name_exists('TestChar') - ERRO: {e}"))
             
+            # check_char
+            total_tests += 1
+            try:
+                result = LineageServices.check_char("admin", 1)
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ check_char('admin', 1) - OK"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageServices.check_char', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ check_char() - ERRO: {e}"))
+            
+            # Métodos que modificam banco - apenas informar
+            self.stdout.write(self.style.WARNING(f"   ⚠️  change_nickname() - SKIP (modifica banco)"))
+            self.stdout.write(self.style.WARNING(f"   ⚠️  change_sex() - SKIP (modifica banco)"))
+            self.stdout.write(self.style.WARNING(f"   ⚠️  unstuck() - SKIP (modifica banco)"))
+            
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"   ❌ ERRO ao importar LineageServices: {e}"))
         
@@ -277,6 +359,60 @@ class Command(BaseCommand):
                 failed_tests += 1
                 errors.append(('LineageAccount.check_login_exists', str(e)))
                 self.stdout.write(self.style.ERROR(f"   ❌ check_login_exists('admin') - ERRO: {e}"))
+            
+            # get_acess_level
+            total_tests += 1
+            try:
+                result = LineageAccount.get_acess_level()
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ get_acess_level() - '{result}'"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageAccount.get_acess_level', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ get_acess_level() - ERRO: {e}"))
+            
+            # find_accounts_by_email
+            total_tests += 1
+            try:
+                result = LineageAccount.find_accounts_by_email("test@example.com")
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ find_accounts_by_email('test@...') - {len(result) if result else 0} contas"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageAccount.find_accounts_by_email', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ find_accounts_by_email() - ERRO: {e}"))
+            
+            # get_account_by_login_and_email
+            total_tests += 1
+            try:
+                result = LineageAccount.get_account_by_login_and_email("admin", "test@example.com")
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ get_account_by_login_and_email() - OK"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageAccount.get_account_by_login_and_email', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ get_account_by_login_and_email() - ERRO: {e}"))
+            
+            # check_email_exists
+            total_tests += 1
+            try:
+                result = LineageAccount.check_email_exists("test@example.com")
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ check_email_exists('test@...') - {len(result) if result else 0} contas"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageAccount.check_email_exists', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ check_email_exists() - ERRO: {e}"))
+            
+            # Métodos que modificam - apenas informar
+            self.stdout.write(self.style.WARNING(f"   ⚠️  link_account_to_user() - SKIP (modifica banco)"))
+            self.stdout.write(self.style.WARNING(f"   ⚠️  unlink_account_from_user() - SKIP (modifica banco)"))
+            self.stdout.write(self.style.WARNING(f"   ⚠️  ensure_columns() - SKIP (modifica estrutura)"))
+            self.stdout.write(self.style.WARNING(f"   ⚠️  register() - SKIP (modifica banco)"))
+            self.stdout.write(self.style.WARNING(f"   ⚠️  update_password() - SKIP (modifica banco)"))
+            self.stdout.write(self.style.WARNING(f"   ⚠️  update_password_group() - SKIP (modifica banco)"))
+            self.stdout.write(self.style.WARNING(f"   ⚠️  update_access_level() - SKIP (modifica banco)"))
+            self.stdout.write(self.style.WARNING(f"   ⚠️  validate_credentials() - SKIP (precisa senha válida)"))
             
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"   ❌ ERRO ao importar LineageAccount: {e}"))
@@ -403,6 +539,19 @@ class Command(BaseCommand):
                 errors.append(('LineageMarketplace.count_characters_in_account', str(e)))
                 self.stdout.write(self.style.ERROR(f"   ❌ count_characters_in_account() - ERRO: {e}"))
             
+            # get_character_items
+            total_tests += 1
+            try:
+                result = LineageMarketplace.get_character_items(1)
+                passed_tests += 1
+                inv_count = len(result.get('inventory', [])) if isinstance(result, dict) else 0
+                equip_count = len(result.get('equipment', [])) if isinstance(result, dict) else 0
+                self.stdout.write(self.style.SUCCESS(f"   ✅ get_character_items(1) - {inv_count} inv, {equip_count} equip"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageMarketplace.get_character_items', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ get_character_items() - ERRO: {e}"))
+            
             # Métodos que modificam - skip
             self.stdout.write(self.style.WARNING(f"   ⚠️  create_or_update_marketplace_account() - SKIP (modifica banco)"))
             self.stdout.write(self.style.WARNING(f"   ⚠️  transfer_character_to_account() - SKIP (modifica banco)"))
@@ -465,6 +614,39 @@ class Command(BaseCommand):
                 failed_tests += 1
                 errors.append(('LineageInflation.get_items_by_location_summary', str(e)))
                 self.stdout.write(self.style.ERROR(f"   ❌ get_items_by_location_summary() - ERRO: {e}"))
+            
+            # get_items_by_character
+            total_tests += 1
+            try:
+                result = LineageInflation.get_items_by_character(char_id=1)
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ get_items_by_character(1) - {len(result) if result else 0} itens"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageInflation.get_items_by_character', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ get_items_by_character() - ERRO: {e}"))
+            
+            # get_site_items_count
+            total_tests += 1
+            try:
+                result = LineageInflation.get_site_items_count()
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ get_site_items_count() - {len(result) if result else 0} itens"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageInflation.get_site_items_count', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ get_site_items_count() - ERRO: {e}"))
+            
+            # get_inflation_comparison
+            total_tests += 1
+            try:
+                result = LineageInflation.get_inflation_comparison()
+                passed_tests += 1
+                self.stdout.write(self.style.SUCCESS(f"   ✅ get_inflation_comparison() - OK"))
+            except Exception as e:
+                failed_tests += 1
+                errors.append(('LineageInflation.get_inflation_comparison', str(e)))
+                self.stdout.write(self.style.ERROR(f"   ❌ get_inflation_comparison() - ERRO: {e}"))
             
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"   ❌ ERRO ao importar LineageInflation: {e}"))
