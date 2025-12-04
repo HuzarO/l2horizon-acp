@@ -368,6 +368,32 @@ import hashlib
 from datetime import datetime
 
 
+# ============================================================================
+# CONFIGURAÇÃO DO SCHEMA - Nomes reais das colunas do banco
+# ============================================================================
+# ⚠️  NÃO use nomes hardcoded nas views!
+#     SEMPRE use estas constantes:
+#     
+#     Exemplo:
+#       ❌ ERRADO: account['accesslevel']
+#       ✅ CERTO:  account[ACCESS_LEVEL]
+
+# Tabela: characters
+CHAR_ID = '{config['char_id']}'                    # obj_Id, charId ou char_id
+ACCESS_LEVEL = '{config['access_level']}'          # accesslevel, accessLevel ou access_level
+BASE_CLASS_COL = '{config['base_class_col']}'      # classid, base_class ou class_id
+
+# Tabela: character_subclasses
+HAS_SUBCLASS = {config['has_subclass']}            # Se tem tabela de subclass
+SUBCLASS_CHAR_ID = '{config['subclass_char_id']}'  # Coluna de ID na subclass
+
+# Estrutura de Clans
+CLAN_NAME_SOURCE = '{config['clan_name_source']}'  # clan_data ou clan_subpledges
+HAS_ALLY_DATA = {config['has_ally_data']}          # Se tem tabela ally_data
+
+# ============================================================================
+
+
 {stats_code}
 
 {services_code}
@@ -464,11 +490,6 @@ def main():
     print("=" * 70)
     print("✅ ARQUIVO GERADO COM SUCESSO!")
     print("=" * 70)
-    print()
-    print("📝 Próximos passos:")
-    print(f"   1. Configure no .env: LINEAGE_QUERY_MODULE={nome_projeto}")
-    print(f"   2. Use nas views: from apps.lineage.server.querys.query_{nome_projeto} import LineageStats")
-    print(f"   3. Teste: LineageStats.top_level(limit=20)")
     print()
 
 
