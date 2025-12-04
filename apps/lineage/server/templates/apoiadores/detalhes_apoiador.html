@@ -78,44 +78,60 @@
 
   .supporter-image-placeholder i {
     font-size: 3rem;
-    color: #a0aec0;
+    color: #cbd5e0;
   }
 
   .supporter-basic-info h3 {
-    color: white;
+    color: #ffffff;
     margin-bottom: 0.5rem;
     font-weight: 600;
     font-size: 1.5rem;
   }
 
   .supporter-basic-info p {
-    color: #a0aec0;
+    color: #cbd5e0;
     margin: 0.25rem 0;
     font-size: 1rem;
+    line-height: 1.6;
+  }
+  
+  .supporter-basic-info strong {
+    color: #e2e8f0;
   }
 
   .status-badge-large {
     display: inline-block;
-    padding: 0.5rem 1.5rem;
-    border-radius: 20px;
-    font-weight: 600;
+    padding: 0.6rem 1.8rem;
+    border-radius: 25px;
+    font-weight: 700;
     font-size: 1rem;
     margin-top: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
-  .status-pending {
-    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
-    color: white;
+  .status-pending,
+  .status-pendente {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff;
   }
 
-  .status-approved {
-    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-    color: white;
+  .status-approved,
+  .status-aprovado {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
   }
 
-  .status-rejected {
-    background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
-    color: white;
+  .status-rejected,
+  .status-rejeitado {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
+  }
+  
+  .status-expirado {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: #ffffff;
   }
 
   .info-grid {
@@ -133,9 +149,10 @@
   }
 
   .info-section h4 {
-    color: white;
+    color: #ffffff;
     margin-bottom: 1rem;
     font-weight: 600;
+    font-size: 1.1rem;
   }
 
   .info-item {
@@ -151,12 +168,12 @@
   }
 
   .info-label {
-    color: #a0aec0;
+    color: #cbd5e0;
     font-weight: 500;
   }
 
   .info-value {
-    color: white;
+    color: #ffffff;
     font-weight: 600;
   }
 
@@ -167,22 +184,24 @@
   }
 
   .social-link {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: #ffffff;
     padding: 0.75rem 1.5rem;
-    border-radius: 8px;
+    border-radius: 10px;
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
   }
 
   .social-link:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    color: white;
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    color: #ffffff;
     text-decoration: none;
   }
 
@@ -235,10 +254,11 @@
   }
 
   .purchases-table tbody td {
-    color: white;
+    color: #e2e8f0;
     border: none;
     padding: 1rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 500;
   }
 
   .purchases-table tbody td:last-child {
@@ -246,50 +266,80 @@
   }
 
   .amount-value {
-    color: #48bb78;
-    font-weight: 600;
+    color: #10b981;
+    font-weight: 700;
+    font-size: 1.05rem;
   }
 
   .empty-purchases {
     text-align: center;
     padding: 3rem 2rem;
-    color: #a0aec0;
+    color: #cbd5e0;
   }
 
   .empty-purchases i {
     font-size: 4rem;
     margin-bottom: 1rem;
-    opacity: 0.5;
+    opacity: 0.6;
+    color: #94a3b8;
   }
 
   .empty-purchases h4 {
-    color: white;
+    color: #ffffff;
     margin-bottom: 1rem;
     font-weight: 600;
+    font-size: 1.5rem;
   }
 
   .empty-purchases p {
-    color: #a0aec0;
+    color: #cbd5e0;
     font-size: 1.1rem;
   }
 
   .btn-back {
-    background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
     border: none;
     border-radius: 10px;
-    padding: 0.75rem 1.5rem;
-    color: white;
-    font-weight: 500;
+    padding: 0.85rem 1.75rem;
+    color: #ffffff;
+    font-weight: 600;
     transition: all 0.3s ease;
     text-decoration: none;
     display: inline-block;
+    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
   }
 
   .btn-back:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(113, 128, 150, 0.3);
-    color: white;
+    box-shadow: 0 8px 25px rgba(100, 116, 139, 0.5);
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+    color: #ffffff;
     text-decoration: none;
+  }
+  
+  .breadcrumb {
+    background: transparent;
+    padding: 0;
+    margin-bottom: 1rem;
+  }
+  
+  .breadcrumb-item a {
+    color: #a78bfa !important;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+  }
+  
+  .breadcrumb-item a:hover {
+    color: #c4b5fd !important;
+  }
+  
+  .breadcrumb-item.active {
+    color: #e2e8f0 !important;
+  }
+  
+  .breadcrumb-item + .breadcrumb-item::before {
+    color: #64748b;
   }
 
   @media (max-width: 768px) {
@@ -325,12 +375,12 @@
     <nav aria-label="breadcrumb" class="mb-4">
       <ol class="breadcrumb">
         <li class="breadcrumb-item">
-          <a href="{% url 'dashboard' %}" style="color: #a0aec0;">{% trans "Dashboard" %}</a>
+          <a href="{% url 'dashboard' %}">{% trans "Dashboard" %}</a>
         </li>
         <li class="breadcrumb-item">
-          <a href="{% url 'server:painel_staff' %}" style="color: #a0aec0;">{% trans "Painel Staff" %}</a>
+          <a href="{% url 'server:painel_staff' %}">{% trans "Painel Staff" %}</a>
         </li>
-        <li class="breadcrumb-item active" aria-current="page" style="color: white;">{% trans "Detalhes" %}</li>
+        <li class="breadcrumb-item active" aria-current="page">{% trans "Detalhes" %}</li>
       </ol>
     </nav>
 
@@ -364,7 +414,7 @@
       <div class="info-grid">
         <div class="info-section">
           <h4>{% trans "Descrição" %}</h4>
-          <p style="color: #a0aec0; line-height: 1.6;">
+          <p style="color: #cbd5e0; line-height: 1.6;">
             {{ apoiador.descricao|default:_("Nenhuma descrição fornecida.") }}
           </p>
         </div>
@@ -385,7 +435,7 @@
               {% endif %}
             </div>
           {% else %}
-            <p style="color: #a0aec0;">{% trans "Nenhuma rede social fornecida." %}</p>
+            <p style="color: #cbd5e0;">{% trans "Nenhuma rede social fornecida." %}</p>
           {% endif %}
         </div>
       </div>
@@ -416,11 +466,11 @@
           <h4>{% trans "Total de Vendas" %}</h4>
           <div class="info-item">
             <span class="info-label">{% trans "Valor Total" %}</span>
-            <span class="info-value" style="color: #48bb78;">R$ {{ total_vendas|floatformat:2 }}</span>
+            <span class="info-value" style="color: #10b981; font-size: 1.2rem;">R$ {{ total_vendas|floatformat:2 }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">{% trans "Usuários Impactados" %}</span>
-            <span class="info-value">{{ total_usuarios }}</span>
+            <span class="info-value" style="color: #3b82f6; font-size: 1.2rem;">{{ total_usuarios }}</span>
           </div>
         </div>
       </div>
