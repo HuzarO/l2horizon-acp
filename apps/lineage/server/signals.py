@@ -58,6 +58,11 @@ if os.getenv("LINEAGE_DB_ENABLED", "false").lower() == "true":
     lock_file = None
     
     try:
+        # 🔥 NOVO: Delay baseado no PID para evitar sobrecarga no startup
+        import random
+        startup_delay = random.uniform(0.5, 2.0)  # 0.5 a 2 segundos
+        time.sleep(startup_delay)
+        
         # Tenta adquirir lock (non-blocking)
         lock_file = open(lock_file_path, 'w')
         lock_acquired = acquire_lock(lock_file)
