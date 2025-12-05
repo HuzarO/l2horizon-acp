@@ -218,6 +218,15 @@ def detectar_configuracoes(schema):
         'subclass_filter_sub': "isBase = '0'"  # padrão para Mobius
     }
     
+    # Detectar access_level na tabela accounts
+    if 'accounts' in schema:
+        account_cols = schema['accounts']['columns']
+        for candidate in ['accessLevel', 'accesslevel', 'access_level']:
+            if candidate in account_cols:
+                config['access_level'] = candidate
+                print(f"   ✅ Access level (accounts): {candidate}")
+                break
+    
     # Detectar char_id
     if 'characters' in schema:
         char_cols = schema['characters']['columns']
@@ -226,13 +235,6 @@ def detectar_configuracoes(schema):
             if candidate in char_cols:
                 config['char_id'] = candidate
                 print(f"   ✅ ID do personagem: {candidate}")
-                break
-        
-        # Detectar access_level
-        for candidate in ['accesslevel', 'accessLevel', 'access_level']:
-            if candidate in char_cols:
-                config['access_level'] = candidate
-                print(f"   ✅ Access level: {candidate}")
                 break
         
         # Detectar base_class
