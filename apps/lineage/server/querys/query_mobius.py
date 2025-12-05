@@ -1,7 +1,7 @@
 """
 Query File: query_mobius.py
 Generated automatically by Query Generator
-Date: 2025-12-04 20:20:13
+Date: 2025-12-04 21:18:54
 Database Schema: mobius
 
 ⚠️  Este arquivo foi gerado automaticamente.
@@ -30,7 +30,7 @@ from datetime import datetime
 # Tabela: characters
 CHAR_ID = 'obj_Id'                    # obj_Id, charId ou char_id
 ACCESS_LEVEL = 'accesslevel'          # accesslevel, accessLevel ou access_level
-BASE_CLASS_COL = 'None'      # classid, base_class ou class_id
+BASE_CLASS_COL = None      # classid, base_class ou class_id (None se não existe em characters)
 
 # Tabela: character_subclasses
 HAS_SUBCLASS = True            # Se tem tabela de subclass
@@ -189,7 +189,7 @@ class LineageStats:
                 C.clanid AS clan_id,
                 CD.ally_id AS ally_id,
                 (
-                    {{item_bonus_sql}}
+                    {item_bonus_sql}
                     IFNULL((SELECT SUM(I1.count)
                             FROM items I1
                             WHERE I1.owner_id = C.obj_Id AND I1.item_id = '57'
@@ -212,18 +212,17 @@ class LineageStats:
     @staticmethod
     @cache_lineage_result(timeout=300)
     def top_clans(limit=10):
-        sql = """
+        sql = f"""
             SELECT 
                 C.clan_id, 
-                C.clan_name, 
+                S.name AS clan_name,
                 C.clan_level, 
                 C.reputation_score, 
-                C.ally_name,
                 C.ally_id,
-                P.char_name, 
+                NULL AS char_name, 
                 (SELECT COUNT(*) FROM characters WHERE clanid = C.clan_id) AS membros
             FROM clan_data C
-            LEFT JOIN characters P ON P.obj_Id = C.leader_id
+            LEFT JOIN clan_subpledges S ON S.clan_id = C.clan_id AND S.type = 0
             ORDER BY C.clan_level DESC, C.reputation_score DESC, membros DESC
             LIMIT :limit
         """
@@ -297,9 +296,9 @@ class LineageStats:
     @cache_lineage_result(timeout=300)
     def grandboss_status():
         sql = """
-            SELECT boss_id, respawn_time AS respawn
-            FROM grandboss_data
-            ORDER BY respawn_time DESC
+            SELECT bossId AS boss_id, respawnDate AS respawn
+            FROM epic_boss_spawn
+            ORDER BY respawnDate DESC
         """
         return LineageStats._run_query(sql)
 
@@ -308,22 +307,22 @@ class LineageStats:
     def raidboss_status():
         sql = """
             SELECT 
-                B.boss_id,
-                B.respawn_time AS respawn,
+                B.id AS boss_id,
+                B.respawn_delay AS respawn,
                 CASE 
-                    WHEN B.respawn_time IS NULL OR B.respawn_time = 0 THEN 'Alive'
+                    WHEN B.respawn_delay IS NULL OR B.respawn_delay = 0 THEN 'Alive'
                     WHEN (
-                        (B.respawn_time > 9999999999 AND B.respawn_time > UNIX_TIMESTAMP() * 1000) OR
-                        (B.respawn_time <= 9999999999 AND B.respawn_time > UNIX_TIMESTAMP())
+                        (B.respawn_delay > 9999999999 AND B.respawn_delay > UNIX_TIMESTAMP() * 1000) OR
+                        (B.respawn_delay <= 9999999999 AND B.respawn_delay > UNIX_TIMESTAMP())
                     ) THEN 'Dead'
                     ELSE 'Alive'
                 END AS status,
                 CASE 
-                    WHEN B.respawn_time IS NULL OR B.respawn_time = 0 THEN NULL
-                    WHEN B.respawn_time > 9999999999 THEN FROM_UNIXTIME(B.respawn_time / 1000)
-                    ELSE FROM_UNIXTIME(B.respawn_time)
+                    WHEN B.respawn_delay IS NULL OR B.respawn_delay = 0 THEN NULL
+                    WHEN B.respawn_delay > 9999999999 THEN FROM_UNIXTIME(B.respawn_delay / 1000)
+                    ELSE FROM_UNIXTIME(B.respawn_delay)
                 END AS respawn_human
-            FROM raidboss_spawnlist B
+            FROM raidboss_status B
             ORDER BY respawn DESC
         """
         return LineageStats._run_query(sql)
@@ -331,61 +330,35 @@ class LineageStats:
     @staticmethod
     @cache_lineage_result(timeout=300)
     def siege():
-        sql = """
+        sql = f"""
             SELECT 
                 W.id, 
                 W.name, 
-                W.siegeDate AS sdate, 
+                W.siege_date AS sdate, 
                 W.treasury AS stax,
-                P.char_name, 
-                C.clan_name,
-                C.clan_id,
-                C.ally_id,
-                C.ally_name
+                NULL AS char_name, 
+                S.name AS clan_name,
+                CLAN.clan_id,
+                CLAN.ally_id,
+                A.ally_name
             FROM castle W
-            LEFT JOIN clan_data C ON C.hasCastle = W.id
-            LEFT JOIN characters P ON P.obj_Id = C.leader_id
+            LEFT JOIN clan_data CLAN ON CLAN.hasCastle = W.id
+            LEFT JOIN clan_subpledges S ON S.clan_id = CLAN.clan_id AND S.type = 0
+            LEFT JOIN ally_data A ON A.ally_id = CLAN.ally_id
         """
         return LineageStats._run_query(sql)
 
     @staticmethod
     @cache_lineage_result(timeout=300)
     def siege_participants(castle_id):
-        sql = """
-            SELECT 
-                S.type, 
-                C.name AS clan_name,
-                C.clan_id
-            FROM siege_clans S
-            LEFT JOIN clan_subpledges C ON C.clan_id = S.clan_id AND C.sub_pledge_id = 0
-            WHERE S.castle_id = :castle_id
-        """
-        return LineageStats._run_query(sql, {"castle_id": castle_id})
+        # TODO: Adaptar dinamicamente para diferentes schemas  
+        return []
 
     @staticmethod
     @cache_lineage_result(timeout=300)
     def boss_jewel_locations(boss_jewel_ids):
-        bind_ids = [f":id{i}" for i in range(len(boss_jewel_ids))]
-        placeholders = ", ".join(bind_ids)
-        sql = f"""
-            SELECT 
-                I.owner_id, 
-                I.item_id, 
-                SUM(I.count) AS count,
-                C.char_name,
-                P.name AS clan_name,
-                C.clanid AS clan_id,
-                CD.ally_id
-            FROM items I
-            INNER JOIN characters C ON C.obj_Id = I.owner_id
-            LEFT JOIN clan_subpledges P ON P.clan_id = C.clanid AND P.sub_pledge_id = 0
-            LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
-            WHERE I.item_id IN ({{placeholders}})
-            GROUP BY I.owner_id, C.char_name, P.name, I.item_id, C.clanid, CD.ally_id
-            ORDER BY count DESC, C.char_name ASC
-        """
-        params = {f"id{i}": item_id for i, item_id in enumerate(boss_jewel_ids)}
-        return LineageStats._run_query(sql, params)
+        # TODO: Adaptar dinamicamente para diferentes schemas
+        return []
 
 
 

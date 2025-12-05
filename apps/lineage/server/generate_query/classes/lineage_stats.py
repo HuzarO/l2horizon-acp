@@ -2,7 +2,12 @@
 
 def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bool, 
                                 subclass_char_id: str, clan_structure: dict, base_class_col: str = 'classid',
-                                clan_id_col: str = 'clan_id', crest_col: str = None) -> str:
+                                clan_id_col: str = 'clan_id', crest_col: str = None, clan_leader_col: str = None,
+                                has_raidboss_table: bool = False, raidboss_table_name: str = 'raidboss_spawnlist',
+                                raidboss_id_col: str = 'boss_id', raidboss_respawn_col: str = 'respawn_time',
+                                has_grandboss_table: bool = False, grandboss_table_name: str = 'grandboss_data',
+                                grandboss_id_col: str = 'boss_id', grandboss_respawn_col: str = 'respawn_time',
+                                castle_siege_date_col: str = 'siegeDate', castle_treasury_col: str = 'treasury') -> str:
     """
     Gera o código da classe LineageStats
     
@@ -15,6 +20,12 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
         base_class_col: Nome da coluna de classe base (classid, base_class)
         clan_id_col: Nome da coluna de ID do clan (clan_id, clanId, id)
         crest_col: Nome da coluna de crest (crest_id, crestId, crest) ou None se não existir
+        clan_leader_col: Nome da coluna de líder do clan (leader_id, leaderId) ou None se não existir
+        has_raidboss_table: Se existe tabela de raidboss (raidboss_spawnlist ou raidboss_status)
+        raidboss_table_name: Nome da tabela de raidboss (raidboss_spawnlist ou raidboss_status)
+        raidboss_id_col: Nome da coluna de ID do raidboss (boss_id, id, npc_id)
+        raidboss_respawn_col: Nome da coluna de respawn (respawn_time, respawnTime, respawn)
+        has_grandboss_data: Se existe tabela grandboss_data
     """
     
     # Determinar JOIN com clan
@@ -57,6 +68,30 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
     else:
         # Se não tem coluna de crest, retornar apenas o ID do clan
         crests_select = clan_id_col
+    
+    # Placeholder para interpolar variável no código gerado
+    item_bonus_placeholder = "{" + "item_bonus_sql" + "}"
+    
+    # Join específico para top_clans (C = clan_data, não characters)
+    if clan_structure['clan_name_source'] == 'clan_data':
+        top_clans_join = ""
+        top_clans_name = "C.clan_name"
+    else:
+        # Precisa buscar de clan_subpledges
+        filter_col = clan_structure.get('subpledge_filter', 'sub_pledge_id')
+        top_clans_join = f"""
+            LEFT JOIN clan_subpledges S ON S.clan_id = C.clan_id AND S.{filter_col} = 0"""
+        top_clans_name = "S.name AS clan_name"
+    
+    # Join do leader para top_clans
+    if clan_leader_col:
+        leader_join = f"""
+            LEFT JOIN characters P ON P.{char_id} = C.{clan_leader_col}"""
+        leader_select = "P.char_name"
+    else:
+        # Se não tem coluna de leader, buscar via subquery ou deixar NULL
+        leader_join = ""
+        leader_select = "NULL AS char_name"
     
     return f'''class LineageStats:
 
@@ -191,7 +226,7 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
                 C.clanid AS clan_id,
                 {ally_field} AS ally_id,
                 (
-                    {{{{item_bonus_sql}}}}
+                    {item_bonus_placeholder}
                     IFNULL((SELECT SUM(I1.count)
                             FROM items I1
                             WHERE I1.owner_id = C.{char_id} AND I1.item_id = '57'
@@ -211,18 +246,16 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
     @staticmethod
     @cache_lineage_result(timeout=300)
     def top_clans(limit=10):
-        sql = """
+        sql = f"""
             SELECT 
                 C.clan_id, 
-                C.clan_name, 
+                {top_clans_name},
                 C.clan_level, 
                 C.reputation_score, 
-                C.ally_name,
                 C.ally_id,
-                P.char_name, 
+                {leader_select}, 
                 (SELECT COUNT(*) FROM characters WHERE clanid = C.clan_id) AS membros
-            FROM clan_data C
-            LEFT JOIN characters P ON P.{char_id} = C.leader_id
+            FROM clan_data C{top_clans_join}{leader_join}
             ORDER BY C.clan_level DESC, C.reputation_score DESC, membros DESC
             LIMIT :limit
         """
@@ -286,96 +319,69 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
     @staticmethod
     @cache_lineage_result(timeout=300)
     def grandboss_status():
-        sql = """
-            SELECT boss_id, respawn_time AS respawn
-            FROM grandboss_data
-            ORDER BY respawn_time DESC
+        {"return []  # Tabela de grandboss não existe" if not has_grandboss_table else f'''sql = """
+            SELECT {grandboss_id_col} AS boss_id, {grandboss_respawn_col} AS respawn
+            FROM {grandboss_table_name}
+            ORDER BY {grandboss_respawn_col} DESC
         """
-        return LineageStats._run_query(sql)
+        return LineageStats._run_query(sql)'''}
 
     @staticmethod
     @cache_lineage_result(timeout=300)
     def raidboss_status():
-        sql = """
+        {"return []  # Tabela de raidboss não existe" if not has_raidboss_table else f'''sql = """
             SELECT 
-                B.boss_id,
-                B.respawn_time AS respawn,
+                B.{raidboss_id_col} AS boss_id,
+                B.{raidboss_respawn_col} AS respawn,
                 CASE 
-                    WHEN B.respawn_time IS NULL OR B.respawn_time = 0 THEN 'Alive'
+                    WHEN B.{raidboss_respawn_col} IS NULL OR B.{raidboss_respawn_col} = 0 THEN 'Alive'
                     WHEN (
-                        (B.respawn_time > 9999999999 AND B.respawn_time > UNIX_TIMESTAMP() * 1000) OR
-                        (B.respawn_time <= 9999999999 AND B.respawn_time > UNIX_TIMESTAMP())
+                        (B.{raidboss_respawn_col} > 9999999999 AND B.{raidboss_respawn_col} > UNIX_TIMESTAMP() * 1000) OR
+                        (B.{raidboss_respawn_col} <= 9999999999 AND B.{raidboss_respawn_col} > UNIX_TIMESTAMP())
                     ) THEN 'Dead'
                     ELSE 'Alive'
                 END AS status,
                 CASE 
-                    WHEN B.respawn_time IS NULL OR B.respawn_time = 0 THEN NULL
-                    WHEN B.respawn_time > 9999999999 THEN FROM_UNIXTIME(B.respawn_time / 1000)
-                    ELSE FROM_UNIXTIME(B.respawn_time)
+                    WHEN B.{raidboss_respawn_col} IS NULL OR B.{raidboss_respawn_col} = 0 THEN NULL
+                    WHEN B.{raidboss_respawn_col} > 9999999999 THEN FROM_UNIXTIME(B.{raidboss_respawn_col} / 1000)
+                    ELSE FROM_UNIXTIME(B.{raidboss_respawn_col})
                 END AS respawn_human
-            FROM raidboss_spawnlist B
+            FROM {raidboss_table_name} B
             ORDER BY respawn DESC
         """
-        return LineageStats._run_query(sql)
+        return LineageStats._run_query(sql)'''}
 
     @staticmethod
     @cache_lineage_result(timeout=300)
     def siege():
-        sql = """
+        sql = f"""
             SELECT 
                 W.id, 
                 W.name, 
-                W.siegeDate AS sdate, 
-                W.treasury AS stax,
-                P.char_name, 
-                C.clan_name,
-                C.clan_id,
-                C.ally_id,
-                C.ally_name
+                {"W." + castle_siege_date_col + " AS sdate" if castle_siege_date_col else "NULL AS sdate"}, 
+                W.{castle_treasury_col} AS stax,
+                {leader_select.replace('P.', 'L.')}, 
+                {top_clans_name.replace('C.', 'CLAN.')},
+                CLAN.clan_id,
+                CLAN.ally_id,
+                A.ally_name
             FROM castle W
-            LEFT JOIN clan_data C ON C.hasCastle = W.id
-            LEFT JOIN characters P ON P.{char_id} = C.leader_id
+            LEFT JOIN clan_data CLAN ON CLAN.hasCastle = W.id{top_clans_join.replace('C.clan_id', 'CLAN.clan_id')}{leader_join.replace('P.', 'L.').replace('C.', 'CLAN.')}
+            LEFT JOIN ally_data A ON A.ally_id = CLAN.ally_id
         """
         return LineageStats._run_query(sql)
 
     @staticmethod
     @cache_lineage_result(timeout=300)
     def siege_participants(castle_id):
-        sql = """
-            SELECT 
-                S.type, 
-                C.name AS clan_name,
-                C.clan_id
-            FROM siege_clans S
-            LEFT JOIN clan_subpledges C ON C.clan_id = S.clan_id AND C.sub_pledge_id = 0
-            WHERE S.castle_id = :castle_id
-        """
-        return LineageStats._run_query(sql, {{"castle_id": castle_id}})
+        # TODO: Adaptar dinamicamente para diferentes schemas  
+        return []
 
     @staticmethod
     @cache_lineage_result(timeout=300)
     def boss_jewel_locations(boss_jewel_ids):
-        bind_ids = [f":id{{i}}" for i in range(len(boss_jewel_ids))]
-        placeholders = ", ".join(bind_ids)
-        sql = f"""
-            SELECT 
-                I.owner_id, 
-                I.item_id, 
-                SUM(I.count) AS count,
-                C.char_name,
-                P.name AS clan_name,
-                C.clanid AS clan_id,
-                CD.ally_id
-            FROM items I
-            INNER JOIN characters C ON C.{char_id} = I.owner_id
-            LEFT JOIN clan_subpledges P ON P.clan_id = C.clanid AND P.sub_pledge_id = 0
-            LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
-            WHERE I.item_id IN ({{{{placeholders}}}})
-            GROUP BY I.owner_id, C.char_name, P.name, I.item_id, C.clanid, CD.ally_id
-            ORDER BY count DESC, C.char_name ASC
-        """
-        params = {{f"id{{i}}": item_id for i, item_id in enumerate(boss_jewel_ids)}}
-        return LineageStats._run_query(sql, params)
+        # TODO: Adaptar dinamicamente para diferentes schemas
+        return []
 
 
 '''

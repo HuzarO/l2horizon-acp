@@ -152,7 +152,9 @@ def mapear_schema_banco():
             'heroes',
             'castle',
             'grandboss_data',
+            'epic_boss_spawn',  # Mobius usa epic_boss_spawn para grandboss
             'raidboss_spawnlist',
+            'raidboss_status',  # Mobius usa raidboss_status ao invés de raidboss_spawnlist
             'siege_clans'
         ]
         
@@ -211,6 +213,7 @@ def detectar_configuracoes(schema):
         'has_ally_data': False,
         'clan_id_col': 'clan_id',  # padrão
         'crest_col': 'crest_id',  # padrão, pode ser None
+        'clan_leader_col': 'leader_id',  # padrão, pode ser None
         'subclass_filter_base': "isBase = '1'",  # padrão para Mobius
         'subclass_filter_sub': "isBase = '0'"  # padrão para Mobius
     }
@@ -314,6 +317,17 @@ def detectar_configuracoes(schema):
             config['crest_col'] = None
             print(f"   ⚠️  Coluna de crest não encontrada")
         
+        # Detectar coluna de leader
+        for candidate in ['leader_id', 'leaderId', 'leader', 'leaderid']:
+            if candidate in clan_cols:
+                config['clan_leader_col'] = candidate
+                print(f"   ✅ Coluna de líder do clan: {candidate}")
+                break
+        else:
+            # Se não encontrou, usar None (não tem leader ou está em outra tabela)
+            config['clan_leader_col'] = None
+            print(f"   ⚠️  Coluna de líder do clan não encontrada")
+        
         # Verificar se tem clan_name diretamente em clan_data
         if 'clan_name' in clan_cols:
             config['clan_name_source'] = 'clan_data'
@@ -338,6 +352,135 @@ def detectar_configuracoes(schema):
         print(f"   ✅ Tem tabela ally_data separada")
     else:
         print(f"   ⚠️  Não tem tabela ally_data (usa clan_data.ally_id)")
+    
+    # Detectar colunas de castle
+    if 'castle' in schema:
+        castle_cols = schema['castle']['columns']
+        
+        # Detectar coluna de siege date
+        for candidate in ['siegeDate', 'siege_date', 'siegedate', 'next_siege_date']:
+            if candidate in castle_cols:
+                config['castle_siege_date_col'] = candidate
+                print(f"   ✅ Coluna de siege date: {candidate}")
+                break
+        else:
+            config['castle_siege_date_col'] = None
+            print(f"   ⚠️  Coluna de siege date não encontrada")
+        
+        # Detectar coluna de treasury
+        for candidate in ['treasury', 'tax_income', 'tax_money']:
+            if candidate in castle_cols:
+                config['castle_treasury_col'] = candidate
+                break
+        else:
+            config['castle_treasury_col'] = 'treasury'
+    else:
+        config['castle_siege_date_col'] = 'siegeDate'
+        config['castle_treasury_col'] = 'treasury'
+    
+    # Detectar tabelas opcionais de boss
+    if 'raidboss_spawnlist' in schema:
+        config['has_raidboss_table'] = True
+        config['raidboss_table_name'] = 'raidboss_spawnlist'
+        raidboss_cols = schema['raidboss_spawnlist']['columns']
+        
+        # Detectar coluna de ID do boss
+        for candidate in ['boss_id', 'id', 'npc_id']:
+            if candidate in raidboss_cols:
+                config['raidboss_id_col'] = candidate
+                break
+        else:
+            config['raidboss_id_col'] = 'boss_id'  # fallback
+        
+        # Detectar coluna de respawn
+        for candidate in ['respawn_time', 'respawnTime', 'respawn', 'next_respawn_time', 'respawn_delay', 'date_of_death']:
+            if candidate in raidboss_cols:
+                config['raidboss_respawn_col'] = candidate
+                break
+        else:
+            config['raidboss_respawn_col'] = 'respawn_time'  # fallback
+        
+        print(f"   ✅ Tabela de raidboss: raidboss_spawnlist (ID: {config['raidboss_id_col']}, Respawn: {config['raidboss_respawn_col']})")
+    elif 'raidboss_status' in schema:
+        config['has_raidboss_table'] = True
+        config['raidboss_table_name'] = 'raidboss_status'
+        raidboss_cols = schema['raidboss_status']['columns']
+        
+        # Detectar coluna de ID do boss
+        for candidate in ['boss_id', 'id', 'npc_id']:
+            if candidate in raidboss_cols:
+                config['raidboss_id_col'] = candidate
+                break
+        else:
+            config['raidboss_id_col'] = 'id'  # fallback para Mobius
+        
+        # Detectar coluna de respawn (Mobius usa respawn_delay ou date_of_death)
+        for candidate in ['respawn_time', 'respawnTime', 'respawn', 'next_respawn_time', 'respawn_delay', 'date_of_death']:
+            if candidate in raidboss_cols:
+                config['raidboss_respawn_col'] = candidate
+                break
+        else:
+            config['raidboss_respawn_col'] = 'respawn_delay'  # fallback para Mobius
+        
+        print(f"   ✅ Tabela de raidboss: raidboss_status (ID: {config['raidboss_id_col']}, Respawn: {config['raidboss_respawn_col']})")
+    else:
+        config['has_raidboss_table'] = False
+        config['raidboss_table_name'] = None
+        config['raidboss_id_col'] = 'boss_id'
+        config['raidboss_respawn_col'] = 'respawn_delay'
+        print(f"   ⚠️  Tabela de raidboss não encontrada")
+    
+    # Detectar tabela de grandboss
+    if 'grandboss_data' in schema:
+        config['has_grandboss_table'] = True
+        config['grandboss_table_name'] = 'grandboss_data'
+        grandboss_cols = schema['grandboss_data']['columns']
+        
+        # Detectar coluna de ID
+        for candidate in ['boss_id', 'bossId', 'id', 'npc_id']:
+            if candidate in grandboss_cols:
+                config['grandboss_id_col'] = candidate
+                break
+        else:
+            config['grandboss_id_col'] = 'boss_id'
+        
+        # Detectar coluna de respawn
+        for candidate in ['respawn_time', 'respawnTime', 'respawnDate', 'respawn_date']:
+            if candidate in grandboss_cols:
+                config['grandboss_respawn_col'] = candidate
+                break
+        else:
+            config['grandboss_respawn_col'] = 'respawn_time'
+        
+        print(f"   ✅ Tabela de grandboss: grandboss_data (ID: {config['grandboss_id_col']}, Respawn: {config['grandboss_respawn_col']})")
+    elif 'epic_boss_spawn' in schema:
+        config['has_grandboss_table'] = True
+        config['grandboss_table_name'] = 'epic_boss_spawn'
+        grandboss_cols = schema['epic_boss_spawn']['columns']
+        
+        # Detectar coluna de ID
+        for candidate in ['boss_id', 'bossId', 'id', 'npc_id']:
+            if candidate in grandboss_cols:
+                config['grandboss_id_col'] = candidate
+                break
+        else:
+            config['grandboss_id_col'] = 'bossId'
+        
+        # Detectar coluna de respawn
+        for candidate in ['respawn_time', 'respawnTime', 'respawnDate', 'respawn_date']:
+            if candidate in grandboss_cols:
+                config['grandboss_respawn_col'] = candidate
+                break
+        else:
+            config['grandboss_respawn_col'] = 'respawnDate'
+        
+        print(f"   ✅ Tabela de grandboss: epic_boss_spawn (ID: {config['grandboss_id_col']}, Respawn: {config['grandboss_respawn_col']})")
+    else:
+        config['has_grandboss_table'] = False
+        config['grandboss_table_name'] = None
+        config['grandboss_id_col'] = 'boss_id'
+        config['grandboss_respawn_col'] = 'respawn_time'
+        print(f"   ⚠️  Tabela de grandboss não encontrada")
     
     print()
     return config
@@ -373,7 +516,18 @@ def gerar_arquivo_query(nome_projeto, schema, config):
         clan_structure=clan_structure,
         base_class_col=config['base_class_col'],
         clan_id_col=config.get('clan_id_col', 'clan_id'),
-        crest_col=config.get('crest_col', 'crest_id')
+        crest_col=config.get('crest_col', 'crest_id'),
+        clan_leader_col=config.get('clan_leader_col', 'leader_id'),
+        has_raidboss_table=config.get('has_raidboss_table', False),
+        raidboss_table_name=config.get('raidboss_table_name', 'raidboss_spawnlist'),
+        raidboss_id_col=config.get('raidboss_id_col', 'boss_id'),
+        raidboss_respawn_col=config.get('raidboss_respawn_col', 'respawn_time'),
+        has_grandboss_table=config.get('has_grandboss_table', False),
+        grandboss_table_name=config.get('grandboss_table_name', 'grandboss_data'),
+        grandboss_id_col=config.get('grandboss_id_col', 'boss_id'),
+        grandboss_respawn_col=config.get('grandboss_respawn_col', 'respawn_time'),
+        castle_siege_date_col=config.get('castle_siege_date_col', 'siegeDate'),
+        castle_treasury_col=config.get('castle_treasury_col', 'treasury')
     )
     
     print("   📝 Gerando classe LineageServices...")
@@ -450,7 +604,7 @@ from datetime import datetime
 # Tabela: characters
 CHAR_ID = '{config['char_id']}'                    # obj_Id, charId ou char_id
 ACCESS_LEVEL = '{config['access_level']}'          # accesslevel, accessLevel ou access_level
-BASE_CLASS_COL = '{config['base_class_col']}'      # classid, base_class ou class_id
+BASE_CLASS_COL = {config['base_class_col'] if config['base_class_col'] is None else f"'{config['base_class_col']}'"}      # classid, base_class ou class_id (None se não existe em characters)
 
 # Tabela: character_subclasses
 HAS_SUBCLASS = {config['has_subclass']}            # Se tem tabela de subclass
