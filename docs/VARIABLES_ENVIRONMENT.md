@@ -31,6 +31,7 @@ Este documento lista todas as variáveis de ambiente possíveis utilizadas no pr
 |----------|------|--------|-----------|
 | `DEBUG` | Boolean | `False` | Habilita/desabilita o modo debug |
 | `SECRET_KEY` | String | - | Chave secreta do Django (obrigatória) |
+| `GUNICORN_WORKERS` | Integer | `4` ou `(CPU*2)+1` | Número de workers do Gunicorn (afeta conexões de banco) |
 | `RUNNING_IN_DOCKER` | Boolean | `false` | Indica se está rodando em container Docker |
 | `RENDER_EXTERNAL_HOSTNAME` | String | - | Hostname externo do Render |
 | `RENDER_EXTERNAL_FRONTEND` | String | - | Frontend externo do Render |
@@ -60,6 +61,8 @@ Este documento lista todas as variáveis de ambiente possíveis utilizadas no pr
 | `LINEAGE_DB_PASSWORD` | String | - | Senha do banco do Lineage |
 | `LINEAGE_DB_HOST` | String | - | Host do banco do Lineage |
 | `LINEAGE_DB_PORT` | String | `3306` | Porta do banco do Lineage |
+| `LINEAGE_DB_POOL_SIZE` | Integer | `2` | Número de conexões permanentes no pool por worker |
+| `LINEAGE_DB_MAX_OVERFLOW` | Integer | `3` | Número máximo de conexões extras além do pool_size |
 | `LINEAGE_QUERY_MODULE` | String | `dreamv3` | Módulo de queries do Lineage |
 
 ---
@@ -299,6 +302,8 @@ LINEAGE_DB_USER=l2user
 LINEAGE_DB_PASSWORD=suaSenhaAqui
 LINEAGE_DB_HOST=192.168.1.100
 LINEAGE_DB_PORT=3306
+LINEAGE_DB_POOL_SIZE=2
+LINEAGE_DB_MAX_OVERFLOW=3
 LINEAGE_QUERY_MODULE=dreamv3
 
 # =========================== AWS S3 ===========================

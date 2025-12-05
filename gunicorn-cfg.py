@@ -4,12 +4,17 @@ Gunicorn Configuration File
 """
 
 import multiprocessing
+import os
 
 # Bind the server to all interfaces on port 8000
 bind = '0.0.0.0:5005'
 
-# Number of worker processes. A good starting point is (2 x CPUs) + 1
-workers = multiprocessing.cpu_count() * 2 + 1
+# Number of worker processes
+# Fórmula antiga: (2 x CPUs) + 1 causava muitas conexões no banco
+# Nova fórmula recomendada: 2-4 workers é suficiente para maioria dos casos
+# Use GUNICORN_WORKERS no .env para customizar
+default_workers = min(4, (multiprocessing.cpu_count() * 2 + 1))
+workers = int(os.getenv('GUNICORN_WORKERS', default_workers))
 
 # Worker class (sync is the default, gevent or uvicorn can be used for async)
 worker_class = 'sync'
