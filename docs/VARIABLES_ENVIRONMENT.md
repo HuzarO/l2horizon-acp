@@ -61,8 +61,8 @@ Este documento lista todas as variáveis de ambiente possíveis utilizadas no pr
 | `LINEAGE_DB_PASSWORD` | String | - | Senha do banco do Lineage |
 | `LINEAGE_DB_HOST` | String | - | Host do banco do Lineage |
 | `LINEAGE_DB_PORT` | String | `3306` | Porta do banco do Lineage |
-| `LINEAGE_DB_POOL_SIZE` | Integer | `2` | Número de conexões permanentes no pool por worker |
-| `LINEAGE_DB_MAX_OVERFLOW` | Integer | `3` | Número máximo de conexões extras além do pool_size |
+| `LINEAGE_DB_POOL_SIZE` | Integer | `1` | Número de conexões permanentes no pool por worker |
+| `LINEAGE_DB_MAX_OVERFLOW` | Integer | `2` | Número máximo de conexões extras além do pool_size |
 | `LINEAGE_QUERY_MODULE` | String | `dreamv3` | Módulo de queries do Lineage |
 
 ---
