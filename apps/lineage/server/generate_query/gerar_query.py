@@ -148,6 +148,7 @@ def mapear_schema_banco():
             'clan_subpledges',
             'ally_data',
             'items',
+            'items_delayed',  # Tabela para delivery de itens (dreamv3, aCis, etc)
             'olympiad_nobles',
             'heroes',
             'castle',
@@ -440,6 +441,72 @@ def detectar_configuracoes(schema):
         config['raidboss_respawn_col'] = 'respawn_delay'
         print(f"   ⚠️  Tabela de raidboss não encontrada")
     
+    # Detectar tabela items_delayed (para transferência site -> servidor)
+    if 'items_delayed' in schema:
+        config['has_items_delayed'] = True
+        print(f"   ✅ Tem tabela items_delayed (para delivery de itens)")
+        
+        items_delayed_cols = schema['items_delayed']['columns']
+        
+        # Detectar estrutura de colunas
+        # Exemplo dreamv3: payment_id, owner_id, item_id, count, enchant_level, variationId1, variationId2, flags, payment_status, description
+        detected_cols = {
+            'payment_id': None,
+            'owner_id': None,
+            'item_id': None,
+            'count': None,
+            'enchant_level': None,
+            'description': None
+        }
+        
+        # Detectar coluna de payment_id
+        for candidate in ['payment_id', 'paymentId', 'id']:
+            if candidate in items_delayed_cols:
+                detected_cols['payment_id'] = candidate
+                break
+        
+        # Detectar coluna de owner_id
+        for candidate in ['owner_id', 'ownerId', 'char_id', 'charId']:
+            if candidate in items_delayed_cols:
+                detected_cols['owner_id'] = candidate
+                break
+        
+        # Detectar coluna de item_id
+        for candidate in ['item_id', 'itemId', 'item_type']:
+            if candidate in items_delayed_cols:
+                detected_cols['item_id'] = candidate
+                break
+        
+        # Detectar coluna de count/amount
+        for candidate in ['count', 'amount', 'quantity']:
+            if candidate in items_delayed_cols:
+                detected_cols['count'] = candidate
+                break
+        
+        # Detectar coluna de enchant
+        for candidate in ['enchant_level', 'enchantLevel', 'enchant']:
+            if candidate in items_delayed_cols:
+                detected_cols['enchant_level'] = candidate
+                break
+        
+        # Detectar coluna de description
+        for candidate in ['description', 'desc', 'message']:
+            if candidate in items_delayed_cols:
+                detected_cols['description'] = candidate
+                break
+        
+        config['items_delayed_cols'] = detected_cols
+        
+        print(f"      - payment_id: {detected_cols['payment_id']}")
+        print(f"      - owner_id: {detected_cols['owner_id']}")
+        print(f"      - item_id: {detected_cols['item_id']}")
+        print(f"      - count: {detected_cols['count']}")
+        print(f"      - enchant_level: {detected_cols['enchant_level']}")
+    else:
+        config['has_items_delayed'] = False
+        config['items_delayed_cols'] = None
+        print(f"   ⚠️  Não tem tabela items_delayed (inserção direta na tabela items)")
+    
     # Detectar tabela de grandboss
     if 'grandboss_data' in schema:
         config['has_grandboss_table'] = True
@@ -558,7 +625,9 @@ def gerar_arquivo_query(nome_projeto, schema, config):
     
     print("   📝 Gerando classe TransferFromWalletToChar...")
     wallet_to_char_code = get_transfer_wallet_to_char_template(
-        char_id=config['char_id']
+        char_id=config['char_id'],
+        has_items_delayed=config.get('has_items_delayed', False),
+        items_delayed_cols=config.get('items_delayed_cols', None)
     )
     
     print("   📝 Gerando classe TransferFromCharToWallet...")
