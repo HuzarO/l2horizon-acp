@@ -62,12 +62,19 @@ class LineageDB:
             write_timeout = int(os.getenv("LINEAGE_DB_WRITE_TIMEOUT", "3"))
             pool_timeout = int(os.getenv("LINEAGE_DB_POOL_TIMEOUT", "3"))
 
+            # Configuração de pool para evitar "Too many connections"
+            # Com múltiplos workers do Gunicorn, cada um cria seu próprio pool
+            pool_size = int(os.getenv("LINEAGE_DB_POOL_SIZE", "2"))
+            max_overflow = int(os.getenv("LINEAGE_DB_MAX_OVERFLOW", "3"))
+            
             self.engine = create_engine(
                 url,
                 echo=False,
                 pool_pre_ping=True,
                 pool_recycle=180,
                 pool_timeout=pool_timeout,
+                pool_size=pool_size,           # Limite de conexões permanentes no pool
+                max_overflow=max_overflow,      # Conexões extras permitidas além do pool_size
                 connect_args={
                     "connect_timeout": connect_timeout,
                     "read_timeout": read_timeout,
