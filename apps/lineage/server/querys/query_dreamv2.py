@@ -7,6 +7,21 @@ import hashlib
 from datetime import datetime
 
 
+# ============================================================================
+# CONFIGURAÇÃO DO SCHEMA - Dream v2
+# ============================================================================
+
+CHAR_ID = 'charId'
+ACCESS_LEVEL = 'accessLevel'
+BASE_CLASS_COL = 'classid'  # Direto de characters
+HAS_SUBCLASS = False  # NÃO usa character_subclasses nas queries
+SUBCLASS_CHAR_ID = 'charId'
+CLAN_NAME_SOURCE = 'clan_data'  # Usa D.clan_name direto
+HAS_ALLY_DATA = False
+
+# ============================================================================
+
+
 class LineageStats:
 
     @staticmethod

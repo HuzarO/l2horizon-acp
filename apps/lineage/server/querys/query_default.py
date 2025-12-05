@@ -5,21 +5,38 @@ import time
 import base64
 import hashlib
 
+from apps.lineage.server.utils.password_hash import PasswordHash
+
 
 # ============================================================================
-# CONFIGURAÇÃO DO SCHEMA - ACIS v1
+# CONFIGURAÇÃO DO SCHEMA - Default (compatível com DreamV3/L2J)
 # ============================================================================
-# Use estas constantes nas views ao invés de valores hardcoded
+# Use estas constantes nas views ao invés de valores hardcoded:
+#   ❌ ERRADO: account['accesslevel']
+#   ✅ CERTO:  account[ACCESS_LEVEL]
 
-CHAR_ID = 'obj_Id'
+CHAR_ID = 'obj_Id'  # Queries usam C.obj_Id
 ACCESS_LEVEL = 'accesslevel'
 BASE_CLASS_COL = 'class_id'  # Vem de character_subclasses
 HAS_SUBCLASS = True
 SUBCLASS_CHAR_ID = 'char_obj_id'
-CLAN_NAME_SOURCE = 'clan_subpledges'
+CLAN_NAME_SOURCE = 'clan_subpledges'  # Usa D.name de clan_subpledges
 HAS_ALLY_DATA = False
 
 # ============================================================================
+
+
+def detect_and_hash(password, stored_hash, login=None):
+    hash_len = len(stored_hash)
+
+    if hash_len == 28:
+        hasher = PasswordHash("sha1")
+    elif hash_len == 88:
+        hasher = PasswordHash("whirlpool")
+    else:
+        return None  # hash desconhecido
+
+    return hasher.encrypt(password)
 
 
 class LineageStats:
@@ -35,16 +52,15 @@ class LineageStats:
         if not ids:
             return []
 
-        # Como ally_data não existe, usaremos clan_data para ambos os tipos
-        table = 'clan'
-        
-        # Defina a coluna do ID e do emblema com base no tipo (clan ou ally)
+        # Defina a tabela e a coluna do emblema com base no tipo (clan ou ally)
         if type == 'ally':
-            id_column = 'id'
-            crest_column = 'imagenes'  # Usando ally_crest_id da tabela clan_data
+            table = 'ally_data'
+            id_column = 'ally_id'
+            crest_column = 'crest'
         else:
-            id_column = 'id'
-            crest_column = 'imagenes'  # Usando crest_id para clãs
+            table = 'clan_data'
+            id_column = 'clan_id'
+            crest_column = 'crest'
 
         # Construção da consulta SQL para obter as crests dos clãs ou alianças
         sql = f"""
@@ -78,8 +94,8 @@ class LineageStats:
                 C.clanid AS clan_id,
                 CD.ally_id AS ally_id
             FROM characters C
-            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.class_index = 0
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.sub_pledge_id = 0
+            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = '0'
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
             WHERE C.accesslevel = '0'
             ORDER BY pvpkills DESC, pkkills DESC, onlinetime DESC, char_name ASC
@@ -103,8 +119,8 @@ class LineageStats:
                 C.clanid AS clan_id,
                 CD.ally_id AS ally_id
             FROM characters C
-            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.class_index = 0
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.sub_pledge_id = 0
+            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = '0'
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
             WHERE C.accesslevel = '0'
             ORDER BY pkkills DESC, pvpkills DESC, onlinetime DESC, char_name ASC
@@ -128,8 +144,8 @@ class LineageStats:
                 C.clanid AS clan_id,
                 CD.ally_id AS ally_id
             FROM characters C
-            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.class_index = 0
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.sub_pledge_id = 0
+            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = '0'
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
             WHERE C.accesslevel = '0'
             ORDER BY onlinetime DESC, pvpkills DESC, pkkills DESC, char_name ASC
@@ -152,11 +168,11 @@ class LineageStats:
                 C.clanid AS clan_id,
                 CD.ally_id AS ally_id
             FROM characters C
-            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.class_index = 0
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.sub_pledge_id = 0
+            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = '0'
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
             WHERE C.accesslevel = '0'
-            ORDER BY CS.level DESC, CS.exp DESC, C.onlinetime DESC, C.char_name ASC
+            ORDER BY level DESC, exp DESC, onlinetime DESC, char_name ASC
             LIMIT :limit
         """
         return LineageStats._run_query(sql, {"limit": limit})
@@ -167,9 +183,9 @@ class LineageStats:
         item_bonus_sql = ""
         if adn_billion_item != 0:
             item_bonus_sql = f"""
-                IFNULL((SELECT SUM(I2.count) * :value_item
+                IFNULL((SELECT SUM(I2.amount) * :value_item
                         FROM items I2
-                        WHERE I2.owner_id = C.obj_Id AND I2.item_id = :adn_billion_item
+                        WHERE I2.owner_id = C.obj_Id AND I2.item_type = :adn_billion_item
                         GROUP BY I2.owner_id), 0) +
             """
         sql = f"""
@@ -183,14 +199,14 @@ class LineageStats:
                 CD.ally_id AS ally_id,
                 (
                     {item_bonus_sql}
-                    IFNULL((SELECT SUM(I1.count)
+                    IFNULL((SELECT SUM(I1.amount)
                             FROM items I1
-                            WHERE I1.owner_id = C.obj_Id AND I1.item_id = '57'
+                            WHERE I1.owner_id = C.obj_Id AND I1.item_type = '57'
                             GROUP BY I1.owner_id), 0)
                 ) AS adenas
             FROM characters C
-            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.class_index = 0
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.sub_pledge_id = 0
+            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = '0'
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
             WHERE C.accesslevel = '0'
             ORDER BY adenas DESC, onlinetime DESC, char_name ASC
@@ -206,17 +222,12 @@ class LineageStats:
     @cache_lineage_result(timeout=300)
     def top_clans(limit=10):
         sql = """
-            SELECT 
-                C.clan_id, 
-                D.name AS clan_name, 
-                C.clan_level, 
-                C.reputation_score, 
-                C.ally_name,  -- Obtendo ally_name diretamente de clan_data
-                C.ally_id,
-                P.char_name, 
-                (SELECT COUNT(*) FROM characters WHERE clanid = C.clan_id) AS membros
+            SELECT C.clan_id, D.name AS clan_name, C.clan_level, C.reputation_score, A.ally_name, A.ally_id,
+                   P.char_name, 
+                   (SELECT COUNT(*) FROM characters WHERE clanid = C.clan_id) AS membros
             FROM clan_data C
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clan_id AND D.sub_pledge_id = 0
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clan_id AND D.type = '0'
+            LEFT JOIN ally_data A ON A.ally_id = C.ally_id
             LEFT JOIN characters P ON P.obj_Id = D.leader_id
             ORDER BY C.clan_level DESC, C.reputation_score DESC, membros DESC
             LIMIT :limit
@@ -234,11 +245,11 @@ class LineageStats:
                 C.clanid AS clan_id,
                 CD.ally_id AS ally_id,
                 CS.class_id AS base, 
-                O.olympiad_points
-            FROM olympiad_nobles O
+                O.points_current AS olympiad_points
+            FROM oly_nobles O
             LEFT JOIN characters C ON C.obj_Id = O.char_id
-            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.class_index = 0
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.sub_pledge_id = 0
+            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = '0'
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
             ORDER BY olympiad_points DESC, base ASC, char_name ASC
         """
@@ -256,10 +267,10 @@ class LineageStats:
                 CLAN.ally_id AS ally_id,
                 CS.class_id AS base, 
                 H.count
-            FROM heroes H
+            FROM oly_heroes H
             LEFT JOIN characters C ON C.obj_Id = H.char_id
-            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.class_index = 0
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.sub_pledge_id = 0
+            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = '0'
             LEFT JOIN clan_data CLAN ON CLAN.clan_id = C.clanid
             WHERE H.played > 0 AND H.count > 0
             ORDER BY H.count DESC, base ASC, char_name ASC
@@ -277,10 +288,10 @@ class LineageStats:
                 C.clanid AS clan_id,
                 CLAN.ally_id AS ally_id,
                 CS.class_id AS base
-            FROM heroes H
+            FROM oly_heroes H
             LEFT JOIN characters C ON C.obj_Id = H.char_id
-            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.class_index = 0
-            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.sub_pledge_id = 0
+            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = '0'
             LEFT JOIN clan_data CLAN ON CLAN.clan_id = C.clanid
             WHERE H.played > 0 AND H.count > 0
             ORDER BY base ASC
@@ -291,38 +302,23 @@ class LineageStats:
     @cache_lineage_result(timeout=300)
     def grandboss_status():
         sql = """
-            SELECT boss_id, respawn_time AS respawn
-            FROM grandboss_data
-            ORDER BY respawn_time DESC
+            SELECT bossId AS boss_id, respawnDate AS respawn
+            FROM epic_boss_spawn
+            ORDER BY respawnDate DESC
         """
         return LineageStats._run_query(sql)
-
+    
     @staticmethod
     @cache_lineage_result(timeout=300)
     def raidboss_status():
         sql = """
-            SELECT 
-                B.boss_id,
-                B.respawn_time AS respawn,
-                CASE 
-                    WHEN B.respawn_time IS NULL OR B.respawn_time = 0 THEN 'Alive'
-                    WHEN (
-                        (B.respawn_time > 9999999999 AND B.respawn_time > UNIX_TIMESTAMP() * 1000) OR
-                        (B.respawn_time <= 9999999999 AND B.respawn_time > UNIX_TIMESTAMP())
-                    ) THEN 'Dead'
-                    ELSE 'Alive'
-                END AS status,
-                CASE 
-                    WHEN B.respawn_time IS NULL OR B.respawn_time = 0 THEN NULL
-                    WHEN B.respawn_time > 9999999999 THEN FROM_UNIXTIME(B.respawn_time / 1000)
-                    ELSE FROM_UNIXTIME(B.respawn_time)
-                END AS respawn_human,
-                NULL AS last_kill,
-                N.name,
-                N.level
-            FROM raidboss_spawnlist B
-            LEFT JOIN site_bosses N ON N.id = B.boss_id
+            SELECT B.id AS boss_id, B.respawn_delay AS respawn, N.name, N.level
+            FROM raidboss_status B
+            INNER JOIN site_bosses N ON N.id = B.id
             ORDER BY respawn DESC, level DESC, name ASC
+            SELECT bossId AS boss_id, respawnDate AS respawn
+            FROM epic_boss_spawn
+            ORDER BY respawnDate DESC
         """
         return LineageStats._run_query(sql)
 
@@ -333,16 +329,17 @@ class LineageStats:
             SELECT 
                 W.id, 
                 W.name, 
-                W.siegeDate AS sdate, 
+                W.siege_date AS sdate, 
                 W.treasury AS stax,
                 P.char_name, 
                 CS.name AS clan_name,
                 C.clan_id,
                 C.ally_id,
-                C.ally_name  -- Obtendo ally_name diretamente de clan_data
+                A.ally_name
             FROM castle W
             LEFT JOIN clan_data C ON C.hasCastle = W.id
-            LEFT JOIN clan_subpledges CS ON CS.clan_id = C.clan_id AND CS.sub_pledge_id = 0
+            LEFT JOIN clan_subpledges CS ON CS.clan_id = C.clan_id AND CS.type = '0'
+            LEFT JOIN ally_data A ON A.ally_id = C.ally_id
             LEFT JOIN characters P ON P.obj_Id = CS.leader_id
         """
         return LineageStats._run_query(sql)
@@ -356,8 +353,8 @@ class LineageStats:
                 C.name AS clan_name,
                 C.clan_id
             FROM siege_clans S
-            LEFT JOIN clan_subpledges C ON C.clan_id = S.clan_id AND C.sub_pledge_id = 0
-            WHERE S.castle_id = :castle_id
+            LEFT JOIN clan_subpledges C ON C.clan_id = S.clan_id AND C.type = '0'
+            WHERE S.residence_id = :castle_id
         """
         return LineageStats._run_query(sql, {"castle_id": castle_id})
 
@@ -370,18 +367,18 @@ class LineageStats:
         sql = f"""
             SELECT 
                 I.owner_id, 
-                I.item_id, 
-                SUM(I.count) AS count,
+                I.item_type AS item_id, 
+                SUM(I.amount) AS count,
                 C.char_name,
                 P.name AS clan_name,
                 C.clanid AS clan_id,
                 CD.ally_id
             FROM items I
             INNER JOIN characters C ON C.obj_Id = I.owner_id
-            LEFT JOIN clan_subpledges P ON P.clan_id = C.clanid AND P.sub_pledge_id = 0
+            LEFT JOIN clan_subpledges P ON P.clan_id = C.clanid AND P.type = '0'
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
-            WHERE I.item_id IN ({placeholders})
-            GROUP BY I.owner_id, C.char_name, P.name, I.item_id, C.clanid, CD.ally_id
+            WHERE I.item_type IN ({placeholders})
+            GROUP BY I.owner_id, C.char_name, P.name, I.item_type, C.clanid, CD.ally_id
             ORDER BY count DESC, C.char_name ASC
         """
         params = {f"id{i}": item_id for i, item_id in enumerate(boss_jewel_ids)}
@@ -396,42 +393,31 @@ class LineageServices:
         sql = """
             SELECT
                 C.*, 
-                -- Base class e level diretamente da tabela characters
-                C.classid AS base_class,
-                C.level AS base_level,
+                -- Base class e level
+                (SELECT S0.class_id FROM character_subclasses AS S0 WHERE S0.char_obj_id = C.obj_Id AND S0.isBase = '1' LIMIT 1) AS base_class,
+                (SELECT S0.level FROM character_subclasses AS S0 WHERE S0.char_obj_id = C.obj_Id AND S0.isBase = '1' LIMIT 1) AS base_level,
 
                 -- Subclass 1
-                (SELECT S1.class_id FROM character_subclasses AS S1 
-                WHERE S1.char_obj_id = C.obj_Id AND S1.class_index > 0 
-                LIMIT 0,1) AS subclass1,
-                (SELECT S1.level FROM character_subclasses AS S1 
-                WHERE S1.char_obj_id = C.obj_Id AND S1.class_index > 0 
-                LIMIT 0,1) AS subclass1_level,
+                (SELECT S1.class_id FROM character_subclasses AS S1 WHERE S1.char_obj_id = C.obj_Id AND S1.isBase = '0' LIMIT 0,1) AS subclass1,
+                (SELECT S1.level FROM character_subclasses AS S1 WHERE S1.char_obj_id = C.obj_Id AND S1.isBase = '0' LIMIT 0,1) AS subclass1_level,
 
                 -- Subclass 2
-                (SELECT S2.class_id FROM character_subclasses AS S2 
-                WHERE S2.char_obj_id = C.obj_Id AND S2.class_index > 0 
-                LIMIT 1,1) AS subclass2,
-                (SELECT S2.level FROM character_subclasses AS S2 
-                WHERE S2.char_obj_id = C.obj_Id AND S2.class_index > 0 
-                LIMIT 1,1) AS subclass2_level,
+                (SELECT S2.class_id FROM character_subclasses AS S2 WHERE S2.char_obj_id = C.obj_Id AND S2.isBase = '0' LIMIT 1,1) AS subclass2,
+                (SELECT S2.level FROM character_subclasses AS S2 WHERE S2.char_obj_id = C.obj_Id AND S2.isBase = '0' LIMIT 1,1) AS subclass2_level,
 
                 -- Subclass 3
-                (SELECT S3.class_id FROM character_subclasses AS S3 
-                WHERE S3.char_obj_id = C.obj_Id AND S3.class_index > 0 
-                LIMIT 2,1) AS subclass3,
-                (SELECT S3.level FROM character_subclasses AS S3 
-                WHERE S3.char_obj_id = C.obj_Id AND S3.class_index > 0 
-                LIMIT 2,1) AS subclass3_level,
+                (SELECT S3.class_id FROM character_subclasses AS S3 WHERE S3.char_obj_id = C.obj_Id AND S3.isBase = '0' LIMIT 2,1) AS subclass3,
+                (SELECT S3.level FROM character_subclasses AS S3 WHERE S3.char_obj_id = C.obj_Id AND S3.isBase = '0' LIMIT 2,1) AS subclass3_level,
 
                 -- Clan e Ally
                 CS.name AS clan_name,
-                CLAN.ally_name
+                A.ally_name
             FROM characters AS C
             LEFT JOIN clan_data AS CLAN ON CLAN.clan_id = C.clanid
-            LEFT JOIN clan_subpledges AS CS ON CS.clan_id = CLAN.clan_id AND CS.sub_pledge_id = 0
+            LEFT JOIN clan_subpledges AS CS ON CS.clan_id = CLAN.clan_id
+            LEFT JOIN ally_data AS A ON A.ally_id = CLAN.ally_id
             WHERE C.account_name = :login
-            LIMIT 7;
+            LIMIT 7
         """
         try:
             return LineageDB().select(sql, {"login": login})
@@ -506,8 +492,8 @@ class LineageAccount:
     @staticmethod
     @cache_lineage_result(timeout=300)
     def get_acess_level():
-        return 'access_level'
-
+        return 'accessLevel'
+    
     @staticmethod
     @cache_lineage_result(timeout=300)
     def get_account_by_login(login):
@@ -779,19 +765,16 @@ class LineageAccount:
     @cache_lineage_result(timeout=60, use_cache=False)
     def validate_credentials(login, password):
         try:
-            # Busca o hash salvo no banco
             sql = "SELECT password FROM accounts WHERE login = :login LIMIT 1"
             result = LineageDB().select(sql, {"login": login})
 
             if not result:
                 return False
 
-            # Calcula o hash da senha informada
-            hashed_input = base64.b64encode(hashlib.sha1(password.encode()).digest()).decode()
+            stored_hash: str = result[0]['password']
+            hashed_input = detect_and_hash(password, stored_hash)
 
-            # Compara com o valor armazenado
-            stored_hash = result[0]['password']
-            return hashed_input == stored_hash
+            return hashed_input.lower() == stored_hash.lower()
 
         except Exception as e:
             print(f"Erro ao verificar senha: {e}")
@@ -799,7 +782,7 @@ class LineageAccount:
 
 
 class TransferFromWalletToChar:
-    items_delayed = False
+    items_delayed = True
 
     @staticmethod
     @cache_lineage_result(timeout=300, use_cache=False)
@@ -829,71 +812,34 @@ class TransferFromWalletToChar:
     def insert_coin(char_name: str, coin_id: int, amount: int, enchant: int = 0):
         db = LineageDB()
 
-        # Buscar owner_id
+        # Buscar owner_id do personagem
         char_query = "SELECT obj_Id FROM characters WHERE char_name = :char_name"
         char_result = db.select(char_query, {"char_name": char_name})
         if not char_result:
             return None
 
         owner_id = char_result[0]["obj_Id"]
-        object_id = owner_id
 
-        if object_id != 0:
-            # Atualiza item existente
-            update_query = """
-                UPDATE items SET count = count + :amount
-                WHERE object_id = :object_id AND owner_id = :owner_id
-            """
-            db.update(update_query, {
-                "amount": amount,
-                "object_id": object_id,
-                "owner_id": owner_id
-            })
-            return True
-
-        # Gerar novo object_id (começando com 7)
-        last_object_query = """
-            SELECT object_id FROM items 
-            WHERE object_id LIKE '7%' 
-            ORDER BY object_id DESC LIMIT 1
-        """
-        last_object_result = db.select(last_object_query)
-        if not last_object_result:
-            new_object_id = 700000000
-        else:
-            last_object_id = int(last_object_result[0]["object_id"])
-            new_object_id = last_object_id + 1
-
-        # Pegar o último loc_data do player
-        last_loc_query = """
-            SELECT loc_data FROM items 
-            WHERE owner_id = :owner_id 
-            ORDER BY loc_data DESC LIMIT 1
-        """
-        last_loc_result = db.select(last_loc_query, {"owner_id": owner_id})
-        if not last_loc_result:
-            new_loc_data = 0
-        else:
-            last_loc_data = int(last_loc_result[0]["loc_data"])
-            new_loc_data = last_loc_data + 1
-
-        # Inserir novo item
+        # Inserir na tabela `items_delayed` como na lógica do PHP
         insert_query = """
-            INSERT INTO items (
-                owner_id, object_id, item_id, count,
-                enchant_level, loc, loc_data
-            ) VALUES (
-                :owner_id, :object_id, :coin_id, :amount,
-                :enchant, 'INVENTORY', :loc_data
+            INSERT INTO items_delayed (
+                payment_id, owner_id, item_id, count,
+                enchant_level, variationId1, variationId2,
+                flags, payment_status, description
             )
+            SELECT
+                COALESCE(MAX(payment_id), 0) + 1,
+                :owner_id, :coin_id, :amount,
+                :enchant, 0, 0,
+                0, 0, 'DONATE WEB'
+            FROM items_delayed
         """
+
         result = db.insert(insert_query, {
             "owner_id": owner_id,
-            "object_id": new_object_id,
             "coin_id": coin_id,
             "amount": amount,
-            "enchant": enchant,
-            "loc_data": new_loc_data
+            "enchant": enchant
         })
 
         return result is not None
@@ -915,11 +861,11 @@ class TransferFromCharToWallet:
     @cache_lineage_result(timeout=300, use_cache=False)
     def list_items(char_id):
         query = """
-            SELECT object_id AS item_id, item_id AS item_type, count AS amount, loc AS location, enchant_level AS enchant
+            SELECT item_id, item_type, amount, location, enchant
             FROM items
             WHERE owner_id = :char_id
-            AND loc IN ('INVENTORY', 'WAREHOUSE')
-            ORDER BY loc, item_id
+            AND location IN ('INVENTORY', 'WAREHOUSE')
+            ORDER BY location, item_type
         """
         params = {"char_id": char_id}
         results = LineageDB().select(query, params)
@@ -933,8 +879,8 @@ class TransferFromCharToWallet:
 
         # Buscar no INVENTORY
         query_inve = """
-            SELECT count AS amount, enchant_level AS enchant FROM items 
-            WHERE owner_id = :char_id AND item_id = :coin_id AND loc = 'INVENTORY'
+            SELECT amount, enchant FROM items 
+            WHERE owner_id = :char_id AND item_type = :coin_id AND location = 'INVENTORY'
             LIMIT 1
         """
         result_inve = db.select(query_inve, {"char_id": char_id, "coin_id": coin_id})
@@ -943,8 +889,8 @@ class TransferFromCharToWallet:
 
         # Buscar no WAREHOUSE
         query_ware = """
-            SELECT count AS amount FROM items 
-            WHERE owner_id = :char_id AND item_id = :coin_id AND loc = 'WAREHOUSE'
+            SELECT amount FROM items 
+            WHERE owner_id = :char_id AND item_type = :coin_id AND location = 'WAREHOUSE'
             LIMIT 1
         """
         result_ware = db.select(query_ware, {"char_id": char_id, "coin_id": coin_id})
@@ -965,54 +911,54 @@ class TransferFromCharToWallet:
                 for item in items:
                     if removed >= amount_to_remove:
                         break
-                    db.update("DELETE FROM items WHERE object_id = :item_id", {"item_id": item["object_id"]})
+                    db.update("DELETE FROM items WHERE item_id = :item_id", {"item_id": item["item_id"]})
                     removed += 1
                 return removed
 
             # INVENTORY
             query_inve = """
                 SELECT * FROM items
-                WHERE owner_id = :char_id AND item_id = :item_id AND loc = 'INVENTORY'
+                WHERE owner_id = :char_id AND item_type = :item_type AND location = 'INVENTORY'
             """
-            items_inve = db.select(query_inve, {"char_id": char_id, "item_id": coin_id})
+            items_inve = db.select(query_inve, {"char_id": char_id, "item_type": coin_id})
 
             # WAREHOUSE
             query_ware = """
                 SELECT * FROM items
-                WHERE owner_id = :char_id AND item_id = :item_id AND loc = 'WAREHOUSE'
+                WHERE owner_id = :char_id AND item_type = :item_type AND location = 'WAREHOUSE'
             """
-            items_ware = db.select(query_ware, {"char_id": char_id, "item_id": coin_id})
+            items_ware = db.select(query_ware, {"char_id": char_id, "item_type": coin_id})
 
-            total_amount = sum(item["count"] for item in items_inve + items_ware)
+            total_amount = sum(item["amount"] for item in items_inve + items_ware)
             if total_amount < count:
                 return False  # Não tem quantidade suficiente
 
             # Identifica se é stackable ou não
-            is_stackable = len(items_inve + items_ware) == 1 and (items_inve + items_ware)[0]["count"] > 1
+            is_stackable = len(items_inve + items_ware) == 1 and (items_inve + items_ware)[0]["amount"] > 1
 
             if is_stackable:
                 # Remove do INVENTORY primeiro
                 if items_inve:
                     item = items_inve[0]
-                    if item["count"] <= count:
-                        db.update("DELETE FROM items WHERE object_id = :item_id", {"item_id": item["object_id"]})
-                        count -= item["count"]
+                    if item["amount"] <= count:
+                        db.update("DELETE FROM items WHERE item_id = :item_id", {"item_id": item["item_id"]})
+                        count -= item["amount"]
                     else:
                         db.update(
-                            "UPDATE items SET count = count - :count WHERE object_id = :item_id",
-                            {"count": count, "item_id": item["object_id"]}
+                            "UPDATE items SET amount = amount - :count WHERE item_id = :item_id",
+                            {"count": count, "item_id": item["item_id"]}
                         )
                         count = 0
 
                 # Se ainda faltar, remove do WAREHOUSE
                 if count > 0 and items_ware:
                     item = items_ware[0]
-                    if item["count"] <= count:
-                        db.update("DELETE FROM items WHERE object_id = :item_id", {"item_id": item["object_id"]})
+                    if item["amount"] <= count:
+                        db.update("DELETE FROM items WHERE item_id = :item_id", {"item_id": item["item_id"]})
                     else:
                         db.update(
-                            "UPDATE items SET count = count - :count WHERE object_id = :item_id",
-                            {"count": count, "item_id": item["object_id"]}
+                            "UPDATE items SET amount = amount - :count WHERE item_id = :item_id",
+                            {"count": count, "item_id": item["item_id"]}
                         )
 
             else:
@@ -1036,14 +982,14 @@ class LineageMarketplace:
         """
         Busca todos os characters de uma conta do banco L2.
         Retorna apenas dados das tabelas originais do Lineage 2.
-        Schema: ACIS (usa obj_Id)
+        Schema: Dream v3 (usa obj_Id, level em character_subclasses)
         """
         sql = """
             SELECT 
                 c.obj_Id as char_id,
                 c.char_name,
-                c.level,
-                c.classid,
+                (SELECT S0.level FROM character_subclasses AS S0 WHERE S0.char_obj_id = c.obj_Id AND S0.isBase = '1' LIMIT 1) AS level,
+                (SELECT S0.class_id FROM character_subclasses AS S0 WHERE S0.char_obj_id = c.obj_Id AND S0.isBase = '1' LIMIT 1) AS classid,
                 c.pvpkills as pvp_kills,
                 c.pkkills as pk_count,
                 c.clanid,
@@ -1054,9 +1000,9 @@ class LineageMarketplace:
                 c.account_name
             FROM characters c
             LEFT JOIN clan_data cd ON c.clanid = cd.clan_id
-            LEFT JOIN clan_subpledges cs ON cs.clan_id = cd.clan_id AND cs.sub_pledge_id = 0
+            LEFT JOIN clan_subpledges cs ON cs.clan_id = cd.clan_id AND cs.type = '0'
             WHERE c.account_name = :account_name
-            ORDER BY c.level DESC, c.char_name ASC
+            ORDER BY level DESC, c.char_name ASC
         """
         return LineageDB().select(sql, {"account_name": account_name})
     
@@ -1065,7 +1011,7 @@ class LineageMarketplace:
     def verify_character_ownership(char_id, account_name):
         """
         Verifica se um character pertence a uma conta específica.
-        Schema: ACIS (usa obj_Id)
+        Schema: Dream v3 (usa obj_Id)
         """
         sql = """
             SELECT COUNT(*) as total
@@ -1080,14 +1026,14 @@ class LineageMarketplace:
     def get_character_details(char_id):
         """
         Busca detalhes completos de um character do banco L2.
-        Schema: ACIS (usa obj_Id)
+        Schema: Dream v3 (usa obj_Id, level em character_subclasses)
         """
         sql = """
             SELECT 
                 c.obj_Id as char_id,
                 c.char_name,
-                c.level,
-                c.classid,
+                (SELECT S0.level FROM character_subclasses AS S0 WHERE S0.char_obj_id = c.obj_Id AND S0.isBase = '1' LIMIT 1) AS level,
+                (SELECT S0.class_id FROM character_subclasses AS S0 WHERE S0.char_obj_id = c.obj_Id AND S0.isBase = '1' LIMIT 1) AS classid,
                 c.pvpkills as pvp_kills,
                 c.pkkills as pk_count,
                 c.clanid,
@@ -1098,7 +1044,7 @@ class LineageMarketplace:
                 c.account_name
             FROM characters c
             LEFT JOIN clan_data cd ON c.clanid = cd.clan_id
-            LEFT JOIN clan_subpledges cs ON cs.clan_id = cd.clan_id AND cs.sub_pledge_id = 0
+            LEFT JOIN clan_subpledges cs ON cs.clan_id = cd.clan_id AND cs.type = '0'
             WHERE c.obj_Id = :char_id
         """
         result = LineageDB().select(sql, {"char_id": char_id})
@@ -1109,7 +1055,7 @@ class LineageMarketplace:
     def get_character_items_count(char_id):
         """
         Conta quantos itens um character possui no banco L2.
-        Schema: ACIS (usa obj_Id)
+        Schema: Dream v3 (usa obj_Id)
         """
         sql = """
             SELECT COUNT(*) as total_items
@@ -1126,7 +1072,7 @@ class LineageMarketplace:
         """
         Busca todos os itens de um character do banco L2.
         Retorna dict com 'inventory' e 'equipment'.
-        Schema: ACIS (usa obj_Id)
+        Schema: Dream v3 (usa obj_Id)
         """
         sql = """
             SELECT 
@@ -1141,6 +1087,7 @@ class LineageMarketplace:
                 it.item_type,
                 it.crystal_type
             FROM items i
+            LEFT JOIN item_templates it ON i.item_id = it.item_id
             WHERE i.owner_id = :char_id
             AND (i.loc = 'INVENTORY' OR i.loc = 'PAPERDOLL')
             ORDER BY i.loc, i.loc_data
@@ -1170,7 +1117,7 @@ class LineageMarketplace:
         """
         Conta quantos personagens existem em uma conta.
         Usado para validar o limite de 7 personagens do Lineage 2.
-        Schema: ACIS (usa obj_Id)
+        Schema: Dream v3 (usa obj_Id)
         """
         sql = """
             SELECT COUNT(*) as total
@@ -1184,7 +1131,7 @@ class LineageMarketplace:
     def create_or_update_marketplace_account(account_name, password_hash):
         """
         Cria ou atualiza a conta mestre do marketplace no banco L2.
-        Schema: ACIS v1
+        Schema: Dream v3
         
         Returns:
             bool: True se sucesso, False se falhou
@@ -1231,7 +1178,7 @@ class LineageMarketplace:
         """
         Transfere um character para nova conta no banco L2.
         Altera o campo account_name na tabela characters.
-        Schema: ACIS (usa obj_Id)
+        Schema: Dream v3 (usa obj_Id)
         
         IMPORTANTE: Esta operação modifica dados críticos do jogo.
         Deve ser usado apenas após validação completa da transação.
@@ -1244,7 +1191,7 @@ class LineageMarketplace:
 class LineageInflation:
     """
     Classe para análise de inflação de itens no servidor.
-    Schema: ACIS v1 (usa item_id, count, loc, obj_Id)
+    Verifica todos os inventários dos jogadores, categoriza itens e rastreia onde estão armazenados.
     """
 
     @staticmethod
@@ -1254,40 +1201,48 @@ class LineageInflation:
     @staticmethod
     @cache_lineage_result(timeout=60, use_cache=False)
     def get_all_items_by_location():
-        """Busca todos os itens de todos os personagens, agrupados por localização."""
+        """
+        Busca todos os itens de todos os personagens, agrupados por localização.
+        Schema: Dream v3 (usa item_type, amount, location)
+        Retorna: Lista de itens com informações de localização
+        """
         sql = """
             SELECT 
-                i.item_id AS item_id,
-                i.count AS quantity,
-                i.loc AS location,
+                i.item_type AS item_id,
+                i.amount AS quantity,
+                i.location,
                 i.owner_id,
                 c.char_name,
                 c.account_name,
-                CONCAT('Item ', i.item_id) AS item_name,
+                CONCAT('Item ', i.item_type) AS item_name,
                 NULL AS item_category,
                 NULL AS crystal_type,
                 i.enchant_level AS enchant
             FROM items i
             INNER JOIN characters c ON c.obj_Id = i.owner_id
             WHERE c.accesslevel = '0'
-            AND i.loc IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
-            ORDER BY i.loc, i.item_id, c.char_name
+            AND i.location IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
+            ORDER BY i.location, i.item_type, c.char_name
         """
         return LineageInflation._run_query(sql)
 
     @staticmethod
     @cache_lineage_result(timeout=60, use_cache=False)
     def get_items_summary_by_category():
-        """Resumo de itens agrupados por categoria e localização."""
+        """
+        Resumo de itens agrupados por categoria e localização.
+        Schema: Dream v3
+        Retorna: Estatísticas agregadas por item e localização
+        """
         sql = """
             SELECT 
-                i.item_id AS item_id,
-                CONCAT('Item ', i.item_id) AS item_name,
+                i.item_type AS item_id,
+                CONCAT('Item ', i.item_type) AS item_name,
                 NULL AS item_category,
                 NULL AS crystal_type,
-                i.loc AS location,
+                i.location,
                 COUNT(*) AS total_instances,
-                SUM(i.count) AS total_quantity,
+                SUM(i.amount) AS total_quantity,
                 COUNT(DISTINCT i.owner_id) AS unique_owners,
                 MIN(i.enchant_level) AS min_enchant,
                 MAX(i.enchant_level) AS max_enchant,
@@ -1295,8 +1250,8 @@ class LineageInflation:
             FROM items i
             INNER JOIN characters c ON c.obj_Id = i.owner_id
             WHERE c.accesslevel = '0'
-            AND i.loc IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
-            GROUP BY i.item_id, i.loc
+            AND i.location IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
+            GROUP BY i.item_type, i.location
             ORDER BY total_quantity DESC, item_id ASC
         """
         return LineageInflation._run_query(sql)
@@ -1304,24 +1259,27 @@ class LineageInflation:
     @staticmethod
     @cache_lineage_result(timeout=60, use_cache=False)
     def get_items_by_character(char_id=None):
-        """Busca todos os itens de um personagem específico ou de todos."""
+        """
+        Busca todos os itens de um personagem específico ou de todos.
+        Schema: Dream v3
+        """
         if char_id:
             sql = """
                 SELECT 
-                    i.item_id AS item_id,
-                    i.count AS quantity,
-                    i.loc AS location,
+                    i.item_type AS item_id,
+                    i.amount AS quantity,
+                    i.location,
                     i.owner_id,
                     c.char_name,
                     c.account_name,
-                    COALESCE(it.name, CONCAT('Item ', i.item_id)) AS item_name,
-                    it.item_type AS item_category,
+                    CONCAT('Item ', i.item_type) AS item_name,
+                    NULL AS item_category,
                     i.enchant_level AS enchant
                 FROM items i
                 INNER JOIN characters c ON c.obj_Id = i.owner_id
                 WHERE i.owner_id = :char_id
-                AND i.loc IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
-                ORDER BY i.loc, i.item_id
+                AND i.location IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
+                ORDER BY i.location, i.item_type
             """
             return LineageInflation._run_query(sql, {"char_id": char_id})
         else:
@@ -1330,20 +1288,23 @@ class LineageInflation:
     @staticmethod
     @cache_lineage_result(timeout=60, use_cache=False)
     def get_top_items_by_quantity(limit=100):
-        """Retorna os itens mais comuns no servidor."""
+        """
+        Retorna os itens mais comuns no servidor.
+        Schema: Dream v3
+        """
         sql = """
             SELECT 
-                i.item_id AS item_id,
-                COALESCE(it.name, CONCAT('Item ', i.item_id)) AS item_name,
-                it.item_type AS item_category,
-                SUM(i.count) AS total_quantity,
+                i.item_type AS item_id,
+                CONCAT('Item ', i.item_type) AS item_name,
+                NULL AS item_category,
+                SUM(i.amount) AS total_quantity,
                 COUNT(DISTINCT i.owner_id) AS unique_owners,
                 COUNT(*) AS total_instances
             FROM items i
             INNER JOIN characters c ON c.obj_Id = i.owner_id
             WHERE c.accesslevel = '0'
-            AND i.loc IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
-            GROUP BY i.item_id
+            AND i.location IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
+            GROUP BY i.item_type
             ORDER BY total_quantity DESC
             LIMIT :limit
         """
@@ -1352,33 +1313,46 @@ class LineageInflation:
     @staticmethod
     @cache_lineage_result(timeout=60, use_cache=False)
     def get_items_by_location_summary():
-        """Resumo de itens por localização."""
+        """
+        Resumo de itens por localização (Inventário, Baú, Equipado, Baú do Clã).
+        Schema: Dream v3
+        """
         sql = """
             SELECT 
-                i.loc AS location,
-                COUNT(DISTINCT i.item_id) AS unique_item_types,
+                i.location,
+                COUNT(DISTINCT i.item_type) AS unique_item_types,
                 COUNT(*) AS total_instances,
-                SUM(i.count) AS total_quantity,
+                SUM(i.amount) AS total_quantity,
                 COUNT(DISTINCT i.owner_id) AS unique_owners
             FROM items i
             INNER JOIN characters c ON c.obj_Id = i.owner_id
             WHERE c.accesslevel = '0'
-            AND i.loc IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
-            GROUP BY i.loc
-            ORDER BY i.loc
+            AND i.location IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
+            GROUP BY i.location
+            ORDER BY i.location
         """
         return LineageInflation._run_query(sql)
 
     @staticmethod
     @cache_lineage_result(timeout=60, use_cache=False)
     def get_site_items_count():
-        """Conta itens armazenados no site."""
+        """
+        Conta itens armazenados no site (inventário do site).
+        Precisa ser integrado com o modelo Inventory do Django.
+        Retorna: Contagem de itens no site
+        """
+        # Esta query será complementada pela integração com Django
+        # Por enquanto retorna estrutura vazia
         return []
 
     @staticmethod
     @cache_lineage_result(timeout=60, use_cache=False)
     def get_inflation_comparison(date_from=None, date_to=None):
-        """Compara a quantidade de itens entre duas datas."""
+        """
+        Compara a quantidade de itens entre duas datas (requer snapshots salvos).
+        Esta função será usada em conjunto com os modelos Django.
+        """
+        # Esta função será implementada com os snapshots do Django
         return {
             "date_from": date_from,
             "date_to": date_to,

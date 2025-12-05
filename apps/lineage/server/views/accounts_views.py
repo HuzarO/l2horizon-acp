@@ -30,7 +30,23 @@ from django.utils.translation import gettext as _
 
 signer = TimestampSigner()
 
+# Importação dinâmica das classes E constantes do schema
 LineageServices = get_query_class("LineageServices")
+
+# Importar constantes do schema (nomes reais das colunas do banco)
+import importlib
+import os
+query_module_name = os.getenv('LINEAGE_QUERY_MODULE', 'default')
+try:
+    query_module = importlib.import_module(f'apps.lineage.server.querys.query_{query_module_name}')
+except ModuleNotFoundError:
+    # Fallback para query_default se não encontrar o módulo
+    print(f"AVISO: query_{query_module_name} nao encontrado, usando query_default")
+    query_module = importlib.import_module(f'apps.lineage.server.querys.query_default')
+
+ACCESS_LEVEL = getattr(query_module, 'ACCESS_LEVEL', 'accesslevel')
+CHAR_ID = getattr(query_module, 'CHAR_ID', 'charId')
+BASE_CLASS_COL = getattr(query_module, 'BASE_CLASS_COL', 'classid')
 
 
 @conditional_otp_required
@@ -64,8 +80,8 @@ def account_dashboard(request):
         personagens = []
         messages.warning(request, 'Não foi possível carregar seus personagens agora.')
 
-    acesslevel = LineageAccount.get_acess_level()
-    account['status'] = "Ativa" if int(account[acesslevel]) >= 0 else "Bloqueada"
+    # ✅ Usar constante do schema ao invés de hardcoded
+    account['status'] = "Ativa" if int(account.get(ACCESS_LEVEL, 0)) >= 0 else "Bloqueada"
 
     created_time = None
     if account.get('created_time'):

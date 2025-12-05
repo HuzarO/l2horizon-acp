@@ -21,6 +21,21 @@ def detect_and_hash(password, stored_hash, login=None):
     return hasher.encrypt(password)
 
 
+# ============================================================================
+# CONFIGURAÇÃO DO SCHEMA - Lucera v2
+# ============================================================================
+
+CHAR_ID = 'obj_Id'  # Queries usam C.obj_Id
+ACCESS_LEVEL = 'accesslevel'
+BASE_CLASS_COL = 'class_id'  # Vem de character_subclasses
+HAS_SUBCLASS = True
+SUBCLASS_CHAR_ID = 'char_obj_id'
+CLAN_NAME_SOURCE = 'clan_subpledges'
+HAS_ALLY_DATA = True
+
+# ============================================================================
+
+
 class LineageStats:
 
     @staticmethod
