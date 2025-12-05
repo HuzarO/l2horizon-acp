@@ -1,4 +1,4 @@
-# Use a imagem base do Python 3.12
+# Use a imagem base do Python 3.14
 FROM python:3.14.0
 
 # Defina variáveis de ambiente para o Python

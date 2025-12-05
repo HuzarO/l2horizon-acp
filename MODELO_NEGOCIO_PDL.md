@@ -194,7 +194,7 @@ O **PDL (Painel Definitivo Lineage)** é um sistema completo de gerenciamento de
 - **Totalmente customizável:** Adapte o visual à identidade do seu servidor
 
 #### 2. Tecnologia de Ponta
-- **Stack moderno:** Django, React, Docker, Redis, Celery
+- **Stack moderno:** Python 3.14, Django 5.2+, Docker, Redis, Celery
 - **Alta performance:** Suporta milhares de usuários simultâneos
 - **Escalável:** Cresce junto com seu servidor
 - **Código limpo:** Arquitetura profissional e bem documentada
@@ -389,7 +389,8 @@ O **PDL PRO** é um pacote completo que garante qualidade profissional, acompanh
 ## 💻 Stack Tecnológico
 
 ### Backend Robusto
-- **Django 4.2+**: Framework web Python de alto nível
+- **Python 3.14**: Linguagem de programação moderna e robusta
+- **Django 5.2+**: Framework web Python de alto nível
 - **PostgreSQL/MySQL**: Banco de dados relacional robusto
 - **Redis**: Cache e filas de alta performance
 - **Celery**: Processamento assíncrono de tarefas
@@ -397,14 +398,16 @@ O **PDL PRO** é um pacote completo que garante qualidade profissional, acompanh
 ### Frontend Moderno
 - **Bootstrap 5**: Design responsivo e moderno
 - **JavaScript ES6+**: Interatividade avançada
-- **Chart.js**: Gráficos e analytics visuais
+- **ApexCharts**: Gráficos interativos e analytics visuais
+- **Chart.js**: Visualizações de dados complementares
 - **Font Awesome**: Ícones profissionais
 
 ### Infraestrutura Profissional
 - **Docker**: Containerização para deploy consistente
 - **Docker Compose**: Orquestração de múltiplos serviços
 - **Nginx**: Servidor web de alta performance
-- **Daphne**: Servidor ASGI/WSGI otimizado
+- **Gunicorn**: Servidor WSGI para aplicações HTTP
+- **Daphne**: Servidor ASGI para WebSockets e requisições assíncronas
 
 ### Integrações de Pagamento
 - **Mercado Pago SDK**: Pagamentos LATAM
@@ -770,7 +773,7 @@ Prefere uma apresentação personalizada?
 - https://pdl.denky.dev.br (demo e documentação)
 
 **💬 Discord:**
-- Servidor oficial: [Em breve]
+- Servidor oficial: https://discord.gg/dsdZV5Z5Xp
 - Comunidade de desenvolvedores e administradores
 
 **📱 WhatsApp/Telegram:**
@@ -831,9 +834,9 @@ Próximas funcionalidades planejadas:
 
 **Daniel Amaral** - Full Stack/Full Cycle Developer
 - 10+ anos de experiência com Lineage 2
-- Especialista em Django, React e DevOps
+- Especialista em Python, Django e DevOps
 - Desenvolvedor de múltiplos projetos open source
-- Baseado em Recife/PE, Brasil
+- Mora em Recife/PE, Brasil
 
 **Missão do Projeto:**
 Democratizar o acesso a ferramentas profissionais para administradores de servidores privados de Lineage 2, oferecendo uma solução completa, segura e acessível.
