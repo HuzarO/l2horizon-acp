@@ -1,31 +1,71 @@
 import os
+import sys
 import time
-import fcntl
 from pathlib import Path
 from utils.dynamic_import import get_query_class
 from sqlalchemy.exc import SQLAlchemyError
 from pymysql.err import OperationalError
 
+# Imports condicionais para file locking (Unix vs Windows)
+if sys.platform == 'win32':
+    import msvcrt
+else:
+    import fcntl
+
+def acquire_lock(lock_file):
+    """Adquire lock de arquivo de forma compatível com Windows e Unix"""
+    if sys.platform == 'win32':
+        # Windows: usa msvcrt
+        try:
+            msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+            return True
+        except OSError:
+            return False
+    else:
+        # Unix/Linux: usa fcntl
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except BlockingIOError:
+            return False
+
+def release_lock(lock_file):
+    """Libera lock de arquivo de forma compatível com Windows e Unix"""
+    if sys.platform == 'win32':
+        # Windows: usa msvcrt
+        try:
+            msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+        except Exception:
+            pass
+    else:
+        # Unix/Linux: usa fcntl
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        except Exception:
+            pass
+
 # Verifica se o banco Lineage está habilitado
 if os.getenv("LINEAGE_DB_ENABLED", "false").lower() == "true":
     # Usa lock de arquivo para garantir que apenas UM worker verifica as colunas
-    lock_file_path = Path("/tmp") / "lineage_ensure_columns.lock"
+    # Caminho compatível com Windows e Unix
+    if sys.platform == 'win32':
+        lock_dir = Path(os.getenv('TEMP', 'C:\\Windows\\Temp'))
+    else:
+        lock_dir = Path("/tmp")
+    
+    lock_file_path = lock_dir / "lineage_ensure_columns.lock"
     lock_acquired = False
     lock_file = None
     
     try:
         # Tenta adquirir lock (non-blocking)
         lock_file = open(lock_file_path, 'w')
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        lock_acquired = True
+        lock_acquired = acquire_lock(lock_file)
         
-        print("🔧 Verificando estrutura da tabela 'accounts'...")
-        LineageAccount = get_query_class("LineageAccount")
-        LineageAccount.ensure_columns()
-        
-    except BlockingIOError:
-        # Outro worker já está verificando, este worker pula
-        pass
+        if lock_acquired:
+            print("🔧 Verificando estrutura da tabela 'accounts'...")
+            LineageAccount = get_query_class("LineageAccount")
+            LineageAccount.ensure_columns()
         
     except (SQLAlchemyError, OperationalError) as e:
         error_msg = str(e)
@@ -43,7 +83,7 @@ if os.getenv("LINEAGE_DB_ENABLED", "false").lower() == "true":
         # Libera o lock se foi adquirido
         if lock_acquired and lock_file:
             try:
-                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+                release_lock(lock_file)
                 lock_file.close()
                 # Remove o arquivo de lock
                 if lock_file_path.exists():

@@ -1,7 +1,7 @@
 """
 Query File: query_mobius.py
 Generated automatically by Query Generator
-Date: 2025-12-05 02:35:34
+Date: 2025-12-05 18:26:59
 Database Schema: mobius
 
 ⚠️  Este arquivo foi gerado automaticamente.
@@ -746,7 +746,7 @@ class LineageAccount:
 
 
 class TransferFromWalletToChar:
-    items_delayed = False
+    items_delayed = True
 
     @staticmethod
     @cache_lineage_result(timeout=300, use_cache=False)
@@ -776,66 +776,34 @@ class TransferFromWalletToChar:
     def insert_coin(char_name: str, coin_id: int, amount: int, enchant: int = 0):
         db = LineageDB()
 
+        # Buscar owner_id do personagem
         char_query = "SELECT obj_Id FROM characters WHERE char_name = :char_name"
         char_result = db.select(char_query, {"char_name": char_name})
         if not char_result:
             return None
 
         owner_id = char_result[0]["obj_Id"]
-        object_id = owner_id
 
-        if object_id != 0:
-            update_query = """
-                UPDATE items SET count = count + :amount
-                WHERE object_id = :object_id AND owner_id = :owner_id
-            """
-            db.update(update_query, {
-                "amount": amount,
-                "object_id": object_id,
-                "owner_id": owner_id
-            })
-            return True
-
-        last_object_query = """
-            SELECT object_id FROM items 
-            WHERE object_id LIKE '7%' 
-            ORDER BY object_id DESC LIMIT 1
-        """
-        last_object_result = db.select(last_object_query)
-        if not last_object_result:
-            new_object_id = 700000000
-        else:
-            last_object_id = int(last_object_result[0]["object_id"])
-            new_object_id = last_object_id + 1
-
-        last_loc_query = """
-            SELECT loc_data FROM items 
-            WHERE owner_id = :owner_id 
-            ORDER BY loc_data DESC LIMIT 1
-        """
-        last_loc_result = db.select(last_loc_query, {"owner_id": owner_id})
-        if not last_loc_result:
-            new_loc_data = 0
-        else:
-            last_loc_data = int(last_loc_result[0]["loc_data"])
-            new_loc_data = last_loc_data + 1
-
+        # Inserir na tabela items_delayed para delivery no jogo
         insert_query = """
-            INSERT INTO items (
-                owner_id, object_id, item_id, count,
-                enchant_level, loc, loc_data
-            ) VALUES (
-                :owner_id, :object_id, :coin_id, :amount,
-                :enchant, 'INVENTORY', :loc_data
+            INSERT INTO items_delayed (
+                payment_id, owner_id, item_id, count,
+                enchant_level, variationId1, variationId2,
+                flags, payment_status, description
             )
+            SELECT
+                COALESCE(MAX(payment_id), 0) + 1,
+                :owner_id, :coin_id, :amount,
+                :enchant, 0, 0,
+                0, 0, 'DONATE WEB'
+            FROM items_delayed
         """
+
         result = db.insert(insert_query, {
             "owner_id": owner_id,
-            "object_id": new_object_id,
             "coin_id": coin_id,
             "amount": amount,
-            "enchant": enchant,
-            "loc_data": new_loc_data
+            "enchant": enchant
         })
 
         return result is not None
