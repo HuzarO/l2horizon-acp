@@ -64,17 +64,18 @@ class LineageDB:
 
             # Configuração de pool para evitar "Too many connections"
             # Com múltiplos workers do Gunicorn, cada um cria seu próprio pool
-            pool_size = int(os.getenv("LINEAGE_DB_POOL_SIZE", "2"))
-            max_overflow = int(os.getenv("LINEAGE_DB_MAX_OVERFLOW", "3"))
+            pool_size = int(os.getenv("LINEAGE_DB_POOL_SIZE", "1"))
+            max_overflow = int(os.getenv("LINEAGE_DB_MAX_OVERFLOW", "2"))
             
             self.engine = create_engine(
                 url,
                 echo=False,
-                pool_pre_ping=True,
-                pool_recycle=180,
-                pool_timeout=pool_timeout,
-                pool_size=pool_size,           # Limite de conexões permanentes no pool
-                max_overflow=max_overflow,      # Conexões extras permitidas além do pool_size
+                pool_pre_ping=True,              # Valida conexões antes de usar
+                pool_recycle=180,                # Recicla conexões a cada 3 minutos
+                pool_timeout=pool_timeout,       # Timeout ao aguardar conexão do pool
+                pool_size=pool_size,             # Limite de conexões permanentes no pool
+                max_overflow=max_overflow,       # Conexões extras permitidas além do pool_size
+                pool_use_lifo=True,              # LIFO: usa conexões mais recentes primeiro
                 connect_args={
                     "connect_timeout": connect_timeout,
                     "read_timeout": read_timeout,
@@ -128,7 +129,15 @@ class LineageDB:
                 stmt = text(query)
                 return conn.execute(stmt, normalized_params)
         except SQLAlchemyError as e:
+            error_msg = str(e)
             print(f"❌ Erro na execução: {e}")
+            # Se for erro de "too many connections", descarta o pool
+            if "1040" in error_msg or "Too many connections" in error_msg:
+                print("⚠️ Detectado 'Too many connections' - descartando pool")
+                self.dispose_connections()
+            return None
+        except Exception as e:
+            print(f"❌ Erro inesperado na execução: {e}")
             return None
 
     def _safe_execute_write(self, query: str, params: Dict[str, Any]) -> Optional[Result]:
@@ -143,7 +152,15 @@ class LineageDB:
                 stmt = text(query)
                 return conn.execute(stmt, normalized_params)
         except SQLAlchemyError as e:
+            error_msg = str(e)
             print(f"❌ Erro na execução: {e}")
+            # Se for erro de "too many connections", descarta o pool
+            if "1040" in error_msg or "Too many connections" in error_msg:
+                print("⚠️ Detectado 'Too many connections' - descartando pool")
+                self.dispose_connections()
+            return None
+        except Exception as e:
+            print(f"❌ Erro inesperado na execução: {e}")
             return None
 
     def is_connected(self) -> bool:
@@ -249,10 +266,28 @@ class LineageDB:
             with self.engine.connect() as conn:
                 result = conn.execute(text(query))
                 columns = [row[0] for row in result.fetchall()]
+                # Explicitly close the result to return connection to pool faster
+                result.close()
                 return columns
         except SQLAlchemyError as e:
             print(f"❌ Erro ao buscar colunas da tabela {table_name}: {e}")
             return []
+        except Exception as e:
+            print(f"❌ Erro inesperado ao buscar colunas da tabela {table_name}: {e}")
+            return []
 
     def clear_cache(self):
         self.cache.clear()
+    
+    def dispose_connections(self):
+        """
+        Descarta todas as conexões do pool.
+        Útil quando há erros de "too many connections" ou conexões travadas.
+        """
+        if self.engine:
+            try:
+                print("♻️ Descartando pool de conexões...")
+                self.engine.dispose()
+                print("✅ Pool de conexões descartado com sucesso")
+            except Exception as e:
+                print(f"❌ Erro ao descartar pool de conexões: {e}")

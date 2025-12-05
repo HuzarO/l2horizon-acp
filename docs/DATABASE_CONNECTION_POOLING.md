@@ -32,23 +32,23 @@ workers = 4  # Fixo, configurável via .env
 **Configuração no `.env`:**
 ```bash
 GUNICORN_WORKERS=4
-LINEAGE_DB_POOL_SIZE=2
-LINEAGE_DB_MAX_OVERFLOW=3
+LINEAGE_DB_POOL_SIZE=1
+LINEAGE_DB_MAX_OVERFLOW=2
 ```
 
 **Cálculo de conexões:**
 ```
-4 workers × 5 conexões = 20 conexões totais ✅
+4 workers × 3 conexões = 12 conexões totais ✅
 ```
 
 #### **Quantos workers eu preciso?**
 
-| Tipo de Servidor | CPUs | Workers Recomendados | Conexões (pool 2+3) |
+| Tipo de Servidor | CPUs | Workers Recomendados | Conexões (pool 1+2) |
 |------------------|------|---------------------|---------------------|
-| Pequeno          | 2    | 2-3                 | 10-15              |
-| Médio            | 4    | 3-4                 | 15-20              |
-| Grande           | 8    | 4-6                 | 20-30              |
-| Muito Grande     | 16+  | 6-8                 | 30-40              |
+| Pequeno          | 2    | 2-3                 | 6-9                |
+| Médio            | 4    | 3-4                 | 9-12               |
+| Grande           | 8    | 4-6                 | 12-18              |
+| Muito Grande     | 16+  | 6-8                 | 18-24              |
 
 **Nota:** Mais workers ≠ melhor performance. O Django é I/O bound, não CPU bound.
 
@@ -143,14 +143,15 @@ LINEAGE_DB_PORT=3306
 LINEAGE_DB_NAME=l2jdb
 LINEAGE_DB_USER=l2user
 LINEAGE_DB_PASSWORD=suaSenhaAqui
-LINEAGE_DB_POOL_SIZE=2
-LINEAGE_DB_MAX_OVERFLOW=3
+LINEAGE_DB_POOL_SIZE=1
+LINEAGE_DB_MAX_OVERFLOW=2
 ```
 
 **Resultado:**
-- 4 workers × 5 conexões = **20 conexões totais**
+- 4 workers × 3 conexões = **12 conexões totais**
 - Bem abaixo do limite MySQL (~151)
 - Performance adequada para 90% dos casos
+- Com pool_use_lifo=True, reutiliza conexões mais recentes primeiro
 
 ---
 
