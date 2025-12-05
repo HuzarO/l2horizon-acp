@@ -6,8 +6,10 @@ O PDL é um painel que nasceu com a missão de oferecer ferramentas poderosas pa
 
 ## Tecnologias Utilizadas
 
-- **Django**: Framework web principal que permite a construção de aplicações rapidamente, com suporte a autenticação, gerenciamento de banco de dados e muito mais.
-- **Daphne**: Servidor WSGI/ASGI responsável por servir a aplicação Django, oferecendo alta performance e capacidade para lidar com múltiplas requisições simultâneas.
+- **Python 3.14**: Linguagem de programação moderna e robusta utilizada como base do projeto.
+- **Django 5.2+**: Framework web principal que permite a construção de aplicações rapidamente, com suporte a autenticação, gerenciamento de banco de dados e muito mais.
+- **Gunicorn**: Servidor WSGI para servir requisições HTTP síncronas com alta performance.
+- **Daphne**: Servidor ASGI para servir WebSockets e requisições assíncronas.
 - **Celery**: Biblioteca que permite a execução de tarefas assíncronas em segundo plano, como envio de e-mails e processamento de dados.
 - **Redis**: Sistema de gerenciamento de dados em memória utilizado como broker de mensagens para o Celery, melhorando o desempenho da aplicação.
 - **Nginx**: Servidor web reverso que gerencia requisições HTTP e serve arquivos estáticos e de mídia.
@@ -18,12 +20,14 @@ O PDL é um painel que nasceu com a missão de oferecer ferramentas poderosas pa
 
 ### Serviços Definidos no Docker Compose
 
-- **site**: Serviço principal que roda o Django com Daphne.
+- **site_http**: Serviço HTTP que roda o Django com Gunicorn (requisições síncronas).
+- **site_asgi**: Serviço ASGI que roda o Django com Daphne (WebSockets e requisições assíncronas).
 - **celery**: Worker do Celery que processa tarefas em segundo plano.
 - **celery-beat**: Agendador de tarefas do Celery que executa tarefas em horários programados.
 - **flower**: Interface de monitoramento para o Celery.
-- **nginx**: Servidor web que atua como proxy reverso para o serviço Django.
+- **nginx**: Servidor web que atua como proxy reverso para os serviços Django.
 - **redis**: Banco de dados em memória utilizado como broker de mensagens.
+- **postgres**: Banco de dados PostgreSQL para armazenamento de dados.
 
 ### Volumes Utilizados
 
@@ -384,35 +388,55 @@ O projeto é codificado utilizando uma estrutura simples e intuitiva, apresentad
    |
    |-- apps/
    |    |
+   |    |-- api/                             # API REST para integrações externas
+   |    |
    |    |-- main/
-   |    |    |-- administrator/              # Administração
-   |    |    |-- auditor/                    # Auditoria do sistema
+   |    |    |-- administrator/              # Painel administrativo e configurações
+   |    |    |-- auditor/                    # Sistema de auditoria e logs
+   |    |    |-- calendary/                  # Calendário de eventos e agendamentos
+   |    |    |-- downloads/                  # Sistema de downloads (launcher, patches)
    |    |    |-- faq/                        # FAQ (Perguntas Frequentes)
-   |    |    |-- home/                       # App principal - Página inicial
-   |    |    |-- message/                    # Mensagens e Amigos
+   |    |    |-- home/                       # App principal - Dashboard e autenticação
+   |    |    |-- licence/                    # Sistema de licenciamento e ativação
+   |    |    |-- management/                 # Comandos customizados do Django
+   |    |    |-- message/                    # Sistema de mensagens e amigos
    |    |    |-- news/                       # Notícias e Blog
-   |    |    |-- notification/               # Notificações do sistema
-   |    |    |-- solicitation/               # Solicitações e Suporte
+   |    |    |-- notification/               # Sistema de notificações (push, email, in-app)
+   |    |    |-- resources/                  # Recursos compartilhados e utilitários
+   |    |    |-- social/                     # Rede social integrada e moderação
+   |    |    |-- solicitation/               # Solicitações e Sistema de Suporte
    |    |
    |    |-- lineage/
-   |    |    |-- accountancy/                # Módulo de contabilidade e registros financeiros do servidor Lineage 2
-   |    |    |-- auction/                    # Sistema de leilões de itens entre jogadores no servidor Lineage 2
-   |    |    |-- games/                      # Funcionalidades relacionadas a minigames, roletas e caixas de prêmios
-   |    |    |-- inventory/                  # Gerenciamento de inventário dos personagens e movimentações de itens
-   |    |    |-- payment/                    # Integração com sistemas de pagamento (ex: PayPal) para compras no servidor
-   |    |    |-- reports/                    # Geração de relatórios administrativos e estatísticas do servidor
-   |    |    |-- server/                     # Ferramentas de administração e monitoramento do status do servidor Lineage 2
-   |    |    |-- shop/                       # Loja virtual de itens e serviços do servidor Lineage 2
-   |    |    |-- wallet/                     # Sistema de carteira virtual para saldo e transações dos jogadores
+   |    |    |-- accountancy/                # Contabilidade e registros financeiros
+   |    |    |-- auction/                    # Sistema de leilões entre jogadores
+   |    |    |-- games/                      # Minigames (roleta, caixas, dados, pesca)
+   |    |    |-- inventory/                  # Gerenciamento de inventário e itens
+   |    |    |-- marketplace/                # Marketplace de itens entre jogadores
+   |    |    |-- payment/                    # Pagamentos (Mercado Pago, Stripe, PayPal)
+   |    |    |-- reports/                    # Relatórios e estatísticas administrativas
+   |    |    |-- roadmap/                    # Roadmap público de funcionalidades
+   |    |    |-- server/                     # Gerenciamento e integração com servidor L2
+   |    |    |-- shop/                       # Loja virtual de itens e serviços
+   |    |    |-- tops/                       # Rankings (PvP, PK, Clan, Online)
+   |    |    |-- wallet/                     # Carteira virtual e transações
+   |    |    |-- wiki/                       # Wiki de itens, monstros e quests
+   |    |
+   |    |-- media_storage/                   # Gerenciamento de mídia e arquivos
    |
    |-- core/
    |    |-- settings.py                      # Configurações do projeto
-   |    |-- urls.py                          # Roteamento do projeto
-   |    |-- *.py                             # Demais Arquivos
+   |    |-- urls.py                          # Roteamento principal
+   |    |-- wsgi.py                          # Servidor WSGI (Gunicorn)
+   |    |-- asgi.py                          # Servidor ASGI (Daphne)
+   |    |-- celery.py                        # Configuração do Celery
+   |    |-- *.py                             # Demais arquivos de configuração
    |
-   |-- requirements.txt                      # Dependências do projeto
-   |-- manage.py                             # Script de inicialização do Django
-   |-- ...                                   # Demais Arquivos
+   |-- requirements.txt                      # Dependências Python do projeto
+   |-- docker-compose.yml                    # Orquestração de containers
+   |-- Dockerfile                            # Imagem Docker da aplicação
+   |-- manage.py                             # Script de gerenciamento do Django
+   |-- gunicorn-cfg.py                       # Configuração do Gunicorn
+   |-- ...                                   # Demais arquivos
    |
    |-- ************************************************************************
 ```
@@ -424,29 +448,98 @@ O projeto é codificado utilizando uma estrutura simples e intuitiva, apresentad
 Quando um arquivo de template é carregado no controlador, o `Django` escaneia todos os diretórios de templates, começando pelos definidos pelo usuário, e retorna o primeiro encontrado ou um erro caso o template não seja encontrado. O tema utilizado para estilizar esse projeto inicial fornece os seguintes arquivos:
 
 ```bash
-< RAIZ_DA_BIBLIOTECA_UI >                      
-   |
-   |-- templates/                     # Pasta Raiz dos Templates
-   |    |          
-   |    |-- accounts_custom/          # (pasta no app home)    
-   |    |    |-- auth-signin.html     # Página de Login
-   |    |    |-- auth-signup.html     # Página de Cadastro
-   |    |    |-- *.html               # Demais Paginas
-   |    |
-   |    |-- includes/       
-   |    |    |-- footer.html          # Componente de Rodapé
-   |    |    |-- sidebar.html         # Componente da Barra Lateral
-   |    |    |-- navigation.html      # Barra de Navegação
-   |    |    |-- scripts.html         # Componente de Scripts
-   |    |    |-- *.html               # Demais includes
-   |    |
-   |    |-- layouts/       
-   |    |    |-- base.html            # Página Mestra
-   |    |    |-- base-auth.html       # Página Mestra para Páginas de Autenticação
-   |    |    |-- *.html               # Demais layouts
-   |    |
-   |    |-- pages/       
-   |         |-- *.html               # Todas as outras páginas
-   |    
-   |-- ************************************************************************
+< ESTRUTURA DE TEMPLATES E TEMAS >
+
+1. TEMPLATES BASE DO SISTEMA
+   |-- templates/                            # Templates padrão do PDL
+   |    |-- admin/                           # Customizações do Django Admin (Jazzmin)
+   |    |-- config/                          # Páginas de configuração
+   |    |-- errors/                          # Páginas de erro (400, 403, 404, 500)
+   |    |-- includes/                        # Componentes reutilizáveis
+   |    |    |-- head.html                   # Meta tags, favicon, CSS
+   |    |    |-- nav.html                    # Navegação principal
+   |    |    |-- sidebar.html                # Menu lateral (dashboard)
+   |    |    |-- footer.html                 # Rodapé
+   |    |    |-- scripts.html                # Scripts JavaScript
+   |    |    |-- floating-notifications.html # Notificações flutuantes
+   |    |    |-- analytics.html              # Scripts de analytics
+   |    |-- layouts/                         # Layouts base
+   |    |    |-- base.html                   # Layout principal (dashboard)
+   |    |    |-- base-auth.html              # Layout para autenticação
+   |    |    |-- base-default.html           # Layout padrão (landing page)
+   |    |    |-- public.html                 # Layout para páginas públicas
+   |    |-- public/                          # Páginas públicas
+   |    |    |-- index.html                  # Landing page padrão
+   |    |    |-- downloads.html              # Página de downloads
+   |    |    |-- faq.html                    # FAQ padrão
+   |    |    |-- news_index.html             # Lista de notícias
+   |    |    |-- news_detail.html            # Detalhes da notícia
+   |    |    |-- privacy_policy.html         # Política de privacidade
+   |    |    |-- terms.html                  # Termos de serviço
+   |    |    |-- user_agreement.html         # Acordo do usuário
+
+2. SISTEMA DE TEMAS PERSONALIZADOS
+   |-- themes/                               # Sistema de temas instaláveis
+   |    |-- installed/                       # Temas instalados e ativos
+   |    |    |
+   |    |    |-- <slug-do-tema>/             # Diretório do tema (nome único)
+   |    |    |    |
+   |    |    |    |-- theme.json             # OBRIGATÓRIO - Metadados e configuração
+   |    |    |    |-- base.html              # OBRIGATÓRIO - Template base do tema
+   |    |    |    |
+   |    |    |    |-- index.html             # Landing page customizada
+   |    |    |    |-- news_index.html        # Lista de notícias (tema)
+   |    |    |    |-- news_detail.html       # Detalhes da notícia (tema)
+   |    |    |    |-- faq.html               # FAQ customizada
+   |    |    |    |-- terms.html             # Termos de serviço (tema)
+   |    |    |    |-- privacy_policy.html    # Política de privacidade (tema)
+   |    |    |    |-- user_agreement.html    # Acordo do usuário (tema)
+   |    |    |    |-- *.html                 # Outros templates customizados
+   |    |    |    |
+   |    |    |    |-- css/                   # Estilos do tema
+   |    |    |    |    |-- style.css         # Estilos principais
+   |    |    |    |    |-- custom.css        # Customizações adicionais
+   |    |    |    |    |-- responsive.css    # Estilos responsivos
+   |    |    |    |    |-- *.css             # Outros arquivos CSS
+   |    |    |    |
+   |    |    |    |-- js/                    # Scripts do tema
+   |    |    |    |    |-- script.js         # Scripts principais
+   |    |    |    |    |-- custom.js         # Scripts customizados
+   |    |    |    |    |-- *.js              # Outros scripts
+   |    |    |    |
+   |    |    |    |-- images/                # Imagens e assets visuais
+   |    |    |    |    |-- logo.png          # Logo do servidor
+   |    |    |    |    |-- favicon.png       # Ícone do site
+   |    |    |    |    |-- bg/               # Imagens de background
+   |    |    |    |    |-- icons/            # Ícones diversos
+   |    |    |    |    |-- gallery/          # Galeria de screenshots
+   |    |    |    |    |-- characters/       # Imagens de personagens
+   |    |    |    |    |-- *.png, *.jpg      # Outras imagens
+   |    |    |    |
+   |    |    |    |-- fonts/                 # Fontes customizadas (.woff, .ttf)
+   |    |    |    |-- libs/                  # Bibliotecas JavaScript externas
+   |    |    |    |-- video/                 # Vídeos e trailers (.mp4, .webm)
+   |    |    |    |-- assets/                # Outros recursos (opcional)
+   |    |    |
+   |    |    |-- <outro-tema>/               # Outros temas instalados
+   |    |         |-- (mesma estrutura)
+
+3. FUNCIONAMENTO DO SISTEMA DE TEMAS
+   - Upload via Django Admin como arquivo ZIP
+   - Validação automática do theme.json e estrutura
+   - Extração para /themes/installed/<slug>/
+   - Apenas um tema ativo por vez
+   - Variáveis internacionalizadas (PT, EN, ES)
+   - Fallback automático para templates padrão
+   - Hot-reload sem necessidade de restart
+
+4. VARIÁVEIS DE TEMA (theme.json)
+   - Suporte a múltiplos idiomas (valor_pt, valor_en, valor_es)
+   - Tipos: string, integer, boolean, color
+   - Acessíveis em todos os templates via context processor
+   - Customizáveis via painel administrativo
+
+📚 Documentação completa: docs/THEME_SYSTEM.md, docs/GUIDE_CREATE_THEME.md
+   
+|-- ************************************************************************
 ```
