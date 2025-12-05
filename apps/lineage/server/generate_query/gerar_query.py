@@ -204,7 +204,8 @@ def detectar_configuracoes(schema):
     
     config = {
         'char_id': 'charId',
-        'access_level': 'accesslevel',
+        'access_level': 'accesslevel',  # Para tabela accounts
+        'access_level_characters': 'accessLevel',  # Para tabela characters
         'has_subclass': False,
         'subclass_char_id': 'charId',
         'base_class_col': None,  # será detectado ou permanece None
@@ -221,13 +222,13 @@ def detectar_configuracoes(schema):
     # Detectar access_level na tabela accounts
     if 'accounts' in schema:
         account_cols = schema['accounts']['columns']
-        for candidate in ['accessLevel', 'accesslevel', 'access_level']:
+        for candidate in ['accesslevel', 'accessLevel', 'access_level']:
             if candidate in account_cols:
                 config['access_level'] = candidate
                 print(f"   ✅ Access level (accounts): {candidate}")
                 break
     
-    # Detectar char_id
+    # Detectar char_id e access_level na tabela characters
     if 'characters' in schema:
         char_cols = schema['characters']['columns']
         
@@ -235,6 +236,13 @@ def detectar_configuracoes(schema):
             if candidate in char_cols:
                 config['char_id'] = candidate
                 print(f"   ✅ ID do personagem: {candidate}")
+                break
+        
+        # Detectar access_level na tabela characters (pode ser diferente de accounts!)
+        for candidate in ['accessLevel', 'accesslevel', 'access_level']:
+            if candidate in char_cols:
+                config['access_level_characters'] = candidate
+                print(f"   ✅ Access level (characters): {candidate}")
                 break
         
         # Detectar base_class
@@ -512,7 +520,7 @@ def gerar_arquivo_query(nome_projeto, schema, config):
     print("   📝 Gerando classe LineageStats...")
     stats_code = get_lineage_stats_template(
         char_id=config['char_id'],
-        access_level=config['access_level'],
+        access_level=config['access_level_characters'],
         has_subclass=config['has_subclass'],
         subclass_char_id=config['subclass_char_id'],
         clan_structure=clan_structure,
@@ -561,7 +569,8 @@ def gerar_arquivo_query(nome_projeto, schema, config):
     print("   📝 Gerando classe LineageMarketplace...")
     marketplace_code = get_lineage_marketplace_template(
         char_id=config['char_id'],
-        access_level_column=config['access_level'],
+        access_level_column=config['access_level_characters'],
+        access_level_accounts=config['access_level'],
         clan_structure=clan_structure,
         has_subclass=config['has_subclass'],
         subclass_char_id=config['subclass_char_id'],
@@ -571,7 +580,7 @@ def gerar_arquivo_query(nome_projeto, schema, config):
     print("   📝 Gerando classe LineageInflation...")
     inflation_code = get_lineage_inflation_template(
         char_id=config['char_id'],
-        access_level=config['access_level']
+        access_level=config['access_level_characters']
     )
     
     # Montar arquivo completo
@@ -701,7 +710,8 @@ def main():
     print(f"   Tabelas encontradas: {len(schema)}")
     print(f"   ID do personagem: {config['char_id']}")
     print(f"   Coluna de classe: {config['base_class_col']}")
-    print(f"   Access level: {config['access_level']}")
+    print(f"   Access level (accounts): {config['access_level']}")
+    print(f"   Access level (characters): {config['access_level_characters']}")
     print(f"   Tem subclass: {'Sim' if config['has_subclass'] else 'Não'}")
     print(f"   Nome do clan: {config['clan_name_source']}")
     if config.get('subpledge_filter'):

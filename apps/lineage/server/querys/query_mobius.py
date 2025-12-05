@@ -1,7 +1,7 @@
 """
 Query File: query_mobius.py
 Generated automatically by Query Generator
-Date: 2025-12-05 02:21:07
+Date: 2025-12-05 02:35:34
 Database Schema: mobius
 
 ⚠️  Este arquivo foi gerado automaticamente.
@@ -29,7 +29,7 @@ from datetime import datetime
 
 # Tabela: characters
 CHAR_ID = 'obj_Id'                    # obj_Id, charId ou char_id
-ACCESS_LEVEL = 'accessLevel'          # accesslevel, accessLevel ou access_level
+ACCESS_LEVEL = 'access_level'          # accesslevel, accessLevel ou access_level
 BASE_CLASS_COL = None      # classid, base_class ou class_id (None se não existe em characters)
 
 # Tabela: character_subclasses
@@ -66,7 +66,7 @@ class LineageStats:
     @staticmethod
     @cache_lineage_result(timeout=300)
     def players_online():
-        sql = "SELECT COUNT(*) AS quant FROM characters WHERE online > 0 AND accessLevel = '0'"
+        sql = "SELECT COUNT(*) AS quant FROM characters WHERE online > 0 AND accesslevel = '0'"
         return LineageStats._run_query(sql)
     
     @staticmethod
@@ -88,7 +88,7 @@ class LineageStats:
             LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
             LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = 0
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
-            WHERE C.accessLevel = '0'
+            WHERE C.accesslevel = '0'
             ORDER BY pvpkills DESC, pkkills DESC, onlinetime DESC, char_name ASC
             LIMIT :limit
         """
@@ -113,7 +113,7 @@ class LineageStats:
             LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
             LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = 0
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
-            WHERE C.accessLevel = '0'
+            WHERE C.accesslevel = '0'
             ORDER BY pkkills DESC, pvpkills DESC, onlinetime DESC, char_name ASC
             LIMIT :limit
         """
@@ -138,7 +138,7 @@ class LineageStats:
             LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
             LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = 0
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
-            WHERE C.accessLevel = '0'
+            WHERE C.accesslevel = '0'
             ORDER BY onlinetime DESC, pvpkills DESC, pkkills DESC, char_name ASC
             LIMIT :limit
         """
@@ -162,7 +162,7 @@ class LineageStats:
             LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
             LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = 0
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
-            WHERE C.accessLevel = '0'
+            WHERE C.accesslevel = '0'
             ORDER BY CS.level DESC, C.onlinetime DESC, C.char_name ASC
             LIMIT :limit
         """
@@ -199,7 +199,7 @@ class LineageStats:
             LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
             LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = 0
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
-            WHERE C.accessLevel = '0'
+            WHERE C.accesslevel = '0'
             ORDER BY adenas DESC, onlinetime DESC, char_name ASC
             LIMIT :limit
         """
@@ -485,7 +485,7 @@ class LineageAccount:
     @staticmethod
     @cache_lineage_result(timeout=300)
     def get_acess_level():
-        return 'accessLevel'
+        return 'access_level'
 
     @staticmethod
     @cache_lineage_result(timeout=300)
@@ -654,7 +654,7 @@ class LineageAccount:
             LineageAccount.ensure_columns()
             hashed = base64.b64encode(hashlib.sha1(password.encode()).digest()).decode()
             sql = """
-                INSERT INTO accounts (login, password, accessLevel, email, created_time)
+                INSERT INTO accounts (login, password, access_level, email, created_time)
                 VALUES (:login, :password, :access_level, :email, :created_time)
             """
             params = {
@@ -712,7 +712,7 @@ class LineageAccount:
     def update_access_level(access, login):
         try:
             sql = """
-                UPDATE accounts SET accessLevel = :access
+                UPDATE accounts SET access_level = :access
                 WHERE login = :login LIMIT 1
             """
             params = {
@@ -980,7 +980,7 @@ class LineageMarketplace:
                 c.pkkills as pk_count,
                 c.clanid,
                 COALESCE(cs.name, '') as clan_name,
-                c.accessLevel,
+                c.accesslevel,
                 c.online,
                 c.lastAccess,
                 c.account_name
@@ -1018,7 +1018,7 @@ class LineageMarketplace:
                 c.pkkills as pk_count,
                 c.clanid,
                 COALESCE(cs.name, '') as clan_name,
-                c.accessLevel,
+                c.accesslevel,
                 c.online,
                 c.lastAccess,
                 c.account_name
@@ -1104,7 +1104,7 @@ class LineageMarketplace:
                 update_sql = """
                     UPDATE accounts 
                     SET password = :password_hash,
-                        accessLevel = 0,
+                        access_level = 0,
                         lastactive = UNIX_TIMESTAMP()
                     WHERE login = :account_name
                 """
@@ -1115,7 +1115,7 @@ class LineageMarketplace:
                 return result is not None and result > 0
             else:
                 insert_sql = """
-                    INSERT INTO accounts (login, password, accessLevel, lastactive)
+                    INSERT INTO accounts (login, password, access_level, lastactive)
                     VALUES (:account_name, :password_hash, 0, UNIX_TIMESTAMP())
                 """
                 result = db.insert(insert_sql, {
@@ -1163,7 +1163,7 @@ class LineageInflation:
                 i.enchant_level AS enchant
             FROM items i
             INNER JOIN characters c ON c.obj_Id = i.owner_id
-            WHERE c.accessLevel = '0'
+            WHERE c.accesslevel = '0'
             AND i.loc IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
             ORDER BY i.loc, i.item_id, c.char_name
         """
@@ -1188,7 +1188,7 @@ class LineageInflation:
                 AVG(i.enchant_level) AS avg_enchant
             FROM items i
             INNER JOIN characters c ON c.obj_Id = i.owner_id
-            WHERE c.accessLevel = '0'
+            WHERE c.accesslevel = '0'
             AND i.loc IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
             GROUP BY i.item_id, i.loc
             ORDER BY total_quantity DESC, item_id ASC
@@ -1233,7 +1233,7 @@ class LineageInflation:
                 COUNT(*) AS total_instances
             FROM items i
             INNER JOIN characters c ON c.obj_Id = i.owner_id
-            WHERE c.accessLevel = '0'
+            WHERE c.accesslevel = '0'
             AND i.loc IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
             GROUP BY i.item_id
             ORDER BY total_quantity DESC
@@ -1254,7 +1254,7 @@ class LineageInflation:
                 COUNT(DISTINCT i.owner_id) AS unique_owners
             FROM items i
             INNER JOIN characters c ON c.obj_Id = i.owner_id
-            WHERE c.accessLevel = '0'
+            WHERE c.accesslevel = '0'
             AND i.loc IN ('INVENTORY', 'WAREHOUSE', 'PAPERDOLL', 'CLANWH')
             GROUP BY i.loc
             ORDER BY i.loc
