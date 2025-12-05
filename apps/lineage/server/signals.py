@@ -18,13 +18,12 @@ if os.getenv("LINEAGE_DB_ENABLED", "false").lower() == "true":
     except (SQLAlchemyError, OperationalError) as e:
         error_msg = str(e)
         if "1040" in error_msg or "Too many connections" in error_msg:
-            print(f"⚠️ AVISO: Muitas conexoes ao banco Lineage durante startup")
-            print("INFO: O worker tentara novamente na proxima requisicao")
+            print("⚠️ MySQL sobrecarga no startup - colunas serão verificadas na próxima requisição")
         else:
-            print(f"AVISO: Nao foi possivel conectar ao banco do Lineage 2: {e}")
-        print("INFO: O sistema continuara funcionando normalmente, mas algumas funcionalidades podem estar indisponiveis.")
+            print(f"⚠️ Falha ao conectar ao Lineage DB: {str(e)[:100]}")
+            print("ℹ️ Sistema continuará funcionando, mas funcionalidades L2 podem estar limitadas")
     except Exception as e:
-        print(f"AVISO: Erro inesperado ao verificar colunas do banco: {e}")
-        print("INFO: O sistema continuara funcionando normalmente, mas algumas funcionalidades podem estar indisponiveis.")
+        print(f"⚠️ Erro inesperado ao verificar colunas: {str(e)[:100]}")
+        print("ℹ️ Sistema continuará funcionando, mas funcionalidades L2 podem estar limitadas")
 else:
-    print("INFO: Banco Lineage desativado via configuracao - pulando verificacao de colunas")
+    print("ℹ️ Lineage DB desabilitado - funcionalidades L2 não estarão disponíveis")

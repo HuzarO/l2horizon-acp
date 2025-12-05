@@ -83,7 +83,7 @@ class LineageDB:
                 },
             )
 
-            print("✅ Conectado ao banco Lineage com SQLAlchemy")
+            print(f"✅ Conectado ao banco Lineage | Pool: {pool_size} + {max_overflow} overflow")
 
         except Exception as e:
             print(f"❌ Falha ao conectar ao banco Lineage: {e}")
@@ -130,14 +130,15 @@ class LineageDB:
                 return conn.execute(stmt, normalized_params)
         except SQLAlchemyError as e:
             error_msg = str(e)
-            print(f"❌ Erro na execução: {e}")
-            # Se for erro de "too many connections", descarta o pool
+            # Se for erro de "too many connections", descarta o pool e mostra mensagem compacta
             if "1040" in error_msg or "Too many connections" in error_msg:
-                print("⚠️ Detectado 'Too many connections' - descartando pool")
                 self.dispose_connections()
+                print("⚠️ MySQL sobrecarga detectada - resetando pool de conexões")
+            else:
+                print(f"❌ Erro SQL: {e}")
             return None
         except Exception as e:
-            print(f"❌ Erro inesperado na execução: {e}")
+            print(f"❌ Erro inesperado: {e}")
             return None
 
     def _safe_execute_write(self, query: str, params: Dict[str, Any]) -> Optional[Result]:
@@ -153,14 +154,15 @@ class LineageDB:
                 return conn.execute(stmt, normalized_params)
         except SQLAlchemyError as e:
             error_msg = str(e)
-            print(f"❌ Erro na execução: {e}")
-            # Se for erro de "too many connections", descarta o pool
+            # Se for erro de "too many connections", descarta o pool e mostra mensagem compacta
             if "1040" in error_msg or "Too many connections" in error_msg:
-                print("⚠️ Detectado 'Too many connections' - descartando pool")
                 self.dispose_connections()
+                print("⚠️ MySQL sobrecarga detectada - resetando pool de conexões")
+            else:
+                print(f"❌ Erro SQL: {e}")
             return None
         except Exception as e:
-            print(f"❌ Erro inesperado na execução: {e}")
+            print(f"❌ Erro inesperado: {e}")
             return None
 
     def is_connected(self) -> bool:
@@ -182,7 +184,10 @@ class LineageDB:
                     conn.execute(text("SELECT 1"))
                 result_container["ok"] = True
             except Exception as e:
-                print(f"❌ Conexão perdida: {e}")
+                error_msg = str(e)
+                if "1040" not in error_msg and "Too many connections" not in error_msg:
+                    # Só mostra erro se não for "too many connections" (já tratado em outro lugar)
+                    print(f"⚠️ Falha no healthcheck: {e}")
             finally:
                 done.set()
 
@@ -270,10 +275,20 @@ class LineageDB:
                 result.close()
                 return columns
         except SQLAlchemyError as e:
-            print(f"❌ Erro ao buscar colunas da tabela {table_name}: {e}")
+            error_msg = str(e)
+            if "1040" in error_msg or "Too many connections" in error_msg:
+                print(f"⚠️ Não foi possível verificar colunas da tabela '{table_name}' - MySQL sobrecarga")
+                # Tenta descartar o pool para próxima tentativa
+                try:
+                    if self.engine:
+                        self.engine.dispose()
+                except:
+                    pass
+            else:
+                print(f"❌ Erro ao buscar colunas da tabela '{table_name}': {e}")
             return []
         except Exception as e:
-            print(f"❌ Erro inesperado ao buscar colunas da tabela {table_name}: {e}")
+            print(f"❌ Erro inesperado ao buscar colunas '{table_name}': {e}")
             return []
 
     def clear_cache(self):
@@ -286,8 +301,7 @@ class LineageDB:
         """
         if self.engine:
             try:
-                print("♻️ Descartando pool de conexões...")
                 self.engine.dispose()
-                print("✅ Pool de conexões descartado com sucesso")
+                print("♻️ Pool resetado - próxima query criará novas conexões")
             except Exception as e:
-                print(f"❌ Erro ao descartar pool de conexões: {e}")
+                print(f"❌ Falha ao resetar pool: {e}")
