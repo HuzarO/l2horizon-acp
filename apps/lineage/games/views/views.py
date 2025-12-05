@@ -649,7 +649,7 @@ def transferir_item_bag(request):
                 messages.error(request, _('Quantidade insuficiente na Bag.'))
                 return redirect('games:bag_dashboard')
 
-            inventario_destino = get_object_or_404(Inventory, character_name=character_name_destino)
+            inventario_destino = get_object_or_404(Inventory, user=request.user, character_name=character_name_destino)
 
             # Remover da Bag
             bag_item.quantity -= quantity
