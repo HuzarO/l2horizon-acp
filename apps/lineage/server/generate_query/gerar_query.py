@@ -221,7 +221,7 @@ def detectar_configuracoes(schema):
     # Detectar access_level na tabela accounts
     if 'accounts' in schema:
         account_cols = schema['accounts']['columns']
-        for candidate in ['accessLevel', 'accesslevel', 'access_level']:
+        for candidate in ['accesslevel', 'accessLevel', 'access_level']:
             if candidate in account_cols:
                 config['access_level'] = candidate
                 print(f"   ✅ Access level (accounts): {candidate}")
