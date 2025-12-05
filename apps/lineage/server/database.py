@@ -36,6 +36,14 @@ class LineageDB:
         self._check_cooldown_seconds: int = int(os.getenv("LINEAGE_DB_CHECK_COOLDOWN", "20"))
         self._ping_timeout_seconds: int = int(os.getenv("LINEAGE_DB_PING_TIMEOUT", "2"))
         
+        # 🔥 NOVO: Controle de pool reset para evitar loop
+        self._last_pool_reset_time: float = 0.0
+        self._pool_reset_cooldown: int = int(os.getenv("LINEAGE_DB_POOL_RESET_COOLDOWN", "10"))  # 10 segundos entre resets
+        self._consecutive_errors: int = 0
+        self._max_consecutive_errors: int = int(os.getenv("LINEAGE_DB_MAX_CONSECUTIVE_ERRORS", "3"))
+        self._error_window_start: float = 0.0
+        self._error_window_duration: int = int(os.getenv("LINEAGE_DB_ERROR_WINDOW", "5"))  # 5 segundos
+        
         if self.enabled:
             self._connect()
         else:
@@ -83,7 +91,8 @@ class LineageDB:
                 },
             )
 
-            print(f"✅ Conectado ao banco Lineage | Pool: {pool_size} + {max_overflow} overflow")
+            pid = os.getpid()
+            print(f"✅ Worker PID {pid} conectado ao {dbname} | Pool: {pool_size} + {max_overflow} overflow = {pool_size + max_overflow} conexões max")
 
         except Exception as e:
             print(f"❌ Falha ao conectar ao banco Lineage: {e}")
@@ -117,7 +126,11 @@ class LineageDB:
     def _set_cache(self, query: str, params: Tuple, data: List[Dict]):
         self.cache[(query, params)] = (data, time.time())
 
-    def _safe_execute_read(self, query: str, params: Dict[str, Any]) -> Optional[Result]:
+    def _safe_execute_read(self, query: str, params: Dict[str, Any]) -> Optional[List[Dict]]:
+        """
+        Executa query de leitura e retorna os dados já processados.
+        🔥 IMPORTANTE: Processa tudo DENTRO do 'with' para evitar vazamento de conexões.
+        """
         if not self.enabled:
             return None
         if not self.engine:
@@ -127,13 +140,18 @@ class LineageDB:
             query, normalized_params = self._normalize_params(query, params)
             with self.engine.connect() as conn:
                 stmt = text(query)
-                return conn.execute(stmt, normalized_params)
+                result = conn.execute(stmt, normalized_params)
+                # 🔥 PROCESSA TUDO AQUI DENTRO DO 'with' para liberar a conexão
+                rows = result.mappings().all()
+                result.close()  # Fecha o result explicitamente
+                # 🎯 Resetar contador de erros em sucesso
+                self._consecutive_errors = 0
+                return rows
         except SQLAlchemyError as e:
             error_msg = str(e)
-            # Se for erro de "too many connections", descarta o pool e mostra mensagem compacta
+            # Se for erro de "too many connections", usar lógica inteligente de reset
             if "1040" in error_msg or "Too many connections" in error_msg:
-                self.dispose_connections()
-                print("⚠️ MySQL sobrecarga detectada - resetando pool de conexões")
+                self._handle_connection_overload()
             else:
                 print(f"❌ Erro SQL: {e}")
             return None
@@ -141,7 +159,11 @@ class LineageDB:
             print(f"❌ Erro inesperado: {e}")
             return None
 
-    def _safe_execute_write(self, query: str, params: Dict[str, Any]) -> Optional[Result]:
+    def _safe_execute_write(self, query: str, params: Dict[str, Any]) -> Optional[int]:
+        """
+        Executa query de escrita e retorna o rowcount/lastrowid.
+        🔥 IMPORTANTE: Processa tudo DENTRO do 'with' para evitar vazamento de conexões.
+        """
         if not self.enabled:
             return None
         if not self.engine:
@@ -151,13 +173,18 @@ class LineageDB:
             query, normalized_params = self._normalize_params(query, params)
             with self.engine.begin() as conn:
                 stmt = text(query)
-                return conn.execute(stmt, normalized_params)
+                result = conn.execute(stmt, normalized_params)
+                # 🔥 EXTRAI OS DADOS AQUI DENTRO DO 'with' para liberar a conexão
+                rowcount = result.rowcount
+                result.close()  # Fecha o result explicitamente
+                # 🎯 Resetar contador de erros em sucesso
+                self._consecutive_errors = 0
+                return rowcount
         except SQLAlchemyError as e:
             error_msg = str(e)
-            # Se for erro de "too many connections", descarta o pool e mostra mensagem compacta
+            # Se for erro de "too many connections", usar lógica inteligente de reset
             if "1040" in error_msg or "Too many connections" in error_msg:
-                self.dispose_connections()
-                print("⚠️ MySQL sobrecarga detectada - resetando pool de conexões")
+                self._handle_connection_overload()
             else:
                 print(f"❌ Erro SQL: {e}")
             return None
@@ -221,11 +248,11 @@ class LineageDB:
             if cached is not None:
                 return cached
 
-        result = self._safe_execute_read(query, params)
-        if result is None:
+        # 🔥 Agora _safe_execute_read já retorna os rows processados
+        rows = self._safe_execute_read(query, params)
+        if rows is None:
             return []
 
-        rows = result.mappings().all()
         if use_cache:
             self._set_cache(query_exp, param_tuple, rows)
         return rows
@@ -233,24 +260,50 @@ class LineageDB:
     def insert(self, query: str, params: Dict[str, Any] = {}) -> Optional[int]:
         if not self.enabled:
             return None
-        return self._execute_and_get(query, params, "lastrowid")
+        return self._safe_execute_insert(query, params)
 
     def update(self, query: str, params: Dict[str, Any] = {}) -> Optional[int]:
         if not self.enabled:
             return None
-        affected_rows = self._execute_and_get(query, params, "rowcount")
-        return affected_rows
+        return self._safe_execute_write(query, params)
 
     def delete(self, query: str, params: Dict[str, Any] = {}) -> Optional[int]:
         if not self.enabled:
             return None
-        return self._execute_and_get(query, params, "rowcount")
+        return self._safe_execute_write(query, params)
 
-    def _execute_and_get(self, query: str, params: Dict[str, Any], attr: str) -> Optional[int]:
-        result = self._safe_execute_write(query, params)
-        if result is None:
+    def _safe_execute_insert(self, query: str, params: Dict[str, Any]) -> Optional[int]:
+        """
+        Executa query INSERT e retorna o lastrowid.
+        🔥 IMPORTANTE: Processa tudo DENTRO do 'with' para evitar vazamento de conexões.
+        """
+        if not self.enabled:
             return None
-        return getattr(result, attr, None)
+        if not self.engine:
+            print("⚠️ Sem conexão com o banco")
+            return None
+        try:
+            query, normalized_params = self._normalize_params(query, params)
+            with self.engine.begin() as conn:
+                stmt = text(query)
+                result = conn.execute(stmt, normalized_params)
+                # 🔥 EXTRAI O LASTROWID AQUI DENTRO DO 'with' para liberar a conexão
+                lastrowid = result.lastrowid
+                result.close()  # Fecha o result explicitamente
+                # 🎯 Resetar contador de erros em sucesso
+                self._consecutive_errors = 0
+                return lastrowid
+        except SQLAlchemyError as e:
+            error_msg = str(e)
+            # Se for erro de "too many connections", usar lógica inteligente de reset
+            if "1040" in error_msg or "Too many connections" in error_msg:
+                self._handle_connection_overload()
+            else:
+                print(f"❌ Erro SQL: {e}")
+            return None
+        except Exception as e:
+            print(f"❌ Erro inesperado: {e}")
+            return None
 
     def execute_raw(self, query: str, params: Dict[str, Any] = {}) -> bool:
         if not self.enabled:
@@ -260,6 +313,7 @@ class LineageDB:
     def get_table_columns(self, table_name: str) -> List[str]:
         """
         Retorna uma lista com os nomes das colunas da tabela.
+        🔥 IMPORTANTE: Processa tudo DENTRO do 'with' para evitar vazamento de conexões.
         """
         if not self.enabled:
             return []
@@ -270,20 +324,15 @@ class LineageDB:
             query = f"SHOW COLUMNS FROM `{table_name}`"
             with self.engine.connect() as conn:
                 result = conn.execute(text(query))
+                # 🔥 PROCESSA TUDO AQUI DENTRO DO 'with' para liberar a conexão
                 columns = [row[0] for row in result.fetchall()]
-                # Explicitly close the result to return connection to pool faster
-                result.close()
+                result.close()  # Fecha o result explicitamente
                 return columns
         except SQLAlchemyError as e:
             error_msg = str(e)
             if "1040" in error_msg or "Too many connections" in error_msg:
                 print(f"⚠️ Não foi possível verificar colunas da tabela '{table_name}' - MySQL sobrecarga")
-                # Tenta descartar o pool para próxima tentativa
-                try:
-                    if self.engine:
-                        self.engine.dispose()
-                except:
-                    pass
+                self._handle_connection_overload()
             else:
                 print(f"❌ Erro ao buscar colunas da tabela '{table_name}': {e}")
             return []
@@ -294,14 +343,52 @@ class LineageDB:
     def clear_cache(self):
         self.cache.clear()
     
+    def _handle_connection_overload(self):
+        """
+        Trata sobrecarga de conexões de forma inteligente, evitando loop de reset.
+        Usa janela de tempo e cooldown para não resetar o pool repetidamente.
+        """
+        now = time.time()
+        
+        # Incrementar contador de erros consecutivos
+        if now - self._error_window_start > self._error_window_duration:
+            # Nova janela de erros
+            self._error_window_start = now
+            self._consecutive_errors = 1
+        else:
+            self._consecutive_errors += 1
+        
+        # Se está no cooldown, NÃO resetar o pool
+        if now - self._last_pool_reset_time < self._pool_reset_cooldown:
+            time_remaining = int(self._pool_reset_cooldown - (now - self._last_pool_reset_time))
+            print(f"⏳ MySQL sobrecarga detectada [{self._consecutive_errors}x] - aguardando {time_remaining}s antes de resetar pool")
+            return
+        
+        # Se ultrapassou o limite de erros consecutivos, resetar pool
+        if self._consecutive_errors >= self._max_consecutive_errors:
+            try:
+                if self.engine:
+                    self.engine.dispose()
+                    self._last_pool_reset_time = now
+                    print(f"♻️ Pool resetado após {self._consecutive_errors} erros consecutivos - próxima query criará novas conexões")
+                    self._consecutive_errors = 0
+            except Exception as e:
+                print(f"❌ Falha ao resetar pool: {e}")
+        else:
+            print(f"⚠️ MySQL sobrecarga [{self._consecutive_errors}/{self._max_consecutive_errors}] - aguardando mais erros antes de resetar")
+    
     def dispose_connections(self):
         """
         Descarta todas as conexões do pool.
         Útil quando há erros de "too many connections" ou conexões travadas.
+        
+        ⚠️ DEPRECATED: Use _handle_connection_overload() ao invés deste método
+        para evitar loops de reset.
         """
         if self.engine:
             try:
                 self.engine.dispose()
-                print("♻️ Pool resetado - próxima query criará novas conexões")
+                self._last_pool_reset_time = time.time()
+                print("♻️ Pool resetado manualmente - próxima query criará novas conexões")
             except Exception as e:
                 print(f"❌ Falha ao resetar pool: {e}")
