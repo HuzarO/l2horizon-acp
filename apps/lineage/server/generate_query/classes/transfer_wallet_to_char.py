@@ -10,12 +10,12 @@ def get_transfer_wallet_to_char_template(
     # Se tem items_delayed, gera código para usar essa tabela (dreamv3, aCis, etc)
     if has_items_delayed and items_delayed_cols:
         # Usar valores padrão se não foram detectados
-        payment_id_col = items_delayed_cols.get('payment_id', 'payment_id')
-        owner_id_col = items_delayed_cols.get('owner_id', 'owner_id')
-        item_id_col = items_delayed_cols.get('item_id', 'item_id')
-        count_col = items_delayed_cols.get('count', 'count')
-        enchant_col = items_delayed_cols.get('enchant_level', 'enchant_level')
-        desc_col = items_delayed_cols.get('description', 'description')
+        payment_id_col = items_delayed_cols.get('payment_id') or 'payment_id'
+        owner_id_col = items_delayed_cols.get('owner_id') or 'owner_id'
+        item_id_col = items_delayed_cols.get('item_id') or 'item_id'
+        count_col = items_delayed_cols.get('count') or 'count'
+        enchant_col = items_delayed_cols.get('enchant_level') or 'enchant_level'
+        desc_col = items_delayed_cols.get('description') or 'description'
         
         return f'''class TransferFromWalletToChar:
     items_delayed = True
@@ -56,18 +56,39 @@ def get_transfer_wallet_to_char_template(
 
         owner_id = char_result[0]["{char_id}"]
 
-        # Inserir na tabela items_delayed para delivery no jogo
-        insert_query = """
-            INSERT INTO items_delayed (
-                {payment_id_col}, {owner_id_col}, {item_id_col}, {count_col},
-                {enchant_col}, variationId1, variationId2,
-                flags, payment_status, {desc_col}
-            )
-            SELECT
-                COALESCE(MAX({payment_id_col}), 0) + 1,
-                :owner_id, :coin_id, :amount,
-                :enchant, 0, 0,
-                0, 0, 'DONATE WEB'
+        # Detectar quais colunas existem na tabela items_delayed
+        columns = db.get_table_columns("items_delayed")
+        
+        # Colunas obrigatórias
+        cols_to_insert = ['{payment_id_col}', '{owner_id_col}', '{item_id_col}', '{count_col}']
+        values_to_insert = ['COALESCE(MAX({payment_id_col}), 0) + 1', ':owner_id', ':coin_id', ':amount']
+        
+        # Adicionar enchant se existir
+        if '{enchant_col}' in columns:
+            cols_to_insert.append('{enchant_col}')
+            values_to_insert.append(':enchant')
+        
+        # Adicionar colunas opcionais se existirem
+        optional_cols = {{
+            'variationId1': '0',
+            'variationId2': '0',
+            'flags': '0',
+            'payment_status': '0',
+            '{desc_col}': "'DONATE WEB'"
+        }}
+        
+        for col, value in optional_cols.items():
+            if col in columns:
+                cols_to_insert.append(col)
+                values_to_insert.append(value)
+        
+        # Montar query dinamicamente
+        cols_str = ', '.join(cols_to_insert)
+        values_str = ', '.join(values_to_insert)
+        
+        insert_query = f"""
+            INSERT INTO items_delayed ({{cols_str}})
+            SELECT {{values_str}}
             FROM items_delayed
         """
 

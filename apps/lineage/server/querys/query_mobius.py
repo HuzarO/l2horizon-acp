@@ -1,7 +1,7 @@
 """
 Query File: query_mobius.py
 Generated automatically by Query Generator
-Date: 2025-12-05 18:26:59
+Date: 2025-12-05 19:02:09
 Database Schema: mobius
 
 ⚠️  Este arquivo foi gerado automaticamente.
@@ -784,18 +784,39 @@ class TransferFromWalletToChar:
 
         owner_id = char_result[0]["obj_Id"]
 
-        # Inserir na tabela items_delayed para delivery no jogo
-        insert_query = """
-            INSERT INTO items_delayed (
-                payment_id, owner_id, item_id, count,
-                enchant_level, variationId1, variationId2,
-                flags, payment_status, description
-            )
-            SELECT
-                COALESCE(MAX(payment_id), 0) + 1,
-                :owner_id, :coin_id, :amount,
-                :enchant, 0, 0,
-                0, 0, 'DONATE WEB'
+        # Detectar quais colunas existem na tabela items_delayed
+        columns = db.get_table_columns("items_delayed")
+        
+        # Colunas obrigatórias
+        cols_to_insert = ['payment_id', 'owner_id', 'item_id', 'count']
+        values_to_insert = ['COALESCE(MAX(payment_id), 0) + 1', ':owner_id', ':coin_id', ':amount']
+        
+        # Adicionar enchant se existir
+        if 'enchant_level' in columns:
+            cols_to_insert.append('enchant_level')
+            values_to_insert.append(':enchant')
+        
+        # Adicionar colunas opcionais se existirem
+        optional_cols = {
+            'variationId1': '0',
+            'variationId2': '0',
+            'flags': '0',
+            'payment_status': '0',
+            'description': "'DONATE WEB'"
+        }
+        
+        for col, value in optional_cols.items():
+            if col in columns:
+                cols_to_insert.append(col)
+                values_to_insert.append(value)
+        
+        # Montar query dinamicamente
+        cols_str = ', '.join(cols_to_insert)
+        values_str = ', '.join(values_to_insert)
+        
+        insert_query = f"""
+            INSERT INTO items_delayed ({cols_str})
+            SELECT {values_str}
             FROM items_delayed
         """
 
