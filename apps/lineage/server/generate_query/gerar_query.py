@@ -560,7 +560,10 @@ def gerar_arquivo_query(nome_projeto, schema, config):
     marketplace_code = get_lineage_marketplace_template(
         char_id=config['char_id'],
         access_level_column=config['access_level'],
-        clan_structure=clan_structure
+        clan_structure=clan_structure,
+        has_subclass=config['has_subclass'],
+        subclass_char_id=config['subclass_char_id'],
+        base_class_col=config['base_class_col']
     )
     
     print("   📝 Gerando classe LineageInflation...")

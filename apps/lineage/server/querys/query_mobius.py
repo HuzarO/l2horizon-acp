@@ -1,7 +1,7 @@
 """
 Query File: query_mobius.py
 Generated automatically by Query Generator
-Date: 2025-12-04 21:18:54
+Date: 2025-12-04 21:27:30
 Database Schema: mobius
 
 ⚠️  Este arquivo foi gerado automaticamente.
@@ -970,12 +970,12 @@ class LineageMarketplace:
     @cache_lineage_result(timeout=300, use_cache=False)
     def get_user_characters(account_name):
         """Busca todos os characters de uma conta do banco L2."""
-        sql = """
+        sql = f"""
             SELECT 
                 c.obj_Id as char_id,
                 c.char_name,
-                c.level,
-                c.classid,
+                (SELECT BS.level FROM character_subclasses BS WHERE BS.char_obj_id = c.obj_Id AND BS.isBase = '1' LIMIT 1) AS level,
+                (SELECT BS.class_id FROM character_subclasses BS WHERE BS.char_obj_id = c.obj_Id AND BS.isBase = '1' LIMIT 1) AS classid,
                 c.pvpkills as pvp_kills,
                 c.pkkills as pk_count,
                 c.clanid,
@@ -988,7 +988,7 @@ class LineageMarketplace:
             LEFT JOIN clan_data cd ON c.clanid = cd.clan_id
             LEFT JOIN clan_subpledges cs ON cs.clan_id = cd.clan_id AND cs.type = 0
             WHERE c.account_name = :account_name
-            ORDER BY c.level DESC, c.char_name ASC
+            ORDER BY level DESC, c.char_name ASC
         """
         return LineageDB().select(sql, {"account_name": account_name})
     
@@ -1008,12 +1008,12 @@ class LineageMarketplace:
     @cache_lineage_result(timeout=300, use_cache=False)
     def get_character_details(char_id):
         """Busca detalhes completos de um character do banco L2."""
-        sql = """
+        sql = f"""
             SELECT 
                 c.obj_Id as char_id,
                 c.char_name,
-                c.level,
-                c.classid,
+                (SELECT BS.level FROM character_subclasses BS WHERE BS.char_obj_id = c.obj_Id AND BS.isBase = '1' LIMIT 1) AS level,
+                (SELECT BS.class_id FROM character_subclasses BS WHERE BS.char_obj_id = c.obj_Id AND BS.isBase = '1' LIMIT 1) AS classid,
                 c.pvpkills as pvp_kills,
                 c.pkkills as pk_count,
                 c.clanid,

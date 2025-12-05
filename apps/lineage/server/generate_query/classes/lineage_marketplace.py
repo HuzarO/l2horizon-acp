@@ -1,7 +1,19 @@
 """Template da classe LineageMarketplace - Sistema de Marketplace"""
 
-def get_lineage_marketplace_template(char_id: str, access_level_column: str = 'accessLevel', clan_structure: dict = None) -> str:
+def get_lineage_marketplace_template(char_id: str, access_level_column: str = 'accessLevel', clan_structure: dict = None,
+                                     has_subclass: bool = False, subclass_char_id: str = 'charId', 
+                                     base_class_col: str = 'classid') -> str:
     """Gera o código da classe LineageMarketplace"""
+    
+    # Determinar source de level e classid
+    if not base_class_col or base_class_col == 'class_id':
+        # Mobius: não tem level/classid em characters, buscar de subclass
+        level_field = f"(SELECT BS.level FROM character_subclasses BS WHERE BS.{subclass_char_id} = c.{char_id} AND BS.isBase = '1' LIMIT 1) AS level"
+        class_field = f"(SELECT BS.class_id FROM character_subclasses BS WHERE BS.{subclass_char_id} = c.{char_id} AND BS.isBase = '1' LIMIT 1) AS classid"
+    else:
+        # Tem level/classid direto em characters
+        level_field = "c.level"
+        class_field = f"c.{base_class_col} AS classid"
     
     # Construir clan join dinamicamente
     if clan_structure:
@@ -34,12 +46,12 @@ def get_lineage_marketplace_template(char_id: str, access_level_column: str = 'a
     @cache_lineage_result(timeout=300, use_cache=False)
     def get_user_characters(account_name):
         """Busca todos os characters de uma conta do banco L2."""
-        sql = """
+        sql = f"""
             SELECT 
                 c.{char_id} as char_id,
                 c.char_name,
-                c.level,
-                c.classid,
+                {level_field},
+                {class_field},
                 c.pvpkills as pvp_kills,
                 c.pkkills as pk_count,
                 c.clanid,
@@ -50,7 +62,7 @@ def get_lineage_marketplace_template(char_id: str, access_level_column: str = 'a
                 c.account_name
             FROM characters c{clan_join}
             WHERE c.account_name = :account_name
-            ORDER BY c.level DESC, c.char_name ASC
+            ORDER BY level DESC, c.char_name ASC
         """
         return LineageDB().select(sql, {{"account_name": account_name}})
     
@@ -70,12 +82,12 @@ def get_lineage_marketplace_template(char_id: str, access_level_column: str = 'a
     @cache_lineage_result(timeout=300, use_cache=False)
     def get_character_details(char_id):
         """Busca detalhes completos de um character do banco L2."""
-        sql = """
+        sql = f"""
             SELECT 
                 c.{char_id} as char_id,
                 c.char_name,
-                c.level,
-                c.classid,
+                {level_field},
+                {class_field},
                 c.pvpkills as pvp_kills,
                 c.pkkills as pk_count,
                 c.clanid,
