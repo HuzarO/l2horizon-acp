@@ -70,11 +70,13 @@ def register_view(request):
             )
 
             try:
-                send_email_task.delay(
+                # Usa send_mail do Django (mesmo sistema da recuperação de senha)
+                send_mail(
                     'Verifique seu e-mail',
                     f'Olá {user.username}, clique no link para verificar sua conta: {verification_link}',
                     settings.DEFAULT_FROM_EMAIL,
-                    [user.email]
+                    [user.email],
+                    fail_silently=False,
                 )
             except Exception as e:
                 logger.error(f"Erro ao enviar email: {str(e)}")

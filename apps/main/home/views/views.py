@@ -701,11 +701,13 @@ def reenviar_verificacao_view(request):
 
             # Envia o e-mail
             try:
-                send_email_task.delay(
+                # Usa send_mail do Django (mesmo sistema da recuperação de senha)
+                send_mail(
                     'Reenvio de verificação de e-mail',
                     f'Olá {user.username},\n\nAqui está seu novo link de verificação:\n\n{verification_link}\n\nSe você não solicitou isso, ignore este e-mail.',
                     settings.DEFAULT_FROM_EMAIL,
-                    [user.email]
+                    [user.email],
+                    fail_silently=False,
                 )
                 messages.success(request, 'Um novo e-mail de verificação foi enviado.')
             except Exception as e:

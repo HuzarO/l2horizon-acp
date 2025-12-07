@@ -16,7 +16,10 @@ def encerrar_leiloes_expirados():
 
     for leilao in expirados:
         try:
-            if leilao.is_active():
+            # Verifica se o leilão ainda está pendente (não foi finalizado)
+            # is_active é uma propriedade (@property), não um método
+            # Se o leilão está expirado, is_active será False, então verificamos apenas o status
+            if leilao.status == 'pending':
                 finish_auction(leilao)
         except Exception as e:
             logger.error(_('Erro ao encerrar leilão %(id)s: %(erro)s') % {

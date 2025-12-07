@@ -121,7 +121,6 @@ def obter_estatisticas_seguranca(ip_address=None, dias=7):
         dict com estatísticas
     """
     from django.db.models import Count, Q
-    from datetime import timedelta
     
     cutoff = timezone.now() - timedelta(days=dias)
     queryset = TentativaFalsificacao.objects.filter(data_tentativa__gte=cutoff)
@@ -150,3 +149,90 @@ def obter_estatisticas_seguranca(ip_address=None, dias=7):
         'ips_mais_ativos': list(ips_mais_ativos),
         'periodo_dias': dias
     }
+
+
+def reconciliar_pendentes_mercadopago(cutoff_minutes: int = 5) -> int:
+    """
+    Reconcilia pagamentos pendentes do Mercado Pago consultando o status no servidor.
+    
+    Args:
+        cutoff_minutes: Minutos mínimos desde a criação para tentar conciliar
+        
+    Returns:
+        Número de pagamentos reconciliados
+    """
+    try:
+        import mercadopago
+        from django.conf import settings
+        from django.db import transaction
+        from decimal import Decimal
+        from .models import Pagamento
+        from apps.lineage.wallet.utils import aplicar_compra_com_bonus
+        
+        # Verifica se Mercado Pago está configurado
+        if not getattr(settings, 'MERCADO_PAGO_ACCESS_TOKEN', None):
+            logger.warning("MERCADO_PAGO_ACCESS_TOKEN não configurado. Pulando reconciliação.")
+            return 0
+        
+        sdk = mercadopago.SDK(settings.MERCADO_PAGO_ACCESS_TOKEN)
+        
+        # Busca pagamentos pendentes criados há pelo menos cutoff_minutes minutos
+        cutoff_time = timezone.now() - timedelta(minutes=cutoff_minutes)
+        pagamentos_pendentes = Pagamento.objects.filter(
+            status='pending',
+            data_criacao__lte=cutoff_time
+        ).select_related('pedido_pagamento', 'usuario')
+        
+        reconciliados = 0
+        
+        for pagamento in pagamentos_pendentes:
+            pedido = pagamento.pedido_pagamento
+            if not pedido or pedido.metodo != 'MercadoPago':
+                continue
+            
+            try:
+                # Consulta o Mercado Pago usando o ID do pagamento como external_reference
+                search = sdk.merchant_order().search({'external_reference': str(pagamento.id)})
+                
+                if search.get('status') == 200:
+                    results = (search.get('response') or {}).get('elements', [])
+                    
+                    for order in results:
+                        pagamentos_mp = order.get('payments', [])
+                        aprovado = any(p.get('status') == 'approved' for p in pagamentos_mp)
+                        
+                        if aprovado:
+                            # Processa o pagamento aprovado
+                            with transaction.atomic():
+                                from apps.lineage.wallet.models import Wallet
+                                wallet, _ = Wallet.objects.get_or_create(usuario=pagamento.usuario)
+                                
+                                valor_total, valor_bonus, _ = aplicar_compra_com_bonus(
+                                    wallet, Decimal(str(pagamento.valor)), 'MercadoPago'
+                                )
+                                
+                                pagamento.status = 'paid'
+                                pagamento.processado_em = timezone.now()
+                                pagamento.save()
+                                
+                                pedido.bonus_aplicado = valor_bonus
+                                pedido.total_creditado = valor_total
+                                pedido.status = 'CONCLUÍDO'
+                                pedido.save()
+                                
+                                reconciliados += 1
+                                logger.info(f"Pagamento {pagamento.id} reconciliado com sucesso")
+                            break
+                            
+            except Exception as e:
+                logger.error(f"Erro ao reconciliar pagamento {pagamento.id}: {e}")
+                continue
+        
+        if reconciliados > 0:
+            logger.info(f"Reconciliação concluída: {reconciliados} pagamento(s) reconciliado(s)")
+        
+        return reconciliados
+        
+    except Exception as e:
+        logger.error(f"Erro ao reconciliar pagamentos pendentes do Mercado Pago: {e}")
+        return 0
