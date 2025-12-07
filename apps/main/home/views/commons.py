@@ -196,6 +196,8 @@ def config_hub_view(request):
         { 'title': _('Roulette Manager'), 'url_name': 'games:roulette_manager', 'icon': 'bi-shuffle' },
         { 'title': _('Economy Manager'), 'url_name': 'games:economy_manager', 'icon': 'bi-lightning-charge' },
         { 'title': _('Battle Pass Manager'), 'url_name': 'games:battle_pass_manager', 'icon': 'bi-trophy', 'is_new': True },
+        { 'title': _('Calendar Manager'), 'url_name': 'calendary:manager_dashboard', 'icon': 'bi-calendar-event', 'is_new': True },
+        { 'title': _('Roadmap Manager'), 'url_name': 'roadmap:manager_dashboard', 'icon': 'bi-diagram-3', 'is_new': True },
         { 'title': _('Slot Machine Manager'), 'url_name': 'games:slot_machine_manager', 'icon': 'bi-dice-6', 'is_new': True },
         { 'title': _('Dice Game Manager'), 'url_name': 'games:dice_game_manager', 'icon': 'bi-dice-5', 'is_new': True },
         { 'title': _('Fishing Game Manager'), 'url_name': 'games:fishing_game_manager', 'icon': 'bi-water', 'is_new': True },

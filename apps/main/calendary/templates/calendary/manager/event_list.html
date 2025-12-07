@@ -1,0 +1,182 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Eventos" %} - {% trans "Calendar Manager" %}{% endblock %}
+
+{% block extrastyle %}
+{% include 'calendary/manager/_calendar_styles.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="calendar-manager-bg">
+    <div class="container">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5 calendar-animate-in">
+            <div class="calendar-page-header mb-3 mb-md-0">
+                <h2 class="mb-2">
+                    <i class="bi bi-list-ul text-info me-2"></i>
+                    {% trans "Eventos" %}
+                </h2>
+                <p>{% trans "Gerencie todos os eventos do calendário" %}</p>
+            </div>
+            <div class="d-flex gap-3">
+                <a href="{% url 'calendary:manager_dashboard' %}" class="calendar-btn-solid-white">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                </a>
+                <a href="{% url 'calendary:manager_event_create' %}" class="calendar-btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Novo Evento" %}
+                </a>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="calendar-card mb-4 calendar-animate-in">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-funnel me-2"></i>
+                    {% trans "Filtros" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-4">
+                    <div class="col-md-4">
+                        <label class="calendar-form-label">
+                            <i class="bi bi-tag"></i>
+                            {% trans "Status" %}
+                        </label>
+                        <select name="status" class="calendar-form-control form-select">
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>{% trans "Todos" %}</option>
+                            <option value="upcoming" {% if status_filter == 'upcoming' %}selected{% endif %}>{% trans "Próximos" %}</option>
+                            <option value="ongoing" {% if status_filter == 'ongoing' %}selected{% endif %}>{% trans "Em Andamento" %}</option>
+                            <option value="past" {% if status_filter == 'past' %}selected{% endif %}>{% trans "Passados" %}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="calendar-form-label">
+                            <i class="bi bi-palette"></i>
+                            {% trans "Cor" %}
+                        </label>
+                        <select name="color" class="calendar-form-control form-select">
+                            <option value="all" {% if color_filter == 'all' %}selected{% endif %}>{% trans "Todas" %}</option>
+                            <option value="bg-red" {% if color_filter == 'bg-red' %}selected{% endif %}>{% trans "Vermelho" %}</option>
+                            <option value="bg-orange" {% if color_filter == 'bg-orange' %}selected{% endif %}>{% trans "Laranja" %}</option>
+                            <option value="bg-green" {% if color_filter == 'bg-green' %}selected{% endif %}>{% trans "Verde" %}</option>
+                            <option value="bg-blue" {% if color_filter == 'bg-blue' %}selected{% endif %}>{% trans "Azul" %}</option>
+                            <option value="bg-purple" {% if color_filter == 'bg-purple' %}selected{% endif %}>{% trans "Roxo" %}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="calendar-btn-primary w-100">
+                            <i class="bi bi-funnel me-2"></i>{% trans "Filtrar" %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lista de Eventos -->
+        <div class="calendar-card calendar-animate-in">
+            <div class="card-body">
+                {% if events %}
+                <div class="calendar-table-wrapper">
+                    <div class="table-responsive">
+                        <table class="table table-dark">
+                            <thead>
+                                <tr>
+                                    <th>{% trans "Título" %}</th>
+                                    <th>{% trans "Visibilidade" %}</th>
+                                    <th>{% trans "Início" %}</th>
+                                    <th>{% trans "Término" %}</th>
+                                    <th>{% trans "Cor" %}</th>
+                                    <th>{% trans "Ações" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in events %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-calendar-event me-2 text-info calendar-icon"></i>
+                                            <div class="flex-grow-1">
+                                                <strong>{{ event.title }}</strong>
+                                                {% if event.user %}
+                                                <small class="d-block mt-1" style="font-size: 0.75rem; opacity: 0.7;">
+                                                    <i class="bi bi-lock me-1"></i>{% trans "Privado" %}
+                                                </small>
+                                                {% else %}
+                                                <small class="d-block mt-1" style="font-size: 0.75rem; opacity: 0.7;">
+                                                    <i class="bi bi-globe me-1"></i>{% trans "Público" %}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if event.user %}
+                                        <div class="d-flex align-items-center">
+                                            <span class="calendar-badge bg-info me-2" style="background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%) !important; box-shadow: 0 4px 15px rgba(111, 66, 193, 0.4) !important; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                                                <i class="bi bi-lock me-1"></i>{% trans "Privado" %}
+                                            </span>
+                                            <span style="font-size: 0.9rem;">
+                                                <i class="bi bi-person me-1"></i>{{ event.user.username }}
+                                            </span>
+                                        </div>
+                                        {% else %}
+                                        <span class="calendar-badge bg-info" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4) !important; font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                                            <i class="bi bi-globe me-1"></i>{% trans "Público" %}
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-clock me-1"></i>
+                                        {{ event.start_date|date:"d/m/Y H:i" }}
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-clock-history me-1"></i>
+                                        {{ event.end_date|date:"d/m/Y H:i" }}
+                                    </td>
+                                    <td>
+                                        <span class="calendar-badge {{ event.className }}">
+                                            <i class="bi bi-palette"></i>
+                                            {{ event.get_className_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'calendary:manager_event_detail' event_id=event.id %}" 
+                                               class="btn calendar-action-btn btn-info" 
+                                               title="{% trans 'Ver Detalhes' %}">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{% url 'calendary:manager_event_edit' event_id=event.id %}" 
+                                               class="btn calendar-action-btn btn-warning" 
+                                               title="{% trans 'Editar' %}">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="{% url 'calendary:manager_event_delete' event_id=event.id %}" 
+                                               class="btn calendar-action-btn btn-danger" 
+                                               title="{% trans 'Deletar' %}">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x" style="font-size: 5rem; color: rgba(13, 202, 240, 0.3);"></i>
+                    <h4 class="text-white mt-4 mb-3" style="font-weight: 700;">{% trans "Nenhum evento encontrado" %}</h4>
+                    <p class="text-white mb-4" style="opacity: 0.8;">{% trans "Crie seu primeiro evento para começar" %}</p>
+                    <a href="{% url 'calendary:manager_event_create' %}" class="calendar-btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>{% trans "Criar Evento" %}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

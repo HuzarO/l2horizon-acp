@@ -1,0 +1,159 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Detalhes do Evento" %} - {% trans "Calendar Manager" %}{% endblock %}
+
+{% block extrastyle %}
+{% include 'calendary/manager/_calendar_styles.html' %}
+<style>
+body .calendar-info-card {
+    background: linear-gradient(145deg, rgba(13, 202, 240, 0.1) 0%, rgba(111, 66, 193, 0.1) 100%) !important;
+    border: 1px solid rgba(13, 202, 240, 0.3) !important;
+    border-radius: 14px !important;
+    padding: 1.5rem !important;
+    margin-bottom: 1rem !important;
+}
+
+body .calendar-info-card .info-label {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 0.875rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
+}
+
+body .calendar-info-card .info-value {
+    color: #ffffff !important;
+    font-size: 1.125rem !important;
+    font-weight: 700 !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="calendar-manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-9">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5 calendar-animate-in">
+                    <div class="calendar-page-header mb-3 mb-md-0">
+                        <h2 class="mb-2">{{ event.title }}</h2>
+                        <p>
+                            <span class="calendar-badge {{ event.className }} me-2">{{ event.get_className_display }}</span>
+                            {% if status == 'upcoming' %}
+                            <span class="calendar-badge bg-info">{% trans "Agendado" %}</span>
+                            {% elif status == 'ongoing' %}
+                            <span class="calendar-badge bg-green">{% trans "Em Andamento" %}</span>
+                            {% elif status == 'past' %}
+                            <span class="calendar-badge bg-secondary">{% trans "Concluído" %}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <a href="{% url 'calendary:manager_event_list' %}" class="calendar-btn-solid-white">
+                            <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                        </a>
+                        <a href="{% url 'calendary:manager_event_edit' event_id=event.id %}" class="calendar-btn-primary" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important; box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3) !important;">
+                            <i class="bi bi-pencil me-2"></i>{% trans "Editar" %}
+                        </a>
+                    </div>
+                </div>
+
+                <div class="calendar-card calendar-animate-in">
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-4">
+                                <div class="calendar-info-card">
+                                    <div class="info-label">
+                                        <i class="bi bi-calendar-event me-1"></i>
+                                        {% trans "Data de Início" %}
+                                    </div>
+                                    <div class="info-value">{{ event.start_date|date:"d/m/Y H:i" }}</div>
+                                </div>
+                                <div class="calendar-info-card" style="background: linear-gradient(145deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.1) 100%) !important; border-color: rgba(245, 158, 11, 0.3) !important;">
+                                    <div class="info-label" style="color: rgba(245, 158, 11, 1) !important;">
+                                        <i class="bi bi-clock-history me-1"></i>
+                                        {% trans "Data de Término" %}
+                                    </div>
+                                    <div class="info-value">{{ event.end_date|date:"d/m/Y H:i" }}</div>
+                                </div>
+                                {% if duration %}
+                                <div class="calendar-info-card" style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%) !important; border-color: rgba(16, 185, 129, 0.3) !important;">
+                                    <div class="info-label" style="color: rgba(16, 185, 129, 1) !important;">
+                                        <i class="bi bi-hourglass-split me-1"></i>
+                                        {% trans "Duração" %}
+                                    </div>
+                                    <div class="info-value">
+                                        {% if duration.days > 0 %}
+                                            {{ duration.days }} {% trans "dia(s)" %}
+                                        {% else %}
+                                            {% widthratio duration.seconds 3600 1 %} {% trans "hora(s)" %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <div class="calendar-info-card" style="background: linear-gradient(145deg, rgba(111, 66, 193, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%) !important; border-color: rgba(111, 66, 193, 0.3) !important;">
+                                    <div class="info-label" style="color: rgba(111, 66, 193, 1) !important;">
+                                        <i class="bi bi-person me-1"></i>
+                                        {% if event.user %}
+                                            {% trans "Usuário Específico" %}
+                                        {% else %}
+                                            {% trans "Visibilidade" %}
+                                        {% endif %}
+                                    </div>
+                                    <div class="info-value">
+                                        {% if event.user %}
+                                            {{ event.user.username }}
+                                            <small class="d-block mt-1" style="font-size: 0.85rem; opacity: 0.8;">
+                                                <i class="bi bi-lock me-1"></i>{% trans "Apenas este usuário pode ver" %}
+                                            </small>
+                                        {% else %}
+                                            {% trans "Público" %}
+                                            <small class="d-block mt-1" style="font-size: 0.85rem; opacity: 0.8;">
+                                                <i class="bi bi-globe me-1"></i>{% trans "Todos podem ver este evento" %}
+                                            </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="calendar-info-card">
+                                    <div class="info-label">
+                                        <i class="bi bi-palette me-1"></i>
+                                        {% trans "Cor do Evento" %}
+                                    </div>
+                                    <div class="mt-2">
+                                        <span class="calendar-badge {{ event.className }}">
+                                            <i class="bi bi-palette"></i>
+                                            {{ event.get_className_display }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="calendar-info-card" style="background: transparent !important; border-color: rgba(255, 255, 255, 0.1) !important;">
+                                    <div class="info-label">
+                                        <i class="bi bi-clock me-1"></i>
+                                        {% trans "Criado em" %}
+                                    </div>
+                                    <div class="info-value" style="font-size: 0.95rem; opacity: 0.8;">{{ event.created_at|date:"d/m/Y H:i" }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="border-secondary my-4" style="border-color: rgba(255, 255, 255, 0.1) !important;">
+
+                        <div class="d-flex gap-3">
+                            <a href="{% url 'calendary:manager_event_edit' event_id=event.id %}" class="calendar-btn-primary flex-grow-1" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important; box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3) !important;">
+                                <i class="bi bi-pencil me-2"></i>{% trans "Editar Evento" %}
+                            </a>
+                            <a href="{% url 'calendary:manager_event_delete' event_id=event.id %}" class="calendar-btn-primary flex-grow-1" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3) !important;">
+                                <i class="bi bi-trash me-2"></i>{% trans "Deletar Evento" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

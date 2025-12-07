@@ -1,0 +1,135 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Criar Evento" %} - {% trans "Calendar Manager" %}{% endblock %}
+
+{% block extrastyle %}
+{% include 'calendary/manager/_calendar_styles.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="calendar-manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-9">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5 calendar-animate-in">
+                    <div class="calendar-page-header mb-3 mb-md-0">
+                        <h2 class="mb-2">
+                            <i class="bi bi-plus-circle text-info me-2"></i>
+                            {% trans "Criar Novo Evento" %}
+                        </h2>
+                        <p>{% trans "Configure um novo evento no calendário" %}</p>
+                    </div>
+                    <a href="{% url 'calendary:manager_event_list' %}" class="calendar-btn-solid-white">
+                        <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                    </a>
+                </div>
+
+                <div class="calendar-card calendar-animate-in">
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <div class="mb-4">
+                                <label for="title" class="calendar-form-label">
+                                    <i class="bi bi-calendar-event"></i>
+                                    {% trans "Título do Evento" %} *
+                                </label>
+                                <input type="text" 
+                                       class="calendar-form-control form-control" 
+                                       id="title" 
+                                       name="title" 
+                                       placeholder="{% trans 'Ex: Evento de Lançamento' %}" 
+                                       required>
+                            </div>
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3">
+                                    <label for="start_date" class="calendar-form-label">
+                                        <i class="bi bi-clock"></i>
+                                        {% trans "Data/Hora de Início" %} *
+                                    </label>
+                                    <input type="datetime-local" 
+                                           class="calendar-form-control form-control" 
+                                           id="start_date" 
+                                           name="start_date" 
+                                           required>
+                                    <div class="calendar-form-help">
+                                        <i class="bi bi-info-circle"></i>
+                                        {% trans "Quando o evento começa" %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="end_date" class="calendar-form-label">
+                                        <i class="bi bi-clock-history"></i>
+                                        {% trans "Data/Hora de Término" %} *
+                                    </label>
+                                    <input type="datetime-local" 
+                                           class="calendar-form-control form-control" 
+                                           id="end_date" 
+                                           name="end_date" 
+                                           required>
+                                    <div class="calendar-form-help">
+                                        <i class="bi bi-info-circle"></i>
+                                        {% trans "Quando o evento termina" %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="border-secondary my-4" style="border-color: rgba(255, 255, 255, 0.1) !important;">
+
+                            <h5 class="text-white mb-4" style="font-weight: 700; font-size: 1.25rem;">
+                                <i class="bi bi-palette me-2 text-warning"></i>
+                                {% trans "Aparência e Configurações" %}
+                            </h5>
+
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3">
+                                    <label for="user" class="calendar-form-label">
+                                        <i class="bi bi-person"></i>
+                                        {% trans "Usuário" %}
+                                    </label>
+                                    <select class="calendar-form-control form-select" id="user" name="user">
+                                        <option value="">{% trans "— Nenhum (Todos podem ver) —" %}</option>
+                                        {% for user in users %}
+                                        <option value="{{ user.id }}">{{ user.username }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="calendar-form-help">
+                                        <i class="bi bi-info-circle"></i>
+                                        {% trans "Selecione 'Nenhum' para que todos possam ver o evento, ou escolha um usuário específico para restringir a visualização." %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="className" class="calendar-form-label">
+                                        <i class="bi bi-palette"></i>
+                                        {% trans "Cor do Evento" %}
+                                    </label>
+                                    <select class="calendar-form-control form-select" id="className" name="className">
+                                        {% for value, label in color_choices %}
+                                        <option value="{{ value }}" {% if value == 'bg-red' %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="calendar-form-help">
+                                        <i class="bi bi-info-circle"></i>
+                                        {% trans "A cor será exibida no calendário" %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-3 mt-5">
+                                <button type="submit" class="calendar-btn-primary flex-grow-1">
+                                    <i class="bi bi-check-circle me-2"></i>{% trans "Criar Evento" %}
+                                </button>
+                                <a href="{% url 'calendary:manager_event_list' %}" class="calendar-btn-solid-white">
+                                    {% trans "Cancelar" %}
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

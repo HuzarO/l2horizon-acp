@@ -1,0 +1,195 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% if translations.pt %}{{ translations.pt.title }}{% else %}Roadmap #{{ roadmap.id }}{% endif %} - {% trans "Roadmap Manager" %}{% endblock %}
+
+{% block extrastyle %}
+{% include 'roadmap/manager/_roadmap_styles.html' %}
+<style>
+body .roadmap-info-card {
+    background: linear-gradient(145deg, rgba(251, 191, 36, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%) !important;
+    border: 1px solid rgba(251, 191, 36, 0.3) !important;
+    border-radius: 14px !important;
+    padding: 1.5rem !important;
+    margin-bottom: 1rem !important;
+}
+
+body .roadmap-info-card .info-label {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-size: 0.875rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
+}
+
+body .roadmap-info-card .info-value {
+    color: #ffffff !important;
+    font-size: 1.125rem !important;
+    font-weight: 700 !important;
+}
+
+body .roadmap-translation-card {
+    background: linear-gradient(145deg, rgba(139, 92, 246, 0.1) 0%, rgba(111, 66, 193, 0.1) 100%) !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+    border-radius: 14px !important;
+    margin-bottom: 1.5rem !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="roadmap-manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5 roadmap-animate-in">
+                    <div class="roadmap-page-header mb-3 mb-md-0">
+                        <h2 class="mb-2">
+                            {% if translations.pt %}
+                                {{ translations.pt.title }}
+                            {% else %}
+                                Roadmap #{{ roadmap.id }}
+                            {% endif %}
+                        </h2>
+                        <p>
+                            <span class="roadmap-badge status-{{ roadmap.status }} me-2">{{ roadmap.get_status_display }}</span>
+                            {% if roadmap.is_published %}
+                            <span class="roadmap-badge badge-active">{% trans "Publicado" %}</span>
+                            {% else %}
+                            <span class="roadmap-badge badge-inactive">{% trans "Não Publicado" %}</span>
+                            {% endif %}
+                            {% if roadmap.is_private %}
+                            <span class="roadmap-badge status-in_progress ms-2">{% trans "Privado" %}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <a href="{% url 'roadmap:manager_roadmap_list' %}" class="roadmap-btn-solid-white">
+                            <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                        </a>
+                        <a href="{% url 'roadmap:manager_roadmap_edit' roadmap_id=roadmap.id %}" class="roadmap-btn-primary">
+                            <i class="bi bi-pencil me-2"></i>{% trans "Editar" %}
+                        </a>
+                    </div>
+                </div>
+
+                <div class="roadmap-card roadmap-animate-in mb-4">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <div class="roadmap-info-card">
+                                    <div class="info-label">
+                                        <i class="bi bi-person me-1"></i>
+                                        {% trans "Autor" %}
+                                    </div>
+                                    <div class="info-value">{{ roadmap.author.username }}</div>
+                                </div>
+                                <div class="roadmap-info-card" style="background: linear-gradient(145deg, rgba(6, 182, 212, 0.1) 0%, rgba(13, 202, 240, 0.1) 100%) !important; border-color: rgba(6, 182, 212, 0.3) !important;">
+                                    <div class="info-label" style="color: rgba(6, 182, 212, 1) !important;">
+                                        <i class="bi bi-calendar-event me-1"></i>
+                                        {% trans "Data de Publicação" %}
+                                    </div>
+                                    <div class="info-value">{{ roadmap.pub_date|date:"d/m/Y H:i" }}</div>
+                                </div>
+                                {% if roadmap.conclusion_date %}
+                                <div class="roadmap-info-card" style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%) !important; border-color: rgba(16, 185, 129, 0.3) !important;">
+                                    <div class="info-label" style="color: rgba(16, 185, 129, 1) !important;">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        {% trans "Data de Conclusão" %}
+                                    </div>
+                                    <div class="info-value">{{ roadmap.conclusion_date|date:"d/m/Y H:i" }}</div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <div class="roadmap-info-card" style="background: transparent !important; border-color: rgba(255, 255, 255, 0.1) !important;">
+                                    <div class="info-label">
+                                        <i class="bi bi-link-45deg me-1"></i>
+                                        {% trans "Slug" %}
+                                    </div>
+                                    <div class="info-value" style="font-size: 0.95rem; opacity: 0.8;">{{ roadmap.slug|default:"—" }}</div>
+                                </div>
+                                <div class="roadmap-info-card" style="background: transparent !important; border-color: rgba(255, 255, 255, 0.1) !important;">
+                                    <div class="info-label">
+                                        <i class="bi bi-clock me-1"></i>
+                                        {% trans "Criado em" %}
+                                    </div>
+                                    <div class="info-value" style="font-size: 0.95rem; opacity: 0.8;">{{ roadmap.created_at|date:"d/m/Y H:i" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Traduções -->
+                {% if translations.pt %}
+                <div class="roadmap-translation-card roadmap-card mb-4 roadmap-animate-in">
+                    <div class="card-header">
+                        <h5 class="text-white mb-0">🇧🇷 Português</h5>
+                    </div>
+                    <div class="card-body">
+                        <h4 class="text-white mb-3" style="font-weight: 700;">{{ translations.pt.title }}</h4>
+                        {% if translations.pt.summary %}
+                        <p class="text-white mb-3" style="opacity: 0.9; font-size: 1.05rem; line-height: 1.7;">{{ translations.pt.summary }}</p>
+                        {% endif %}
+                        {% if translations.pt.content %}
+                        <div class="text-white" style="opacity: 0.95;">
+                            {{ translations.pt.content|safe }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if translations.en %}
+                <div class="roadmap-translation-card roadmap-card mb-4 roadmap-animate-in">
+                    <div class="card-header">
+                        <h5 class="text-white mb-0">🇺🇸 English</h5>
+                    </div>
+                    <div class="card-body">
+                        <h4 class="text-white mb-3" style="font-weight: 700;">{{ translations.en.title }}</h4>
+                        {% if translations.en.summary %}
+                        <p class="text-white mb-3" style="opacity: 0.9; font-size: 1.05rem; line-height: 1.7;">{{ translations.en.summary }}</p>
+                        {% endif %}
+                        {% if translations.en.content %}
+                        <div class="text-white" style="opacity: 0.95;">
+                            {{ translations.en.content|safe }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if translations.es %}
+                <div class="roadmap-translation-card roadmap-card mb-4 roadmap-animate-in">
+                    <div class="card-header">
+                        <h5 class="text-white mb-0">🇪🇸 Español</h5>
+                    </div>
+                    <div class="card-body">
+                        <h4 class="text-white mb-3" style="font-weight: 700;">{{ translations.es.title }}</h4>
+                        {% if translations.es.summary %}
+                        <p class="text-white mb-3" style="opacity: 0.9; font-size: 1.05rem; line-height: 1.7;">{{ translations.es.summary }}</p>
+                        {% endif %}
+                        {% if translations.es.content %}
+                        <div class="text-white" style="opacity: 0.95;">
+                            {{ translations.es.content|safe }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="d-flex gap-3 roadmap-animate-in">
+                    <a href="{% url 'roadmap:manager_roadmap_edit' roadmap_id=roadmap.id %}" class="roadmap-btn-primary flex-grow-1">
+                        <i class="bi bi-pencil me-2"></i>{% trans "Editar Item" %}
+                    </a>
+                    <a href="{% url 'roadmap:manager_roadmap_delete' roadmap_id=roadmap.id %}" class="roadmap-btn-primary flex-grow-1" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3) !important; color: #ffffff !important;">
+                        <i class="bi bi-trash me-2"></i>{% trans "Deletar" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
