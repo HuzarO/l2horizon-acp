@@ -5,10 +5,120 @@
 
 {% block extrastyle %}
 <style>
-.manager-bg { background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); min-height: 100vh; padding: 30px 0; }
-.card-glow { background: linear-gradient(to bottom right, #1a1a2e, #121220); border: 2px solid #6f42c1; border-radius: 12px; box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); }
-.form-dark { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; }
-.form-dark:focus { background: rgba(255,255,255,0.08) !important; border-color: #6f42c1 !important; color: white !important; box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25) !important; }
+.manager-bg { 
+    background: radial-gradient(ellipse at center, #0f172a 0%, #1a1a2e 50%, #0f0f1e 100%); 
+    min-height: 100vh; 
+    padding: 40px 0; 
+    position: relative;
+}
+.manager-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(111, 66, 193, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(13, 202, 240, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.card-glow { 
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.95) 0%, rgba(18, 18, 32, 0.95) 100%); 
+    border: 1px solid rgba(111, 66, 193, 0.3); 
+    border-radius: 16px; 
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(111, 66, 193, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.form-dark { 
+    background: rgba(255,255,255,0.05) !important; 
+    border: 1px solid rgba(255,255,255,0.15) !important; 
+    color: white !important;
+    border-radius: 10px;
+    padding: 12px 16px;
+    transition: all 0.3s ease;
+} 
+.form-dark::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+.form-dark:focus { 
+    background: rgba(255,255,255,0.1) !important; 
+    border-color: #6f42c1 !important; 
+    color: white !important; 
+    box-shadow: 
+        0 0 0 0.2rem rgba(111, 66, 193, 0.25),
+        0 4px 12px rgba(111, 66, 193, 0.2) !important;
+    outline: none;
+}
+
+.form-label {
+    color: #fff;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.form-check-input {
+    width: 1.25em;
+    height: 1.25em;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.form-check-input:checked {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+}
+
+.form-check-input:focus {
+    border-color: #6f42c1;
+    box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25);
+}
+
+.page-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ffffff 0%, #a8b4ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.btn {
+    border-radius: 10px;
+    font-weight: 500;
+    padding: 12px 24px;
+    transition: all 0.3s ease;
+}
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+.btn-solid-white {
+    background: #ffffff !important;
+    color: #1a1a2e !important;
+    border: none !important;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+.btn-solid-white:hover {
+    background: #f8f9fa !important;
+    color: #1a1a2e !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+}
+.btn-solid-white:focus {
+    background: #ffffff !important;
+    color: #1a1a2e !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.5);
+}
 </style>
 {% endblock %}
 
@@ -17,12 +127,15 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-8">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h2 class="text-white mb-1">{% trans "Criar Nova Temporada" %}</h2>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5">
+                    <div class="page-header mb-3 mb-md-0">
+                        <h2 class="mb-2">
+                            <i class="bi bi-plus-circle text-info me-2"></i>
+                            {% trans "Criar Nova Temporada" %}
+                        </h2>
                         <p class="text-white-50 mb-0">{% trans "Configure uma nova temporada do Battle Pass" %}</p>
                     </div>
-                    <a href="{% url 'games:battle_pass_manager' %}" class="btn btn-outline-light">
+                    <a href="{% url 'games:battle_pass_manager' %}" class="btn btn-solid-white">
                         <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
                     </a>
                 </div>
@@ -63,7 +176,7 @@
                                 <button type="submit" class="btn btn-info">
                                     <i class="bi bi-check-circle me-2"></i>{% trans "Criar Temporada" %}
                                 </button>
-                                <a href="{% url 'games:battle_pass_manager' %}" class="btn btn-outline-light">
+                                <a href="{% url 'games:battle_pass_manager' %}" class="btn btn-solid-white">
                                     {% trans "Cancelar" %}
                                 </a>
                             </div>

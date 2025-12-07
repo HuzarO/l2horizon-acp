@@ -4,9 +4,15 @@
 {% block title %}{% trans "Deletar Temporada" %} - {% trans "Battle Pass Manager" %}{% endblock %}
 
 {% block extrastyle %}
+{% include 'battle_pass/manager/_base_styles.html' %}
 <style>
-.manager-bg { background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); min-height: 100vh; padding: 30px 0; }
-.card-glow { background: linear-gradient(to bottom right, #1a1a2e, #121220); border: 2px solid #dc3545; border-radius: 12px; box-shadow: 0 0 15px rgba(220,53,69,.5); }
+.card-glow {
+    border-color: rgba(220, 53, 69, 0.4);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(220, 53, 69, 0.2),
+        0 0 20px rgba(220, 53, 69, 0.3);
+}
 </style>
 {% endblock %}
 
@@ -32,7 +38,7 @@
                                 <button type="submit" class="btn btn-danger">
                                     <i class="bi bi-trash me-2"></i>{% trans "Sim, Deletar" %}
                                 </button>
-                                <a href="{% url 'games:battle_pass_manager_season_detail' season_id=season.id %}" class="btn btn-outline-light">
+                                <a href="{% url 'games:battle_pass_manager_season_detail' season_id=season.id %}" class="btn btn-solid-white">
                                     {% trans "Cancelar" %}
                                 </a>
                             </div>

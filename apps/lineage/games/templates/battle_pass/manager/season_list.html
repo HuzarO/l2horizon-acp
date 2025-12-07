@@ -5,25 +5,142 @@
 
 {% block extrastyle %}
 <style>
-.manager-bg { background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); min-height: 100vh; padding: 30px 0; }
-.card-glow { background: linear-gradient(to bottom right, #1a1a2e, #121220); border: 2px solid #6f42c1; border-radius: 12px; box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); }
-.badge-active { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-.badge-inactive { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
-.season-row { transition: all 0.3s ease; }
-.season-row:hover { background: rgba(111, 66, 193, 0.1) !important; }
+.manager-bg { 
+    background: radial-gradient(ellipse at center, #0f172a 0%, #1a1a2e 50%, #0f0f1e 100%); 
+    min-height: 100vh; 
+    padding: 40px 0; 
+    position: relative;
+}
+.manager-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(111, 66, 193, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(13, 202, 240, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.card-glow { 
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.95) 0%, rgba(18, 18, 32, 0.95) 100%); 
+    border: 1px solid rgba(111, 66, 193, 0.3); 
+    border-radius: 16px; 
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(111, 66, 193, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.table-dark {
+    background: transparent;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-dark thead th {
+    background: linear-gradient(135deg, rgba(111, 66, 193, 0.2) 0%, rgba(13, 202, 240, 0.2) 100%);
+    border: none;
+    border-bottom: 2px solid rgba(111, 66, 193, 0.3);
+    color: #fff;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 16px;
+}
+
+.table-dark tbody tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.season-row { 
+    transition: all 0.3s ease; 
+    cursor: pointer;
+}
+.season-row:hover { 
+    background: linear-gradient(90deg, rgba(111, 66, 193, 0.15) 0%, transparent 100%) !important;
+    transform: translateX(5px);
+}
+
+.badge-active { 
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.badge-inactive { 
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-group .btn {
+    border-radius: 8px !important;
+    margin: 0 2px;
+}
+
+.page-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ffffff 0%, #a8b4ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.btn-solid-white {
+    background: #ffffff !important;
+    color: #1a1a2e !important;
+    border: none !important;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+.btn-solid-white:hover {
+    background: #f8f9fa !important;
+    color: #1a1a2e !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+}
+.btn-solid-white:focus {
+    background: #ffffff !important;
+    color: #1a1a2e !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.5);
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="manager-bg">
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="text-white mb-1">{% trans "Temporadas" %}</h2>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5">
+            <div class="page-header mb-3 mb-md-0">
+                <h2 class="mb-2">
+                    <i class="bi bi-calendar-event text-info me-2"></i>
+                    {% trans "Temporadas" %}
+                </h2>
                 <p class="text-white-50 mb-0">{% trans "Gerencie todas as temporadas do Battle Pass" %}</p>
             </div>
-            <div>
-                <a href="{% url 'games:battle_pass_manager' %}" class="btn btn-outline-light me-2">
+            <div class="d-flex gap-2">
+                <a href="{% url 'games:battle_pass_manager' %}" class="btn btn-solid-white">
                     <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
                 </a>
                 <a href="{% url 'games:battle_pass_manager_season_create' %}" class="btn btn-info">

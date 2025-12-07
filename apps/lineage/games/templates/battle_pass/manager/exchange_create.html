@@ -4,12 +4,7 @@
 {% block title %}{% trans "Criar Troca" %} - {% trans "Battle Pass Manager" %}{% endblock %}
 
 {% block extrastyle %}
-<style>
-.manager-bg { background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); min-height: 100vh; padding: 30px 0; }
-.card-glow { background: linear-gradient(to bottom right, #1a1a2e, #121220); border: 2px solid #6f42c1; border-radius: 12px; box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); }
-.form-dark { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; }
-.form-dark:focus { background: rgba(255,255,255,0.08) !important; border-color: #6f42c1 !important; color: white !important; box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25) !important; }
-</style>
+{% include 'battle_pass/manager/_base_styles.html' %}
 {% endblock %}
 
 {% block content %}
@@ -17,12 +12,15 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-8">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h2 class="text-white mb-1">{% trans "Criar Nova Troca" %}</h2>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5">
+                    <div class="page-header mb-3 mb-md-0">
+                        <h2 class="mb-2">
+                            <i class="bi bi-plus-circle text-success me-2"></i>
+                            {% trans "Criar Nova Troca" %}
+                        </h2>
                         <p class="text-white-50 mb-0">{% trans "Configure itens que podem ser trocados por XP" %}</p>
                     </div>
-                    <a href="{% url 'games:battle_pass_manager_exchange_list' %}" class="btn btn-outline-light">
+                    <a href="{% url 'games:battle_pass_manager_exchange_list' %}" class="btn btn-solid-white">
                         <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
                     </a>
                 </div>
@@ -72,7 +70,7 @@
                                 <button type="submit" class="btn btn-success">
                                     <i class="bi bi-check-circle me-2"></i>{% trans "Criar Troca" %}
                                 </button>
-                                <a href="{% url 'games:battle_pass_manager_exchange_list' %}" class="btn btn-outline-light">
+                                <a href="{% url 'games:battle_pass_manager_exchange_list' %}" class="btn btn-solid-white">
                                     {% trans "Cancelar" %}
                                 </a>
                             </div>
