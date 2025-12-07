@@ -538,6 +538,68 @@
     .badge.bg-warning {
         background: rgba(251, 191, 36, 0.9) !important;
     }
+
+    /* Modal de Compra de Fichas */
+    #buyTokensModal .modal-content {
+        background: linear-gradient(to bottom right, #1a1a2e, #121220) !important;
+        border: 2px solid #6f42c1 !important;
+        border-radius: 20px !important;
+        box-shadow: 0 0 20px rgba(111, 66, 193, 0.6), 0 0 30px rgba(13, 202, 240, 0.4) !important;
+        color: white !important;
+    }
+
+    #buyTokensModal .modal-title {
+        color: white !important;
+        font-weight: bold;
+        font-size: 1.5rem;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    #buyTokensModal .modal-body,
+    #buyTokensModal p {
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    #buyTokensModal .form-control {
+        background: rgba(111, 66, 193, 0.2) !important;
+        border: 2px solid rgba(111, 66, 193, 0.5) !important;
+        border-radius: 10px !important;
+        color: white !important;
+        padding: 12px 15px;
+        font-size: 1.1rem;
+    }
+
+    #buyTokensModal .form-control:focus {
+        background: rgba(111, 66, 193, 0.3) !important;
+        border-color: #6f42c1 !important;
+        box-shadow: 0 0 10px rgba(111, 66, 193, 0.5) !important;
+        color: white !important;
+    }
+
+    #buyTokensModal .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.5) !important;
+    }
+
+    #buyTokensModal .btn-success {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+        border: none !important;
+        color: white !important;
+        padding: 12px 30px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
+        transition: all 0.3s;
+    }
+
+    #buyTokensModal .btn-success:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 20px rgba(34, 197, 94, 0.6);
+    }
+
+    #buyTokensModal .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
 </style>
 {% endblock %}
 
@@ -564,6 +626,13 @@
                             {{ xp_percentage }}%
                         </div>
                     </div>
+                </div>
+
+                <!-- Botão de Comprar Fichas -->
+                <div class="text-center mt-3 mb-3">
+                    <button class="btn btn-warning btn-lg rounded-pill" data-bs-toggle="modal" data-bs-target="#buyTokensModal">
+                        <i class="bi bi-cart-plus me-2"></i> {% trans "Comprar Fichas" %}
+                    </button>
                 </div>
 
                 <!-- Fishing Pond -->
@@ -731,6 +800,76 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Modal de Compra de Fichas -->
+<div class="modal fade" id="buyTokensModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-2">
+        <h5 class="modal-title">💰 {% trans "Comprar Fichas" %}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="mb-4">{% trans "Escolha a quantidade de fichas que deseja comprar." %}</p>
+        <p class="mb-4 text-warning">
+          <strong>💵 {% trans "Valor" %}: R$0,10 {% trans "por ficha" %}</strong>
+        </p>
+        <input type="number" id="buyQuantity" class="form-control mb-4" min="1" value="1" placeholder="{% trans 'Quantidade' %}">
+        <button class="btn btn-success w-100" onclick="buyFichas()">
+          <i class="bi bi-cart-check me-2"></i>{% trans "Confirmar Compra" %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const FICHAS_URL = "{% url 'games:comprar_fichas' %}";
+
+  // Helper function to get CSRF token from cookie
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + "=")) {
+          cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Function to buy fichas
+  function buyFichas() {
+    const quantity = parseInt(document.getElementById("buyQuantity").value);
+    const csrfToken = getCookie('csrftoken');
+
+    fetch(FICHAS_URL, {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrfToken
+      },
+      body: `quantidade=${quantity}`
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(`Compra realizada! Você agora tem ${data.fichas} ficha(s).`);
+        location.reload(); // Atualiza para refletir no contador de fichas
+      } else {
+        alert(data.error || "Erro ao processar a compra.");
+      }
+    })
+    .catch(error => {
+      alert("Erro de conexão com o servidor.");
+      console.error(error);
+    });
+  }
+</script>
 
 <script>
 let isFishing = false;

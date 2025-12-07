@@ -350,7 +350,12 @@ class RateLimitMiddleware:
         
         for path, config in self.URL_RATE_LIMITS.items():
             logger.debug(f"Checking path {request.path} against {path}")
-            if request.path.rstrip('/') == path.rstrip('/'):
+            # Suporta match exato ou match com parâmetros dinâmicos (quando path termina com /)
+            path_match = (
+                request.path.rstrip('/') == path.rstrip('/') or
+                (path.endswith('/') and request.path.startswith(path))
+            )
+            if path_match:
 
                 method = config.get("method", "GET")
 
