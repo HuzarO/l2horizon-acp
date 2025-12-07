@@ -449,8 +449,18 @@ def edit_avatar(request):
         # Processa upload normal
         form = AvatarForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Avatar atualizado com sucesso!")
+            user = form.save()
+            
+            # Processa avatar (síncrono em DEBUG, assíncrono em produção)
+            if 'avatar' in request.FILES and user.avatar:
+                try:
+                    from apps.main.home.tasks import process_avatar_image_task, execute_task_sync_or_async
+                    if hasattr(user.avatar, 'path'):
+                        execute_task_sync_or_async(process_avatar_image_task, user.id, user.avatar.path)
+                except Exception as e:
+                    logger.warning(f"Erro ao {'processar' if settings.DEBUG else 'agendar processamento de'} avatar: {e}")
+            
+            messages.success(request, "Avatar atualizado! Processando em background...")
             return redirect('edit_avatar')
     else:
         form = AvatarForm(instance=request.user)
@@ -699,19 +709,20 @@ def reenviar_verificacao_view(request):
                 reverse('verificar_email', args=[uid, token])
             )
 
-            # Envia o e-mail
+            # Envia o e-mail (síncrono em DEBUG, assíncrono em produção)
             try:
-                # Usa send_mail do Django (mesmo sistema da recuperação de senha)
-                send_mail(
+                from apps.main.home.tasks import send_email_task, execute_task_sync_or_async
+                execute_task_sync_or_async(
+                    send_email_task,
                     'Reenvio de verificação de e-mail',
                     f'Olá {user.username},\n\nAqui está seu novo link de verificação:\n\n{verification_link}\n\nSe você não solicitou isso, ignore este e-mail.',
                     settings.DEFAULT_FROM_EMAIL,
-                    [user.email],
-                    fail_silently=False,
+                    [user.email]
                 )
                 messages.success(request, 'Um novo e-mail de verificação foi enviado.')
+                logger.info(f"Email de reenvio {'enviado' if settings.DEBUG else 'agendado'} para {user.email}")
             except Exception as e:
-                logger.error(f"Erro ao enviar email: {str(e)}")
+                logger.error(f"Erro ao {'enviar' if settings.DEBUG else 'agendar'} envio de email: {str(e)}")
                 messages.error(request, 'Não foi possível enviar o e-mail no momento. Tente novamente mais tarde.')
 
             return redirect('dashboard')

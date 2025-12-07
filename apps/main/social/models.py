@@ -180,20 +180,26 @@ class Post(BaseModel):
     
     def save(self, *args, **kwargs):
         """Override save para processar mídia automaticamente"""
-        # Processar imagem se foi alterada
-        if self.image and hasattr(self.image, 'file'):
-            try:
-                # Processar imagem para otimização
-                processed_path = process_image_for_social_media(
-                    self.image.path if hasattr(self.image, 'path') else self.image.file,
-                    max_width=1920,
-                    max_height=1080,
-                    quality=85
-                )
-            except Exception:
-                pass  # Se falhar, manter imagem original
-        
+        # Salva primeiro para ter o ID
         super().save(*args, **kwargs)
+        
+        # Processa imagem (síncrono em DEBUG, assíncrono em produção)
+        if self.image and hasattr(self.image, 'path'):
+            try:
+                from apps.main.home.tasks import process_post_image_task, execute_task_sync_or_async
+                execute_task_sync_or_async(process_post_image_task, self.id, self.image.path)
+            except Exception as e:
+                # Se falhar, tenta processar síncrono como fallback
+                try:
+                    from utils.media_validators import process_image_for_social_media
+                    process_image_for_social_media(
+                        self.image.path,
+                        max_width=1920,
+                        max_height=1080,
+                        quality=85
+                    )
+                except Exception:
+                    pass  # Se falhar, manter imagem original
 
 
 class Comment(BaseModel):
@@ -577,29 +583,39 @@ class UserProfile(BaseModel):
     
     def save(self, *args, **kwargs):
         """Override save para processar mídia automaticamente"""
-        # Processar avatar se foi alterado
-        if self.avatar and hasattr(self.avatar, 'file'):
-            try:
-                processed_path = process_avatar_image(
-                    self.avatar.path if hasattr(self.avatar, 'path') else self.avatar.file,
-                    size=400
-                )
-            except Exception:
-                pass  # Se falhar, manter avatar original
-        
-        # Processar imagem de capa se foi alterada
-        if self.cover_image and hasattr(self.cover_image, 'file'):
-            try:
-                processed_path = process_image_for_social_media(
-                    self.cover_image.path if hasattr(self.cover_image, 'path') else self.cover_image.file,
-                    max_width=1200,
-                    max_height=400,
-                    quality=90
-                )
-            except Exception:
-                pass  # Se falhar, manter imagem original
-        
+        # Salva primeiro para garantir que o arquivo existe
         super().save(*args, **kwargs)
+        
+        # Processa avatar (síncrono em DEBUG, assíncrono em produção)
+        if self.avatar and hasattr(self.avatar, 'path'):
+            try:
+                from apps.main.home.tasks import process_avatar_image_task, execute_task_sync_or_async
+                execute_task_sync_or_async(process_avatar_image_task, self.user.id, self.avatar.path)
+            except Exception as e:
+                # Se falhar, tenta processar síncrono como fallback
+                try:
+                    from utils.media_validators import process_avatar_image
+                    process_avatar_image(self.avatar.path, size=400)
+                except Exception:
+                    pass  # Se falhar, manter avatar original
+        
+        # Processa imagem de capa (síncrono em DEBUG, assíncrono em produção)
+        if self.cover_image and hasattr(self.cover_image, 'path'):
+            try:
+                from apps.main.home.tasks import process_cover_image_task, execute_task_sync_or_async
+                execute_task_sync_or_async(process_cover_image_task, self.user.id, self.cover_image.path)
+            except Exception as e:
+                # Se falhar, tenta processar síncrono como fallback
+                try:
+                    from utils.media_validators import process_image_for_social_media
+                    process_image_for_social_media(
+                        self.cover_image.path,
+                        max_width=1200,
+                        max_height=400,
+                        quality=90
+                    )
+                except Exception:
+                    pass  # Se falhar, manter imagem original
 
 
 class Hashtag(BaseModel):
