@@ -30,6 +30,13 @@ class PedidoPagamentoAdmin(BaseModelAdmin):
 
     @admin.action(description='Confirmar pagamentos selecionados')
     def confirmar_pagamentos(self, request, queryset):
+        import logging
+        from django.utils import timezone
+        from django.contrib import messages
+        from .models import Pagamento
+
+        logger = logging.getLogger(__name__)
+        
         # Tela de confirmação customizada
         if 'apply' not in request.POST:
             context = {
@@ -42,21 +49,60 @@ class PedidoPagamentoAdmin(BaseModelAdmin):
             }
             return TemplateResponse(request, 'admin/payment/confirmar_pagamentos.html', context)
 
-        total = 0
-        for pedido in queryset:
-            if pedido.status != 'CONFIRMADO':
+        processados = 0
+        ja_confirmados = 0
+        erros = 0
+        erros_detalhes = []
+
+        for pedido in queryset.select_related('usuario'):
+            # Verifica se já está confirmado
+            if pedido.status == 'CONFIRMADO' or pedido.status == 'CONCLUÍDO':
+                ja_confirmados += 1
+                logger.debug(f"Pedido {pedido.id} ignorado: já está com status '{pedido.status}'")
+                continue
+
+            try:
                 # Confirma o pedido e aplica os créditos/bônus (marca no histórico o admin)
                 pedido.confirmar_pagamento(actor=request.user)
+                
+                # Marca como CONCLUÍDO para manter consistência com outros fluxos
+                pedido.status = 'CONCLUÍDO'
+                pedido.save()
+                
                 # Também marca o Pagamento associado como 'paid' para evitar reprocessamento via webhook
-                from .models import Pagamento
                 pagamento = Pagamento.objects.filter(pedido_pagamento=pedido).first()
                 if pagamento and pagamento.status != 'paid':
-                    from django.utils import timezone
                     pagamento.status = 'paid'
                     pagamento.processado_em = timezone.now()
                     pagamento.save()
-                total += 1
-        self.message_user(request, f"{total} pagamento(s) confirmado(s) com sucesso.")
+                
+                processados += 1
+                logger.info(f"Pedido {pedido.id} confirmado e concluído com sucesso. Valor: R${pedido.valor_pago}, Bônus: R${pedido.bonus_aplicado}")
+            except Exception as e:
+                erros += 1
+                erro_msg = f"Pedido {pedido.id}: {str(e)}"
+                erros_detalhes.append(erro_msg)
+                logger.error(f"Erro ao confirmar pedido {pedido.id}: {str(e)}", exc_info=True)
+
+        # Mensagens informativas
+        mensagens = []
+        if processados > 0:
+            mensagens.append(f"{processados} pagamento(s) confirmado(s) e concluído(s) com sucesso.")
+        if ja_confirmados > 0:
+            mensagens.append(f"{ja_confirmados} pedido(s) já estava(m) confirmado(s) ou concluído(s) e foi(ram) ignorado(s).")
+        if erros > 0:
+            mensagens.append(f"{erros} pedido(s) com erro durante o processamento.")
+            # Mostra detalhes dos erros apenas se houver poucos
+            if erros <= 5:
+                for detalhe in erros_detalhes:
+                    messages.error(request, detalhe)
+            else:
+                messages.error(request, f"Vários erros ocorreram. Verifique os logs para detalhes.")
+        
+        if mensagens:
+            self.message_user(request, " ".join(mensagens))
+        else:
+            self.message_user(request, "Nenhum pagamento foi processado. Verifique os critérios de seleção.")
 
     class Media:
         js = ('admin/js/pedido_pagamento_admin.js',)
@@ -89,69 +135,175 @@ class PagamentoAdmin(BaseModelAdmin):
 
     @admin.action(description='Reconciliar pagamentos pendentes (Mercado Pago)')
     def reconciliar_mercadopago(self, request, queryset):
+        import logging
         import mercadopago
         from django.utils import timezone
+        from django.contrib import messages
+        from django.db import transaction
         from apps.lineage.wallet.utils import aplicar_compra_com_bonus
         from decimal import Decimal
-        sdk = mercadopago.SDK(request.settings.MERCADO_PAGO_ACCESS_TOKEN) if hasattr(request, 'settings') else mercadopago.SDK(__import__('django.conf').conf.settings.MERCADO_PAGO_ACCESS_TOKEN)
+        from django.conf import settings
+
+        logger = logging.getLogger(__name__)
+        
+        # Inicializa SDK do Mercado Pago
+        try:
+            access_token = getattr(settings, 'MERCADO_PAGO_ACCESS_TOKEN', None)
+            if not access_token:
+                self.message_user(request, "Erro: MERCADO_PAGO_ACCESS_TOKEN não configurado.", level=messages.ERROR)
+                return
+            sdk = mercadopago.SDK(access_token)
+        except Exception as e:
+            logger.error(f"Erro ao inicializar SDK do Mercado Pago: {str(e)}", exc_info=True)
+            self.message_user(request, f"Erro ao inicializar SDK do Mercado Pago: {str(e)}", level=messages.ERROR)
+            return
 
         reconciliados = 0
+        ignorados_status = 0
+        ignorados_metodo = 0
+        nao_encontrados = 0
+        nao_aprovados = 0
+        erros = 0
+        erros_detalhes = []
+
         for pagamento in queryset.select_related('pedido_pagamento', 'usuario'):
+            # Verifica status do pagamento
             if pagamento.status != 'pending':
+                ignorados_status += 1
+                logger.debug(f"Pagamento {pagamento.id} ignorado: status '{pagamento.status}' (esperado: 'pending')")
                 continue
+            
+            # Verifica pedido associado
             pedido = pagamento.pedido_pagamento
-            if not pedido or pedido.metodo != 'MercadoPago':
+            if not pedido:
+                ignorados_metodo += 1
+                logger.warning(f"Pagamento {pagamento.id} ignorado: sem pedido associado")
+                continue
+            
+            if pedido.metodo != 'MercadoPago':
+                ignorados_metodo += 1
+                logger.debug(f"Pagamento {pagamento.id} ignorado: método '{pedido.metodo}' (esperado: 'MercadoPago')")
                 continue
 
             try:
+                # Busca no Mercado Pago
                 search = sdk.merchant_order().search({'external_reference': str(pagamento.id)})
-                if search.get('status') == 200:
-                    results = (search.get('response') or {}).get('elements', [])
-                    for order in results:
-                        pagamentos_mp = order.get('payments', [])
-                        aprovado = any(p.get('status') == 'approved' for p in pagamentos_mp)
-                        if aprovado:
-                            from django.db import transaction
-                            with transaction.atomic():
-                                wallet, _ = pedido.usuario.wallet_set.get_or_create(usuario=pagamento.usuario)
-                                valor_total, valor_bonus, _ = aplicar_compra_com_bonus(
-                                    wallet, Decimal(str(pagamento.valor)), 'MercadoPago'
-                                )
-                                pagamento.status = 'paid'
-                                pagamento.processado_em = timezone.now()
-                                pagamento.save()
-                                pedido.bonus_aplicado = valor_bonus
-                                pedido.total_creditado = valor_total
-                                pedido.status = 'CONCLUÍDO'
-                                pedido.save()
-                                reconciliados += 1
-                            break
-            except Exception:
-                # Continua com próximos itens sem interromper a ação
-                continue
+                
+                if search.get('status') != 200:
+                    nao_encontrados += 1
+                    logger.warning(f"Pagamento {pagamento.id}: resposta do Mercado Pago com status {search.get('status')}")
+                    continue
+                
+                results = (search.get('response') or {}).get('elements', [])
+                if not results:
+                    nao_encontrados += 1
+                    logger.debug(f"Pagamento {pagamento.id}: nenhuma ordem encontrada no Mercado Pago")
+                    continue
+                
+                # Verifica se algum pagamento foi aprovado
+                aprovado = False
+                for order in results:
+                    pagamentos_mp = order.get('payments', [])
+                    if any(p.get('status') == 'approved' for p in pagamentos_mp):
+                        aprovado = True
+                        break
+                
+                if not aprovado:
+                    nao_aprovados += 1
+                    logger.debug(f"Pagamento {pagamento.id}: nenhum pagamento aprovado encontrado no Mercado Pago")
+                    continue
+                
+                # Processa o pagamento aprovado
+                with transaction.atomic():
+                    wallet, _ = pedido.usuario.wallet_set.get_or_create(usuario=pagamento.usuario)
+                    valor_total, valor_bonus, _ = aplicar_compra_com_bonus(
+                        wallet, Decimal(str(pagamento.valor)), 'MercadoPago'
+                    )
+                    pagamento.status = 'paid'
+                    pagamento.processado_em = timezone.now()
+                    pagamento.save()
+                    pedido.bonus_aplicado = valor_bonus
+                    pedido.total_creditado = valor_total
+                    pedido.status = 'CONCLUÍDO'
+                    pedido.save()
+                    reconciliados += 1
+                    logger.info(f"Pagamento {pagamento.id} reconciliado com sucesso. Valor: R${pagamento.valor}, Bônus: R${valor_bonus}")
+                    
+            except Exception as e:
+                erros += 1
+                erro_msg = f"Pagamento {pagamento.id}: {str(e)}"
+                erros_detalhes.append(erro_msg)
+                logger.error(f"Erro ao reconciliar pagamento {pagamento.id}: {str(e)}", exc_info=True)
 
-        self.message_user(request, f"{reconciliados} pagamento(s) reconciliado(s) com sucesso.")
+        # Mensagens informativas
+        mensagens = []
+        if reconciliados > 0:
+            mensagens.append(f"{reconciliados} pagamento(s) reconciliado(s) com sucesso.")
+        if ignorados_status > 0:
+            mensagens.append(f"{ignorados_status} pagamento(s) ignorado(s) por status diferente de 'pending'.")
+        if ignorados_metodo > 0:
+            mensagens.append(f"{ignorados_metodo} pagamento(s) ignorado(s) por pedido ausente ou método diferente de 'MercadoPago'.")
+        if nao_encontrados > 0:
+            mensagens.append(f"{nao_encontrados} pagamento(s) não encontrado(s) no Mercado Pago.")
+        if nao_aprovados > 0:
+            mensagens.append(f"{nao_aprovados} pagamento(s) encontrado(s) mas não aprovado(s) no Mercado Pago.")
+        if erros > 0:
+            mensagens.append(f"{erros} pagamento(s) com erro durante a reconciliação.")
+            # Mostra detalhes dos erros apenas se houver poucos
+            if erros <= 5:
+                for detalhe in erros_detalhes:
+                    messages.error(request, detalhe)
+            else:
+                messages.error(request, f"Vários erros ocorreram. Verifique os logs para detalhes.")
+        
+        if mensagens:
+            self.message_user(request, " ".join(mensagens))
+        else:
+            self.message_user(request, "Nenhum pagamento foi reconciliado. Verifique os critérios de seleção.")
 
     @admin.action(description='Processar pagamentos aprovados (creditar e concluir)')
     def processar_aprovados(self, request, queryset):
+        import logging
         from django.utils import timezone
         from decimal import Decimal
         from django.db import transaction
+        from django.contrib import messages
         from apps.lineage.wallet.models import Wallet
         from apps.lineage.wallet.utils import aplicar_compra_com_bonus
 
+        logger = logging.getLogger(__name__)
         processados = 0
+        ignorados_status = 0
+        ignorados_pedido = 0
+        erros = 0
+        erros_detalhes = []
+
         for pagamento in queryset.select_related('pedido_pagamento', 'usuario'):
+            # Verifica status do pagamento
             if pagamento.status != 'approved':
+                ignorados_status += 1
+                logger.debug(f"Pagamento {pagamento.id} ignorado: status '{pagamento.status}' (esperado: 'approved')")
                 continue
+            
+            # Verifica pedido associado
             pedido = pagamento.pedido_pagamento
-            if not pedido or pedido.status != 'PENDENTE':
+            if not pedido:
+                ignorados_pedido += 1
+                logger.warning(f"Pagamento {pagamento.id} ignorado: sem pedido associado")
                 continue
+            
+            if pedido.status != 'PENDENTE':
+                ignorados_pedido += 1
+                logger.debug(f"Pagamento {pagamento.id} ignorado: pedido {pedido.id} com status '{pedido.status}' (esperado: 'PENDENTE')")
+                continue
+            
+            # Tenta processar o pagamento
             try:
                 with transaction.atomic():
                     wallet, _ = Wallet.objects.get_or_create(usuario=pagamento.usuario)
+                    metodo = pedido.metodo if pedido else 'MercadoPago'
                     valor_total, valor_bonus, _ = aplicar_compra_com_bonus(
-                        wallet, Decimal(str(pagamento.valor)), pagamento.pedido_pagamento.metodo if pagamento.pedido_pagamento else 'MercadoPago'
+                        wallet, Decimal(str(pagamento.valor)), metodo
                     )
                     pagamento.status = 'paid'
                     pagamento.processado_em = timezone.now()
@@ -161,10 +313,34 @@ class PagamentoAdmin(BaseModelAdmin):
                     pedido.status = 'CONCLUÍDO'
                     pedido.save()
                     processados += 1
-            except Exception:
-                continue
+                    logger.info(f"Pagamento {pagamento.id} processado com sucesso. Valor: R${pagamento.valor}, Bônus: R${valor_bonus}")
+            except Exception as e:
+                erros += 1
+                erro_msg = f"Pagamento {pagamento.id}: {str(e)}"
+                erros_detalhes.append(erro_msg)
+                logger.error(f"Erro ao processar pagamento {pagamento.id}: {str(e)}", exc_info=True)
 
-        self.message_user(request, f"{processados} pagamento(s) aprovado(s) processado(s) com sucesso.")
+        # Mensagens informativas
+        mensagens = []
+        if processados > 0:
+            mensagens.append(f"{processados} pagamento(s) processado(s) com sucesso.")
+        if ignorados_status > 0:
+            mensagens.append(f"{ignorados_status} pagamento(s) ignorado(s) por status diferente de 'approved'.")
+        if ignorados_pedido > 0:
+            mensagens.append(f"{ignorados_pedido} pagamento(s) ignorado(s) por pedido ausente ou status diferente de 'PENDENTE'.")
+        if erros > 0:
+            mensagens.append(f"{erros} pagamento(s) com erro durante o processamento.")
+            # Mostra detalhes dos erros apenas se houver poucos
+            if erros <= 5:
+                for detalhe in erros_detalhes:
+                    messages.error(request, detalhe)
+            else:
+                messages.error(request, f"Vários erros ocorreram. Verifique os logs para detalhes.")
+        
+        if mensagens:
+            self.message_user(request, " ".join(mensagens))
+        else:
+            self.message_user(request, "Nenhum pagamento foi processado. Verifique os critérios de seleção.")
 
     @admin.action(description='Exportar CSV dos pagamentos selecionados')
     def exportar_csv(self, request, queryset):
@@ -284,29 +460,55 @@ class TentativaFalsificacaoAdmin(BaseModelAdmin):
     
     @admin.action(description='Marcar alertas como enviados')
     def marcar_alerta_enviado(self, request, queryset):
-        atualizados = queryset.update(alerta_enviado=True)
-        self.message_user(request, f"{atualizados} tentativa(s) marcada(s) com alerta enviado.")
+        import logging
+        from django.contrib import messages
+        
+        logger = logging.getLogger(__name__)
+        
+        try:
+            atualizados = queryset.update(alerta_enviado=True)
+            logger.info(f"{atualizados} tentativa(s) de falsificação marcada(s) com alerta enviado pelo admin {request.user.username}")
+            self.message_user(request, f"{atualizados} tentativa(s) marcada(s) com alerta enviado.")
+        except Exception as e:
+            logger.error(f"Erro ao marcar alertas como enviados: {str(e)}", exc_info=True)
+            self.message_user(request, f"Erro ao marcar alertas: {str(e)}", level=messages.ERROR)
     
     @admin.action(description='Ver estatísticas do IP')
     def obter_estatisticas_ip(self, request, queryset):
+        import logging
         from ..utils import obter_estatisticas_seguranca
         from django.contrib import messages
+        
+        logger = logging.getLogger(__name__)
         
         if queryset.count() != 1:
             messages.warning(request, "Selecione apenas uma tentativa para ver estatísticas do IP.")
             return
         
         tentativa = queryset.first()
-        stats = obter_estatisticas_seguranca(ip_address=tentativa.ip_address, dias=7)
+        if not tentativa or not tentativa.ip_address:
+            messages.error(request, "Tentativa selecionada não possui endereço IP válido.")
+            return
         
-        provedores_str = ', '.join([f"{p['provedor']}: {p['count']}" for p in stats['por_provedor']])
-        tipos_str = ', '.join([f"{t['tipo_tentativa']}: {t['count']}" for t in stats['por_tipo'][:5]])
-        
-        mensagem = (
-            f"Estatísticas do IP {tentativa.ip_address} (últimos 7 dias):\n"
-            f"Total de tentativas: {stats['total_tentativas']}\n"
-            f"Por provedor: {provedores_str}\n"
-            f"Tipos mais comuns: {tipos_str}"
-        )
-        
-        messages.info(request, mensagem)
+        try:
+            stats = obter_estatisticas_seguranca(ip_address=tentativa.ip_address, dias=7)
+            
+            if not stats:
+                messages.warning(request, f"Nenhuma estatística encontrada para o IP {tentativa.ip_address}.")
+                return
+            
+            provedores_str = ', '.join([f"{p['provedor']}: {p['count']}" for p in stats.get('por_provedor', [])])
+            tipos_str = ', '.join([f"{t['tipo_tentativa']}: {t['count']}" for t in stats.get('por_tipo', [])[:5]])
+            
+            mensagem = (
+                f"Estatísticas do IP {tentativa.ip_address} (últimos 7 dias):\n"
+                f"Total de tentativas: {stats.get('total_tentativas', 0)}\n"
+                f"Por provedor: {provedores_str or 'Nenhum'}\n"
+                f"Tipos mais comuns: {tipos_str or 'Nenhum'}"
+            )
+            
+            messages.info(request, mensagem)
+            logger.info(f"Estatísticas do IP {tentativa.ip_address} consultadas pelo admin {request.user.username}")
+        except Exception as e:
+            logger.error(f"Erro ao obter estatísticas do IP {tentativa.ip_address}: {str(e)}", exc_info=True)
+            messages.error(request, f"Erro ao obter estatísticas: {str(e)}")
