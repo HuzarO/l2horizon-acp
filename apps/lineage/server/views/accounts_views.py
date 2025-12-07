@@ -880,23 +880,23 @@ def purchase_link_slot(request):
         
         total_price = SLOT_PRICE * quantity
         
-        # Verifica saldo na carteira
-        try:
-            wallet = Wallet.objects.select_for_update().get(usuario=request.user)
-        except Wallet.DoesNotExist:
-            messages.error(request, "Você não possui uma carteira. Entre em contato com o suporte.")
-            return redirect('server:purchase_link_slot')
-        
-        if wallet.saldo < total_price:
-            messages.error(
-                request,
-                f"Saldo insuficiente. Você precisa de R$ {total_price:.2f} mas tem apenas R$ {wallet.saldo:.2f}."
-            )
-            return redirect('server:purchase_link_slot')
-        
         # Processa a compra
         try:
             with transaction.atomic():
+                # Verifica saldo na carteira (dentro da transação para evitar race conditions)
+                try:
+                    wallet = Wallet.objects.select_for_update().get(usuario=request.user)
+                except Wallet.DoesNotExist:
+                    messages.error(request, "Você não possui uma carteira. Entre em contato com o suporte.")
+                    return redirect('server:purchase_link_slot')
+                
+                if wallet.saldo < total_price:
+                    messages.error(
+                        request,
+                        f"Saldo insuficiente. Você precisa de R$ {total_price:.2f} mas tem apenas R$ {wallet.saldo:.2f}."
+                    )
+                    return redirect('server:purchase_link_slot')
+                
                 # Debita da carteira
                 aplicar_transacao(
                     wallet=wallet,
