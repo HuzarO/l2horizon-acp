@@ -200,13 +200,30 @@ def roulette_page(request):
 
 @conditional_otp_required
 def comprar_fichas(request):
-    if request.method == 'POST':
-        quantidade = int(request.POST.get('quantidade', 0))
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+    
+    try:
+        # Valida quantidade
+        quantidade_str = request.POST.get('quantidade', '0')
+        try:
+            quantidade = int(quantidade_str)
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'Quantidade inválida'}, status=400)
+        
+        if quantidade <= 0:
+            return JsonResponse({'error': 'Quantidade deve ser maior que zero'}, status=400)
+        
+        if quantidade > 10000:  # Limite máximo de segurança
+            return JsonResponse({'error': 'Quantidade máxima permitida é 10.000 fichas'}, status=400)
+        
         valor_unitario = Decimal('0.10')  # 10 centavos por ficha
         total = valor_unitario * quantidade
 
-        wallet = Wallet.objects.get(usuario=request.user)
+        # Busca ou cria wallet (mais seguro que get)
+        wallet, created = Wallet.objects.get_or_create(usuario=request.user)
 
+        # Aplica transação
         try:
             aplicar_transacao(
                 wallet=wallet,
@@ -216,12 +233,21 @@ def comprar_fichas(request):
                 origem='Wallet',
                 destino='Sistema de Fichas'
             )
-            # Credita as fichas
+        except ValueError as e:
+            return JsonResponse({'error': str(e)}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': f'Erro ao processar transação: {str(e)}'}, status=500)
+
+        # Credita as fichas
+        try:
             request.user.fichas += quantidade
             request.user.save()
             return JsonResponse({'success': True, 'fichas': request.user.fichas})
-        except ValueError as e:
-            return JsonResponse({'error': str(e)}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': f'Erro ao creditar fichas: {str(e)}'}, status=500)
+            
+    except Exception as e:
+        return JsonResponse({'error': f'Erro inesperado: {str(e)}'}, status=500)
 
 
 @conditional_otp_required
