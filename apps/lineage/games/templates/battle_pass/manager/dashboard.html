@@ -1,0 +1,241 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Battle Pass Manager" %} - {% trans "Base de Batalha" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { 
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); 
+    min-height: 100vh; 
+    padding: 30px 0; 
+}
+.card-glow { 
+    background: linear-gradient(to bottom right, #1a1a2e, #121220); 
+    border: 2px solid #6f42c1; 
+    border-radius: 12px; 
+    box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); 
+}
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 20px;
+    color: white;
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+}
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+.stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+.btn-action {
+    background: linear-gradient(135deg, #6f42c1 0%, #0dcaf0 100%);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(111, 66, 193, 0.5);
+    color: white;
+}
+.season-card {
+    border: 2px solid #f59e0b;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+}
+.badge-active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.badge-inactive {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="text-white mb-1">{% trans "Configurador de Base de Batalha" %}</h2>
+                <p class="text-white-50 mb-0">{% trans "Gerencie temporadas, níveis e recompensas do Battle Pass" %}</p>
+            </div>
+            <div>
+                <a href="{% url 'config_hub' %}" class="btn btn-outline-light me-2">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                </a>
+                <a href="{% url 'games:battle_pass_manager_season_create' %}" class="btn-action">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Nova Temporada" %}
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-value">{{ total_seasons }}</div>
+                    <div class="stat-label">{% trans "Temporadas" %}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-value">{{ total_levels }}</div>
+                    <div class="stat-label">{% trans "Níveis" %}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-value">{{ total_rewards }}</div>
+                    <div class="stat-label">{% trans "Recompensas" %}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-value">{{ total_progress }}</div>
+                    <div class="stat-label">{% trans "Usuários Ativos" %}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Season Card -->
+        {% if season %}
+        <div class="card card-glow season-card mb-4">
+            <div class="card-header bg-transparent border-bottom border-warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="text-white mb-0">
+                            <i class="bi bi-trophy-fill text-warning me-2"></i>
+                            {{ season.name }}
+                        </h5>
+                        <small class="text-white-50">
+                            {% trans "De" %} {{ season.start_date|date:"d/m/Y H:i" }} 
+                            {% trans "até" %} {{ season.end_date|date:"d/m/Y H:i" }}
+                        </small>
+                    </div>
+                    <div>
+                        {% if season.is_active %}
+                        <span class="badge-active">
+                            <i class="bi bi-check-circle me-1"></i>{% trans "Ativa" %}
+                        </span>
+                        {% else %}
+                        <span class="badge-inactive">
+                            <i class="bi bi-x-circle me-1"></i>{% trans "Inativa" %}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="text-white mb-2">
+                            <strong>{% trans "Preço Premium:" %}</strong> 
+                            <span class="text-warning">{{ season.premium_price }} {% trans "moedas" %}</span>
+                        </p>
+                        <p class="text-white mb-2">
+                            <strong>{% trans "Total de Níveis:" %}</strong> 
+                            <span class="text-info">{{ total_levels }}</span>
+                        </p>
+                        <p class="text-white mb-3">
+                            <strong>{% trans "Total de Recompensas:" %}</strong> 
+                            <span class="text-info">{{ total_rewards }}</span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-white mb-2">
+                            <strong>{% trans "Usuários Participando:" %}</strong> 
+                            <span class="text-success">{{ total_progress }}</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                    <a href="{% url 'games:battle_pass_manager_season_detail' season_id=season.id %}" class="btn btn-info">
+                        <i class="bi bi-eye me-2"></i>{% trans "Ver Detalhes" %}
+                    </a>
+                    <a href="{% url 'games:battle_pass_manager_season_edit' season_id=season.id %}" class="btn btn-warning">
+                        <i class="bi bi-pencil me-2"></i>{% trans "Editar" %}
+                    </a>
+                    <a href="{% url 'games:battle_pass_manager_season_list' %}" class="btn btn-outline-light">
+                        <i class="bi bi-list me-2"></i>{% trans "Todas as Temporadas" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card card-glow mb-4">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-trophy" style="font-size: 4rem; color: #6f42c1; opacity: 0.5;"></i>
+                <h4 class="text-white mt-3">{% trans "Nenhuma temporada encontrada" %}</h4>
+                <p class="text-white-50">{% trans "Crie sua primeira temporada de Battle Pass para começar" %}</p>
+                <a href="{% url 'games:battle_pass_manager_season_create' %}" class="btn-action mt-3">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Criar Primeira Temporada" %}
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Quick Actions -->
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card card-glow">
+                    <div class="card-header bg-transparent border-bottom">
+                        <h5 class="text-white mb-0">
+                            <i class="bi bi-calendar-event me-2 text-info"></i>
+                            {% trans "Temporadas" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-white-50 mb-3">
+                            {% trans "Gerencie todas as temporadas do Battle Pass. Crie, edite ou ative temporadas." %}
+                        </p>
+                        <a href="{% url 'games:battle_pass_manager_season_list' %}" class="btn btn-outline-info w-100">
+                            <i class="bi bi-list-ul me-2"></i>{% trans "Ver Todas as Temporadas" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card card-glow">
+                    <div class="card-header bg-transparent border-bottom">
+                        <h5 class="text-white mb-0">
+                            <i class="bi bi-arrow-left-right me-2 text-success"></i>
+                            {% trans "Trocas de Itens" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-white-50 mb-3">
+                            {% trans "Configure itens que podem ser trocados por XP do Battle Pass." %}
+                        </p>
+                        <a href="{% url 'games:battle_pass_manager_exchange_list' %}" class="btn btn-outline-success w-100">
+                            <i class="bi bi-list-ul me-2"></i>{% trans "Gerenciar Trocas" %} ({{ total_exchanges }})
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

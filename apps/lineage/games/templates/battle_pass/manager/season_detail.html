@@ -1,0 +1,168 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{{ season.name }} - {% trans "Battle Pass Manager" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); min-height: 100vh; padding: 30px 0; }
+.card-glow { background: linear-gradient(to bottom right, #1a1a2e, #121220); border: 2px solid #6f42c1; border-radius: 12px; box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); }
+.level-card { border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; margin-bottom: 15px; transition: all 0.3s ease; }
+.level-card:hover { border-color: #6f42c1; background: rgba(111, 66, 193, 0.05); }
+.reward-badge { padding: 3px 8px; border-radius: 5px; font-size: 0.75rem; margin-left: 5px; }
+.reward-premium { background: #f59e0b; color: white; }
+.reward-free { background: #6b7280; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="text-white mb-1">{{ season.name }}</h2>
+                <p class="text-white-50 mb-0">
+                    {% trans "De" %} {{ season.start_date|date:"d/m/Y H:i" }} 
+                    {% trans "até" %} {{ season.end_date|date:"d/m/Y H:i" }}
+                    {% if season.is_active %}
+                    <span class="badge bg-success ms-2">{% trans "Ativa" %}</span>
+                    {% else %}
+                    <span class="badge bg-secondary ms-2">{% trans "Inativa" %}</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <a href="{% url 'games:battle_pass_manager' %}" class="btn btn-outline-light me-2">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                </a>
+                <a href="{% url 'games:battle_pass_manager_season_edit' season_id=season.id %}" class="btn btn-warning me-2">
+                    <i class="bi bi-pencil me-2"></i>{% trans "Editar" %}
+                </a>
+                <a href="{% url 'games:battle_pass_manager_level_create' season_id=season.id %}" class="btn btn-info">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Adicionar Nível" %}
+                </a>
+            </div>
+        </div>
+
+        <!-- Season Info -->
+        <div class="card card-glow mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <p class="text-white mb-2">
+                            <strong>{% trans "Preço Premium:" %}</strong> 
+                            <span class="text-warning">{{ season.premium_price }} {% trans "moedas" %}</span>
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="text-white mb-2">
+                            <strong>{% trans "Total de Níveis:" %}</strong> 
+                            <span class="text-info">{{ levels|length }}</span>
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="text-white mb-2">
+                            <strong>{% trans "Usuários Participando:" %}</strong> 
+                            <span class="text-success">{{ total_users }}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Levels -->
+        <div class="card card-glow">
+            <div class="card-header bg-transparent border-bottom">
+                <h5 class="text-white mb-0">
+                    <i class="bi bi-list-ol me-2 text-info"></i>
+                    {% trans "Níveis e Recompensas" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if levels %}
+                {% for level in levels %}
+                <div class="level-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h5 class="text-white mb-0">
+                                <i class="bi bi-star-fill text-warning me-2"></i>
+                                {% trans "Nível" %} {{ level.level }}
+                            </h5>
+                            <small class="text-white-50">
+                                {% trans "XP Necessário:" %} <strong class="text-info">{{ level.required_xp }}</strong>
+                            </small>
+                        </div>
+                        <div class="btn-group">
+                            <a href="{% url 'games:battle_pass_manager_level_edit' level_id=level.id %}" 
+                               class="btn btn-sm btn-warning" title="{% trans 'Editar Nível' %}">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'games:battle_pass_manager_level_delete' level_id=level.id %}" 
+                               class="btn btn-sm btn-danger" title="{% trans 'Deletar Nível' %}">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                            <a href="{% url 'games:battle_pass_manager_reward_create' level_id=level.id %}" 
+                               class="btn btn-sm btn-success" title="{% trans 'Adicionar Recompensa' %}">
+                                <i class="bi bi-plus-circle"></i> {% trans "Recompensa" %}
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Rewards -->
+                    {% with rewards=level.battlepassreward_set.all %}
+                    {% if rewards %}
+                    <div class="mt-3 ps-4 border-start border-info">
+                        <h6 class="text-white-50 mb-2">{% trans "Recompensas:" %}</h6>
+                        {% for reward in rewards %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <span class="text-white">{{ reward.description }}</span>
+                                {% if reward.item_name %}
+                                <small class="text-white-50 ms-2">
+                                    ({{ reward.item_name }} {% if reward.item_amount > 1 %}x{{ reward.item_amount }}{% endif %})
+                                </small>
+                                {% endif %}
+                                <span class="reward-badge {% if reward.is_premium %}reward-premium{% else %}reward-free{% endif %}">
+                                    {% if reward.is_premium %}⭐ Premium{% else %}🆓 Free{% endif %}
+                                </span>
+                            </div>
+                            <div>
+                                <a href="{% url 'games:battle_pass_manager_reward_edit' reward_id=reward.id %}" 
+                                   class="btn btn-sm btn-outline-warning" title="{% trans 'Editar' %}">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'games:battle_pass_manager_reward_delete' reward_id=reward.id %}" 
+                                   class="btn btn-sm btn-outline-danger" title="{% trans 'Deletar' %}">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="mt-3 ps-4 border-start border-warning">
+                        <p class="text-white-50 mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            {% trans "Nenhuma recompensa configurada para este nível" %}
+                        </p>
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-list-ol" style="font-size: 4rem; color: #6f42c1; opacity: 0.5;"></i>
+                    <h4 class="text-white mt-3">{% trans "Nenhum nível configurado" %}</h4>
+                    <p class="text-white-50">{% trans "Adicione níveis para esta temporada" %}</p>
+                    <a href="{% url 'games:battle_pass_manager_level_create' season_id=season.id %}" class="btn btn-info mt-3">
+                        <i class="bi bi-plus-circle me-2"></i>{% trans "Adicionar Primeiro Nível" %}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

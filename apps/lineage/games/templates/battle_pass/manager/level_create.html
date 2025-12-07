@@ -1,0 +1,62 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Criar Nível" %} - {% trans "Battle Pass Manager" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); min-height: 100vh; padding: 30px 0; }
+.card-glow { background: linear-gradient(to bottom right, #1a1a2e, #121220); border: 2px solid #6f42c1; border-radius: 12px; box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); }
+.form-dark { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; }
+.form-dark:focus { background: rgba(255,255,255,0.08) !important; border-color: #6f42c1 !important; color: white !important; box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25) !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="text-white mb-1">{% trans "Criar Novo Nível" %}</h2>
+                        <p class="text-white-50 mb-0">{% trans "Temporada:" %} {{ season.name }}</p>
+                    </div>
+                    <a href="{% url 'games:battle_pass_manager_season_detail' season_id=season.id %}" class="btn btn-outline-light">
+                        <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                    </a>
+                </div>
+
+                <div class="card card-glow">
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="level" class="form-label text-white">{% trans "Número do Nível" %} *</label>
+                                <input type="number" class="form-control form-dark" id="level" name="level" 
+                                       min="1" required>
+                                <small class="text-white-50">{% trans "Exemplo: 1, 2, 3..." %}</small>
+                            </div>
+                            <div class="mb-3">
+                                <label for="required_xp" class="form-label text-white">{% trans "XP Necessário" %} *</label>
+                                <input type="number" class="form-control form-dark" id="required_xp" name="required_xp" 
+                                       min="0" required>
+                                <small class="text-white-50">{% trans "Quantidade de XP necessária para alcançar este nível" %}</small>
+                            </div>
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="submit" class="btn btn-info">
+                                    <i class="bi bi-check-circle me-2"></i>{% trans "Criar Nível" %}
+                                </button>
+                                <a href="{% url 'games:battle_pass_manager_season_detail' season_id=season.id %}" class="btn btn-outline-light">
+                                    {% trans "Cancelar" %}
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

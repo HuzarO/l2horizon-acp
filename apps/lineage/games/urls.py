@@ -3,7 +3,8 @@ from .views import (
     views, manager_box_views, battle_pass, economy_game_view, 
     daily_bonus_manager, roulette_manager, economy_manager, 
     slot_machine_views, dice_game_views, fishing_game_views,
-    slot_machine_manager, dice_game_manager, fishing_game_manager
+    slot_machine_manager, dice_game_manager, fishing_game_manager,
+    battle_pass_manager
 )
 
 
@@ -82,4 +83,22 @@ urlpatterns = [
     path('slot-machine/manager/', slot_machine_manager.dashboard, name='slot_machine_manager'),
     path('dice-game/manager/', dice_game_manager.dashboard, name='dice_game_manager'),
     path('fishing/manager/', fishing_game_manager.dashboard, name='fishing_game_manager'),
+    
+    # Battle Pass Manager
+    path('battle-pass/manager/', battle_pass_manager.dashboard, name='battle_pass_manager'),
+    path('battle-pass/manager/seasons/', battle_pass_manager.season_list, name='battle_pass_manager_season_list'),
+    path('battle-pass/manager/season/create/', battle_pass_manager.season_create, name='battle_pass_manager_season_create'),
+    path('battle-pass/manager/season/<int:season_id>/', battle_pass_manager.season_detail, name='battle_pass_manager_season_detail'),
+    path('battle-pass/manager/season/<int:season_id>/edit/', battle_pass_manager.season_edit, name='battle_pass_manager_season_edit'),
+    path('battle-pass/manager/season/<int:season_id>/delete/', battle_pass_manager.season_delete, name='battle_pass_manager_season_delete'),
+    path('battle-pass/manager/season/<int:season_id>/level/create/', battle_pass_manager.level_create, name='battle_pass_manager_level_create'),
+    path('battle-pass/manager/level/<int:level_id>/edit/', battle_pass_manager.level_edit, name='battle_pass_manager_level_edit'),
+    path('battle-pass/manager/level/<int:level_id>/delete/', battle_pass_manager.level_delete, name='battle_pass_manager_level_delete'),
+    path('battle-pass/manager/level/<int:level_id>/reward/create/', battle_pass_manager.reward_create, name='battle_pass_manager_reward_create'),
+    path('battle-pass/manager/reward/<int:reward_id>/edit/', battle_pass_manager.reward_edit, name='battle_pass_manager_reward_edit'),
+    path('battle-pass/manager/reward/<int:reward_id>/delete/', battle_pass_manager.reward_delete, name='battle_pass_manager_reward_delete'),
+    path('battle-pass/manager/exchanges/', battle_pass_manager.exchange_list, name='battle_pass_manager_exchange_list'),
+    path('battle-pass/manager/exchange/create/', battle_pass_manager.exchange_create, name='battle_pass_manager_exchange_create'),
+    path('battle-pass/manager/exchange/<int:exchange_id>/edit/', battle_pass_manager.exchange_edit, name='battle_pass_manager_exchange_edit'),
+    path('battle-pass/manager/exchange/<int:exchange_id>/delete/', battle_pass_manager.exchange_delete, name='battle_pass_manager_exchange_delete'),
 ]

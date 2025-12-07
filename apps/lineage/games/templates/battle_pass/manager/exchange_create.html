@@ -1,0 +1,87 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Criar Troca" %} - {% trans "Battle Pass Manager" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); min-height: 100vh; padding: 30px 0; }
+.card-glow { background: linear-gradient(to bottom right, #1a1a2e, #121220); border: 2px solid #6f42c1; border-radius: 12px; box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); }
+.form-dark { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; }
+.form-dark:focus { background: rgba(255,255,255,0.08) !important; border-color: #6f42c1 !important; color: white !important; box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25) !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="text-white mb-1">{% trans "Criar Nova Troca" %}</h2>
+                        <p class="text-white-50 mb-0">{% trans "Configure itens que podem ser trocados por XP" %}</p>
+                    </div>
+                    <a href="{% url 'games:battle_pass_manager_exchange_list' %}" class="btn btn-outline-light">
+                        <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                    </a>
+                </div>
+
+                <div class="card card-glow">
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="item_id" class="form-label text-white">{% trans "Item ID" %} *</label>
+                                    <input type="number" class="form-control form-dark" id="item_id" name="item_id" required min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="item_name" class="form-label text-white">{% trans "Nome do Item" %} *</label>
+                                    <input type="text" class="form-control form-dark" id="item_name" name="item_name" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="item_enchant" class="form-label text-white">{% trans "Encantamento" %}</label>
+                                    <input type="number" class="form-control form-dark" id="item_enchant" name="item_enchant" 
+                                           value="0" min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="xp_amount" class="form-label text-white">{% trans "XP Recebido" %} *</label>
+                                    <input type="number" class="form-control form-dark" id="xp_amount" name="xp_amount" required min="1">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="max_exchanges" class="form-label text-white">{% trans "Limite de Trocas" %}</label>
+                                    <input type="number" class="form-control form-dark" id="max_exchanges" name="max_exchanges" 
+                                           value="0" min="0">
+                                    <small class="text-white-50">{% trans "0 = sem limite" %}</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check mt-4">
+                                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                        <label class="form-check-label text-white" for="is_active">
+                                            {% trans "Troca Ativa" %}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-check-circle me-2"></i>{% trans "Criar Troca" %}
+                                </button>
+                                <a href="{% url 'games:battle_pass_manager_exchange_list' %}" class="btn btn-outline-light">
+                                    {% trans "Cancelar" %}
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

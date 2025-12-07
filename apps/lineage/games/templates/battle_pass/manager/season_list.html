@@ -1,0 +1,112 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Temporadas" %} - {% trans "Battle Pass Manager" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); min-height: 100vh; padding: 30px 0; }
+.card-glow { background: linear-gradient(to bottom right, #1a1a2e, #121220); border: 2px solid #6f42c1; border-radius: 12px; box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); }
+.badge-active { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.badge-inactive { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
+.season-row { transition: all 0.3s ease; }
+.season-row:hover { background: rgba(111, 66, 193, 0.1) !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="text-white mb-1">{% trans "Temporadas" %}</h2>
+                <p class="text-white-50 mb-0">{% trans "Gerencie todas as temporadas do Battle Pass" %}</p>
+            </div>
+            <div>
+                <a href="{% url 'games:battle_pass_manager' %}" class="btn btn-outline-light me-2">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                </a>
+                <a href="{% url 'games:battle_pass_manager_season_create' %}" class="btn btn-info">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Nova Temporada" %}
+                </a>
+            </div>
+        </div>
+
+        <div class="card card-glow">
+            <div class="card-body">
+                {% if seasons %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Nome" %}</th>
+                                <th>{% trans "Status" %}</th>
+                                <th>{% trans "Início" %}</th>
+                                <th>{% trans "Fim" %}</th>
+                                <th>{% trans "Níveis" %}</th>
+                                <th>{% trans "Recompensas" %}</th>
+                                <th>{% trans "Usuários" %}</th>
+                                <th>{% trans "Ações" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for season in seasons %}
+                            <tr class="season-row">
+                                <td>
+                                    <strong class="text-white">{{ season.name }}</strong>
+                                    <br>
+                                    <small class="text-white-50">{{ season.premium_price }} {% trans "moedas" %}</small>
+                                </td>
+                                <td>
+                                    {% if season.is_active %}
+                                    <span class="badge badge-active">
+                                        <i class="bi bi-check-circle me-1"></i>{% trans "Ativa" %}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge badge-inactive">
+                                        <i class="bi bi-x-circle me-1"></i>{% trans "Inativa" %}
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-white-50">{{ season.start_date|date:"d/m/Y H:i" }}</td>
+                                <td class="text-white-50">{{ season.end_date|date:"d/m/Y H:i" }}</td>
+                                <td class="text-info">{{ season.levels_count }}</td>
+                                <td class="text-info">{{ season.rewards_count }}</td>
+                                <td class="text-success">{{ season.users_count }}</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'games:battle_pass_manager_season_detail' season_id=season.id %}" 
+                                           class="btn btn-sm btn-info" title="{% trans 'Ver Detalhes' %}">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{% url 'games:battle_pass_manager_season_edit' season_id=season.id %}" 
+                                           class="btn btn-sm btn-warning" title="{% trans 'Editar' %}">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{% url 'games:battle_pass_manager_season_delete' season_id=season.id %}" 
+                                           class="btn btn-sm btn-danger" title="{% trans 'Deletar' %}">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x" style="font-size: 4rem; color: #6f42c1; opacity: 0.5;"></i>
+                    <h4 class="text-white mt-3">{% trans "Nenhuma temporada encontrada" %}</h4>
+                    <p class="text-white-50">{% trans "Crie sua primeira temporada para começar" %}</p>
+                    <a href="{% url 'games:battle_pass_manager_season_create' %}" class="btn btn-info mt-3">
+                        <i class="bi bi-plus-circle me-2"></i>{% trans "Criar Temporada" %}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

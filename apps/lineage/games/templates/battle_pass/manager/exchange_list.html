@@ -1,0 +1,109 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Trocas de Itens" %} - {% trans "Battle Pass Manager" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%); min-height: 100vh; padding: 30px 0; }
+.card-glow { background: linear-gradient(to bottom right, #1a1a2e, #121220); border: 2px solid #6f42c1; border-radius: 12px; box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3); }
+.badge-active { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.badge-inactive { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="text-white mb-1">{% trans "Trocas de Itens por XP" %}</h2>
+                <p class="text-white-50 mb-0">{% trans "Configure itens que podem ser trocados por XP do Battle Pass" %}</p>
+            </div>
+            <div>
+                <a href="{% url 'games:battle_pass_manager' %}" class="btn btn-outline-light me-2">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                </a>
+                <a href="{% url 'games:battle_pass_manager_exchange_create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Nova Troca" %}
+                </a>
+            </div>
+        </div>
+
+        <div class="card card-glow">
+            <div class="card-body">
+                {% if exchanges %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Item" %}</th>
+                                <th>{% trans "Encantamento" %}</th>
+                                <th>{% trans "XP Recebido" %}</th>
+                                <th>{% trans "Status" %}</th>
+                                <th>{% trans "Trocas" %}</th>
+                                <th>{% trans "Ações" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exchange in exchanges %}
+                            <tr>
+                                <td>
+                                    <strong class="text-white">{{ exchange.item_name }}</strong>
+                                    <br>
+                                    <small class="text-white-50">ID: {{ exchange.item_id }}</small>
+                                </td>
+                                <td class="text-info">{{ exchange.item_enchant }}</td>
+                                <td class="text-success">{{ exchange.xp_amount }} XP</td>
+                                <td>
+                                    {% if exchange.is_active %}
+                                    <span class="badge badge-active">
+                                        <i class="bi bi-check-circle me-1"></i>{% trans "Ativa" %}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge badge-inactive">
+                                        <i class="bi bi-x-circle me-1"></i>{% trans "Inativa" %}
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ exchange.current_exchanges }}
+                                    {% if exchange.max_exchanges > 0 %}
+                                    / {{ exchange.max_exchanges }}
+                                    {% else %}
+                                    / ∞
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'games:battle_pass_manager_exchange_edit' exchange_id=exchange.id %}" 
+                                           class="btn btn-sm btn-warning" title="{% trans 'Editar' %}">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{% url 'games:battle_pass_manager_exchange_delete' exchange_id=exchange.id %}" 
+                                           class="btn btn-sm btn-danger" title="{% trans 'Deletar' %}">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-arrow-left-right" style="font-size: 4rem; color: #6f42c1; opacity: 0.5;"></i>
+                    <h4 class="text-white mt-3">{% trans "Nenhuma troca configurada" %}</h4>
+                    <p class="text-white-50">{% trans "Configure trocas de itens por XP" %}</p>
+                    <a href="{% url 'games:battle_pass_manager_exchange_create' %}" class="btn btn-success mt-3">
+                        <i class="bi bi-plus-circle me-2"></i>{% trans "Criar Primeira Troca" %}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
