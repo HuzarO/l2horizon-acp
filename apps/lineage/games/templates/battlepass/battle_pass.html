@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% load i18n %}
+{% load itens_extras %}
 
 {% block content %}
 <style>
@@ -110,6 +111,67 @@
     line-height: 1.4;
     word-break: break-word;
     text-align: center;
+  }
+
+  .reward-item-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .reward-item-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .reward-item-icon:hover {
+    transform: scale(1.1);
+    border-color: var(--accent-color);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+  }
+
+  .reward-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: left;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .reward-item-name {
+    font-weight: 600;
+    color: var(--accent-color);
+    font-size: 0.95rem;
+  }
+
+  .reward-item-details {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .reward-item-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .reward-item-detail i {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
   }
 
   .reward-badges {
@@ -260,6 +322,21 @@
 
     .reward-description {
       font-size: 0.9rem;
+    }
+
+    .reward-item-container {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .reward-item-info {
+      text-align: center;
+      align-items: center;
+    }
+
+    .reward-item-icon {
+      width: 40px;
+      height: 40px;
     }
   }
 
@@ -525,9 +602,41 @@
                   {% if reward.is_premium %}
                     <span class="badge badge-premium">Premium</span>
                   {% endif %}
-                  <div class="reward-description">
-                    {{ reward.description }}
-                  </div>
+                  
+                  {% if reward.item_id %}
+                    <div class="reward-item-container">
+                      <img src="{% item_image_url reward.item_id %}" 
+                           alt="{{ reward.item_name|default:reward.description }}" 
+                           class="reward-item-icon"
+                           title="{{ reward.item_name|default:reward.description }}">
+                      <div class="reward-item-info">
+                        {% if reward.item_name %}
+                          <div class="reward-item-name">{{ reward.item_name }}</div>
+                        {% endif %}
+                        <div class="reward-item-details">
+                          {% if reward.item_enchant > 0 %}
+                            <div class="reward-item-detail">
+                              <i class="fas fa-magic"></i>
+                              <span>+{{ reward.item_enchant }}</span>
+                            </div>
+                          {% endif %}
+                          {% if reward.item_amount > 1 %}
+                            <div class="reward-item-detail">
+                              <i class="fas fa-layer-group"></i>
+                              <span>x{{ reward.item_amount }}</span>
+                            </div>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  {% endif %}
+                  
+                  {% if reward.description %}
+                    <div class="reward-description">
+                      {{ reward.description }}
+                    </div>
+                  {% endif %}
+                  
                   <div class="reward-badges">
                     {% if reward in progress.claimed_rewards.all %}
                       <span class="badge badge-claimed">{% trans "Resgatado" %}</span>
