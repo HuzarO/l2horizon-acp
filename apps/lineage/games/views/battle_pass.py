@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from ..models import UserBattlePassProgress, BattlePassSeason, BattlePassReward, BattlePassItemExchange, Bag, BagItem, BattlePassLevel
 from apps.main.home.decorator import conditional_otp_required
 from django.shortcuts import redirect, get_object_or_404
@@ -49,17 +50,41 @@ def battle_pass_view(request):
         current_xp = 0
         progress_percentage = 100
 
-    levels = season.battlepasslevel_set.order_by('level').prefetch_related('battlepassreward_set')
-    return render(request, 'battlepass/battle_pass.html', {
+    levels_queryset = season.battlepasslevel_set.order_by('level').prefetch_related('battlepassreward_set')
+    
+    # Paginação - 12 níveis por página
+    paginator = Paginator(levels_queryset, 12)
+    page = request.GET.get('page')
+    
+    try:
+        levels_page = paginator.page(page)
+    except PageNotAnInteger:
+        # Se a página não for um número, mostra a primeira página
+        levels_page = paginator.page(1)
+    except EmptyPage:
+        # Se a página estiver fora do range, mostra a última página
+        levels_page = paginator.page(paginator.num_pages)
+    
+    context = {
         'season': season,
         'progress': progress,
-        'levels': levels,
+        'levels': levels_page,
         'current_level': current_level_number,
         'next_level': next_level.level if next_level else None,
         'current_xp': current_xp,
         'xp_for_next_level': xp_for_next_level,
         'progress_percentage': progress_percentage,
-    })
+        'has_other_pages': levels_page.has_other_pages(),
+        'has_previous': levels_page.has_previous(),
+        'has_next': levels_page.has_next(),
+        'previous_page_number': levels_page.previous_page_number() if levels_page.has_previous() else None,
+        'next_page_number': levels_page.next_page_number() if levels_page.has_next() else None,
+        'current_page': levels_page.number,
+        'num_pages': paginator.num_pages,
+        'total_levels': paginator.count,
+    }
+    
+    return render(request, 'battlepass/battle_pass.html', context)
 
 
 @conditional_otp_required
