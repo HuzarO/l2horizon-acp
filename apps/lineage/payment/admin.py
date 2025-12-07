@@ -30,6 +30,13 @@ class PedidoPagamentoAdmin(BaseModelAdmin):
 
     @admin.action(description='Confirmar pagamentos selecionados')
     def confirmar_pagamentos(self, request, queryset):
+        import logging
+        from django.utils import timezone
+        from django.contrib import messages
+        from .models import Pagamento
+
+        logger = logging.getLogger(__name__)
+        
         # Tela de confirmação customizada
         if 'apply' not in request.POST:
             context = {
@@ -42,21 +49,60 @@ class PedidoPagamentoAdmin(BaseModelAdmin):
             }
             return TemplateResponse(request, 'admin/payment/confirmar_pagamentos.html', context)
 
-        total = 0
-        for pedido in queryset:
-            if pedido.status != 'CONFIRMADO':
+        processados = 0
+        ja_confirmados = 0
+        erros = 0
+        erros_detalhes = []
+
+        for pedido in queryset.select_related('usuario'):
+            # Verifica se já está confirmado
+            if pedido.status == 'CONFIRMADO' or pedido.status == 'CONCLUÍDO':
+                ja_confirmados += 1
+                logger.debug(f"Pedido {pedido.id} ignorado: já está com status '{pedido.status}'")
+                continue
+
+            try:
                 # Confirma o pedido e aplica os créditos/bônus (marca no histórico o admin)
                 pedido.confirmar_pagamento(actor=request.user)
+                
+                # Marca como CONCLUÍDO para manter consistência com outros fluxos
+                pedido.status = 'CONCLUÍDO'
+                pedido.save()
+                
                 # Também marca o Pagamento associado como 'paid' para evitar reprocessamento via webhook
-                from .models import Pagamento
                 pagamento = Pagamento.objects.filter(pedido_pagamento=pedido).first()
                 if pagamento and pagamento.status != 'paid':
-                    from django.utils import timezone
                     pagamento.status = 'paid'
                     pagamento.processado_em = timezone.now()
                     pagamento.save()
-                total += 1
-        self.message_user(request, f"{total} pagamento(s) confirmado(s) com sucesso.")
+                
+                processados += 1
+                logger.info(f"Pedido {pedido.id} confirmado e concluído com sucesso. Valor: R${pedido.valor_pago}, Bônus: R${pedido.bonus_aplicado}")
+            except Exception as e:
+                erros += 1
+                erro_msg = f"Pedido {pedido.id}: {str(e)}"
+                erros_detalhes.append(erro_msg)
+                logger.error(f"Erro ao confirmar pedido {pedido.id}: {str(e)}", exc_info=True)
+
+        # Mensagens informativas
+        mensagens = []
+        if processados > 0:
+            mensagens.append(f"{processados} pagamento(s) confirmado(s) e concluído(s) com sucesso.")
+        if ja_confirmados > 0:
+            mensagens.append(f"{ja_confirmados} pedido(s) já estava(m) confirmado(s) ou concluído(s) e foi(ram) ignorado(s).")
+        if erros > 0:
+            mensagens.append(f"{erros} pedido(s) com erro durante o processamento.")
+            # Mostra detalhes dos erros apenas se houver poucos
+            if erros <= 5:
+                for detalhe in erros_detalhes:
+                    messages.error(request, detalhe)
+            else:
+                messages.error(request, f"Vários erros ocorreram. Verifique os logs para detalhes.")
+        
+        if mensagens:
+            self.message_user(request, " ".join(mensagens))
+        else:
+            self.message_user(request, "Nenhum pagamento foi processado. Verifique os critérios de seleção.")
 
     class Media:
         js = ('admin/js/pedido_pagamento_admin.js',)
@@ -134,24 +180,47 @@ class PagamentoAdmin(BaseModelAdmin):
 
     @admin.action(description='Processar pagamentos aprovados (creditar e concluir)')
     def processar_aprovados(self, request, queryset):
+        import logging
         from django.utils import timezone
         from decimal import Decimal
         from django.db import transaction
+        from django.contrib import messages
         from apps.lineage.wallet.models import Wallet
         from apps.lineage.wallet.utils import aplicar_compra_com_bonus
 
+        logger = logging.getLogger(__name__)
         processados = 0
+        ignorados_status = 0
+        ignorados_pedido = 0
+        erros = 0
+        erros_detalhes = []
+
         for pagamento in queryset.select_related('pedido_pagamento', 'usuario'):
+            # Verifica status do pagamento
             if pagamento.status != 'approved':
+                ignorados_status += 1
+                logger.debug(f"Pagamento {pagamento.id} ignorado: status '{pagamento.status}' (esperado: 'approved')")
                 continue
+            
+            # Verifica pedido associado
             pedido = pagamento.pedido_pagamento
-            if not pedido or pedido.status != 'PENDENTE':
+            if not pedido:
+                ignorados_pedido += 1
+                logger.warning(f"Pagamento {pagamento.id} ignorado: sem pedido associado")
                 continue
+            
+            if pedido.status != 'PENDENTE':
+                ignorados_pedido += 1
+                logger.debug(f"Pagamento {pagamento.id} ignorado: pedido {pedido.id} com status '{pedido.status}' (esperado: 'PENDENTE')")
+                continue
+            
+            # Tenta processar o pagamento
             try:
                 with transaction.atomic():
                     wallet, _ = Wallet.objects.get_or_create(usuario=pagamento.usuario)
+                    metodo = pedido.metodo if pedido else 'MercadoPago'
                     valor_total, valor_bonus, _ = aplicar_compra_com_bonus(
-                        wallet, Decimal(str(pagamento.valor)), pagamento.pedido_pagamento.metodo if pagamento.pedido_pagamento else 'MercadoPago'
+                        wallet, Decimal(str(pagamento.valor)), metodo
                     )
                     pagamento.status = 'paid'
                     pagamento.processado_em = timezone.now()
@@ -161,10 +230,34 @@ class PagamentoAdmin(BaseModelAdmin):
                     pedido.status = 'CONCLUÍDO'
                     pedido.save()
                     processados += 1
-            except Exception:
-                continue
+                    logger.info(f"Pagamento {pagamento.id} processado com sucesso. Valor: R${pagamento.valor}, Bônus: R${valor_bonus}")
+            except Exception as e:
+                erros += 1
+                erro_msg = f"Pagamento {pagamento.id}: {str(e)}"
+                erros_detalhes.append(erro_msg)
+                logger.error(f"Erro ao processar pagamento {pagamento.id}: {str(e)}", exc_info=True)
 
-        self.message_user(request, f"{processados} pagamento(s) aprovado(s) processado(s) com sucesso.")
+        # Mensagens informativas
+        mensagens = []
+        if processados > 0:
+            mensagens.append(f"{processados} pagamento(s) processado(s) com sucesso.")
+        if ignorados_status > 0:
+            mensagens.append(f"{ignorados_status} pagamento(s) ignorado(s) por status diferente de 'approved'.")
+        if ignorados_pedido > 0:
+            mensagens.append(f"{ignorados_pedido} pagamento(s) ignorado(s) por pedido ausente ou status diferente de 'PENDENTE'.")
+        if erros > 0:
+            mensagens.append(f"{erros} pagamento(s) com erro durante o processamento.")
+            # Mostra detalhes dos erros apenas se houver poucos
+            if erros <= 5:
+                for detalhe in erros_detalhes:
+                    messages.error(request, detalhe)
+            else:
+                messages.error(request, f"Vários erros ocorreram. Verifique os logs para detalhes.")
+        
+        if mensagens:
+            self.message_user(request, " ".join(mensagens))
+        else:
+            self.message_user(request, "Nenhum pagamento foi processado. Verifique os critérios de seleção.")
 
     @admin.action(description='Exportar CSV dos pagamentos selecionados')
     def exportar_csv(self, request, queryset):
