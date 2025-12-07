@@ -1,21 +1,31 @@
 import os
 import smtplib
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from celery import shared_task
 from django.conf import settings
 
+logger = logging.getLogger(__name__)
 
-@shared_task
-def send_email_task(subject, message, from_email, recipient_list):
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,  # 1 minuto entre tentativas
+    time_limit=300,  # 5 minutos timeout
+    soft_time_limit=240,  # 4 minutos soft timeout
+)
+def send_email_task(self, subject, message, from_email, recipient_list):
     """
-    Envia email usando Python puro (smtplib) ao invés do Django
+    Envia email de forma assíncrona usando Python puro (smtplib)
+    Com retry automático em caso de falha
     """
     # Configurações de email do ambiente
     email_enable = os.getenv('CONFIG_EMAIL_ENABLE', 'False').lower() in ['true', '1', 'yes']
     
     if not email_enable:
-        print(f"[EMAIL DISABLED] Subject: {subject} | To: {recipient_list}")
+        logger.info(f"[EMAIL DISABLED] Subject: {subject} | To: {recipient_list}")
         return False
     
     email_host = os.getenv('CONFIG_EMAIL_HOST')
@@ -27,11 +37,11 @@ def send_email_task(subject, message, from_email, recipient_list):
     
     # Validações
     if not all([email_host, email_user, email_password]):
-        print(f"[EMAIL ERROR] Missing SMTP configuration")
+        logger.error("[EMAIL ERROR] Missing SMTP configuration")
         return False
     
     if not recipient_list:
-        print(f"[EMAIL ERROR] No recipients provided")
+        logger.error("[EMAIL ERROR] No recipients provided")
         return False
     
     # Configurar email
@@ -45,16 +55,16 @@ def send_email_task(subject, message, from_email, recipient_list):
     
     try:
         # Conectar ao servidor SMTP
-        print(f"[EMAIL] Connecting to {email_host}:{email_port}")
+        logger.info(f"[EMAIL] Connecting to {email_host}:{email_port}")
         server = smtplib.SMTP(email_host, email_port, timeout=30)
         
         # Habilitar TLS se configurado
         if email_use_tls:
-            print(f"[EMAIL] Starting TLS")
+            logger.debug("[EMAIL] Starting TLS")
             server.starttls()
         
         # Login
-        print(f"[EMAIL] Logging in as {email_user}")
+        logger.debug(f"[EMAIL] Logging in as {email_user}")
         server.login(email_user, email_password)
         
         # Enviar email
@@ -68,21 +78,26 @@ def send_email_task(subject, message, from_email, recipient_list):
         # Fechar conexão
         server.quit()
         
-        print(f"[EMAIL SUCCESS] Sent to {recipient_list}")
+        logger.info(f"[EMAIL SUCCESS] Sent to {recipient_list}")
         return True
         
     except smtplib.SMTPAuthenticationError as e:
-        print(f"[EMAIL ERROR] Authentication failed: {e}")
-        return False
+        logger.error(f"[EMAIL ERROR] Authentication failed: {e}")
+        # Retry em caso de erro de autenticação (pode ser temporário)
+        raise self.retry(exc=e, countdown=60)
     except smtplib.SMTPRecipientsRefused as e:
-        print(f"[EMAIL ERROR] Recipients refused: {e}")
+        logger.error(f"[EMAIL ERROR] Recipients refused: {e}")
+        # Não retry para destinatários inválidos
         return False
     except smtplib.SMTPServerDisconnected as e:
-        print(f"[EMAIL ERROR] Server disconnected: {e}")
-        return False
+        logger.error(f"[EMAIL ERROR] Server disconnected: {e}")
+        # Retry em caso de desconexão
+        raise self.retry(exc=e, countdown=60)
     except smtplib.SMTPException as e:
-        print(f"[EMAIL ERROR] SMTP error: {e}")
-        return False
+        logger.error(f"[EMAIL ERROR] SMTP error: {e}")
+        # Retry para outros erros SMTP
+        raise self.retry(exc=e, countdown=60)
     except Exception as e:
-        print(f"[EMAIL ERROR] Unexpected error: {e}")
-        return False 
+        logger.error(f"[EMAIL ERROR] Unexpected error: {e}")
+        # Retry para erros inesperados
+        raise self.retry(exc=e, countdown=60) 

@@ -69,17 +69,17 @@ def register_view(request):
                 reverse('verificar_email', args=[uid, token])
             )
 
+            # Envia email de forma assíncrona (não bloqueia a resposta)
             try:
-                # Usa send_mail do Django (mesmo sistema da recuperação de senha)
-                send_mail(
+                send_email_task.delay(
                     'Verifique seu e-mail',
                     f'Olá {user.username}, clique no link para verificar sua conta: {verification_link}',
                     settings.DEFAULT_FROM_EMAIL,
-                    [user.email],
-                    fail_silently=False,
+                    [user.email]
                 )
+                logger.info(f"Email de verificação agendado para {user.email}")
             except Exception as e:
-                logger.error(f"Erro ao enviar email: {str(e)}")
+                logger.error(f"Erro ao agendar envio de email: {str(e)}")
 
             try:
                 send_notification(

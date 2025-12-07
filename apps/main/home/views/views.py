@@ -699,19 +699,18 @@ def reenviar_verificacao_view(request):
                 reverse('verificar_email', args=[uid, token])
             )
 
-            # Envia o e-mail
+            # Envia o e-mail de forma assíncrona (não bloqueia a resposta)
             try:
-                # Usa send_mail do Django (mesmo sistema da recuperação de senha)
-                send_mail(
+                send_email_task.delay(
                     'Reenvio de verificação de e-mail',
                     f'Olá {user.username},\n\nAqui está seu novo link de verificação:\n\n{verification_link}\n\nSe você não solicitou isso, ignore este e-mail.',
                     settings.DEFAULT_FROM_EMAIL,
-                    [user.email],
-                    fail_silently=False,
+                    [user.email]
                 )
                 messages.success(request, 'Um novo e-mail de verificação foi enviado.')
+                logger.info(f"Email de reenvio agendado para {user.email}")
             except Exception as e:
-                logger.error(f"Erro ao enviar email: {str(e)}")
+                logger.error(f"Erro ao agendar envio de email: {str(e)}")
                 messages.error(request, 'Não foi possível enviar o e-mail no momento. Tente novamente mais tarde.')
 
             return redirect('dashboard')
