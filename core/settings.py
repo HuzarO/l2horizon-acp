@@ -553,6 +553,15 @@ else:
             'options': {'queue': 'default'},
             'args': (5,),
         },
+        'limpar-sessoes-expiradas': {
+            'task': 'apps.main.home.tasks.cleanup_expired_sessions',
+            'schedule': crontab(minute='*/30'),  # A cada 30 minutos
+        },
+        'limpar-logs-antigos': {
+            'task': 'apps.main.home.tasks.cleanup_old_logs',
+            'schedule': crontab(hour=2, minute=0),  # 2h da manhã diariamente
+            'args': (30,),  # Remove logs com mais de 30 dias
+        },
     }
 
 CELERY_ACCEPT_CONTENT = ['application/json']

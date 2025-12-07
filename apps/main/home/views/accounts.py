@@ -69,17 +69,19 @@ def register_view(request):
                 reverse('verificar_email', args=[uid, token])
             )
 
-            # Envia email de forma assíncrona (não bloqueia a resposta)
+            # Envia email (síncrono em DEBUG, assíncrono em produção)
             try:
-                send_email_task.delay(
+                from apps.main.home.tasks import send_email_task, execute_task_sync_or_async
+                execute_task_sync_or_async(
+                    send_email_task,
                     'Verifique seu e-mail',
                     f'Olá {user.username}, clique no link para verificar sua conta: {verification_link}',
                     settings.DEFAULT_FROM_EMAIL,
                     [user.email]
                 )
-                logger.info(f"Email de verificação agendado para {user.email}")
+                logger.info(f"Email de verificação {'enviado' if settings.DEBUG else 'agendado'} para {user.email}")
             except Exception as e:
-                logger.error(f"Erro ao agendar envio de email: {str(e)}")
+                logger.error(f"Erro ao {'enviar' if settings.DEBUG else 'agendar'} envio de email: {str(e)}")
 
             try:
                 send_notification(
