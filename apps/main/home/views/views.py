@@ -145,17 +145,48 @@ def index(request):
 
     # Buscar notícias públicas para o tema
     latest_news_list = []
-    if hasattr(request, 'theme') and request.theme:
-        # Busca notícias públicas para o tema
+    # Busca notícias públicas (sempre, não apenas quando há tema)
+    try:
         all_news = News.objects.filter(is_published=True, is_private=False).order_by('-pub_date')[:10]
+        logger.info(f"Encontradas {all_news.count()} notícias públicas")
         
         for news in all_news:
+            # Tenta buscar tradução no idioma atual
             translation = news.translations.filter(language=current_lang).first()
+            # Se não encontrar, tenta português como fallback
+            if not translation:
+                translation = news.translations.filter(language='pt').first()
+            # Se ainda não encontrar, pega a primeira tradução disponível
+            if not translation:
+                translation = news.translations.first()
+            
+            # Se encontrou tradução, adiciona à lista
             if translation:
                 latest_news_list.append({
                     'news': news,
                     'translation': translation
                 })
+            else:
+                # Log para debug se não encontrou tradução
+                logger.warning(f"Notícia {news.pk} não tem tradução disponível")
+    except Exception as e:
+        logger.error(f"Erro ao buscar notícias: {e}")
+        latest_news_list = []
+
+    # Buscar conteúdos do media_storage para a seção Content
+    content_items = []
+    if hasattr(request, 'theme') and request.theme:
+        try:
+            from apps.media_storage.models import MediaFile, MediaCategory
+            # Busca arquivos de mídia públicos e ativos, limitando a 4 itens
+            content_items = MediaFile.objects.filter(
+                is_public=True,
+                is_active=True,
+                file_type='image'  # Apenas imagens para a seção Content
+            ).order_by('-uploaded_at')[:4]
+        except Exception as e:
+            logger.error(f"Erro ao buscar conteúdos do media_storage: {e}")
+            content_items = []
 
     # Verificar status do servidor com cache
     server_status_cache_key = 'index_server_status'
@@ -203,6 +234,7 @@ def index(request):
         'jogadores_online_texto': jogadores_online_texto,
         'apoiadores': apoiadores,
         'latest_news_list': latest_news_list,
+        'content_items': content_items,
         'server_status': server_status,
     }
 
