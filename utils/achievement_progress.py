@@ -602,7 +602,7 @@ def _calcular_progresso_por_codigo(user, codigo):
             return _criar_progresso(maior_comentarios, alvo, f'Maior post tem {maior_comentarios} comentários (meta: {alvo})')
     
     if codigo == '10_compartilhamentos_recebidos':
-        atual = Share.objects.filter(post__author=user).count()
+        atual = Share.objects.filter(original_post__author=user).count()
         return _criar_progresso(atual, 10, f'{atual}/10 compartilhamentos recebidos')
     
     return None
