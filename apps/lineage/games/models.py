@@ -392,7 +392,7 @@ class BattlePassSeason(BaseModel):
         super().save(*args, **kwargs)
         # Limpa o cache quando uma temporada é salva
         try:
-            from ..services.battle_pass_service import BattlePassService
+            from apps.lineage.games.services.battle_pass_service import BattlePassService
             BattlePassService.clear_active_season_cache()
         except ImportError:
             pass  # Ignora se o service não estiver disponível durante migrações
@@ -486,7 +486,7 @@ class UserBattlePassProgress(BaseModel):
         # Verifica se alcançou um novo nível
         if new_level_number > old_level_number:
             # Importa aqui para evitar circular imports
-            from ..services.battle_pass_service import BattlePassService
+            from apps.lineage.games.services.battle_pass_service import BattlePassService
             BattlePassService.handle_level_up(self, old_level_number, new_level_number, auto_claim)
         
         # Registra no histórico (usa apps.get_model para evitar circular imports)

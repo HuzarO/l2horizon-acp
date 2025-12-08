@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from ..models import UserBattlePassProgress, BattlePassSeason, BattlePassReward, BattlePassItemExchange, Bag, BagItem, BattlePassLevel
-from ..services.battle_pass_service import BattlePassService
+from apps.lineage.games.models import UserBattlePassProgress, BattlePassSeason, BattlePassReward, BattlePassItemExchange, Bag, BagItem, BattlePassLevel
+from apps.lineage.games.services.battle_pass_service import BattlePassService
 from apps.main.home.decorator import conditional_otp_required
 from django.shortcuts import redirect, get_object_or_404
 from apps.lineage.wallet.models import Wallet

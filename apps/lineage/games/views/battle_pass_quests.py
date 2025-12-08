@@ -7,11 +7,11 @@ from django.utils.translation import gettext_lazy as _, gettext
 from django.db import transaction
 from apps.main.home.decorator import conditional_otp_required
 from django.db import models
-from ..models import (
+from apps.lineage.games.models import (
     BattlePassQuest, BattlePassQuestProgress, UserBattlePassProgress,
     BattlePassSeason
 )
-from ..services.battle_pass_service import BattlePassService
+from apps.lineage.games.services.battle_pass_service import BattlePassService
 from django.utils import timezone
 from datetime import timedelta
 
