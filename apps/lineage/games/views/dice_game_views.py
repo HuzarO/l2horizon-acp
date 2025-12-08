@@ -226,6 +226,15 @@ def dice_game_play(request):
         bonus_prize=bonus_prize
     )
     
+    # Atualizar progresso de quests relacionadas ao dice game
+    if won:
+        try:
+            from apps.lineage.games.services.quest_progress_tracker import check_and_update_all_quests
+            check_and_update_all_quests(user)
+        except Exception as e:
+            # Não falhar se houver erro no tracking
+            pass
+    
     # Construir mensagem
     message = ''
     if won:

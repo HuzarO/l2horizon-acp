@@ -210,7 +210,7 @@ def battle_pass_history_view(request):
         messages.error(request, gettext("Não há temporada ativa no momento."))
         return redirect('games:battle_pass')
     
-    from ..models import BattlePassHistory
+    from ..models import BattlePassHistory, BattlePassReward
     from django.core.paginator import Paginator
     
     history = BattlePassHistory.objects.filter(
@@ -225,6 +225,31 @@ def battle_pass_history_view(request):
         history_page = paginator.page(page)
     except:
         history_page = paginator.page(1)
+    
+    # Buscar rewards para exibir ícones de itens
+    reward_ids = []
+    for item in history_page:
+        if item.metadata and 'reward_id' in item.metadata:
+            reward_ids.append(item.metadata['reward_id'])
+    
+    rewards_dict = {}
+    if reward_ids:
+        rewards = BattlePassReward.objects.filter(id__in=reward_ids).select_related('level')
+        rewards_dict = {r.id: r for r in rewards}
+    
+    # Adicionar reward ao contexto de cada item e informações de item do metadata
+    for item in history_page:
+        if item.metadata:
+            # Se tem reward_id, buscar o reward
+            if 'reward_id' in item.metadata:
+                reward_id = item.metadata['reward_id']
+                item.reward = rewards_dict.get(reward_id)
+            # Se tem informações de item diretamente no metadata (para item_exchanged, etc)
+            elif 'item_id' in item.metadata:
+                item.item_id = item.metadata.get('item_id')
+                item.item_name = item.metadata.get('item_name')
+                item.item_enchant = item.metadata.get('item_enchant', 0)
+                item.item_amount = item.metadata.get('item_amount', 1)
     
     context = {
         'season': season,
@@ -277,6 +302,32 @@ def battle_pass_statistics_view(request):
         user=request.user,
         season=season
     ).order_by('-created_at')[:10]
+    
+    # Buscar rewards para exibir ícones de itens no histórico recente
+    reward_ids = []
+    for item in recent_history:
+        if item.metadata and 'reward_id' in item.metadata:
+            reward_ids.append(item.metadata['reward_id'])
+    
+    rewards_dict = {}
+    if reward_ids:
+        from ..models import BattlePassReward
+        rewards = BattlePassReward.objects.filter(id__in=reward_ids).select_related('level')
+        rewards_dict = {r.id: r for r in rewards}
+    
+    # Adicionar reward ao contexto de cada item e informações de item do metadata
+    for item in recent_history:
+        if item.metadata:
+            # Se tem reward_id, buscar o reward
+            if 'reward_id' in item.metadata:
+                reward_id = item.metadata['reward_id']
+                item.reward = rewards_dict.get(reward_id)
+            # Se tem informações de item diretamente no metadata (para item_exchanged, etc)
+            elif 'item_id' in item.metadata:
+                item.item_id = item.metadata.get('item_id')
+                item.item_name = item.metadata.get('item_name')
+                item.item_enchant = item.metadata.get('item_enchant', 0)
+                item.item_amount = item.metadata.get('item_amount', 1)
     
     context = {
         'season': season,

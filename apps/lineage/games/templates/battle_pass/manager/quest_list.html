@@ -33,6 +33,8 @@
                             <tr>
                                 <th>{% trans "Título" %}</th>
                                 <th>{% trans "Tipo" %}</th>
+                                <th>{% trans "Objetivo" %}</th>
+                                <th>{% trans "Meta" %}</th>
                                 <th>{% trans "XP" %}</th>
                                 <th>{% trans "Premium" %}</th>
                                 <th>{% trans "Ativa" %}</th>
@@ -44,6 +46,8 @@
                             <tr>
                                 <td>{{ quest.title }}</td>
                                 <td><span class="badge bg-info">{{ quest.get_quest_type_display }}</span></td>
+                                <td><span class="badge bg-primary">{{ quest.get_objective_type_display }}</span></td>
+                                <td>{{ quest.objective_target }}</td>
                                 <td>{{ quest.xp_reward }}</td>
                                 <td>{% if quest.is_premium %}<span class="badge bg-warning">{% trans "Sim" %}</span>{% else %}<span class="badge bg-secondary">{% trans "Não" %}</span>{% endif %}</td>
                                 <td>{% if quest.is_active %}<span class="badge bg-success">{% trans "Sim" %}</span>{% else %}<span class="badge bg-danger">{% trans "Não" %}</span>{% endif %}</td>
@@ -58,7 +62,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6" class="text-center">{% trans "Nenhuma quest encontrada." %}</td>
+                                <td colspan="8" class="text-center">{% trans "Nenhuma quest encontrada." %}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

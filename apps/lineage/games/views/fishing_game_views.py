@@ -194,6 +194,14 @@ def fishing_game_cast(request):
         success=success
     )
     
+    # Atualizar progresso de quests relacionadas à pescaria (verificar nível da vara)
+    try:
+        from apps.lineage.games.services.quest_progress_tracker import check_and_update_all_quests
+        check_and_update_all_quests(user)
+    except Exception as e:
+        # Não falhar se houver erro no tracking
+        pass
+    
     response_data = {
         'success': success,
         'fish': {

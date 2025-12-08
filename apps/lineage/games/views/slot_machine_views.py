@@ -146,6 +146,15 @@ def slot_machine_spin(request):
             fichas_won=fichas_won
         )
         
+        # Atualizar progresso de quests relacionadas ao slot machine
+        if item_won:
+            try:
+                from apps.lineage.games.services.quest_progress_tracker import check_and_update_all_quests
+                check_and_update_all_quests(user)
+            except Exception as e:
+                # Não falhar se houver erro no tracking
+                pass
+        
         response_data = {
             'success': True,
             'symbols': [

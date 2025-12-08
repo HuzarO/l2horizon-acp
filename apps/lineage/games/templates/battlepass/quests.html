@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% load i18n %}
+{% load itens_extras %}
 
 {% block content %}
 <style>
@@ -262,6 +263,159 @@
     box-shadow: 0 4px 15px rgba(0,255,127,0.4);
   }
 
+  .quest-progress {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: rgba(0,0,0,0.3);
+    border-radius: 1rem;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .quest-progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    color: rgba(255,255,255,0.9);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .quest-progress-bar {
+    width: 100%;
+    height: 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .quest-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success-color) 0%, #00ff00 100%);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(0,255,127,0.5);
+  }
+
+  .quest-objective-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9rem;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(255,255,255,0.05);
+    border-radius: 0.5rem;
+  }
+
+  .quest-objective-info i {
+    color: var(--accent-color);
+  }
+
+  .quest-progress {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: rgba(0,0,0,0.3);
+    border-radius: 1rem;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .quest-progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    color: rgba(255,255,255,0.9);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .quest-progress-bar {
+    width: 100%;
+    height: 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .quest-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success-color) 0%, #00ff00 100%);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(0,255,127,0.5);
+  }
+
+  .quest-objective-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9rem;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(255,255,255,0.05);
+    border-radius: 0.5rem;
+  }
+
+  .quest-objective-info i {
+    color: var(--accent-color);
+  }
+
+  .quest-required-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: rgba(255,165,0,0.9);
+    font-size: 0.9rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(255,165,0,0.1);
+    border-radius: 0.5rem;
+    border-left: 3px solid rgba(255,165,0,0.5);
+  }
+
+  .quest-required-item.missing-item {
+    background: rgba(255,107,107,0.1);
+    border-left-color: rgba(255,107,107,0.5);
+  }
+
+  .quest-required-item i {
+    color: rgba(255,165,0,0.9);
+  }
+
+  .quest-required-item-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    border: 2px solid rgba(255,165,0,0.3);
+    box-shadow: 0 2px 8px rgba(255,165,0,0.2);
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .quest-required-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+
+  .quest-required-item-name {
+    font-weight: 600;
+    color: rgba(255,165,0,0.95);
+  }
+
+  .quest-required-item-details {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.7);
+  }
+
   .quest-actions {
     display: flex;
     justify-content: space-between;
@@ -456,15 +610,83 @@
           {% endif %}
         </div>
       </div>
+      
+      {% if not quest_data.progress.completed %}
+      <div class="quest-progress">
+        <div class="quest-progress-label">
+          <span>{% trans "Progresso" %}</span>
+          <span>{{ quest_data.progress.progress }} / {{ quest_data.quest.objective_target }}</span>
+        </div>
+        <div class="quest-progress-bar">
+          <div class="quest-progress-fill" style="width: {% if quest_data.quest.objective_target > 0 %}{% widthratio quest_data.progress.progress quest_data.quest.objective_target 100 %}{% else %}0{% endif %}%"></div>
+        </div>
+        <div class="quest-objective-info">
+          <i class="fas fa-bullseye"></i>
+          <span>{% trans "Objetivo" %}: {{ quest_data.quest.get_objective_type_display }}</span>
+        </div>
+        {% if quest_data.quest.required_item_id %}
+        <div class="quest-required-item {% if not quest_data.has_required_item %}missing-item{% endif %}">
+          <img src="{% item_image_url quest_data.quest.required_item_id %}" 
+               alt="{{ quest_data.quest.required_item_name }}"
+               class="quest-required-item-icon"
+               title="{{ quest_data.quest.required_item_name }}">
+          <div class="quest-required-item-info">
+            <div class="quest-required-item-name">
+              <i class="fas fa-exclamation-triangle"></i> {% trans "Requer" %}: {{ quest_data.quest.required_item_name }}
+            </div>
+            <div class="quest-required-item-details">
+              <span>x{{ quest_data.quest.required_item_amount }}</span>
+              {% if quest_data.quest.required_item_enchant > 0 %}
+              <span>+{{ quest_data.quest.required_item_enchant }}</span>
+              {% endif %}
+              {% if quest_data.bag_item_info %}
+              <span style="color: rgba(255,255,255,0.7); margin-left: 0.5rem; font-size: 0.85rem;">
+                ({% trans "Você tem" %}: x{{ quest_data.bag_item_info.quantity }}{% if quest_data.bag_item_info.enchant > 0 %} +{{ quest_data.bag_item_info.enchant }}{% endif %})
+              </span>
+              {% endif %}
+              {% if not quest_data.has_required_item %}
+              <span style="color: #ff6b6b; font-weight: 700; margin-left: 0.5rem; display: block; margin-top: 0.25rem;">
+                <i class="fas fa-times-circle"></i> {% trans "Item não encontrado ou quantidade insuficiente" %}
+              </span>
+              {% else %}
+              <span style="color: var(--success-color); font-weight: 700; margin-left: 0.5rem; display: block; margin-top: 0.25rem;">
+                <i class="fas fa-check-circle"></i> {% trans "Item disponível" %}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      
       <div class="quest-actions">
         <div class="quest-reward">
           <i class="fas fa-star"></i>
           <span>+{{ quest_data.quest.xp_reward }} XP</span>
         </div>
         {% if not quest_data.progress.completed %}
-        <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
-          <i class="fas fa-check"></i> {% trans "Completar" %}
-        </a>
+          {% if quest_data.can_complete %}
+            {% if quest_data.quest.required_item_id %}
+              {% if quest_data.has_required_item %}
+              <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+                <i class="fas fa-check"></i> {% trans "Completar" %}
+              </a>
+              {% else %}
+              <button class="btn-complete" disabled>
+                <i class="fas fa-exclamation-triangle"></i> {% trans "Item requerido não encontrado" %}
+              </button>
+              {% endif %}
+            {% else %}
+            <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+              <i class="fas fa-check"></i> {% trans "Completar" %}
+            </a>
+            {% endif %}
+          {% else %}
+          <button class="btn-complete" disabled>
+            <i class="fas fa-lock"></i> {% trans "Objetivo não atingido" %}
+          </button>
+          {% endif %}
         {% endif %}
       </div>
     </div>
@@ -491,15 +713,83 @@
           {% endif %}
         </div>
       </div>
+      
+      {% if not quest_data.progress.completed %}
+      <div class="quest-progress">
+        <div class="quest-progress-label">
+          <span>{% trans "Progresso" %}</span>
+          <span>{{ quest_data.progress.progress }} / {{ quest_data.quest.objective_target }}</span>
+        </div>
+        <div class="quest-progress-bar">
+          <div class="quest-progress-fill" style="width: {% if quest_data.quest.objective_target > 0 %}{% widthratio quest_data.progress.progress quest_data.quest.objective_target 100 %}{% else %}0{% endif %}%"></div>
+        </div>
+        <div class="quest-objective-info">
+          <i class="fas fa-bullseye"></i>
+          <span>{% trans "Objetivo" %}: {{ quest_data.quest.get_objective_type_display }}</span>
+        </div>
+        {% if quest_data.quest.required_item_id %}
+        <div class="quest-required-item {% if not quest_data.has_required_item %}missing-item{% endif %}">
+          <img src="{% item_image_url quest_data.quest.required_item_id %}" 
+               alt="{{ quest_data.quest.required_item_name }}"
+               class="quest-required-item-icon"
+               title="{{ quest_data.quest.required_item_name }}">
+          <div class="quest-required-item-info">
+            <div class="quest-required-item-name">
+              <i class="fas fa-exclamation-triangle"></i> {% trans "Requer" %}: {{ quest_data.quest.required_item_name }}
+            </div>
+            <div class="quest-required-item-details">
+              <span>x{{ quest_data.quest.required_item_amount }}</span>
+              {% if quest_data.quest.required_item_enchant > 0 %}
+              <span>+{{ quest_data.quest.required_item_enchant }}</span>
+              {% endif %}
+              {% if quest_data.bag_item_info %}
+              <span style="color: rgba(255,255,255,0.7); margin-left: 0.5rem; font-size: 0.85rem;">
+                ({% trans "Você tem" %}: x{{ quest_data.bag_item_info.quantity }}{% if quest_data.bag_item_info.enchant > 0 %} +{{ quest_data.bag_item_info.enchant }}{% endif %})
+              </span>
+              {% endif %}
+              {% if not quest_data.has_required_item %}
+              <span style="color: #ff6b6b; font-weight: 700; margin-left: 0.5rem; display: block; margin-top: 0.25rem;">
+                <i class="fas fa-times-circle"></i> {% trans "Item não encontrado ou quantidade insuficiente" %}
+              </span>
+              {% else %}
+              <span style="color: var(--success-color); font-weight: 700; margin-left: 0.5rem; display: block; margin-top: 0.25rem;">
+                <i class="fas fa-check-circle"></i> {% trans "Item disponível" %}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      
       <div class="quest-actions">
         <div class="quest-reward">
           <i class="fas fa-star"></i>
           <span>+{{ quest_data.quest.xp_reward }} XP</span>
         </div>
         {% if not quest_data.progress.completed %}
-        <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
-          <i class="fas fa-check"></i> {% trans "Completar" %}
-        </a>
+          {% if quest_data.can_complete %}
+            {% if quest_data.quest.required_item_id %}
+              {% if quest_data.has_required_item %}
+              <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+                <i class="fas fa-check"></i> {% trans "Completar" %}
+              </a>
+              {% else %}
+              <button class="btn-complete" disabled>
+                <i class="fas fa-exclamation-triangle"></i> {% trans "Item requerido não encontrado" %}
+              </button>
+              {% endif %}
+            {% else %}
+            <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+              <i class="fas fa-check"></i> {% trans "Completar" %}
+            </a>
+            {% endif %}
+          {% else %}
+          <button class="btn-complete" disabled>
+            <i class="fas fa-lock"></i> {% trans "Objetivo não atingido" %}
+          </button>
+          {% endif %}
         {% endif %}
       </div>
     </div>
@@ -526,15 +816,83 @@
           {% endif %}
         </div>
       </div>
+      
+      {% if not quest_data.progress.completed %}
+      <div class="quest-progress">
+        <div class="quest-progress-label">
+          <span>{% trans "Progresso" %}</span>
+          <span>{{ quest_data.progress.progress }} / {{ quest_data.quest.objective_target }}</span>
+        </div>
+        <div class="quest-progress-bar">
+          <div class="quest-progress-fill" style="width: {% if quest_data.quest.objective_target > 0 %}{% widthratio quest_data.progress.progress quest_data.quest.objective_target 100 %}{% else %}0{% endif %}%"></div>
+        </div>
+        <div class="quest-objective-info">
+          <i class="fas fa-bullseye"></i>
+          <span>{% trans "Objetivo" %}: {{ quest_data.quest.get_objective_type_display }}</span>
+        </div>
+        {% if quest_data.quest.required_item_id %}
+        <div class="quest-required-item {% if not quest_data.has_required_item %}missing-item{% endif %}">
+          <img src="{% item_image_url quest_data.quest.required_item_id %}" 
+               alt="{{ quest_data.quest.required_item_name }}"
+               class="quest-required-item-icon"
+               title="{{ quest_data.quest.required_item_name }}">
+          <div class="quest-required-item-info">
+            <div class="quest-required-item-name">
+              <i class="fas fa-exclamation-triangle"></i> {% trans "Requer" %}: {{ quest_data.quest.required_item_name }}
+            </div>
+            <div class="quest-required-item-details">
+              <span>x{{ quest_data.quest.required_item_amount }}</span>
+              {% if quest_data.quest.required_item_enchant > 0 %}
+              <span>+{{ quest_data.quest.required_item_enchant }}</span>
+              {% endif %}
+              {% if quest_data.bag_item_info %}
+              <span style="color: rgba(255,255,255,0.7); margin-left: 0.5rem; font-size: 0.85rem;">
+                ({% trans "Você tem" %}: x{{ quest_data.bag_item_info.quantity }}{% if quest_data.bag_item_info.enchant > 0 %} +{{ quest_data.bag_item_info.enchant }}{% endif %})
+              </span>
+              {% endif %}
+              {% if not quest_data.has_required_item %}
+              <span style="color: #ff6b6b; font-weight: 700; margin-left: 0.5rem; display: block; margin-top: 0.25rem;">
+                <i class="fas fa-times-circle"></i> {% trans "Item não encontrado ou quantidade insuficiente" %}
+              </span>
+              {% else %}
+              <span style="color: var(--success-color); font-weight: 700; margin-left: 0.5rem; display: block; margin-top: 0.25rem;">
+                <i class="fas fa-check-circle"></i> {% trans "Item disponível" %}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      
       <div class="quest-actions">
         <div class="quest-reward">
           <i class="fas fa-star"></i>
           <span>+{{ quest_data.quest.xp_reward }} XP</span>
         </div>
         {% if not quest_data.progress.completed %}
-        <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
-          <i class="fas fa-check"></i> {% trans "Completar" %}
-        </a>
+          {% if quest_data.can_complete %}
+            {% if quest_data.quest.required_item_id %}
+              {% if quest_data.has_required_item %}
+              <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+                <i class="fas fa-check"></i> {% trans "Completar" %}
+              </a>
+              {% else %}
+              <button class="btn-complete" disabled>
+                <i class="fas fa-exclamation-triangle"></i> {% trans "Item requerido não encontrado" %}
+              </button>
+              {% endif %}
+            {% else %}
+            <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+              <i class="fas fa-check"></i> {% trans "Completar" %}
+            </a>
+            {% endif %}
+          {% else %}
+          <button class="btn-complete" disabled>
+            <i class="fas fa-lock"></i> {% trans "Objetivo não atingido" %}
+          </button>
+          {% endif %}
         {% endif %}
       </div>
     </div>
@@ -561,15 +919,83 @@
           {% endif %}
         </div>
       </div>
+      
+      {% if not quest_data.progress.completed %}
+      <div class="quest-progress">
+        <div class="quest-progress-label">
+          <span>{% trans "Progresso" %}</span>
+          <span>{{ quest_data.progress.progress }} / {{ quest_data.quest.objective_target }}</span>
+        </div>
+        <div class="quest-progress-bar">
+          <div class="quest-progress-fill" style="width: {% if quest_data.quest.objective_target > 0 %}{% widthratio quest_data.progress.progress quest_data.quest.objective_target 100 %}{% else %}0{% endif %}%"></div>
+        </div>
+        <div class="quest-objective-info">
+          <i class="fas fa-bullseye"></i>
+          <span>{% trans "Objetivo" %}: {{ quest_data.quest.get_objective_type_display }}</span>
+        </div>
+        {% if quest_data.quest.required_item_id %}
+        <div class="quest-required-item {% if not quest_data.has_required_item %}missing-item{% endif %}">
+          <img src="{% item_image_url quest_data.quest.required_item_id %}" 
+               alt="{{ quest_data.quest.required_item_name }}"
+               class="quest-required-item-icon"
+               title="{{ quest_data.quest.required_item_name }}">
+          <div class="quest-required-item-info">
+            <div class="quest-required-item-name">
+              <i class="fas fa-exclamation-triangle"></i> {% trans "Requer" %}: {{ quest_data.quest.required_item_name }}
+            </div>
+            <div class="quest-required-item-details">
+              <span>x{{ quest_data.quest.required_item_amount }}</span>
+              {% if quest_data.quest.required_item_enchant > 0 %}
+              <span>+{{ quest_data.quest.required_item_enchant }}</span>
+              {% endif %}
+              {% if quest_data.bag_item_info %}
+              <span style="color: rgba(255,255,255,0.7); margin-left: 0.5rem; font-size: 0.85rem;">
+                ({% trans "Você tem" %}: x{{ quest_data.bag_item_info.quantity }}{% if quest_data.bag_item_info.enchant > 0 %} +{{ quest_data.bag_item_info.enchant }}{% endif %})
+              </span>
+              {% endif %}
+              {% if not quest_data.has_required_item %}
+              <span style="color: #ff6b6b; font-weight: 700; margin-left: 0.5rem; display: block; margin-top: 0.25rem;">
+                <i class="fas fa-times-circle"></i> {% trans "Item não encontrado ou quantidade insuficiente" %}
+              </span>
+              {% else %}
+              <span style="color: var(--success-color); font-weight: 700; margin-left: 0.5rem; display: block; margin-top: 0.25rem;">
+                <i class="fas fa-check-circle"></i> {% trans "Item disponível" %}
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+      
       <div class="quest-actions">
         <div class="quest-reward">
           <i class="fas fa-star"></i>
           <span>+{{ quest_data.quest.xp_reward }} XP</span>
         </div>
         {% if not quest_data.progress.completed %}
-        <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
-          <i class="fas fa-check"></i> {% trans "Completar" %}
-        </a>
+          {% if quest_data.can_complete %}
+            {% if quest_data.quest.required_item_id %}
+              {% if quest_data.has_required_item %}
+              <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+                <i class="fas fa-check"></i> {% trans "Completar" %}
+              </a>
+              {% else %}
+              <button class="btn-complete" disabled>
+                <i class="fas fa-exclamation-triangle"></i> {% trans "Item requerido não encontrado" %}
+              </button>
+              {% endif %}
+            {% else %}
+            <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+              <i class="fas fa-check"></i> {% trans "Completar" %}
+            </a>
+            {% endif %}
+          {% else %}
+          <button class="btn-complete" disabled>
+            <i class="fas fa-lock"></i> {% trans "Objetivo não atingido" %}
+          </button>
+          {% endif %}
         {% endif %}
       </div>
     </div>

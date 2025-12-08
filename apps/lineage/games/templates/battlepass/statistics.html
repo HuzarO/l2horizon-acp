@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% load i18n %}
+{% load itens_extras %}
 
 {% block content %}
 <style>
@@ -78,22 +79,81 @@
     border-radius: 0.5rem;
     margin-bottom: 0.5rem;
     border-left: 3px solid var(--primary-glow);
+    transition: all 0.3s ease;
+  }
+
+  .history-item:hover {
+    background: rgba(255,255,255,0.08);
+    transform: translateX(3px);
   }
 
   .history-item .action-type {
     color: var(--accent-color);
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
   }
 
   .history-item .description {
     color: rgba(255,255,255,0.8);
     margin-top: 0.25rem;
+    line-height: 1.5;
   }
 
   .history-item .date {
     color: rgba(255,255,255,0.5);
     font-size: 0.85rem;
-    margin-top: 0.25rem;
+    margin-top: 0.5rem;
+  }
+
+  .history-item-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(255,255,255,0.05);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .history-item-item-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    background: rgba(255,255,255,0.1);
+    padding: 4px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  }
+
+  .history-item-item-info {
+    flex: 1;
+  }
+
+  .history-item-item-name {
+    color: rgba(255,255,255,0.9);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .history-item-item-details {
+    display: flex;
+    gap: 0.75rem;
+    color: rgba(255,255,255,0.7);
+    font-size: 0.85rem;
+  }
+
+  .history-item-xp {
+    color: var(--success-color);
+    font-weight: bold;
+    background: rgba(0,255,127,0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(0,255,127,0.3);
+    display: inline-block;
+    margin-top: 0.5rem;
   }
 
   .btn-back {
@@ -199,12 +259,58 @@
     <h3><i class="fas fa-history"></i> {% trans "Histórico Recente" %}</h3>
     {% for item in recent_history %}
     <div class="history-item">
-      <div class="action-type">{{ item.get_action_type_display }}</div>
+      <div class="action-type">
+        <i class="fas fa-{% if item.action_type == 'level_up' %}arrow-up{% elif item.action_type == 'reward_claimed' %}gift{% elif item.action_type == 'xp_gained' %}star{% elif item.action_type == 'quest_completed' %}check-circle{% elif item.action_type == 'milestone_reached' %}trophy{% elif item.action_type == 'item_exchanged' %}exchange-alt{% elif item.action_type == 'premium_purchased' %}crown{% else %}circle{% endif %}"></i>
+        {{ item.get_action_type_display }}
+      </div>
       <div class="description">{{ item.description }}</div>
-      {% if item.xp_amount > 0 %}
-      <div class="description">+{{ item.xp_amount }} XP</div>
+      
+      {% if item.reward and item.reward.item_id %}
+        <div class="history-item-item">
+          <img src="{% item_image_url item.reward.item_id %}" 
+               alt="{{ item.reward.item_name|default:item.reward.description }}" 
+               class="history-item-item-icon"
+               title="{{ item.reward.item_name|default:item.reward.description }}">
+          <div class="history-item-item-info">
+            <div class="history-item-item-name">{{ item.reward.item_name|default:item.reward.description }}</div>
+            <div class="history-item-item-details">
+              {% if item.reward.item_enchant > 0 %}
+                <span><i class="fas fa-magic"></i> +{{ item.reward.item_enchant }}</span>
+              {% endif %}
+              {% if item.reward.item_amount > 1 %}
+                <span><i class="fas fa-layer-group"></i> x{{ item.reward.item_amount }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% elif item.item_id %}
+        <div class="history-item-item">
+          <img src="{% item_image_url item.item_id %}" 
+               alt="{{ item.item_name|default:'Item' }}" 
+               class="history-item-item-icon"
+               title="{{ item.item_name|default:'Item' }}">
+          <div class="history-item-item-info">
+            <div class="history-item-item-name">{{ item.item_name|default:'Item' }}</div>
+            <div class="history-item-item-details">
+              {% if item.item_enchant > 0 %}
+                <span><i class="fas fa-magic"></i> +{{ item.item_enchant }}</span>
+              {% endif %}
+              {% if item.item_amount > 1 %}
+                <span><i class="fas fa-layer-group"></i> x{{ item.item_amount }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
       {% endif %}
-      <div class="date">{{ item.created_at|date:"d/m/Y H:i" }}</div>
+      
+      {% if item.xp_amount > 0 %}
+      <div class="history-item-xp">
+        <i class="fas fa-star"></i> +{{ item.xp_amount }} XP
+      </div>
+      {% endif %}
+      <div class="date">
+        <i class="fas fa-clock"></i> {{ item.created_at|date:"d/m/Y H:i" }}
+      </div>
     </div>
     {% endfor %}
     <div style="text-align: center; margin-top: 1rem;">

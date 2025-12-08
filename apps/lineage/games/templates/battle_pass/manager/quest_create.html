@@ -48,6 +48,81 @@
                                 <label class="form-label text-white">{% trans "XP de Recompensa" %}</label>
                                 <input type="number" name="xp_reward" class="form-control" value="100" min="1" required>
                             </div>
+                            
+                            <hr class="text-white my-4">
+                            <h5 class="text-white mb-3">{% trans "Sistema de Objetivos" %}</h5>
+                            
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Tipo de Objetivo" %}</label>
+                                <select name="objective_type" id="objective_type" class="form-select" required>
+                                    <option value="xp">{% trans "Ganhar XP" %}</option>
+                                    <option value="roulette_items">{% trans "Adquirir itens pela Roleta" %}</option>
+                                    <option value="box_items">{% trans "Adquirir itens em uma Box" %}</option>
+                                    <option value="slot_items">{% trans "Adquirir itens no Slot Machine" %}</option>
+                                    <option value="fishing_rod_level">{% trans "Adquirir vara de pesca nível X" %}</option>
+                                    <option value="dice_number">{% trans "Adquirir número no Dice Game" %}</option>
+                                    <option value="game_item">{% trans "Adquirir item específico" %}</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Meta do Objetivo" %}</label>
+                                <input type="number" name="objective_target" id="objective_target" class="form-control" value="1" min="1" required>
+                                <small class="text-muted">{% trans "Quantidade/valor necessário (ex: 5 itens, nível 3, etc)" %}</small>
+                            </div>
+                            
+                            <!-- Campos específicos por tipo de objetivo -->
+                            <div id="dice_number_fields" class="mb-3" style="display: none;">
+                                <label class="form-label text-white">{% trans "Número do Dado (1-6)" %}</label>
+                                <input type="number" name="dice_number" class="form-control" min="1" max="6">
+                            </div>
+                            
+                            <div id="fishing_rod_level_fields" class="mb-3" style="display: none;">
+                                <label class="form-label text-white">{% trans "Nível da Vara" %}</label>
+                                <input type="number" name="rod_level" class="form-control" min="1">
+                                <small class="text-muted">{% trans "O objetivo será completado quando o usuário alcançar este nível" %}</small>
+                            </div>
+                            
+                            <div id="game_item_fields" class="mb-3" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="form-label text-white">{% trans "Item ID" %}</label>
+                                        <input type="number" name="game_item_id" class="form-control" min="0">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-white">{% trans "Nome do Item" %}</label>
+                                        <input type="text" name="game_item_name" class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <input type="hidden" name="objective_metadata" id="objective_metadata" value="{}">
+                            
+                            <hr class="text-white my-4">
+                            <h5 class="text-white mb-3">{% trans "Item Requerido (Opcional)" %}</h5>
+                            <small class="text-muted d-block mb-3">{% trans "Item que será REMOVIDO da bag quando a quest for completada (para objetivos que cobram itens)" %}</small>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white">{% trans "Item ID Requerido" %}</label>
+                                    <input type="number" name="required_item_id" class="form-control" min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white">{% trans "Nome do Item" %}</label>
+                                    <input type="text" name="required_item_name" class="form-control">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white">{% trans "Encantamento" %}</label>
+                                    <input type="number" name="required_item_enchant" class="form-control" value="0" min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label text-white">{% trans "Quantidade" %}</label>
+                                    <input type="number" name="required_item_amount" class="form-control" value="1" min="1">
+                                </div>
+                            </div>
+                            
                             <div class="mb-3">
                                 <label class="form-label text-white">{% trans "Temporada" %}</label>
                                 <select name="season" class="form-select">
@@ -90,5 +165,44 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const objectiveTypeSelect = document.getElementById('objective_type');
+    const diceNumberFields = document.getElementById('dice_number_fields');
+    const fishingRodFields = document.getElementById('fishing_rod_level_fields');
+    const gameItemFields = document.getElementById('game_item_fields');
+    const objectiveTarget = document.getElementById('objective_target');
+    const objectiveMetadata = document.getElementById('objective_metadata');
+    
+    function updateFields() {
+        const selectedType = objectiveTypeSelect.value;
+        
+        // Ocultar todos os campos específicos
+        diceNumberFields.style.display = 'none';
+        fishingRodFields.style.display = 'none';
+        gameItemFields.style.display = 'none';
+        
+        // Mostrar campos relevantes
+        if (selectedType === 'dice_number') {
+            diceNumberFields.style.display = 'block';
+            objectiveTarget.value = 1;
+        } else if (selectedType === 'fishing_rod_level') {
+            fishingRodFields.style.display = 'block';
+            objectiveTarget.value = 1;
+        } else if (selectedType === 'game_item') {
+            gameItemFields.style.display = 'block';
+            objectiveTarget.value = 1;
+        } else if (selectedType === 'xp') {
+            objectiveTarget.value = 100;
+        } else {
+            objectiveTarget.value = 5; // Padrão para itens
+        }
+    }
+    
+    objectiveTypeSelect.addEventListener('change', updateFields);
+    updateFields(); // Inicializar na carga da página
+});
+</script>
 {% endblock %}
 
