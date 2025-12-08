@@ -1,0 +1,175 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { 
+    background: radial-gradient(ellipse at center, #0f172a 0%, #1a1a2e 50%, #0f0f1e 100%); 
+    min-height: 100vh; 
+    padding: 40px 0; 
+    position: relative;
+}
+.manager-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(245, 158, 11, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(251, 191, 36, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.card-glow { 
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.95) 0%, rgba(18, 18, 32, 0.95) 100%); 
+    border: 1px solid rgba(245, 158, 11, 0.3); 
+    border-radius: 16px; 
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(245, 158, 11, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+}
+
+.btn-action {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+}
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
+    color: white;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-tab {
+    padding: 0.5rem 1.5rem;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.filter-tab.active {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+    color: white;
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+.filter-tab:not(.active) {
+    background: rgba(245, 158, 11, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.filter-tab:not(.active):hover {
+    background: rgba(245, 158, 11, 0.2);
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-white">
+                <i class="bi bi-trophy me-2"></i>{% trans "Premiações de Conquistas" %}
+            </h2>
+            <a href="{% url 'games:achievement_rewards_manager_reward_create' %}" class="btn-action">
+                <i class="bi bi-plus-circle me-2"></i>{% trans "Nova Premiação" %}
+            </a>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <a href="{% url 'games:achievement_rewards_manager_reward_list' %}?type=all" 
+               class="filter-tab {% if current_type == 'all' %}active{% endif %}">
+                {% trans "Todas" %}
+            </a>
+            <a href="{% url 'games:achievement_rewards_manager_reward_list' %}?type=conquista" 
+               class="filter-tab {% if current_type == 'conquista' %}active{% endif %}">
+                {% trans "Por Conquista" %}
+            </a>
+            <a href="{% url 'games:achievement_rewards_manager_reward_list' %}?type=multiplas" 
+               class="filter-tab {% if current_type == 'multiplas' %}active{% endif %}">
+                {% trans "Por Quantidade" %}
+            </a>
+        </div>
+
+        <div class="card card-glow">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Tipo" %}</th>
+                                <th>{% trans "Referência" %}</th>
+                                <th>{% trans "Item" %}</th>
+                                <th>{% trans "Quantidade" %}</th>
+                                <th>{% trans "Encantamento" %}</th>
+                                <th>{% trans "Criado em" %}</th>
+                                <th>{% trans "Ações" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reward in rewards %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-{% if reward.tipo == 'CONQUISTA' %}primary{% else %}info{% endif %}">
+                                        {{ reward.get_tipo_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <code class="text-warning">{{ reward.referencia }}</code>
+                                </td>
+                                <td>{{ reward.item_name }}</td>
+                                <td>{{ reward.quantity }}</td>
+                                <td>+{{ reward.enchant }}</td>
+                                <td>{{ reward.created_at|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <a href="{% url 'games:achievement_rewards_manager_reward_edit' reward.id %}" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'games:achievement_rewards_manager_reward_delete' reward.id %}" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-white-50">
+                                    <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                                    <p class="mt-3">{% trans "Nenhuma premiação encontrada." %}</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <a href="{% url 'games:achievement_rewards_manager' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

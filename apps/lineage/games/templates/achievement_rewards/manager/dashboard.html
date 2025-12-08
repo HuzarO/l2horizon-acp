@@ -1,0 +1,313 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Achievement Rewards Manager" %} - {% trans "Premiações de Conquistas" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { 
+    background: radial-gradient(ellipse at center, #0f172a 0%, #1a1a2e 50%, #0f0f1e 100%); 
+    min-height: 100vh; 
+    padding: 40px 0; 
+    position: relative;
+}
+.manager-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(245, 158, 11, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(251, 191, 36, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.card-glow { 
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.95) 0%, rgba(18, 18, 32, 0.95) 100%); 
+    border: 1px solid rgba(245, 158, 11, 0.3); 
+    border-radius: 16px; 
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(245, 158, 11, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+}
+.card-glow:hover {
+    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 
+        0 12px 40px rgba(245, 158, 11, 0.3),
+        0 0 0 1px rgba(245, 158, 11, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.stat-card {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(251, 191, 36, 0.15) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+    transform: scaleX(0);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.stat-card:hover::before {
+    transform: scaleX(1);
+}
+.stat-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 0 12px 32px rgba(245, 158, 11, 0.3);
+}
+.stat-value {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ffffff 0%, #fbbf24 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+    margin-bottom: 8px;
+}
+.stat-label {
+    font-size: 0.95rem;
+    opacity: 0.85;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-action {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+.btn-action::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+.btn-action:hover::before {
+    width: 300px;
+    height: 300px;
+}
+.btn-action:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.6);
+    color: white;
+}
+
+.quick-action-card {
+    transition: all 0.3s ease;
+    height: 100%;
+}
+.quick-action-card:hover {
+    transform: translateY(-5px);
+}
+.quick-action-card .card-header {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.1) 100%);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.page-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ffffff 0%, #fbbf24 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.btn-solid-white {
+    background: #ffffff !important;
+    color: #1a1a2e !important;
+    border: none !important;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+.btn-solid-white:hover {
+    background: #f8f9fa !important;
+    color: #1a1a2e !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 768px) {
+    .stat-value {
+        font-size: 2rem;
+    }
+    .manager-bg {
+        padding: 20px 0;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <!-- Header -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5">
+            <div class="page-header mb-3 mb-md-0">
+                <h2 class="mb-2">
+                    <i class="bi bi-trophy-fill text-warning me-2"></i>
+                    {% trans "Gerenciador de Premiações de Conquistas" %}
+                </h2>
+                <p class="text-white-50 mb-0">{% trans "Configure as recompensas que os jogadores recebem ao completar conquistas" %}</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'config_hub' %}" class="btn btn-solid-white">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                </a>
+                <a href="{% url 'games:achievement_rewards_manager_reward_create' %}" class="btn-action position-relative">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Nova Premiação" %}
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-6 col-md-3">
+                <div class="stat-card text-center position-relative">
+                    <div class="stat-value">{{ total_recompensas }}</div>
+                    <div class="stat-label">{% trans "Total de Premiações" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card text-center position-relative">
+                    <div class="stat-value">{{ total_recompensas_conquista }}</div>
+                    <div class="stat-label">{% trans "Por Conquista" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card text-center position-relative">
+                    <div class="stat-value">{{ total_recompensas_multiplas }}</div>
+                    <div class="stat-label">{% trans "Por Quantidade" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card text-center position-relative">
+                    <div class="stat-value">{{ total_conquistas }}</div>
+                    <div class="stat-label">{% trans "Conquistas Disponíveis" %}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row g-4 mb-5">
+            <div class="col-md-6">
+                <div class="card card-glow quick-action-card">
+                    <div class="card-header text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-trophy me-2"></i>{% trans "Premiações por Conquista" %}
+                        </h5>
+                    </div>
+                    <div class="card-body text-white">
+                        <p class="text-white-50">{% trans "Configure recompensas específicas para cada conquista individual" %}</p>
+                        <a href="{% url 'games:achievement_rewards_manager_reward_list' %}?type=conquista" class="btn btn-action w-100">
+                            <i class="bi bi-list-ul me-2"></i>{% trans "Ver Premiações" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card card-glow quick-action-card">
+                    <div class="card-header text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-trophy-fill me-2"></i>{% trans "Premiações por Quantidade" %}
+                        </h5>
+                    </div>
+                    <div class="card-body text-white">
+                        <p class="text-white-50">{% trans "Configure recompensas baseadas na quantidade total de conquistas completadas" %}</p>
+                        <a href="{% url 'games:achievement_rewards_manager_reward_list' %}?type=multiplas" class="btn btn-action w-100">
+                            <i class="bi bi-list-ul me-2"></i>{% trans "Ver Premiações" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Rewards -->
+        {% if recent_rewards %}
+        <div class="card card-glow">
+            <div class="card-header text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history me-2"></i>{% trans "Premiações Recentes" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Tipo" %}</th>
+                                <th>{% trans "Referência" %}</th>
+                                <th>{% trans "Item" %}</th>
+                                <th>{% trans "Quantidade" %}</th>
+                                <th>{% trans "Encantamento" %}</th>
+                                <th>{% trans "Ações" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reward in recent_rewards %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-{% if reward.tipo == 'CONQUISTA' %}primary{% else %}info{% endif %}">
+                                        {{ reward.get_tipo_display }}
+                                    </span>
+                                </td>
+                                <td><code>{{ reward.referencia }}</code></td>
+                                <td>{{ reward.item_name }}</td>
+                                <td>{{ reward.quantity }}</td>
+                                <td>+{{ reward.enchant }}</td>
+                                <td>
+                                    <a href="{% url 'games:achievement_rewards_manager_reward_edit' reward.id %}" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'games:achievement_rewards_manager_reward_delete' reward.id %}" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

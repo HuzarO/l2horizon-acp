@@ -4,7 +4,7 @@ from .views import (
     daily_bonus_manager, roulette_manager, economy_manager, 
     slot_machine_views, dice_game_views, fishing_game_views,
     slot_machine_manager, dice_game_manager, fishing_game_manager,
-    battle_pass_manager, battle_pass_quests
+    battle_pass_manager, battle_pass_quests, achievement_rewards_manager
 )
 
 
@@ -116,4 +116,11 @@ urlpatterns = [
     path('battle-pass/manager/season/<int:season_id>/milestone/create/', battle_pass_manager.milestone_create, name='battle_pass_manager_milestone_create'),
     path('battle-pass/manager/milestone/<int:milestone_id>/edit/', battle_pass_manager.milestone_edit, name='battle_pass_manager_milestone_edit'),
     path('battle-pass/manager/milestone/<int:milestone_id>/delete/', battle_pass_manager.milestone_delete, name='battle_pass_manager_milestone_delete'),
+    
+    # Achievement Rewards Manager
+    path('achievement-rewards/manager/', achievement_rewards_manager.dashboard, name='achievement_rewards_manager'),
+    path('achievement-rewards/manager/rewards/', achievement_rewards_manager.reward_list, name='achievement_rewards_manager_reward_list'),
+    path('achievement-rewards/manager/reward/create/', achievement_rewards_manager.reward_create, name='achievement_rewards_manager_reward_create'),
+    path('achievement-rewards/manager/reward/<int:reward_id>/edit/', achievement_rewards_manager.reward_edit, name='achievement_rewards_manager_reward_edit'),
+    path('achievement-rewards/manager/reward/<int:reward_id>/delete/', achievement_rewards_manager.reward_delete, name='achievement_rewards_manager_reward_delete'),
 ]
