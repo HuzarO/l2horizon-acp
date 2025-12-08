@@ -1,5 +1,5 @@
 {% extends 'layouts/base.html' %}
-{% load static i18n %}
+{% load static i18n itens_extras %}
 
 {% block extrahead %}
 <link rel="stylesheet" href="{% static 'css/dashboard-custom.css' %}">
@@ -350,6 +350,63 @@
     color: #fbbf24;
   }
 
+  .reward-item-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .reward-item-icon:hover {
+    transform: scale(1.1);
+    border-color: #f59e0b;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+  }
+
+  .reward-item-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .reward-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+
+  .reward-item-name {
+    font-weight: 600;
+    color: #fbbf24;
+    font-size: 0.95rem;
+  }
+
+  .reward-item-details {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .reward-item-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .reward-item-detail i {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
   .empty-state {
     text-align: center;
     padding: 3rem;
@@ -467,12 +524,28 @@
             </span>
           </div>
         </div>
-        <div class="mt-2">
-          <span class="item-name">{{ item.recompensa.item_name }}</span>
-          <span class="text-white-50 ms-2">
-            {% if item.recompensa.enchant > 0 %}+{{ item.recompensa.enchant }}{% endif %}
-            x{{ item.recompensa.quantity }}
-          </span>
+        <div class="reward-item-container">
+          <img src="{% item_image_url item.recompensa.item_id %}" 
+               alt="{{ item.recompensa.item_name }}" 
+               class="reward-item-icon"
+               title="{{ item.recompensa.item_name }}">
+          <div class="reward-item-info">
+            <div class="reward-item-name">{{ item.recompensa.item_name }}</div>
+            <div class="reward-item-details">
+              {% if item.recompensa.enchant > 0 %}
+              <div class="reward-item-detail">
+                <i class="fas fa-magic"></i>
+                <span>+{{ item.recompensa.enchant }}</span>
+              </div>
+              {% endif %}
+              {% if item.recompensa.quantity > 1 %}
+              <div class="reward-item-detail">
+                <i class="fas fa-layer-group"></i>
+                <span>x{{ item.recompensa.quantity }}</span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
         </div>
       </div>
       {% endfor %}
@@ -519,12 +592,28 @@
             </span>
           </div>
         </div>
-        <div class="mt-2">
-          <span class="item-name">{{ item.recompensa.item_name }}</span>
-          <span class="text-white-50 ms-2">
-            {% if item.recompensa.enchant > 0 %}+{{ item.recompensa.enchant }}{% endif %}
-            x{{ item.recompensa.quantity }}
-          </span>
+        <div class="reward-item-container">
+          <img src="{% item_image_url item.recompensa.item_id %}" 
+               alt="{{ item.recompensa.item_name }}" 
+               class="reward-item-icon"
+               title="{{ item.recompensa.item_name }}">
+          <div class="reward-item-info">
+            <div class="reward-item-name">{{ item.recompensa.item_name }}</div>
+            <div class="reward-item-details">
+              {% if item.recompensa.enchant > 0 %}
+              <div class="reward-item-detail">
+                <i class="fas fa-magic"></i>
+                <span>+{{ item.recompensa.enchant }}</span>
+              </div>
+              {% endif %}
+              {% if item.recompensa.quantity > 1 %}
+              <div class="reward-item-detail">
+                <i class="fas fa-layer-group"></i>
+                <span>x{{ item.recompensa.quantity }}</span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
         </div>
       </div>
       {% endfor %}
