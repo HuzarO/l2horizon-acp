@@ -99,8 +99,8 @@
                                 <label class="form-label">{% trans "Tipo de Premiação" %}</label>
                                 <select name="tipo" id="tipo" class="form-select" required onchange="updateReferenciaField()">
                                     <option value="">{% trans "Selecione..." %}</option>
-                                    <option value="CONQUISTA" {% if request.POST.tipo == 'CONQUISTA' %}selected{% endif %}>{% trans "Por Conquista" %}</option>
-                                    <option value="CONQUISTAS_MULTIPLAS" {% if request.POST.tipo == 'CONQUISTAS_MULTIPLAS' %}selected{% endif %}>{% trans "Por Quantidade de Conquistas" %}</option>
+                                    <option value="CONQUISTA" {% if request.method == 'POST' and request.POST.tipo == 'CONQUISTA' %}selected{% endif %}>{% trans "Por Conquista" %}</option>
+                                    <option value="CONQUISTAS_MULTIPLAS" {% if request.method == 'POST' and request.POST.tipo == 'CONQUISTAS_MULTIPLAS' %}selected{% endif %}>{% trans "Por Quantidade de Conquistas" %}</option>
                                 </select>
                                 <small class="text-white-50">{% trans "Escolha se a premiação é para uma conquista específica ou baseada na quantidade total de conquistas" %}</small>
                             </div>
@@ -110,7 +110,7 @@
                                 <select name="referencia_conquista" id="referencia_conquista" class="form-select">
                                     <option value="">{% trans "Selecione uma conquista..." %}</option>
                                     {% for conquista in conquistas %}
-                                    <option value="{{ conquista.codigo }}" {% if request.POST.referencia_conquista == conquista.codigo or request.POST.referencia == conquista.codigo %}selected{% endif %}>{{ conquista.nome }} ({{ conquista.codigo }})</option>
+                                    <option value="{{ conquista.codigo }}" {% if request.method == 'POST' and request.POST.referencia_conquista == conquista.codigo or request.method == 'POST' and request.POST.referencia|default:'' == conquista.codigo %}selected{% endif %}>{{ conquista.nome }} ({{ conquista.codigo }})</option>
                                     {% endfor %}
                                 </select>
                                 <small class="text-white-50">{% trans "Selecione a conquista que dará esta premiação" %}</small>
@@ -118,7 +118,7 @@
 
                             <div class="mb-3" id="referencia-quantidade" style="display: none;">
                                 <label class="form-label">{% trans "Quantidade de Conquistas" %} <span class="text-danger">*</span></label>
-                                <input type="number" name="referencia_quantidade" id="referencia_quantidade" class="form-control" min="1" placeholder="Ex: 10" value="{{ request.POST.referencia_quantidade|default:request.POST.referencia|default:'' }}">
+                                <input type="number" name="referencia_quantidade" id="referencia_quantidade" class="form-control" min="1" placeholder="Ex: 10" value="{% if request.method == 'POST' %}{{ request.POST.referencia_quantidade|default:request.POST.referencia|default:'' }}{% endif %}">
                                 <small class="text-white-50">{% trans "Número de conquistas necessárias para receber esta premiação" %}</small>
                             </div>
                             
