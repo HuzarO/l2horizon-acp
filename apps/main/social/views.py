@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 import re
 
 from .models import Post, Comment, Like, Follow, UserProfile, Share, Hashtag, PostHashtag, CommentLike, Report, ModerationAction, ContentFilter, ModerationLog, VerificationRequest
+from apps.main.message.models import Friendship
 from .forms import PostForm, CommentForm, UserProfileForm, SearchForm, ShareForm, ReactionForm, HashtagForm, ReportForm, SearchReportForm, BulkModerationForm, ModerationActionForm, ContentFilterForm
 
 User = get_user_model()
@@ -561,10 +562,24 @@ def user_profile(request, username):
     
     # Verificar se o usuário logado segue este usuário
     is_following = False
+    is_friend = False
+    has_pending_request = False
     if request.user.is_authenticated and request.user != user:
         is_following = Follow.objects.filter(
             follower=request.user,
             following=user
+        ).exists()
+        
+        # Verificar se são amigos (amizade aceita em qualquer direção)
+        is_friend = Friendship.objects.filter(
+            Q(user=request.user, friend=user, accepted=True) |
+            Q(user=user, friend=request.user, accepted=True)
+        ).exists()
+        
+        # Verificar se já existe uma solicitação pendente
+        has_pending_request = Friendship.objects.filter(
+            Q(user=request.user, friend=user, accepted=False) |
+            Q(user=user, friend=request.user, accepted=False)
         ).exists()
     
     context = {
@@ -572,6 +587,8 @@ def user_profile(request, username):
         'profile': profile,
         'posts': posts,
         'is_following': is_following,
+        'is_friend': is_friend,
+        'has_pending_request': has_pending_request,
         'segment': 'user_profile',
         'parent': 'social',
     }
