@@ -1736,13 +1736,13 @@ def post_50_comentarios(user, request=None):
 def primeiro_compartilhamento_recebido(user, request=None):
     """Teve um post compartilhado pela primeira vez"""
     from apps.main.social.models import Share
-    return Share.objects.filter(post__author=user).exists()
+    return Share.objects.filter(original_post__author=user).exists()
 
 @registrar_validador('10_compartilhamentos_recebidos')
 def dez_compartilhamentos_recebidos(user, request=None):
     """Teve posts compartilhados 10 vezes"""
     from apps.main.social.models import Share
-    return Share.objects.filter(post__author=user).count() >= 10
+    return Share.objects.filter(original_post__author=user).count() >= 10
 
 # =========================== CONQUISTAS DE REDE SOCIAL - PERFIL ===========================
 
