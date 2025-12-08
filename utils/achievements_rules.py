@@ -1249,3 +1249,518 @@ def explorador_legendario(user, request=None):
         user=user,
         page_category__in=['tops', 'heroes', 'siege', 'boss_jewel', 'grandboss']
     ).count() >= 100
+
+# =========================== CONQUISTAS DE REDE SOCIAL - POSTS ===========================
+
+@registrar_validador('primeiro_post_social')
+def primeiro_post_social(user, request=None):
+    """Criou o primeiro post na rede social"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user).exists()
+
+@registrar_validador('5_posts_social')
+def cinco_posts_social(user, request=None):
+    """Criou 5 posts na rede social"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user).count() >= 5
+
+@registrar_validador('10_posts_social')
+def dez_posts_social(user, request=None):
+    """Criou 10 posts na rede social"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user).count() >= 10
+
+@registrar_validador('25_posts_social')
+def vinte_cinco_posts_social(user, request=None):
+    """Criou 25 posts na rede social"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user).count() >= 25
+
+@registrar_validador('50_posts_social')
+def cinquenta_posts_social(user, request=None):
+    """Criou 50 posts na rede social"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user).count() >= 50
+
+@registrar_validador('100_posts_social')
+def cem_posts_social(user, request=None):
+    """Criou 100 posts na rede social"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user).count() >= 100
+
+@registrar_validador('primeiro_post_com_imagem')
+def primeiro_post_com_imagem(user, request=None):
+    """Criou o primeiro post com imagem"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, image__isnull=False).exists()
+
+@registrar_validador('10_posts_com_imagem')
+def dez_posts_com_imagem(user, request=None):
+    """Criou 10 posts com imagem"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, image__isnull=False).count() >= 10
+
+@registrar_validador('primeiro_post_com_video')
+def primeiro_post_com_video(user, request=None):
+    """Criou o primeiro post com vídeo"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, video__isnull=False).exists()
+
+@registrar_validador('5_posts_com_video')
+def cinco_posts_com_video(user, request=None):
+    """Criou 5 posts com vídeo"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, video__isnull=False).count() >= 5
+
+@registrar_validador('primeiro_post_fixado')
+def primeiro_post_fixado(user, request=None):
+    """Fixou o primeiro post no perfil"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, is_pinned=True).exists()
+
+@registrar_validador('primeiro_post_editado')
+def primeiro_post_editado(user, request=None):
+    """Editou o primeiro post"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, is_edited=True).exists()
+
+@registrar_validador('10_posts_editados')
+def dez_posts_editados(user, request=None):
+    """Editou 10 posts"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, is_edited=True).count() >= 10
+
+# =========================== CONQUISTAS DE REDE SOCIAL - COMENTÁRIOS ===========================
+
+@registrar_validador('primeiro_comentario_social')
+def primeiro_comentario_social(user, request=None):
+    """Fez o primeiro comentário em um post"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(author=user).exists()
+
+@registrar_validador('10_comentarios_social')
+def dez_comentarios_social(user, request=None):
+    """Fez 10 comentários em posts"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(author=user).count() >= 10
+
+@registrar_validador('25_comentarios_social')
+def vinte_cinco_comentarios_social(user, request=None):
+    """Fez 25 comentários em posts"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(author=user).count() >= 25
+
+@registrar_validador('50_comentarios_social')
+def cinquenta_comentarios_social(user, request=None):
+    """Fez 50 comentários em posts"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(author=user).count() >= 50
+
+@registrar_validador('100_comentarios_social')
+def cem_comentarios_social(user, request=None):
+    """Fez 100 comentários em posts"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(author=user).count() >= 100
+
+@registrar_validador('primeiro_comentario_com_imagem')
+def primeiro_comentario_com_imagem(user, request=None):
+    """Fez o primeiro comentário com imagem"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(author=user, image__isnull=False).exists()
+
+@registrar_validador('primeira_resposta_comentario')
+def primeira_resposta_comentario(user, request=None):
+    """Respondeu a um comentário pela primeira vez"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(author=user, parent__isnull=False).exists()
+
+@registrar_validador('10_respostas_comentarios')
+def dez_respostas_comentarios(user, request=None):
+    """Respondeu 10 comentários"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(author=user, parent__isnull=False).count() >= 10
+
+# =========================== CONQUISTAS DE REDE SOCIAL - LIKES E REAÇÕES ===========================
+
+@registrar_validador('primeiro_like_social')
+def primeiro_like_social(user, request=None):
+    """Deu o primeiro like em um post"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(user=user).exists()
+
+@registrar_validador('10_likes_social')
+def dez_likes_social(user, request=None):
+    """Deu 10 likes em posts"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(user=user).count() >= 10
+
+@registrar_validador('25_likes_social')
+def vinte_cinco_likes_social(user, request=None):
+    """Deu 25 likes em posts"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(user=user).count() >= 25
+
+@registrar_validador('50_likes_social')
+def cinquenta_likes_social(user, request=None):
+    """Deu 50 likes em posts"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(user=user).count() >= 50
+
+@registrar_validador('100_likes_social')
+def cem_likes_social(user, request=None):
+    """Deu 100 likes em posts"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(user=user).count() >= 100
+
+@registrar_validador('primeira_reacao_amor')
+def primeira_reacao_amor(user, request=None):
+    """Usou a reação de amor pela primeira vez"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(user=user, reaction_type='love').exists()
+
+@registrar_validador('primeira_reacao_haha')
+def primeira_reacao_haha(user, request=None):
+    """Usou a reação haha pela primeira vez"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(user=user, reaction_type='haha').exists()
+
+@registrar_validador('primeira_reacao_wow')
+def primeira_reacao_wow(user, request=None):
+    """Usou a reação wow pela primeira vez"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(user=user, reaction_type='wow').exists()
+
+@registrar_validador('todas_reacoes')
+def todas_reacoes(user, request=None):
+    """Usou todos os tipos de reações"""
+    from apps.main.social.models import Like
+    reacoes_usadas = Like.objects.filter(user=user).values_list('reaction_type', flat=True).distinct()
+    return len(reacoes_usadas) >= 6  # like, love, haha, wow, sad, angry
+
+@registrar_validador('primeiro_like_comentario')
+def primeiro_like_comentario(user, request=None):
+    """Deu o primeiro like em um comentário"""
+    from apps.main.social.models import CommentLike
+    return CommentLike.objects.filter(user=user).exists()
+
+@registrar_validador('10_likes_comentarios')
+def dez_likes_comentarios(user, request=None):
+    """Deu 10 likes em comentários"""
+    from apps.main.social.models import CommentLike
+    return CommentLike.objects.filter(user=user).count() >= 10
+
+# =========================== CONQUISTAS DE REDE SOCIAL - COMPARTILHAMENTOS ===========================
+
+@registrar_validador('primeiro_compartilhamento')
+def primeiro_compartilhamento(user, request=None):
+    """Compartilhou o primeiro post"""
+    from apps.main.social.models import Share
+    return Share.objects.filter(user=user).exists()
+
+@registrar_validador('5_compartilhamentos')
+def cinco_compartilhamentos(user, request=None):
+    """Compartilhou 5 posts"""
+    from apps.main.social.models import Share
+    return Share.objects.filter(user=user).count() >= 5
+
+@registrar_validador('10_compartilhamentos')
+def dez_compartilhamentos(user, request=None):
+    """Compartilhou 10 posts"""
+    from apps.main.social.models import Share
+    return Share.objects.filter(user=user).count() >= 10
+
+@registrar_validador('25_compartilhamentos')
+def vinte_cinco_compartilhamentos(user, request=None):
+    """Compartilhou 25 posts"""
+    from apps.main.social.models import Share
+    return Share.objects.filter(user=user).count() >= 25
+
+# =========================== CONQUISTAS DE REDE SOCIAL - SEGUIR ===========================
+
+@registrar_validador('primeiro_seguir')
+def primeiro_seguir(user, request=None):
+    """Seguiu o primeiro usuário"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(follower=user).exists()
+
+@registrar_validador('5_seguindo')
+def cinco_seguindo(user, request=None):
+    """Está seguindo 5 usuários"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(follower=user).count() >= 5
+
+@registrar_validador('10_seguindo')
+def dez_seguindo(user, request=None):
+    """Está seguindo 10 usuários"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(follower=user).count() >= 10
+
+@registrar_validador('25_seguindo')
+def vinte_cinco_seguindo(user, request=None):
+    """Está seguindo 25 usuários"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(follower=user).count() >= 25
+
+@registrar_validador('50_seguindo')
+def cinquenta_seguindo(user, request=None):
+    """Está seguindo 50 usuários"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(follower=user).count() >= 50
+
+@registrar_validador('primeiro_seguidor')
+def primeiro_seguidor(user, request=None):
+    """Conseguiu o primeiro seguidor"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(following=user).exists()
+
+@registrar_validador('5_seguidores')
+def cinco_seguidores(user, request=None):
+    """Tem 5 seguidores"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(following=user).count() >= 5
+
+@registrar_validador('10_seguidores')
+def dez_seguidores(user, request=None):
+    """Tem 10 seguidores"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(following=user).count() >= 10
+
+@registrar_validador('25_seguidores')
+def vinte_cinco_seguidores(user, request=None):
+    """Tem 25 seguidores"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(following=user).count() >= 25
+
+@registrar_validador('50_seguidores')
+def cinquenta_seguidores(user, request=None):
+    """Tem 50 seguidores"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(following=user).count() >= 50
+
+@registrar_validador('100_seguidores')
+def cem_seguidores(user, request=None):
+    """Tem 100 seguidores"""
+    from apps.main.social.models import Follow
+    return Follow.objects.filter(following=user).count() >= 100
+
+# =========================== CONQUISTAS DE REDE SOCIAL - HASHTAGS ===========================
+
+@registrar_validador('primeira_hashtag')
+def primeira_hashtag(user, request=None):
+    """Usou uma hashtag pela primeira vez"""
+    from apps.main.social.models import PostHashtag
+    return PostHashtag.objects.filter(post__author=user).exists()
+
+@registrar_validador('5_hashtags_diferentes')
+def cinco_hashtags_diferentes(user, request=None):
+    """Usou 5 hashtags diferentes"""
+    from apps.main.social.models import PostHashtag
+    hashtags_unicas = PostHashtag.objects.filter(
+        post__author=user
+    ).values('hashtag').distinct().count()
+    return hashtags_unicas >= 5
+
+@registrar_validador('10_hashtags_diferentes')
+def dez_hashtags_diferentes(user, request=None):
+    """Usou 10 hashtags diferentes"""
+    from apps.main.social.models import PostHashtag
+    hashtags_unicas = PostHashtag.objects.filter(
+        post__author=user
+    ).values('hashtag').distinct().count()
+    return hashtags_unicas >= 10
+
+@registrar_validador('25_hashtags_diferentes')
+def vinte_cinco_hashtags_diferentes(user, request=None):
+    """Usou 25 hashtags diferentes"""
+    from apps.main.social.models import PostHashtag
+    hashtags_unicas = PostHashtag.objects.filter(
+        post__author=user
+    ).values('hashtag').distinct().count()
+    return hashtags_unicas >= 25
+
+@registrar_validador('50_hashtags_usadas')
+def cinquenta_hashtags_usadas(user, request=None):
+    """Usou hashtags em 50 posts"""
+    from apps.main.social.models import PostHashtag
+    return PostHashtag.objects.filter(post__author=user).count() >= 50
+
+# =========================== CONQUISTAS DE REDE SOCIAL - ENGAJAMENTO RECEBIDO ===========================
+
+@registrar_validador('primeiro_like_recebido')
+def primeiro_like_recebido(user, request=None):
+    """Recebeu o primeiro like em um post"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(post__author=user).exists()
+
+@registrar_validador('10_likes_recebidos')
+def dez_likes_recebidos(user, request=None):
+    """Recebeu 10 likes em posts"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(post__author=user).count() >= 10
+
+@registrar_validador('25_likes_recebidos')
+def vinte_cinco_likes_recebidos(user, request=None):
+    """Recebeu 25 likes em posts"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(post__author=user).count() >= 25
+
+@registrar_validador('50_likes_recebidos')
+def cinquenta_likes_recebidos(user, request=None):
+    """Recebeu 50 likes em posts"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(post__author=user).count() >= 50
+
+@registrar_validador('100_likes_recebidos')
+def cem_likes_recebidos(user, request=None):
+    """Recebeu 100 likes em posts"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(post__author=user).count() >= 100
+
+@registrar_validador('250_likes_recebidos')
+def duzentos_cinquenta_likes_recebidos(user, request=None):
+    """Recebeu 250 likes em posts"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(post__author=user).count() >= 250
+
+@registrar_validador('500_likes_recebidos')
+def quinhentos_likes_recebidos(user, request=None):
+    """Recebeu 500 likes em posts"""
+    from apps.main.social.models import Like
+    return Like.objects.filter(post__author=user).count() >= 500
+
+@registrar_validador('primeiro_comentario_recebido')
+def primeiro_comentario_recebido(user, request=None):
+    """Recebeu o primeiro comentário em um post"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(post__author=user).exists()
+
+@registrar_validador('10_comentarios_recebidos')
+def dez_comentarios_recebidos(user, request=None):
+    """Recebeu 10 comentários em posts"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(post__author=user).count() >= 10
+
+@registrar_validador('25_comentarios_recebidos')
+def vinte_cinco_comentarios_recebidos(user, request=None):
+    """Recebeu 25 comentários em posts"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(post__author=user).count() >= 25
+
+@registrar_validador('50_comentarios_recebidos')
+def cinquenta_comentarios_recebidos(user, request=None):
+    """Recebeu 50 comentários em posts"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(post__author=user).count() >= 50
+
+@registrar_validador('100_comentarios_recebidos')
+def cem_comentarios_recebidos(user, request=None):
+    """Recebeu 100 comentários em posts"""
+    from apps.main.social.models import Comment
+    return Comment.objects.filter(post__author=user).count() >= 100
+
+@registrar_validador('post_10_likes')
+def post_10_likes(user, request=None):
+    """Tem um post com 10 ou mais likes"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, likes_count__gte=10).exists()
+
+@registrar_validador('post_25_likes')
+def post_25_likes(user, request=None):
+    """Tem um post com 25 ou mais likes"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, likes_count__gte=25).exists()
+
+@registrar_validador('post_50_likes')
+def post_50_likes(user, request=None):
+    """Tem um post com 50 ou mais likes"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, likes_count__gte=50).exists()
+
+@registrar_validador('post_100_likes')
+def post_100_likes(user, request=None):
+    """Tem um post com 100 ou mais likes"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, likes_count__gte=100).exists()
+
+@registrar_validador('post_viral')
+def post_viral(user, request=None):
+    """Tem um post com 250 ou mais likes"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, likes_count__gte=250).exists()
+
+@registrar_validador('post_10_comentarios')
+def post_10_comentarios(user, request=None):
+    """Tem um post com 10 ou mais comentários"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, comments_count__gte=10).exists()
+
+@registrar_validador('post_25_comentarios')
+def post_25_comentarios(user, request=None):
+    """Tem um post com 25 ou mais comentários"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, comments_count__gte=25).exists()
+
+@registrar_validador('post_50_comentarios')
+def post_50_comentarios(user, request=None):
+    """Tem um post com 50 ou mais comentários"""
+    from apps.main.social.models import Post
+    return Post.objects.filter(author=user, comments_count__gte=50).exists()
+
+@registrar_validador('primeiro_compartilhamento_recebido')
+def primeiro_compartilhamento_recebido(user, request=None):
+    """Teve um post compartilhado pela primeira vez"""
+    from apps.main.social.models import Share
+    return Share.objects.filter(post__author=user).exists()
+
+@registrar_validador('10_compartilhamentos_recebidos')
+def dez_compartilhamentos_recebidos(user, request=None):
+    """Teve posts compartilhados 10 vezes"""
+    from apps.main.social.models import Share
+    return Share.objects.filter(post__author=user).count() >= 10
+
+# =========================== CONQUISTAS DE REDE SOCIAL - PERFIL ===========================
+
+@registrar_validador('perfil_social_completo')
+def perfil_social_completo(user, request=None):
+    """Completou o perfil social (tem bio e avatar)"""
+    try:
+        perfil = user.social_profile
+        return bool(perfil.bio and perfil.avatar)
+    except:
+        return False
+
+@registrar_validador('avatar_social')
+def avatar_social(user, request=None):
+    """Tem avatar no perfil social"""
+    try:
+        perfil = user.social_profile
+        return bool(perfil.avatar)
+    except:
+        return False
+
+@registrar_validador('bio_social')
+def bio_social(user, request=None):
+    """Tem biografia no perfil social"""
+    try:
+        perfil = user.social_profile
+        return bool(perfil.bio)
+    except:
+        return False
+
+@registrar_validador('imagem_capa_social')
+def imagem_capa_social(user, request=None):
+    """Tem imagem de capa no perfil social"""
+    try:
+        perfil = user.social_profile
+        return bool(perfil.cover_image)
+    except:
+        return False
+
+@registrar_validador('perfil_privado')
+def perfil_privado(user, request=None):
+    """Configurou o perfil como privado"""
+    try:
+        perfil = user.social_profile
+        return perfil.is_private
+    except:
+        return False
