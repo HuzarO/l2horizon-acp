@@ -1,0 +1,49 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Deletar Troca" %} - {% trans "Battle Pass Manager" %}{% endblock %}
+
+{% block extrastyle %}
+{% include 'battle_pass/manager/_base_styles.html' %}
+<style>
+.card-glow {
+    border-color: rgba(220, 53, 69, 0.4);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(220, 53, 69, 0.2),
+        0 0 20px rgba(220, 53, 69, 0.3);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="card card-glow">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-exclamation-triangle text-danger" style="font-size: 4rem;"></i>
+                        <h3 class="text-white mt-3">{% trans "Confirmar Exclusão" %}</h3>
+                        <p class="text-white-50 mt-3">
+                            {% trans "Tem certeza que deseja deletar a troca" %} <strong>"{{ exchange.item_name }}"</strong>?
+                        </p>
+                        <form method="post" class="mt-4">
+                            {% csrf_token %}
+                            <div class="d-flex gap-2 justify-content-center">
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-trash me-2"></i>{% trans "Sim, Deletar" %}
+                                </button>
+                                <a href="{% url 'games:battle_pass_manager_exchange_list' %}" class="btn btn-solid-white">
+                                    {% trans "Cancelar" %}
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

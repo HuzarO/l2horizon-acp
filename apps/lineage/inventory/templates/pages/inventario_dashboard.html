@@ -153,16 +153,19 @@
               </div>
               <div class="item-actions">
                 <a href="{% url 'inventory:inserir_item' char_name=data.inventory.character_name item_id=item.item_id|unlocalize %}" 
-                   class="item-action-btn success">
-                  <i class="fas fa-upload"></i>{% trans "Devolver" %}
+                   class="item-action-btn success"
+                   title="{% trans 'Enviar item para o personagem no jogo' %}">
+                  <i class="fas fa-gamepad"></i>{% trans "Enviar para Personagem" %}
                 </a>
                 <a href="{% url 'inventory:trocar_item' %}?character_name_origem={{ data.inventory.character_name }}&item_id={{ item.item_id|unlocalize }}" 
-                   class="item-action-btn warning">
-                  <i class="fas fa-exchange-alt"></i>{% trans "Trocar" %}
+                   class="item-action-btn warning"
+                   title="{% trans 'Enviar item para outro personagem' %}">
+                  <i class="fas fa-exchange-alt"></i>{% trans "Enviar para Outro Personagem" %}
                 </a>
                 <a href="{% url 'inventory:transferir_para_bag' char_name=data.inventory.character_name item_id=item.item_id|unlocalize %}" 
-                   class="item-action-btn info">
-                  <i class="fas fa-bag-shopping"></i>{% trans "Enviar para Bag" %}
+                   class="item-action-btn info"
+                   title="{% trans 'Enviar item para sua bag no site' %}">
+                  <i class="fas fa-shopping-bag"></i>{% trans "Enviar para Bag do Site" %}
                 </a>
               </div>
             </div>

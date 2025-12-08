@@ -1,6 +1,7 @@
 {% extends "layouts/base.html" %}
 {% load static %}
 {% load i18n %}
+{% load l10n %}
 
 {% block extrahead %}
 <style>
@@ -433,7 +434,52 @@
 
   .coin-config-card:nth-child(1) { --animation-order: 1; }
   .coin-config-card:nth-child(2) { --animation-order: 2; }
+
+  .input-group-sm .form-control {
+    border-radius: 5px 0 0 5px;
+  }
+
+  .input-group-sm .input-group-text {
+    border-radius: 0 5px 5px 0;
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    color: white;
+    border: 1px solid rgba(111, 66, 193, 0.3);
+  }
 </style>
+<script>
+{% trans "A taxa deve estar entre 0 e 100%" as trans_taxa_range %}
+{% trans "Taxa atualizada com sucesso!" as trans_taxa_success %}
+
+function updateTaxa(event, form) {
+  if (event) {
+    event.preventDefault();
+  }
+  
+  const formData = new FormData(form);
+  const taxa = parseFloat(formData.get('taxa_retirada'));
+  
+  if (isNaN(taxa) || taxa < 0 || taxa > 100) {
+    alert('{{ trans_taxa_range|escapejs }}');
+    return false;
+  }
+  
+  form.submit();
+  return false;
+}
+
+// Auto-submit ao perder o foco (blur)
+document.addEventListener('DOMContentLoaded', function() {
+  const taxaInputs = document.querySelectorAll('.taxa-input');
+  taxaInputs.forEach(input => {
+    input.addEventListener('blur', function() {
+      const form = this.closest('form');
+      if (form) {
+        updateTaxa(null, form);
+      }
+    });
+  });
+});
+</script>
 {% endblock %}
 
 {% block content %}
@@ -481,6 +527,7 @@
                   <th><i class="fas fa-tag me-2"></i>{% trans "Nome" %}</th>
                   <th><i class="fas fa-hashtag me-2"></i>{% trans "ID" %}</th>
                   <th><i class="fas fa-times me-2"></i>{% trans "Multiplicador" %}</th>
+                  <th><i class="fas fa-percent me-2"></i>{% trans "Taxa Retirada" %}</th>
                   <th><i class="fas fa-toggle-on me-2"></i>{% trans "Status" %}</th>
                   <th><i class="fas fa-cogs me-2"></i>{% trans "Ações" %}</th>
                 </tr>
@@ -496,6 +543,25 @@
                   </td>
                   <td>
                     <span class="coin-multiplier">x{{ moeda.multiplicador }}</span>
+                  </td>
+                  <td>
+                    <form method="post" class="d-inline taxa-form" data-coin-id="{{ moeda.id }}" onsubmit="return updateTaxa(event, this)">
+                      {% csrf_token %}
+                      <input type="hidden" name="update_taxa" value="1">
+                      <input type="hidden" name="coin_id" value="{{ moeda.id }}">
+                      <div class="input-group" style="max-width: 150px;">
+                        <input type="number" 
+                               step="0.01" 
+                               min="0" 
+                               max="100" 
+                               name="taxa_retirada" 
+                               value="{% if moeda.taxa_retirada is not None %}{{ moeda.taxa_retirada|unlocalize }}{% else %}0.00{% endif %}" 
+                               class="form-control form-control-sm taxa-input" 
+                               style="font-size: 0.85rem; padding: 0.25rem 0.5rem;"
+                               onblur="this.form.submit()">
+                        <span class="input-group-text" style="font-size: 0.85rem; padding: 0.25rem 0.5rem;">%</span>
+                      </div>
+                    </form>
                   </td>
                   <td>
                     {% if moeda.ativa %}
@@ -539,7 +605,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                  <td colspan="5">
+                  <td colspan="6">
                     <div class="empty-state">
                       <i class="fas fa-coins"></i>
                       <p>{% trans "Nenhuma moeda configurada ainda." %}</p>
@@ -593,13 +659,24 @@
               </div>
             </div>
             
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="form-group">
                 <label class="form-label">
                   <i class="fas fa-times"></i>{% trans "Multiplicador" %}
                 </label>
                 <input type="number" step="0.01" name="multiplicador" class="form-control" 
                        placeholder="{% trans 'Ex: 1.0' %}" required>
+              </div>
+            </div>
+            
+            <div class="col-md-3">
+              <div class="form-group">
+                <label class="form-label">
+                  <i class="fas fa-percent"></i>{% trans "Taxa de Retirada (%)" %}
+                </label>
+                <input type="number" step="0.01" min="0" max="100" name="taxa_retirada" class="form-control" 
+                       placeholder="{% trans 'Ex: 5.00' %}" value="0.00">
+                <small class="form-text text-muted">{% trans "Percentual de taxa ao retirar moedas do servidor" %}</small>
               </div>
             </div>
             

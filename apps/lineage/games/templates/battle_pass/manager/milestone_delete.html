@@ -1,0 +1,36 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block extrastyle %}
+{% include 'battle_pass/manager/_base_styles.html' %}
+{% endblock %}
+
+{% block title %}{% trans "Deletar Milestone" %} - {% trans "Battle Pass Manager" %}{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card card-glow">
+                    <div class="card-header bg-danger">
+                        <h3 class="text-white mb-0">{% trans "Confirmar Exclusão" %}</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-white">{% trans "Tem certeza que deseja deletar o milestone:" %}</p>
+                        <p class="text-warning fs-5"><strong>{{ milestone.icon }} {{ milestone.title }} (Nível {{ milestone.level }})</strong></p>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-danger">{% trans "Deletar" %}</button>
+                                <a href="{% url 'games:battle_pass_manager_milestone_list' season.id %}" class="btn btn-secondary">{% trans "Cancelar" %}</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

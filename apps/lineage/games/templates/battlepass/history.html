@@ -1,0 +1,158 @@
+{% extends "layouts/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<style>
+  :root {
+    --primary-glow: #4b0082;
+    --secondary-glow: #8a2be2;
+    --accent-color: #ffd700;
+  }
+
+  .history-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    padding: 2rem;
+  }
+
+  .history-item {
+    background: linear-gradient(145deg, #1e1e2f, #29293d);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 0 15px rgba(75,0,130,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-left: 4px solid var(--primary-glow);
+    transition: all 0.3s ease;
+  }
+
+  .history-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 0 20px rgba(75,0,130,0.5);
+  }
+
+  .history-item .action-type {
+    color: var(--accent-color);
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .history-item .description {
+    color: rgba(255,255,255,0.9);
+    margin-bottom: 0.5rem;
+  }
+
+  .history-item .xp-amount {
+    color: #00ff7f;
+    font-weight: bold;
+    margin-right: 1rem;
+  }
+
+  .history-item .date {
+    color: rgba(255,255,255,0.5);
+    font-size: 0.9rem;
+  }
+
+  .btn-back {
+    background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+  }
+
+  .btn-back:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+    color: white;
+    text-decoration: none;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+
+  .pagination a, .pagination span {
+    background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 2rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+
+  .pagination a:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+    color: white;
+    text-decoration: none;
+  }
+
+  .pagination .current {
+    background: linear-gradient(135deg, var(--accent-color), #ffa500);
+    color: #000;
+    font-weight: bold;
+  }
+</style>
+
+<div class="history-container">
+  <a href="{% url 'games:battle_pass' %}" class="btn-back">
+    <i class="fas fa-arrow-left"></i> {% trans "Voltar ao Battle Pass" %}
+  </a>
+
+  <h2 style="color: var(--accent-color); margin-bottom: 2rem;">
+    <i class="fas fa-history"></i> {% trans "Histórico do Battle Pass" %}
+  </h2>
+
+  {% if history %}
+    {% for item in history %}
+    <div class="history-item">
+      <div class="action-type">
+        <i class="fas fa-{% if item.action_type == 'level_up' %}arrow-up{% elif item.action_type == 'reward_claimed' %}gift{% elif item.action_type == 'xp_gained' %}star{% elif item.action_type == 'quest_completed' %}check-circle{% elif item.action_type == 'milestone_reached' %}trophy{% else %}circle{% endif %}"></i>
+        {{ item.get_action_type_display }}
+      </div>
+      <div class="description">{{ item.description }}</div>
+      {% if item.xp_amount > 0 %}
+      <span class="xp-amount">+{{ item.xp_amount }} XP</span>
+      {% endif %}
+      {% if item.level_reached %}
+      <span style="color: var(--accent-color);">Nível {{ item.level_reached }}</span>
+      {% endif %}
+      <div class="date">{{ item.created_at|date:"d/m/Y H:i" }}</div>
+    </div>
+    {% endfor %}
+
+    {% if history.has_other_pages %}
+    <div class="pagination">
+      {% if history.has_previous %}
+      <a href="?page={{ history.previous_page_number }}">
+        <i class="fas fa-chevron-left"></i> {% trans "Anterior" %}
+      </a>
+      {% endif %}
+
+      <span class="current">
+        {% trans "Página" %} {{ history.number }} {% trans "de" %} {{ history.paginator.num_pages }}
+      </span>
+
+      {% if history.has_next %}
+      <a href="?page={{ history.next_page_number }}">
+        {% trans "Próxima" %} <i class="fas fa-chevron-right"></i>
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  {% else %}
+    <div class="history-item" style="text-align: center;">
+      <div class="description">{% trans "Nenhum histórico encontrado." %}</div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+

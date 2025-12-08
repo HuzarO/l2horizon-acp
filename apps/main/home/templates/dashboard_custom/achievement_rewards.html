@@ -1,0 +1,308 @@
+{% extends 'layouts/base.html' %}
+{% load static i18n %}
+
+{% block extrahead %}
+<link rel="stylesheet" href="{% static 'css/dashboard-custom.css' %}">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap');
+
+  .rewards-bg {
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%);
+    color: #f8f9fa;
+    padding: 50px 0;
+    min-height: 100vh;
+  }
+
+  .rewards-card {
+    background: linear-gradient(to bottom right, #1a1a2e, #121220);
+    border: 2px solid #f59e0b;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.5), 0 0 25px rgba(251, 191, 36, 0.3);
+    transition: transform 0.2s ease-in-out, box-shadow 0.3s;
+    color: #f8f9fa;
+    margin-bottom: 1.5rem;
+  }
+
+  .rewards-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.7), 0 0 30px rgba(251, 191, 36, 0.5);
+  }
+
+  .reward-item {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+  }
+
+  .reward-item:hover {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(245, 158, 11, 0.6);
+    transform: translateX(5px);
+  }
+
+  .reward-item.recebida {
+    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .reward-item.pode-receber {
+    border-color: rgba(245, 158, 11, 0.8);
+    background: rgba(245, 158, 11, 0.15);
+    animation: pulse-glow 2s infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+    }
+  }
+
+  .reward-item.bloqueada {
+    opacity: 0.6;
+    border-color: rgba(107, 114, 128, 0.3);
+  }
+
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    color: #f8f9fa;
+    text-shadow: 1px 1px 2px #000;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+  }
+
+  .badge-status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .badge-recebida {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+  }
+
+  .badge-disponivel {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+    color: white;
+    animation: pulse 2s infinite;
+  }
+
+  .badge-bloqueada {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .progress-bar-custom {
+    height: 8px;
+    background: rgba(107, 114, 128, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+  }
+
+  .item-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .item-name {
+    font-weight: 600;
+    color: #fbbf24;
+  }
+
+  .item-details {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+  }
+
+  .conquista-name {
+    color: #00d9ff;
+    font-weight: 600;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rewards-bg">
+  <div class="container">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="section-title mb-2">
+          <i class="fas fa-gift me-2"></i>{% trans "Prêmios de Conquistas" %}
+        </h1>
+        <p class="text-white-50 mb-0">
+          {% trans "Visualize todas as recompensas disponíveis ao completar conquistas" %}
+        </p>
+      </div>
+      <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-2"></i>{% trans "Voltar" %}
+      </a>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="rewards-card text-center p-3">
+          <h3 class="text-warning mb-1">{{ total_conquistas_usuario }}</h3>
+          <p class="text-white-50 mb-0">{% trans "Conquistas Desbloqueadas" %}</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="rewards-card text-center p-3">
+          <h3 class="text-success mb-1">{{ total_recebidos }}</h3>
+          <p class="text-white-50 mb-0">{% trans "Prêmios Recebidos" %}</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="rewards-card text-center p-3">
+          <h3 class="text-info mb-1">{{ total_disponiveis }}</h3>
+          <p class="text-white-50 mb-0">{% trans "Prêmios Disponíveis" %}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prêmios por Conquista -->
+    {% if recompensas_conquista %}
+    <div class="rewards-card p-4 mb-4">
+      <h3 class="section-title mb-4">
+        <i class="fas fa-trophy me-2"></i>{% trans "Prêmios por Conquista Específica" %}
+      </h3>
+      {% for item in recompensas_conquista %}
+      <div class="reward-item {% if item.recebida %}recebida{% elif item.pode_receber %}pode-receber{% else %}bloqueada{% endif %}">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            {% if item.conquista %}
+            <h5 class="conquista-name mb-1">
+              <i class="fas fa-trophy me-2"></i>{{ item.conquista.nome }}
+            </h5>
+            <p class="text-white-50 mb-0 small">{{ item.conquista.descricao }}</p>
+            {% else %}
+            <h5 class="text-warning mb-1">
+              <i class="fas fa-question-circle me-2"></i>{% trans "Conquista não encontrada" %} ({{ item.recompensa.referencia }})
+            </h5>
+            {% endif %}
+          </div>
+          <span class="badge-status {% if item.recebida %}badge-recebida{% elif item.pode_receber %}badge-disponivel{% else %}badge-bloqueada{% endif %}">
+            {% if item.recebida %}
+            <i class="fas fa-check-circle"></i>{% trans "Recebido" %}
+            {% elif item.pode_receber %}
+            <i class="fas fa-gift"></i>{% trans "Disponível" %}
+            {% else %}
+            <i class="fas fa-lock"></i>{% trans "Bloqueado" %}
+            {% endif %}
+          </span>
+        </div>
+        <div class="item-info">
+          <div>
+            <span class="item-name">{{ item.recompensa.item_name }}</span>
+            <span class="item-details ms-2">
+              {% if item.recompensa.enchant > 0 %}+{{ item.recompensa.enchant }}{% endif %}
+              x{{ item.recompensa.quantity }}
+            </span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Prêmios por Quantidade -->
+    {% if recompensas_multiplas %}
+    <div class="rewards-card p-4">
+      <h3 class="section-title mb-4">
+        <i class="fas fa-trophy-fill me-2"></i>{% trans "Prêmios por Quantidade de Conquistas" %}
+      </h3>
+      {% for item in recompensas_multiplas %}
+      <div class="reward-item {% if item.recebida %}recebida{% elif item.pode_receber %}pode-receber{% else %}bloqueada{% endif %}">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h5 class="text-warning mb-1">
+              <i class="fas fa-trophy me-2"></i>{% trans "Complete" %} {{ item.quantidade_necessaria }} {% trans "conquistas" %}
+            </h5>
+            <p class="text-white-50 mb-0 small">
+              {% trans "Progresso:" %} {{ item.total_conquistas }}/{{ item.quantidade_necessaria }} {% trans "conquistas" %}
+            </p>
+            <div class="progress-bar-custom">
+              <div class="progress-fill" style="width: {{ item.progresso_percent }}%;"></div>
+            </div>
+          </div>
+          <span class="badge-status {% if item.recebida %}badge-recebida{% elif item.pode_receber %}badge-disponivel{% else %}badge-bloqueada{% endif %}">
+            {% if item.recebida %}
+            <i class="fas fa-check-circle"></i>{% trans "Recebido" %}
+            {% elif item.pode_receber %}
+            <i class="fas fa-gift"></i>{% trans "Disponível" %}
+            {% else %}
+            <i class="fas fa-lock"></i>{% trans "Bloqueado" %}
+            {% endif %}
+          </span>
+        </div>
+        <div class="item-info">
+          <div>
+            <span class="item-name">{{ item.recompensa.item_name }}</span>
+            <span class="item-details ms-2">
+              {% if item.recompensa.enchant > 0 %}+{{ item.recompensa.enchant }}{% endif %}
+              x{{ item.recompensa.quantity }}
+            </span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Empty State -->
+    {% if not recompensas_conquista and not recompensas_multiplas %}
+    <div class="rewards-card p-5">
+      <div class="empty-state">
+        <i class="fas fa-gift"></i>
+        <h4 class="text-white mb-2">{% trans "Nenhum prêmio disponível" %}</h4>
+        <p class="text-white-50">{% trans "Ainda não há prêmios configurados para conquistas." %}</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

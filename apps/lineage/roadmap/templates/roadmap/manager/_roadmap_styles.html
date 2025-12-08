@@ -1,0 +1,573 @@
+{# CSS Customizado com Alta Especificidade para Roadmap Manager #}
+<style>
+/* ============================================
+   ROADMAP MANAGER - ESTILOS CUSTOMIZADOS
+   Classes com alta especificidade para sobrescrever qualquer estilo
+   ============================================ */
+
+/* Background Manager - Sobrescreve tudo */
+body .roadmap-manager-bg {
+    background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 25%, #0f1419 50%, #1a1f3a 75%, #0a0e27 100%) !important;
+    min-height: 100vh !important;
+    padding: 2rem 0 4rem 0 !important;
+    position: relative !important;
+    overflow-x: hidden !important;
+}
+
+body .roadmap-manager-bg::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: 
+        radial-gradient(circle at 15% 30%, rgba(251, 191, 36, 0.15) 0%, transparent 60%),
+        radial-gradient(circle at 85% 70%, rgba(139, 92, 246, 0.15) 0%, transparent 60%),
+        radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.08) 0%, transparent 70%) !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+}
+
+body .roadmap-manager-bg > * {
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Header da Página */
+body .roadmap-page-header h2 {
+    font-size: 2.5rem !important;
+    font-weight: 800 !important;
+    background: linear-gradient(135deg, #ffffff 0%, #fbbf24 50%, #8b5cf6 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    margin-bottom: 0.5rem !important;
+    letter-spacing: -0.5px !important;
+    text-shadow: 0 0 30px rgba(251, 191, 36, 0.3) !important;
+}
+
+body .roadmap-page-header p {
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-size: 1.05rem !important;
+    margin-bottom: 0 !important;
+    font-weight: 400 !important;
+}
+
+/* Cards Principais */
+body .roadmap-card {
+    background: linear-gradient(145deg, rgba(20, 25, 45, 0.98) 0%, rgba(15, 20, 35, 0.98) 100%) !important;
+    border: 1px solid rgba(251, 191, 36, 0.25) !important;
+    border-radius: 20px !important;
+    box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(251, 191, 36, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+body .roadmap-card::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 2px !important;
+    background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.5), transparent) !important;
+}
+
+body .roadmap-card:hover {
+    border-color: rgba(251, 191, 36, 0.5) !important;
+    box-shadow: 
+        0 15px 50px rgba(251, 191, 36, 0.25),
+        0 0 0 1px rgba(251, 191, 36, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    transform: translateY(-4px) !important;
+}
+
+body .roadmap-card .card-body {
+    padding: 2rem !important;
+    color: #ffffff !important;
+}
+
+body .roadmap-card .card-header {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%) !important;
+    border-bottom: 2px solid rgba(251, 191, 36, 0.3) !important;
+    padding: 1.25rem 2rem !important;
+    border-radius: 20px 20px 0 0 !important;
+}
+
+body .roadmap-card .card-header h5 {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 1.25rem !important;
+    margin: 0 !important;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Cards de Estatísticas */
+body .roadmap-stat-card {
+    background: linear-gradient(145deg, rgba(20, 25, 45, 0.95) 0%, rgba(15, 20, 35, 0.95) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 18px !important;
+    padding: 2rem 1.5rem !important;
+    text-align: center !important;
+    position: relative !important;
+    overflow: hidden !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    backdrop-filter: blur(15px) !important;
+    border-left: 4px solid !important;
+}
+
+body .roadmap-stat-card:hover {
+    transform: translateY(-6px) scale(1.02) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+body .roadmap-stat-card.stat-total {
+    border-left-color: #667eea !important;
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.2) !important;
+}
+
+body .roadmap-stat-card.stat-published {
+    border-left-color: #10b981 !important;
+    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.2) !important;
+}
+
+body .roadmap-stat-card.stat-planned {
+    border-left-color: #0dcaf0 !important;
+    box-shadow: 0 8px 30px rgba(13, 202, 240, 0.2) !important;
+}
+
+body .roadmap-stat-card.stat-in-progress {
+    border-left-color: #fbbf24 !important;
+    box-shadow: 0 8px 30px rgba(251, 191, 36, 0.2) !important;
+}
+
+body .roadmap-stat-card .stat-icon {
+    font-size: 3.5rem !important;
+    position: absolute !important;
+    top: 1rem !important;
+    right: 1rem !important;
+    opacity: 1 !important;
+    z-index: 0 !important;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3)) !important;
+}
+
+body .roadmap-stat-card.stat-total .stat-icon {
+    color: #667eea !important;
+}
+
+body .roadmap-stat-card.stat-published .stat-icon {
+    color: #10b981 !important;
+}
+
+body .roadmap-stat-card.stat-planned .stat-icon {
+    color: #0dcaf0 !important;
+}
+
+body .roadmap-stat-card.stat-in-progress .stat-icon {
+    color: #fbbf24 !important;
+}
+
+body .roadmap-stat-card .stat-value {
+    font-size: 2.75rem !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    margin-bottom: 0.5rem !important;
+    position: relative !important;
+    z-index: 1 !important;
+    text-shadow: 0 2px 20px rgba(255, 255, 255, 0.1) !important;
+}
+
+body .roadmap-stat-card .stat-label {
+    font-size: 0.95rem !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Tabelas - Alta Especificidade */
+body .roadmap-table-wrapper {
+    background: transparent !important;
+}
+
+body .roadmap-table-wrapper table.table {
+    background: transparent !important;
+    border-collapse: separate !important;
+    border-spacing: 0 0.5rem !important;
+}
+
+body .roadmap-table-wrapper table.table thead th {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%) !important;
+    border: none !important;
+    border-bottom: 2px solid rgba(251, 191, 36, 0.4) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 1px !important;
+    padding: 1.25rem 1rem !important;
+    white-space: nowrap !important;
+}
+
+body .roadmap-table-wrapper table.table tbody {
+    background: transparent !important;
+}
+
+body .roadmap-table-wrapper table.table tbody tr {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    transition: all 0.3s ease !important;
+    border-left: 3px solid transparent !important;
+}
+
+body .roadmap-table-wrapper table.table tbody tr:hover {
+    background: linear-gradient(90deg, rgba(251, 191, 36, 0.2) 0%, rgba(139, 92, 246, 0.1) 100%) !important;
+    border-left-color: #fbbf24 !important;
+    border-color: rgba(251, 191, 36, 0.3) !important;
+    transform: translateX(4px) !important;
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.15) !important;
+}
+
+body .roadmap-table-wrapper table.table tbody td {
+    color: #ffffff !important;
+    padding: 1.25rem 1rem !important;
+    vertical-align: middle !important;
+    border: none !important;
+    font-weight: 500 !important;
+}
+
+body .roadmap-table-wrapper table.table tbody td strong {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+/* Badges de Status - Sobrescreve Bootstrap */
+body .roadmap-badge {
+    padding: 0.5rem 1rem !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+body .roadmap-badge.status-planned {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4) !important;
+}
+
+body .roadmap-badge.status-in_progress {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+    color: #000000 !important;
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4) !important;
+}
+
+body .roadmap-badge.status-completed {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4) !important;
+}
+
+body .roadmap-badge.badge-active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4) !important;
+}
+
+body .roadmap-badge.badge-inactive {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(107, 114, 128, 0.4) !important;
+}
+
+/* Botões Customizados */
+body .roadmap-btn-primary {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+    color: #000000 !important;
+    border: none !important;
+    padding: 0.875rem 1.75rem !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+body .roadmap-btn-primary:hover {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4) !important;
+    color: #000000 !important;
+}
+
+body .roadmap-btn-solid-white {
+    background: #ffffff !important;
+    color: #0a0e27 !important;
+    border: none !important;
+    padding: 0.875rem 1.75rem !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.25) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+body .roadmap-btn-solid-white:hover {
+    background: #f8f9fa !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(255, 255, 255, 0.35) !important;
+    color: #0a0e27 !important;
+}
+
+/* Formulários */
+body .roadmap-form-control {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+    border-radius: 12px !important;
+    padding: 0.875rem 1.25rem !important;
+    transition: all 0.3s ease !important;
+    font-size: 1rem !important;
+}
+
+body .roadmap-form-control::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+}
+
+body .roadmap-form-control:focus {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: #fbbf24 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 0 0.25rem rgba(251, 191, 36, 0.25) !important;
+    outline: none !important;
+}
+
+body .roadmap-form-label {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    margin-bottom: 0.75rem !important;
+    font-size: 1rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+
+body .roadmap-form-help {
+    color: rgba(255, 255, 255, 0.75) !important;
+    font-size: 0.875rem !important;
+    margin-top: 0.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+}
+
+/* Select elements */
+body .roadmap-form-control.form-select,
+body select.roadmap-form-control {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 16px 12px !important;
+    padding-right: 2.5rem !important;
+}
+
+body .roadmap-form-control.form-select option,
+body select.roadmap-form-control option {
+    background: #1a1f3a !important;
+    color: #ffffff !important;
+}
+
+/* Cards de Ação Rápida */
+body .roadmap-action-card {
+    background: linear-gradient(145deg, rgba(20, 25, 45, 0.95) 0%, rgba(15, 20, 35, 0.95) 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 18px !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+
+body .roadmap-action-card:hover {
+    transform: translateY(-8px) !important;
+    border-color: rgba(251, 191, 36, 0.4) !important;
+    box-shadow: 0 15px 50px rgba(251, 191, 36, 0.2) !important;
+}
+
+body .roadmap-action-card .action-icon {
+    background: rgba(251, 191, 36, 0.2) !important;
+    border-radius: 14px !important;
+    padding: 1rem !important;
+    width: 60px !important;
+    height: 60px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+body .roadmap-action-card .action-icon i {
+    font-size: 2rem !important;
+    color: #fbbf24 !important;
+}
+
+body .roadmap-action-card .action-text {
+    color: rgba(255, 255, 255, 0.95) !important;
+    line-height: 1.7 !important;
+    margin-bottom: 1.5rem !important;
+}
+
+/* Ícones */
+body .roadmap-icon {
+    transition: all 0.3s ease !important;
+}
+
+body .roadmap-icon:hover {
+    transform: scale(1.1) !important;
+}
+
+/* Botões de Ação na Tabela */
+body .roadmap-action-btn {
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    text-decoration: none !important;
+}
+
+body .roadmap-action-btn:hover {
+    transform: translateY(-2px) scale(1.05) !important;
+    text-decoration: none !important;
+}
+
+body .roadmap-action-btn.btn-info {
+    background: linear-gradient(135deg, #0dcaf0 0%, #06b6d4 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(13, 202, 240, 0.3) !important;
+}
+
+body .roadmap-action-btn.btn-info:hover {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
+    box-shadow: 0 4px 12px rgba(13, 202, 240, 0.4) !important;
+    color: #ffffff !important;
+}
+
+body .roadmap-action-btn.btn-warning {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+    color: #000000 !important;
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3) !important;
+}
+
+body .roadmap-action-btn.btn-warning:hover {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4) !important;
+    color: #000000 !important;
+}
+
+body .roadmap-action-btn.btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3) !important;
+}
+
+body .roadmap-action-btn.btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+    color: #ffffff !important;
+}
+
+body .btn-group .roadmap-action-btn {
+    border-radius: 0 !important;
+}
+
+body .btn-group .roadmap-action-btn:first-child {
+    border-top-left-radius: 8px !important;
+    border-bottom-left-radius: 8px !important;
+}
+
+body .btn-group .roadmap-action-btn:last-child {
+    border-top-right-radius: 8px !important;
+    border-bottom-right-radius: 8px !important;
+}
+
+/* Animações */
+@keyframes roadmapFadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+body .roadmap-animate-in {
+    animation: roadmapFadeInUp 0.6s ease-out !important;
+    animation-fill-mode: both !important;
+}
+
+body .roadmap-animate-in:nth-child(1) { animation-delay: 0.1s !important; }
+body .roadmap-animate-in:nth-child(2) { animation-delay: 0.2s !important; }
+body .roadmap-animate-in:nth-child(3) { animation-delay: 0.3s !important; }
+body .roadmap-animate-in:nth-child(4) { animation-delay: 0.4s !important; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    body .roadmap-page-header h2 {
+        font-size: 1.75rem !important;
+    }
+    
+    body .roadmap-stat-card .stat-value {
+        font-size: 2rem !important;
+    }
+    
+    body .roadmap-card .card-body {
+        padding: 1.5rem !important;
+    }
+    
+    body .roadmap-table-wrapper {
+        overflow-x: auto !important;
+    }
+    
+    body .roadmap-table-wrapper table {
+        min-width: 800px !important;
+    }
+}
+
+/* Override Bootstrap Table Dark */
+body .table-dark,
+body .table-dark > *,
+body .table-dark tbody,
+body .table-dark tbody tr,
+body .table-dark tbody td {
+    background: transparent !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+</style>

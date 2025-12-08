@@ -1,6 +1,7 @@
 {% extends "layouts/base.html" %}
 {% load i18n %}
 {% load l10n %}
+{% load itens_extras %}
 
 {% block content %}
 <div class="container py-4">
@@ -34,10 +35,18 @@
         <div class="col-md-4 mb-4">
             <div class="card h-100 {% if not exchange.has_item %}bg-light{% endif %}">
                 <div class="card-body">
-                    <h5 class="card-title">{{ exchange.item_name }}</h5>
-                    {% if exchange.item_enchant > 0 %}
-                    <span class="badge bg-info">+{{ exchange.item_enchant }}</span>
-                    {% endif %}
+                    <div class="exchange-item-header">
+                        <img src="{% item_image_url exchange.item_id %}" 
+                             alt="{{ exchange.item_name }}" 
+                             class="exchange-item-icon"
+                             title="{{ exchange.item_name }}">
+                        <div class="exchange-item-title-container">
+                            <h5 class="card-title mb-1">{{ exchange.item_name }}</h5>
+                            {% if exchange.item_enchant > 0 %}
+                            <span class="badge bg-info">+{{ exchange.item_enchant }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
                     
                     <div class="mt-3">
                         <p class="mb-2">
@@ -149,6 +158,57 @@
 .badge {
     font-size: 0.9em;
     padding: 0.4em 0.8em;
+}
+
+.exchange-item-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.exchange-item-icon {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.exchange-item-icon:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.exchange-item-title-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.exchange-item-title-container .card-title {
+    margin: 0;
+    word-break: break-word;
+}
+
+@media (max-width: 768px) {
+    .exchange-item-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .exchange-item-icon {
+        width: 56px;
+        height: 56px;
+    }
 }
 
 .input-group {

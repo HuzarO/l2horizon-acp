@@ -184,23 +184,69 @@ def verify_2fa_view(request):
 
 
 def config_hub_view(request):
-    # Centralizar links de configuração em uma única tela
-    entries = [
-        { 'title': _('API'), 'url_name': 'api:api_config_panel', 'icon': 'bi-hdd-network' },
-        { 'title': _('Moedas'), 'url_name': 'wallet:coin_config_panel', 'icon': 'bi-coin' },
-        { 'title': _('Shop'), 'url_name': 'shop:dashboard', 'icon': 'bi-bag-check' },
-        { 'title': _('Services'), 'url_name': 'server:configure_service_prices', 'icon': 'bi-gear' },
-        { 'title': _('Apoiadores'), 'url_name': 'server:painel_staff', 'icon': 'bi-people' },
-        { 'title': _('Box Manager'), 'url_name': 'games:box_manager_dashboard', 'icon': 'bi-box-seam' },
-        { 'title': _('Daily Bonus Manager'), 'url_name': 'games:daily_bonus_manager', 'icon': 'bi-calendar-week' },
-        { 'title': _('Roulette Manager'), 'url_name': 'games:roulette_manager', 'icon': 'bi-shuffle' },
-        { 'title': _('Economy Manager'), 'url_name': 'games:economy_manager', 'icon': 'bi-lightning-charge' },
-        { 'title': _('Slot Machine Manager'), 'url_name': 'games:slot_machine_manager', 'icon': 'bi-dice-6', 'is_new': True },
-        { 'title': _('Dice Game Manager'), 'url_name': 'games:dice_game_manager', 'icon': 'bi-dice-5', 'is_new': True },
-        { 'title': _('Fishing Game Manager'), 'url_name': 'games:fishing_game_manager', 'icon': 'bi-water', 'is_new': True },
-        { 'title': _('Licenças'), 'url_name': 'licence:dashboard', 'icon': 'bi-patch-check' },
-        { 'title': _('Recursos'), 'url_name': 'resources:dashboard', 'icon': 'bi-archive' },
-        { 'title': _('Enviar Push'), 'url_name': 'notification:send_push', 'icon': 'bi-bell' },
-        { 'title': _('Verificações'), 'url_name': 'social:verification_admin_list', 'icon': 'bi-shield-check' },
+    # Centralizar links de configuração em uma única tela, organizados por categorias
+    categories = [
+        {
+            'name': _('Sistema & API'),
+            'icon': 'bi-server',
+            'color': 'primary',
+            'entries': [
+                { 'title': _('API'), 'url_name': 'api:api_config_panel', 'icon': 'bi-hdd-network', 'description': _('Configurar chaves e permissões da API') },
+                { 'title': _('Recursos'), 'url_name': 'resources:dashboard', 'icon': 'bi-archive', 'description': _('Gerenciar recursos do sistema') },
+            ]
+        },
+        {
+            'name': _('Financeiro'),
+            'icon': 'bi-wallet2',
+            'color': 'success',
+            'entries': [
+                { 'title': _('Moedas'), 'url_name': 'wallet:coin_config_panel', 'icon': 'bi-coin', 'description': _('Configurar moedas e taxas') },
+                { 'title': _('Shop'), 'url_name': 'shop:dashboard', 'icon': 'bi-bag-check', 'description': _('Gerenciar loja e produtos') },
+            ]
+        },
+        {
+            'name': _('Jogos'),
+            'icon': 'bi-controller',
+            'color': 'warning',
+            'entries': [
+                { 'title': _('Box Manager'), 'url_name': 'games:box_manager_dashboard', 'icon': 'bi-box-seam', 'description': _('Configurar caixas e itens') },
+                { 'title': _('Daily Bonus Manager'), 'url_name': 'games:daily_bonus_manager', 'icon': 'bi-calendar-week', 'description': _('Gerenciar bônus diários') },
+                { 'title': _('Roulette Manager'), 'url_name': 'games:roulette_manager', 'icon': 'bi-shuffle', 'description': _('Configurar roleta e prêmios') },
+                { 'title': _('Economy Manager'), 'url_name': 'games:economy_manager', 'icon': 'bi-lightning-charge', 'description': _('Gerenciar economia do jogo') },
+                { 'title': _('Battle Pass Manager'), 'url_name': 'games:battle_pass_manager', 'icon': 'bi-trophy', 'is_new': True, 'description': _('Configurar temporadas e recompensas') },
+                { 'title': _('Achievement Rewards Manager'), 'url_name': 'games:achievement_rewards_manager', 'icon': 'bi-award', 'is_new': True, 'description': _('Premiações de conquistas') },
+                { 'title': _('Slot Machine Manager'), 'url_name': 'games:slot_machine_manager', 'icon': 'bi-dice-6', 'description': _('Configurar máquina de slots') },
+                { 'title': _('Dice Game Manager'), 'url_name': 'games:dice_game_manager', 'icon': 'bi-dice-5', 'description': _('Gerenciar jogo de dados') },
+                { 'title': _('Fishing Game Manager'), 'url_name': 'games:fishing_game_manager', 'icon': 'bi-water', 'description': _('Configurar pescaria e recompensas') },
+            ]
+        },
+        {
+            'name': _('Conteúdo'),
+            'icon': 'bi-file-text',
+            'color': 'info',
+            'entries': [
+                { 'title': _('Calendar Manager'), 'url_name': 'calendary:manager_dashboard', 'icon': 'bi-calendar-event', 'is_new': True, 'description': _('Gerenciar eventos do calendário') },
+                { 'title': _('Roadmap Manager'), 'url_name': 'roadmap:manager_dashboard', 'icon': 'bi-diagram-3', 'is_new': True, 'description': _('Planejamento e atualizações') },
+            ]
+        },
+        {
+            'name': _('Servidor'),
+            'icon': 'bi-hdd-stack',
+            'color': 'secondary',
+            'entries': [
+                { 'title': _('Services'), 'url_name': 'server:configure_service_prices', 'icon': 'bi-gear', 'description': _('Preços de serviços do servidor') },
+                { 'title': _('Apoiadores'), 'url_name': 'server:painel_staff', 'icon': 'bi-people', 'description': _('Gerenciar apoiadores e staff') },
+            ]
+        },
+        {
+            'name': _('Administração'),
+            'icon': 'bi-shield-check',
+            'color': 'danger',
+            'entries': [
+                { 'title': _('Licenças'), 'url_name': 'licence:dashboard', 'icon': 'bi-patch-check', 'description': _('Gerenciar licenças do sistema') },
+                { 'title': _('Enviar Push'), 'url_name': 'notification:send_push', 'icon': 'bi-bell', 'description': _('Enviar notificações push') },
+                { 'title': _('Verificações'), 'url_name': 'social:verification_admin_list', 'icon': 'bi-shield-check', 'description': _('Aprovar verificações de usuários') },
+            ]
+        },
     ]
-    return render(request, 'config/hub.html', { 'entries': entries })
+    return render(request, 'config/hub.html', { 'categories': categories })

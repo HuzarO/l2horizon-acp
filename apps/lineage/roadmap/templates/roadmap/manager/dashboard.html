@@ -1,0 +1,184 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Roadmap Manager" %} - {% trans "Gerenciador de Roadmap" %}{% endblock %}
+
+{% block extrastyle %}
+{% include 'roadmap/manager/_roadmap_styles.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="roadmap-manager-bg">
+    <div class="container">
+        <!-- Header -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5 roadmap-animate-in">
+            <div class="roadmap-page-header mb-3 mb-md-0">
+                <h2 class="mb-2">
+                    <i class="bi bi-diagram-3 text-warning me-2"></i>
+                    {% trans "Gerenciador de Roadmap" %}
+                </h2>
+                <p>{% trans "Gerencie itens do roadmap e funcionalidades planejadas" %}</p>
+            </div>
+            <div class="d-flex gap-3">
+                <a href="{% url 'config_hub' %}" class="roadmap-btn-solid-white">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                </a>
+                <a href="{% url 'roadmap:manager_roadmap_create' %}" class="roadmap-btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Novo Item" %}
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-6 col-md-3 roadmap-animate-in">
+                <div class="roadmap-stat-card stat-total">
+                    <i class="bi bi-list-task stat-icon"></i>
+                    <div class="stat-value">{{ total_roadmaps }}</div>
+                    <div class="stat-label">{% trans "Total" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 roadmap-animate-in">
+                <div class="roadmap-stat-card stat-published">
+                    <i class="bi bi-check-circle stat-icon"></i>
+                    <div class="stat-value">{{ published_roadmaps }}</div>
+                    <div class="stat-label">{% trans "Publicados" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 roadmap-animate-in">
+                <div class="roadmap-stat-card stat-planned">
+                    <i class="bi bi-clock-history stat-icon"></i>
+                    <div class="stat-value">{{ planned_roadmaps }}</div>
+                    <div class="stat-label">{% trans "Planejados" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 roadmap-animate-in">
+                <div class="roadmap-stat-card stat-in-progress">
+                    <i class="bi bi-arrow-right-circle stat-icon"></i>
+                    <div class="stat-value">{{ in_progress_roadmaps }}</div>
+                    <div class="stat-label">{% trans "Em Andamento" %}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Roadmaps -->
+        {% if recent_roadmaps %}
+        <div class="roadmap-card mb-5 roadmap-animate-in">
+            <div class="card-header">
+                <h5 class="mb-0 d-flex align-items-center justify-content-between">
+                    <span>
+                        <i class="bi bi-clock me-2 text-warning"></i>
+                        {% trans "Itens Recentes" %}
+                    </span>
+                    <span class="roadmap-badge status-planned">{{ recent_roadmaps|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="roadmap-table-wrapper">
+                    <div class="table-responsive">
+                        <table class="table table-dark">
+                            <thead>
+                                <tr>
+                                    <th>{% trans "Título" %}</th>
+                                    <th>{% trans "Status" %}</th>
+                                    <th>{% trans "Publicado" %}</th>
+                                    <th>{% trans "Autor" %}</th>
+                                    <th>{% trans "Ações" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for roadmap in recent_roadmaps %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-diagram-3 me-2 text-warning roadmap-icon"></i>
+                                            <strong>
+                                                {% with roadmap.translations.all|dictsort:"language" as sorted_trans %}
+                                                    {% for trans in sorted_trans %}
+                                                        {% if trans.language == 'pt' %}
+                                                            {{ trans.title }}
+                                                        {% endif %}
+                                                    {% empty %}
+                                                        Roadmap #{{ roadmap.id }}
+                                                    {% endfor %}
+                                                {% endwith %}
+                                            </strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="roadmap-badge status-{{ roadmap.status }}">
+                                            {{ roadmap.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if roadmap.is_published %}
+                                        <span class="roadmap-badge badge-active">{% trans "Sim" %}</span>
+                                        {% else %}
+                                        <span class="roadmap-badge badge-inactive">{% trans "Não" %}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ roadmap.author.username }}</td>
+                                    <td>
+                                        <a href="{% url 'roadmap:manager_roadmap_detail' roadmap_id=roadmap.id %}" 
+                                           class="btn roadmap-action-btn btn-info" 
+                                           title="{% trans 'Ver Detalhes' %}">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Quick Actions -->
+        <div class="row g-4">
+            <div class="col-md-6 roadmap-animate-in">
+                <div class="roadmap-action-card roadmap-card">
+                    <div class="card-header">
+                        <h5 class="mb-0 d-flex align-items-center">
+                            <div class="action-icon me-3">
+                                <i class="bi bi-list-ul"></i>
+                            </div>
+                            {% trans "Todos os Itens" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="action-text">
+                            {% trans "Visualize e gerencie todos os itens do roadmap. Filtre por status ou publicação." %}
+                        </p>
+                        <a href="{% url 'roadmap:manager_roadmap_list' %}" class="roadmap-btn-primary w-100 d-block text-center">
+                            <i class="bi bi-list-ul me-2"></i>{% trans "Ver Todos os Itens" %}
+                            <span class="roadmap-badge status-planned ms-2" style="background: #ffffff !important; color: #000000 !important; box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3) !important;">{{ total_roadmaps }}</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 roadmap-animate-in">
+                <div class="roadmap-action-card roadmap-card">
+                    <div class="card-header">
+                        <h5 class="mb-0 d-flex align-items-center">
+                            <div class="action-icon me-3" style="background: rgba(16, 185, 129, 0.2) !important;">
+                                <i class="bi bi-eye" style="color: #10b981 !important;"></i>
+                            </div>
+                            {% trans "Visualizar Roadmap" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="action-text">
+                            {% trans "Visualize o roadmap público com todos os itens publicados." %}
+                        </p>
+                        <a href="{% url 'roadmap:index' %}" class="roadmap-btn-primary w-100 d-block text-center" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important; color: #ffffff !important;">
+                            <i class="bi bi-diagram-3 me-2"></i>{% trans "Abrir Roadmap" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,175 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Calendar Manager" %} - {% trans "Gerenciador de Calendário" %}{% endblock %}
+
+{% block extrastyle %}
+{% include 'calendary/manager/_calendar_styles.html' %}
+{% endblock %}
+
+{% block content %}
+<div class="calendar-manager-bg">
+    <div class="container">
+        <!-- Header -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5 calendar-animate-in">
+            <div class="calendar-page-header mb-3 mb-md-0">
+                <h2 class="mb-2">
+                    <i class="bi bi-calendar-event text-info me-2"></i>
+                    {% trans "Gerenciador de Calendário" %}
+                </h2>
+                <p>{% trans "Gerencie eventos e atividades do calendário" %}</p>
+            </div>
+            <div class="d-flex gap-3">
+                <a href="{% url 'config_hub' %}" class="calendar-btn-solid-white">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                </a>
+                <a href="{% url 'calendary:manager_event_create' %}" class="calendar-btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Novo Evento" %}
+                </a>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-6 col-md-3 calendar-animate-in">
+                <div class="calendar-stat-card stat-total">
+                    <i class="bi bi-calendar3 stat-icon"></i>
+                    <div class="stat-value">{{ total_events }}</div>
+                    <div class="stat-label">{% trans "Total de Eventos" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 calendar-animate-in">
+                <div class="calendar-stat-card stat-upcoming">
+                    <i class="bi bi-clock-history stat-icon"></i>
+                    <div class="stat-value">{{ upcoming_events }}</div>
+                    <div class="stat-label">{% trans "Próximos Eventos" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 calendar-animate-in">
+                <div class="calendar-stat-card stat-ongoing">
+                    <i class="bi bi-play-circle stat-icon"></i>
+                    <div class="stat-value">{{ ongoing_events }}</div>
+                    <div class="stat-label">{% trans "Em Andamento" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 calendar-animate-in">
+                <div class="calendar-stat-card stat-past">
+                    <i class="bi bi-check-circle stat-icon"></i>
+                    <div class="stat-value">{{ past_events }}</div>
+                    <div class="stat-label">{% trans "Eventos Passados" %}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Próximos Eventos -->
+        {% if upcoming_week_events %}
+        <div class="calendar-card mb-5 calendar-animate-in">
+            <div class="card-header">
+                <h5 class="mb-0 d-flex align-items-center justify-content-between">
+                    <span>
+                        <i class="bi bi-calendar-week me-2 text-warning"></i>
+                        {% trans "Próximos Eventos (7 dias)" %}
+                    </span>
+                    <span class="calendar-badge bg-info">{{ upcoming_week_events|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="calendar-table-wrapper">
+                    <div class="table-responsive">
+                        <table class="table table-dark">
+                            <thead>
+                                <tr>
+                                    <th>{% trans "Título" %}</th>
+                                    <th>{% trans "Data de Início" %}</th>
+                                    <th>{% trans "Data de Término" %}</th>
+                                    <th>{% trans "Cor" %}</th>
+                                    <th>{% trans "Ações" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in upcoming_week_events %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-calendar-event me-2 text-info calendar-icon"></i>
+                                            <strong>{{ event.title }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-clock me-1"></i>
+                                        {{ event.start_date|date:"d/m/Y H:i" }}
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-clock-history me-1"></i>
+                                        {{ event.end_date|date:"d/m/Y H:i" }}
+                                    </td>
+                                    <td>
+                                        <span class="calendar-badge {{ event.className }}">
+                                            <i class="bi bi-palette"></i>
+                                            {{ event.get_className_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'calendary:manager_event_detail' event_id=event.id %}" 
+                                           class="btn calendar-action-btn btn-info" 
+                                           title="{% trans 'Ver Detalhes' %}">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Quick Actions -->
+        <div class="row g-4">
+            <div class="col-md-6 calendar-animate-in">
+                <div class="calendar-action-card calendar-card">
+                    <div class="card-header">
+                        <h5 class="mb-0 d-flex align-items-center">
+                            <div class="action-icon me-3">
+                                <i class="bi bi-list-ul"></i>
+                            </div>
+                            {% trans "Todos os Eventos" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="action-text">
+                            {% trans "Visualize e gerencie todos os eventos do calendário. Filtre por status, cor ou período." %}
+                        </p>
+                        <a href="{% url 'calendary:manager_event_list' %}" class="calendar-btn-primary w-100 d-block text-center">
+                            <i class="bi bi-list-ul me-2"></i>{% trans "Ver Todos os Eventos" %}
+                            <span class="calendar-badge bg-info ms-2" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important; color: #000000 !important; box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4) !important;">{{ total_events }}</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 calendar-animate-in">
+                <div class="calendar-action-card calendar-card">
+                    <div class="card-header">
+                        <h5 class="mb-0 d-flex align-items-center">
+                            <div class="action-icon me-3" style="background: rgba(16, 185, 129, 0.2) !important;">
+                                <i class="bi bi-calendar-check" style="color: #10b981 !important;"></i>
+                            </div>
+                            {% trans "Visualizar Calendário" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="action-text">
+                            {% trans "Visualize o calendário completo com todos os eventos em formato de calendário interativo." %}
+                        </p>
+                        <a href="{% url 'calendary:calendar' %}" class="calendar-btn-primary w-100 d-block text-center" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;">
+                            <i class="bi bi-calendar3 me-2"></i>{% trans "Abrir Calendário" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

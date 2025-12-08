@@ -1,5 +1,7 @@
 from django.shortcuts import render
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from ..models import UserBattlePassProgress, BattlePassSeason, BattlePassReward, BattlePassItemExchange, Bag, BagItem, BattlePassLevel
+from ..services.battle_pass_service import BattlePassService
 from apps.main.home.decorator import conditional_otp_required
 from django.shortcuts import redirect, get_object_or_404
 from apps.lineage.wallet.models import Wallet
@@ -10,56 +12,55 @@ from django.utils.translation import gettext_lazy as gettext
 
 @conditional_otp_required
 def battle_pass_view(request):
-    season = BattlePassSeason.objects.filter(is_active=True).first()
+    season = BattlePassService.get_active_season()
 
     if not season:
-        return render(request, 'battlepass/no_active_season.html')  # crie este template para dar feedback ao usuário
+        return render(request, 'battlepass/no_active_season.html')
 
     progress, created = UserBattlePassProgress.objects.get_or_create(
         user=request.user,
         season=season
     )
 
-    # Obtém o nível atual e o próximo nível
-    current_level = progress.get_current_level()
-    if current_level is None:
-        current_level_number = 0
-    else:
-        current_level_number = current_level.level
+    # Usa o service para calcular o progresso
+    progress_data = BattlePassService.calculate_progress(progress)
+    time_remaining = BattlePassService.get_season_time_remaining(season)
 
-    next_level = BattlePassLevel.objects.filter(
-        season=season,
-        level__gt=current_level_number
-    ).order_by('level').first()
-
-    # Calcula o progresso para o próximo nível
-    if next_level:
-        if current_level_number == 0:
-            current_level_xp = 0
-        else:
-            current_level_xp = BattlePassLevel.objects.get(
-                season=season,
-                level=current_level_number
-            ).required_xp
-        xp_for_next_level = next_level.required_xp - current_level_xp
-        current_xp = progress.xp - current_level_xp
-        progress_percentage = min(100, int((current_xp / xp_for_next_level) * 100))
-    else:
-        xp_for_next_level = 0
-        current_xp = 0
-        progress_percentage = 100
-
-    levels = season.battlepasslevel_set.order_by('level').prefetch_related('battlepassreward_set')
-    return render(request, 'battlepass/battle_pass.html', {
+    levels_queryset = season.battlepasslevel_set.order_by('level').prefetch_related('battlepassreward_set')
+    
+    # Paginação - 12 níveis por página
+    paginator = Paginator(levels_queryset, 12)
+    page = request.GET.get('page')
+    
+    try:
+        levels_page = paginator.page(page)
+    except PageNotAnInteger:
+        levels_page = paginator.page(1)
+    except EmptyPage:
+        levels_page = paginator.page(paginator.num_pages)
+    
+    context = {
         'season': season,
         'progress': progress,
-        'levels': levels,
-        'current_level': current_level_number,
-        'next_level': next_level.level if next_level else None,
-        'current_xp': current_xp,
-        'xp_for_next_level': xp_for_next_level,
-        'progress_percentage': progress_percentage,
-    })
+        'levels': levels_page,
+        'current_level': progress_data['current_level_number'],
+        'next_level': progress_data['next_level'].level if progress_data['next_level'] else None,
+        'current_xp': progress_data['current_xp'],
+        'xp_for_next_level': progress_data['xp_for_next_level'],
+        'progress_percentage': progress_data['progress_percentage'],
+        'is_max_level': progress_data['is_max_level'],
+        'time_remaining': time_remaining,
+        'has_other_pages': levels_page.has_other_pages(),
+        'has_previous': levels_page.has_previous(),
+        'has_next': levels_page.has_next(),
+        'previous_page_number': levels_page.previous_page_number() if levels_page.has_previous() else None,
+        'next_page_number': levels_page.next_page_number() if levels_page.has_next() else None,
+        'current_page': levels_page.number,
+        'num_pages': paginator.num_pages,
+        'total_levels': paginator.count,
+    }
+    
+    return render(request, 'battlepass/battle_pass.html', context)
 
 
 @conditional_otp_required
@@ -67,32 +68,26 @@ def claim_reward(request, reward_id):
     reward = get_object_or_404(BattlePassReward, id=reward_id)
     progress = get_object_or_404(UserBattlePassProgress, user=request.user, season=reward.level.season)
 
-    current_level = progress.get_current_level()
-    current_level_number = current_level.level if current_level is not None else 0
-
-    if reward.level.level <= current_level_number:
-        if not reward.is_premium or progress.has_premium:
-            if reward not in progress.claimed_rewards.all():
-                # Adiciona o item à bag do usuário
-                bag_item = reward.add_to_user_bag(request.user)
-                if bag_item:
-                    messages.success(request, gettext("Recompensa resgatada com sucesso!"))
-                else:
-                    messages.warning(request, gettext("Recompensa resgatada, mas não há item associado."))
-                progress.claimed_rewards.add(reward)
-            else:
-                messages.info(request, gettext("Você já resgatou esta recompensa."))
+    # Usa o service para validar se pode resgatar
+    can_claim, reason = BattlePassService.can_claim_reward(progress, reward)
+    
+    if can_claim:
+        # Adiciona o item à bag do usuário
+        bag_item = reward.add_to_user_bag(request.user)
+        if bag_item:
+            messages.success(request, gettext("Recompensa resgatada com sucesso!"))
         else:
-            messages.error(request, gettext("Você precisa do Passe Premium para resgatar esta recompensa."))
+            messages.warning(request, gettext("Recompensa resgatada, mas não há item associado."))
+        progress.claimed_rewards.add(reward)
     else:
-        messages.error(request, gettext("Você ainda não atingiu o nível necessário para esta recompensa."))
+        messages.error(request, gettext(reason))
 
     return redirect('games:battle_pass')
 
 
 @conditional_otp_required
 def buy_battle_pass_premium_view(request):
-    season = BattlePassSeason.objects.filter(is_active=True).first()
+    season = BattlePassService.get_active_season()
 
     if not season:
         messages.error(request, gettext("Nenhuma temporada ativa no momento."))
@@ -145,42 +140,19 @@ def buy_battle_pass_premium_view(request):
 
 @conditional_otp_required
 def exchange_items_view(request):
-    season = BattlePassSeason.objects.filter(is_active=True).first()
+    season = BattlePassService.get_active_season()
     if not season:
         messages.error(request, gettext("Não há temporada ativa no momento."))
         return redirect('games:battle_pass')
 
-    progress = UserBattlePassProgress.objects.get(user=request.user, season=season)
+    progress, created = UserBattlePassProgress.objects.get_or_create(
+        user=request.user,
+        season=season
+    )
     exchanges = BattlePassItemExchange.objects.filter(is_active=True)
 
-    # Obtém o nível atual e o próximo nível
-    current_level = progress.get_current_level()
-    if current_level is None:
-        current_level_number = 0
-    else:
-        current_level_number = current_level.level
-
-    next_level = BattlePassLevel.objects.filter(
-        season=season,
-        level__gt=current_level_number
-    ).order_by('level').first()
-
-    # Calcula o progresso para o próximo nível
-    if next_level:
-        if current_level_number == 0:
-            current_level_xp = 0
-        else:
-            current_level_xp = BattlePassLevel.objects.get(
-                season=season,
-                level=current_level_number
-            ).required_xp
-        xp_for_next_level = next_level.required_xp - current_level_xp
-        current_xp = progress.xp - current_level_xp
-        progress_percentage = min(100, int((current_xp / xp_for_next_level) * 100))
-    else:
-        xp_for_next_level = 0
-        current_xp = 0
-        progress_percentage = 100
+    # Usa o service para calcular o progresso
+    progress_data = BattlePassService.calculate_progress(progress)
 
     # Verifica quais itens o usuário possui
     try:
@@ -202,11 +174,11 @@ def exchange_items_view(request):
     return render(request, 'battlepass/exchange_items.html', {
         'exchanges': exchanges,
         'progress': progress,
-        'current_level': current_level_number,
-        'next_level': next_level.level if next_level else None,
-        'current_xp': current_xp,
-        'xp_for_next_level': xp_for_next_level,
-        'progress_percentage': progress_percentage,
+        'current_level': progress_data['current_level_number'],
+        'next_level': progress_data['next_level'].level if progress_data['next_level'] else None,
+        'current_xp': progress_data['current_xp'],
+        'xp_for_next_level': progress_data['xp_for_next_level'],
+        'progress_percentage': progress_data['progress_percentage'],
     })
 
 
@@ -227,3 +199,124 @@ def exchange_item(request, exchange_id):
             messages.error(request, message)
     
     return redirect('games:exchange_items')
+
+
+@conditional_otp_required
+def battle_pass_history_view(request):
+    """Visualização do histórico do Battle Pass"""
+    season = BattlePassService.get_active_season()
+    
+    if not season:
+        messages.error(request, gettext("Não há temporada ativa no momento."))
+        return redirect('games:battle_pass')
+    
+    from ..models import BattlePassHistory
+    from django.core.paginator import Paginator
+    
+    history = BattlePassHistory.objects.filter(
+        user=request.user,
+        season=season
+    ).order_by('-created_at')
+    
+    paginator = Paginator(history, 20)
+    page = request.GET.get('page', 1)
+    
+    try:
+        history_page = paginator.page(page)
+    except:
+        history_page = paginator.page(1)
+    
+    context = {
+        'season': season,
+        'history': history_page,
+    }
+    
+    return render(request, 'battlepass/history.html', context)
+
+
+@conditional_otp_required
+def battle_pass_statistics_view(request):
+    """Visualização de estatísticas do Battle Pass"""
+    season = BattlePassService.get_active_season()
+    
+    if not season:
+        messages.error(request, gettext("Não há temporada ativa no momento."))
+        return redirect('games:battle_pass')
+    
+    from ..models import BattlePassStatistics, BattlePassHistory
+    from django.db.models import Count, Avg, Max
+    
+    progress, created = UserBattlePassProgress.objects.get_or_create(
+        user=request.user,
+        season=season
+    )
+    
+    stats, created = BattlePassStatistics.objects.get_or_create(
+        user=request.user,
+        season=season
+    )
+    
+    # Estatísticas adicionais
+    progress_data = BattlePassService.calculate_progress(progress)
+    
+    # Ranking (posição entre todos os usuários)
+    all_progress = UserBattlePassProgress.objects.filter(season=season).order_by('-xp')
+    rank = 0
+    for idx, p in enumerate(all_progress, 1):
+        if p.user == request.user:
+            rank = idx
+            break
+    
+    # Estatísticas gerais da temporada
+    total_users = UserBattlePassProgress.objects.filter(season=season).count()
+    avg_xp = UserBattlePassProgress.objects.filter(season=season).aggregate(Avg('xp'))['xp__avg'] or 0
+    max_xp = UserBattlePassProgress.objects.filter(season=season).aggregate(Max('xp'))['xp__max'] or 0
+    
+    # Histórico recente (últimas 10 ações)
+    recent_history = BattlePassHistory.objects.filter(
+        user=request.user,
+        season=season
+    ).order_by('-created_at')[:10]
+    
+    context = {
+        'season': season,
+        'progress': progress,
+        'stats': stats,
+        'progress_data': progress_data,
+        'rank': rank,
+        'total_users': total_users,
+        'avg_xp': int(avg_xp),
+        'max_xp': max_xp,
+        'recent_history': recent_history,
+    }
+    
+    return render(request, 'battlepass/statistics.html', context)
+
+
+@conditional_otp_required
+def toggle_auto_claim(request):
+    """Ativa/desativa auto-claim de recompensas free"""
+    season = BattlePassService.get_active_season()
+    
+    if not season:
+        messages.error(request, gettext("Não há temporada ativa no momento."))
+        return redirect('games:battle_pass')
+    
+    progress, created = UserBattlePassProgress.objects.get_or_create(
+        user=request.user,
+        season=season
+    )
+    
+    progress.auto_claim_free = not progress.auto_claim_free
+    progress.save()
+    
+    if progress.auto_claim_free:
+        messages.success(request, gettext("Auto-resgate de recompensas free ativado!"))
+        # Tenta resgatar recompensas disponíveis imediatamente
+        claimed = progress.auto_claim_free_rewards()
+        if claimed > 0:
+            messages.info(request, gettext(f"{claimed} recompensa(s) free foram resgatadas automaticamente!"))
+    else:
+        messages.info(request, gettext("Auto-resgate de recompensas free desativado."))
+    
+    return redirect('games:battle_pass')

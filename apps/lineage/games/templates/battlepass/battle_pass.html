@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% load i18n %}
+{% load itens_extras %}
 
 {% block content %}
 <style>
@@ -110,6 +111,67 @@
     line-height: 1.4;
     word-break: break-word;
     text-align: center;
+  }
+
+  .reward-item-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .reward-item-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .reward-item-icon:hover {
+    transform: scale(1.1);
+    border-color: var(--accent-color);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+  }
+
+  .reward-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: left;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .reward-item-name {
+    font-weight: 600;
+    color: var(--accent-color);
+    font-size: 0.95rem;
+  }
+
+  .reward-item-details {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .reward-item-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .reward-item-detail i {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
   }
 
   .reward-badges {
@@ -261,6 +323,21 @@
     .reward-description {
       font-size: 0.9rem;
     }
+
+    .reward-item-container {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .reward-item-info {
+      text-align: center;
+      align-items: center;
+    }
+
+    .reward-item-icon {
+      width: 40px;
+      height: 40px;
+    }
   }
 
   .progress-container {
@@ -307,11 +384,249 @@
     border-radius: 2rem;
     box-shadow: 0 0 10px rgba(0,255,127,0.3);
   }
+
+  /* Paginação */
+  .battle-pass-pagination {
+    background: rgba(30, 30, 47, 0.95);
+    backdrop-filter: blur(15px);
+    border-radius: 1rem;
+    padding: 2rem;
+    margin-top: 2rem;
+    box-shadow: 0 0 25px rgba(75, 0, 130, 0.3), 0 0 40px rgba(138, 43, 226, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    position: relative;
+  }
+
+  .battle-pass-pagination::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+    border-radius: 1rem;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    z-index: -1;
+  }
+
+  .pagination-info {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.95rem;
+  }
+
+  .pagination-info span {
+    color: var(--accent-color);
+    font-weight: 600;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  }
+
+  .pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .pagination-btn {
+    background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+    color: #ffffff;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 15px rgba(75, 0, 130, 0.4);
+  }
+
+  .pagination-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .pagination-btn:hover::before {
+    left: 100%;
+  }
+
+  .pagination-btn:hover {
+    background: linear-gradient(135deg, var(--secondary-glow), var(--primary-glow));
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(138, 43, 226, 0.4);
+    color: #ffffff;
+    text-decoration: none;
+  }
+
+  .pagination-numbers {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .pagination-number {
+    background: rgba(75, 0, 130, 0.3);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.75rem 1rem;
+    border-radius: 2rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    min-width: 2.5rem;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .pagination-number:hover {
+    background: rgba(138, 43, 226, 0.5);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(138, 43, 226, 0.4);
+    text-decoration: none;
+    border-color: var(--accent-color);
+  }
+
+  .pagination-current {
+    background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+    color: var(--accent-color);
+    padding: 0.75rem 1rem;
+    border-radius: 2rem;
+    min-width: 2.5rem;
+    text-align: center;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+    border: 2px solid var(--accent-color);
+  }
+
+  @media (max-width: 768px) {
+    .battle-pass-pagination {
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .pagination-controls {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .pagination-numbers {
+      order: 2;
+    }
+
+    .pagination-btn {
+      order: 1;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .pagination-info {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+  }
+
+  .season-timer {
+    margin: 1rem 0;
+  }
+
+  .season-timer .badge {
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .season-timer .badge i {
+    margin-right: 0.5rem;
+  }
+
+  #countdown-timer {
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+  }
 </style>
+
+{% if time_remaining and not time_remaining.is_ended %}
+<script>
+  // Contador regressivo em tempo real
+  let totalSeconds = {{ time_remaining.total_seconds }};
+  const countdownElement = document.getElementById('countdown-timer');
+  
+  function updateCountdown() {
+    if (totalSeconds <= 0) {
+      if (countdownElement) {
+        countdownElement.textContent = '{% trans "Encerrado" %}';
+      }
+      return;
+    }
+    
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (countdownElement) {
+      if (days > 0) {
+        countdownElement.textContent = `${days}d ${hours}h ${minutes}m`;
+      } else if (hours > 0) {
+        countdownElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
+      } else {
+        countdownElement.textContent = `${minutes}m ${seconds}s`;
+      }
+    }
+    
+    totalSeconds--;
+  }
+  
+  // Atualiza a cada segundo
+  setInterval(updateCountdown, 1000);
+  updateCountdown(); // Primeira atualização imediata
+</script>
+{% endif %}
 
 <div class="container mt-4">
   <div class="season-header text-center">
     <h1 class="display-5 fw-bold">{{ season.name }}</h1>
+    {% if time_remaining %}
+    <div class="season-timer mb-3">
+      {% if time_remaining.is_ended %}
+        <span class="badge bg-danger">{% trans "Temporada Encerrada" %}</span>
+      {% elif time_remaining.is_ending_soon %}
+        <span class="badge bg-warning text-dark">
+          <i class="fas fa-clock"></i> 
+          {% trans "Termina em" %}: 
+          <span id="countdown-timer">{{ time_remaining.days }}d {{ time_remaining.hours }}h {{ time_remaining.minutes }}m</span>
+        </span>
+      {% else %}
+        <span class="badge bg-info">
+          <i class="fas fa-clock"></i> 
+          {% trans "Termina em" %}: 
+          <span id="countdown-timer">{{ time_remaining.days }}d {{ time_remaining.hours }}h {{ time_remaining.minutes }}m</span>
+        </span>
+      {% endif %}
+    </div>
+    {% endif %}
     <div class="progress-container">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <span class="level-info">
@@ -339,8 +654,25 @@
         <a href="{% url 'games:exchange_items' %}" class="btn btn-secondary">
             <i class="fas fa-exchange-alt"></i> {% trans "Trocar Itens por XP" %}
         </a>
-        {% if not user_battle_pass.is_premium %}
-            <a href="{% url 'games:buy_battle_pass_premium' %}" class="btn btn-primary">
+        <a href="{% url 'games:quests' %}" class="btn btn-info">
+            <i class="fas fa-tasks"></i> {% trans "Missões" %}
+        </a>
+        <a href="{% url 'games:battle_pass_history' %}" class="btn btn-secondary">
+            <i class="fas fa-history"></i> {% trans "Histórico" %}
+        </a>
+        <a href="{% url 'games:battle_pass_statistics' %}" class="btn btn-secondary">
+            <i class="fas fa-chart-bar"></i> {% trans "Estatísticas" %}
+        </a>
+        <a href="{% url 'games:toggle_auto_claim' %}" class="btn btn-{% if progress.auto_claim_free %}success{% else %}outline-secondary{% endif %}">
+            <i class="fas fa-{% if progress.auto_claim_free %}check-circle{% else %}circle{% endif %}"></i> 
+            {% if progress.auto_claim_free %}
+                {% trans "Auto-Resgate: Ativo" %}
+            {% else %}
+                {% trans "Auto-Resgate: Inativo" %}
+            {% endif %}
+        </a>
+        {% if not progress.has_premium %}
+            <a href="{% url 'games:buy_battle_pass_premium' %}" class="btn btn-warning">
                 <i class="fas fa-crown"></i> {% trans "Comprar Premium" %}
             </a>
         {% endif %}
@@ -364,9 +696,41 @@
                   {% if reward.is_premium %}
                     <span class="badge badge-premium">Premium</span>
                   {% endif %}
-                  <div class="reward-description">
-                    {{ reward.description }}
-                  </div>
+                  
+                  {% if reward.item_id %}
+                    <div class="reward-item-container">
+                      <img src="{% item_image_url reward.item_id %}" 
+                           alt="{{ reward.item_name|default:reward.description }}" 
+                           class="reward-item-icon"
+                           title="{{ reward.item_name|default:reward.description }}">
+                      <div class="reward-item-info">
+                        {% if reward.item_name %}
+                          <div class="reward-item-name">{{ reward.item_name }}</div>
+                        {% endif %}
+                        <div class="reward-item-details">
+                          {% if reward.item_enchant > 0 %}
+                            <div class="reward-item-detail">
+                              <i class="fas fa-magic"></i>
+                              <span>+{{ reward.item_enchant }}</span>
+                            </div>
+                          {% endif %}
+                          {% if reward.item_amount > 1 %}
+                            <div class="reward-item-detail">
+                              <i class="fas fa-layer-group"></i>
+                              <span>x{{ reward.item_amount }}</span>
+                            </div>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  {% endif %}
+                  
+                  {% if reward.description %}
+                    <div class="reward-description">
+                      {{ reward.description }}
+                    </div>
+                  {% endif %}
+                  
                   <div class="reward-badges">
                     {% if reward in progress.claimed_rewards.all %}
                       <span class="badge badge-claimed">{% trans "Resgatado" %}</span>
@@ -385,5 +749,41 @@
       </div>
     {% endfor %}
   </div>
+
+  <!-- Paginação -->
+  {% if has_other_pages %}
+    <div class="battle-pass-pagination">
+      <div class="pagination-info">
+        <span>{% trans "Página" %} {{ current_page }} {% trans "de" %} {{ num_pages }}</span>
+        <span>{% trans "Total de" %} {{ total_levels }} {% trans "níveis" %}</span>
+      </div>
+      
+      <div class="pagination-controls">
+        {% if has_previous %}
+          <a href="?page={{ previous_page_number }}" class="pagination-btn">
+            <i class="fas fa-chevron-left"></i>
+            {% trans "Anterior" %}
+          </a>
+        {% endif %}
+        
+        <div class="pagination-numbers">
+          {% for page_num in levels.paginator.page_range %}
+            {% if page_num == current_page %}
+              <span class="pagination-current">{{ page_num }}</span>
+            {% elif page_num <= current_page|add:2 and page_num >= current_page|add:-2 %}
+              <a href="?page={{ page_num }}" class="pagination-number">{{ page_num }}</a>
+            {% endif %}
+          {% endfor %}
+        </div>
+        
+        {% if has_next %}
+          <a href="?page={{ next_page_number }}" class="pagination-btn">
+            {% trans "Próxima" %}
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}

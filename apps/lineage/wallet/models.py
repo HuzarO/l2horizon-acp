@@ -75,6 +75,13 @@ class CoinConfig(BaseModel):
     exibir_opcao_bonus_transferencia = models.BooleanField(
         _("Exibir opção de usar saldo bônus na transferência"), default=False
     )
+    taxa_retirada = models.DecimalField(
+        _("Taxa de Retirada (%)"), 
+        max_digits=5, 
+        decimal_places=2, 
+        default=0.00,
+        help_text=_("Percentual de taxa cobrado ao retirar moedas do servidor (ex: 5.00 para 5%)")
+    )
 
     class Meta:
         verbose_name = _("Configuração de Moeda")

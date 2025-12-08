@@ -1,0 +1,189 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Editar Item do Roadmap" %} - {% trans "Roadmap Manager" %}{% endblock %}
+
+{% block extrastyle %}
+{% include 'roadmap/manager/_roadmap_styles.html' %}
+<style>
+body .roadmap-translation-card {
+    background: linear-gradient(145deg, rgba(139, 92, 246, 0.1) 0%, rgba(111, 66, 193, 0.1) 100%) !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+    border-radius: 14px !important;
+    margin-bottom: 1.5rem !important;
+}
+
+body .roadmap-translation-card .card-header {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(111, 66, 193, 0.2) 100%) !important;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.3) !important;
+    padding: 1rem 1.5rem !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="roadmap-manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-5 roadmap-animate-in">
+                    <div class="roadmap-page-header mb-3 mb-md-0">
+                        <h2 class="mb-2">
+                            <i class="bi bi-pencil text-warning me-2"></i>
+                            {% trans "Editar Item" %}
+                        </h2>
+                        <p>
+                            {% if translations.pt %}{{ translations.pt.title }}{% else %}Roadmap #{{ roadmap.id }}{% endif %}
+                        </p>
+                    </div>
+                    <a href="{% url 'roadmap:manager_roadmap_detail' roadmap_id=roadmap.id %}" class="roadmap-btn-solid-white">
+                        <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                    </a>
+                </div>
+
+                <div class="roadmap-card roadmap-animate-in">
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <h5 class="text-white mb-4" style="font-weight: 700; font-size: 1.25rem;">
+                                <i class="bi bi-gear me-2 text-warning"></i>
+                                {% trans "Configurações Gerais" %}
+                            </h5>
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-4 mb-3">
+                                    <label for="status" class="roadmap-form-label">
+                                        <i class="bi bi-tag"></i>
+                                        {% trans "Status" %}
+                                    </label>
+                                    <select class="roadmap-form-control form-select" id="status" name="status">
+                                        {% for value, label in status_choices %}
+                                        <option value="{{ value }}" {% if roadmap.status == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="pub_date" class="roadmap-form-label">
+                                        <i class="bi bi-calendar-event"></i>
+                                        {% trans "Data de Publicação" %}
+                                    </label>
+                                    <input type="datetime-local" class="roadmap-form-control form-control" id="pub_date" name="pub_date" 
+                                           value="{{ roadmap.pub_date|date:'Y-m-d\TH:i' }}">
+                                    <div class="roadmap-form-help">
+                                        <i class="bi bi-info-circle"></i>
+                                        {% trans "Data prevista para publicação" %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="roadmap-form-label">
+                                        <i class="bi bi-toggle-on"></i>
+                                        {% trans "Opções" %}
+                                    </label>
+                                    <div style="padding-top: 0.5rem;">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="is_published" name="is_published" 
+                                                   {% if roadmap.is_published %}checked{% endif %}
+                                                   style="width: 1.25em; height: 1.25em; background-color: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3);">
+                                            <label class="form-check-label text-white" for="is_published" style="font-weight: 600;">
+                                                {% trans "Publicado" %}
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="is_private" name="is_private" 
+                                                   {% if roadmap.is_private %}checked{% endif %}
+                                                   style="width: 1.25em; height: 1.25em; background-color: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.3);">
+                                            <label class="form-check-label text-white" for="is_private" style="font-weight: 600;">
+                                                {% trans "Privado" %}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="border-secondary my-5" style="border-color: rgba(255, 255, 255, 0.1) !important;">
+
+                            <h5 class="text-white mb-4" style="font-weight: 700; font-size: 1.25rem;">
+                                <i class="bi bi-translate me-2 text-warning"></i>
+                                {% trans "Traduções" %}
+                            </h5>
+                            
+                            <div class="roadmap-translation-card card">
+                                <div class="card-header">
+                                    <strong class="text-white" style="font-size: 1.1rem;">🇧🇷 Português *</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="roadmap-form-label">{% trans "Título" %} *</label>
+                                        <input type="text" class="roadmap-form-control form-control" name="title_pt" 
+                                               value="{% if translations.pt %}{{ translations.pt.title }}{% endif %}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="roadmap-form-label">{% trans "Resumo" %}</label>
+                                        <textarea class="roadmap-form-control form-control" name="summary_pt" rows="3">{% if translations.pt %}{{ translations.pt.summary }}{% endif %}</textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="roadmap-form-label">{% trans "Conteúdo" %}</label>
+                                        <textarea class="roadmap-form-control form-control" name="content_pt" rows="6">{% if translations.pt %}{{ translations.pt.content }}{% endif %}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="roadmap-translation-card card">
+                                <div class="card-header">
+                                    <strong class="text-white" style="font-size: 1.1rem;">🇺🇸 English</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="roadmap-form-label">{% trans "Título" %}</label>
+                                        <input type="text" class="roadmap-form-control form-control" name="title_en" 
+                                               value="{% if translations.en %}{{ translations.en.title }}{% endif %}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="roadmap-form-label">{% trans "Resumo" %}</label>
+                                        <textarea class="roadmap-form-control form-control" name="summary_en" rows="3">{% if translations.en %}{{ translations.en.summary }}{% endif %}</textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="roadmap-form-label">{% trans "Conteúdo" %}</label>
+                                        <textarea class="roadmap-form-control form-control" name="content_en" rows="6">{% if translations.en %}{{ translations.en.content }}{% endif %}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="roadmap-translation-card card">
+                                <div class="card-header">
+                                    <strong class="text-white" style="font-size: 1.1rem;">🇪🇸 Español</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="roadmap-form-label">{% trans "Título" %}</label>
+                                        <input type="text" class="roadmap-form-control form-control" name="title_es" 
+                                               value="{% if translations.es %}{{ translations.es.title }}{% endif %}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="roadmap-form-label">{% trans "Resumo" %}</label>
+                                        <textarea class="roadmap-form-control form-control" name="summary_es" rows="3">{% if translations.es %}{{ translations.es.summary }}{% endif %}</textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="roadmap-form-label">{% trans "Conteúdo" %}</label>
+                                        <textarea class="roadmap-form-control form-control" name="content_es" rows="6">{% if translations.es %}{{ translations.es.content }}{% endif %}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-3 mt-5">
+                                <button type="submit" class="roadmap-btn-primary flex-grow-1">
+                                    <i class="bi bi-check-circle me-2"></i>{% trans "Salvar Alterações" %}
+                                </button>
+                                <a href="{% url 'roadmap:manager_roadmap_detail' roadmap_id=roadmap.id %}" class="roadmap-btn-solid-white">
+                                    {% trans "Cancelar" %}
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

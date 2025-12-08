@@ -21,6 +21,7 @@ from apps.main.home.models import PerfilGamer
 
 from utils.dynamic_import import get_query_class
 TransferFromWalletToChar = get_query_class("TransferFromWalletToChar")
+TransferFromCharToWallet = get_query_class("TransferFromCharToWallet")
 LineageServices = get_query_class("LineageServices")
 
 from django.utils.translation import gettext as _
@@ -259,6 +260,148 @@ def transfer_to_player(request):
     })
 
 
+@conditional_otp_required
+def transfer_from_server(request):
+    active_login = get_active_login(request)
+
+    # Verifica conexão com banco do Lineage
+    db = LineageDB()
+    if not db.is_connected():
+        messages.error(request, 'O banco do jogo está indisponível no momento. Tente novamente mais tarde.')
+        return redirect('wallet:dashboard')
+    
+    config = CoinConfig.objects.filter(ativa=True).first()
+    if not config:
+        messages.error(request, 'Nenhuma moeda configurada está ativa no momento.')
+        return redirect('wallet:dashboard')
+
+    wallet, created = Wallet.objects.get_or_create(usuario=request.user)
+    personagens = []
+    personagens_com_moedas = []
+
+    # Lista os personagens da conta
+    try:
+        personagens = LineageServices.find_chars(active_login)
+        
+        # Para cada personagem, verifica a quantidade de moedas
+        COIN_ID = config.coin_id
+        for personagem in personagens:
+            char_id = personagem.get('charId') or personagem.get('obj_Id') or personagem.get('char_id')
+            if not char_id:
+                continue
+                
+            coin_info = TransferFromCharToWallet.check_ingame_coin(COIN_ID, char_id)
+            if coin_info and coin_info.get('total', 0) > 0:
+                personagens_com_moedas.append({
+                    'char_id': char_id,
+                    'char_name': personagem.get('char_name') or personagem.get('charName') or personagem.get('name', ''),
+                    'online': personagem.get('online', 0),
+                    'coin_amount': coin_info.get('total', 0),
+                    'coin_inventory': coin_info.get('inventory', 0),
+                    'coin_warehouse': coin_info.get('warehouse', 0),
+                })
+    except Exception as e:
+        messages.warning(request, 'Não foi possível carregar seus personagens agora.')
+
+    if request.method == 'POST':
+        char_id = request.POST.get('char_id')
+        quantidade_moedas = request.POST.get('quantidade_moedas')
+        senha = request.POST.get('senha')
+
+        COIN_ID = config.coin_id
+        multiplicador = config.multiplicador
+        taxa_percentual = getattr(config, 'taxa_retirada', Decimal('0.00'))
+
+        try:
+            quantidade_moedas = int(quantidade_moedas)
+            char_id = int(char_id)
+        except (ValueError, TypeError):
+            messages.error(request, 'Valor inválido.')
+            return redirect('wallet:transfer_from_server')
+
+        if quantidade_moedas < 1:
+            messages.error(request, 'A quantidade de moedas deve ser maior que zero.')
+            return redirect('wallet:transfer_from_server')
+
+        # Verificação de senha
+        user = authenticate(username=request.user.username, password=senha)
+        if not user:
+            messages.error(request, 'Senha incorreta.')
+            return redirect('wallet:transfer_from_server')
+
+        # Verifica se o personagem pertence à conta
+        personagem_info = TransferFromCharToWallet.find_char(active_login, char_id)
+        if not personagem_info:
+            messages.error(request, 'Personagem inválido ou não pertence a essa conta.')
+            return redirect('wallet:transfer_from_server')
+
+        # Verifica se o personagem está offline (se necessário)
+        if personagem_info and len(personagem_info) > 0:
+            if personagem_info[0].get('online', 0) != 0:
+                messages.error(request, 'O personagem precisa estar offline para realizar a retirada.')
+                return redirect('wallet:transfer_from_server')
+
+        # Verifica a quantidade de moedas disponíveis
+        coin_info = TransferFromCharToWallet.check_ingame_coin(COIN_ID, char_id)
+        if not coin_info or coin_info.get('total', 0) < quantidade_moedas:
+            messages.error(request, 'Quantidade de moedas insuficiente no personagem.')
+            return redirect('wallet:transfer_from_server')
+
+        # Calcula o valor em R$ (quantidade de moedas / multiplicador)
+        valor_bruto = Decimal(quantidade_moedas) / multiplicador
+        
+        # Calcula a taxa
+        taxa_valor = (valor_bruto * taxa_percentual) / Decimal('100.00')
+        
+        # Valor líquido que será creditado na carteira
+        valor_liquido = valor_bruto - taxa_valor
+
+        try:
+            with transaction.atomic():
+                # Remove as moedas do personagem
+                sucesso = TransferFromCharToWallet.remove_ingame_coin(
+                    coin_id=COIN_ID,
+                    count=quantidade_moedas,
+                    char_id=char_id
+                )
+
+                if not sucesso:
+                    raise Exception(_("Erro ao remover as moedas do personagem."))
+
+                # Adiciona o valor líquido na carteira
+                aplicar_transacao(
+                    wallet=wallet,
+                    tipo="ENTRADA",
+                    valor=valor_liquido,
+                    descricao=f"Retirada do servidor (Taxa: {taxa_percentual}%)",
+                    origem=personagem_info[0].get('char_name', 'Servidor') if personagem_info else 'Servidor',
+                    destino=active_login
+                )
+
+        except Exception as e:
+            messages.error(request, f"Ocorreu um erro durante a retirada: {str(e)}")
+            return redirect('wallet:transfer_from_server')
+
+        perfil, created = PerfilGamer.objects.get_or_create(user=request.user)
+        perfil.adicionar_xp(40)
+
+        messages.success(request, _(
+            f"Retirada realizada com sucesso! "
+            f"R${valor_bruto:.2f} retirados (Taxa: R${taxa_valor:.2f} - {taxa_percentual}%). "
+            f"R${valor_liquido:.2f} creditados na sua carteira."
+        ))
+        return redirect('wallet:dashboard')
+
+    context = {
+        'wallet': wallet,
+        'personagens_com_moedas': personagens_com_moedas,
+        'config': config,
+        'taxa_retirada': getattr(config, 'taxa_retirada', Decimal('0.00')),
+    }
+    context.update(get_lineage_template_context(request))
+    return render(request, 'wallet/transfer_from_server.html', context)
+
+
 @staff_member_required
 @require_http_methods(["GET", "POST"])
 def coin_config_panel(request):
@@ -294,6 +437,7 @@ def coin_config_panel(request):
             nome = request.POST.get("nome")
             coin_id = request.POST.get("coin_id")
             multiplicador = request.POST.get("multiplicador")
+            taxa_retirada = request.POST.get("taxa_retirada", "0.00")
 
             if nome and coin_id and multiplicador:
                 try:
@@ -302,16 +446,53 @@ def coin_config_panel(request):
                         messages.error(request, f'Já existe uma moeda configurada com o ID {coin_id}.')
                         return redirect("wallet:coin_config_panel")
                     
+                    # Converte taxa_retirada para Decimal
+                    try:
+                        taxa_retirada = Decimal(taxa_retirada)
+                        if taxa_retirada < 0 or taxa_retirada > 100:
+                            messages.error(request, 'A taxa de retirada deve estar entre 0 e 100%.')
+                            return redirect("wallet:coin_config_panel")
+                    except (ValueError, TypeError):
+                        taxa_retirada = Decimal('0.00')
+                    
                     # Cria a nova moeda (ativa=False por padrão)
                     nova_moeda = CoinConfig.objects.create(
                         nome=nome,
                         coin_id=coin_id,
                         multiplicador=multiplicador,
+                        taxa_retirada=taxa_retirada,
                         ativa=False
                     )
                     messages.success(request, f'Moeda "{nova_moeda.nome}" criada com sucesso!')
                 except Exception as e:
                     messages.error(request, f'Erro ao criar moeda: {str(e)}')
+                
+                return redirect("wallet:coin_config_panel")
+
+        elif "update_taxa" in request.POST:
+            coin_id = request.POST.get("coin_id")
+            taxa_retirada = request.POST.get("taxa_retirada", "0.00")
+
+            if coin_id:
+                try:
+                    moeda = CoinConfig.objects.get(id=coin_id)
+                    
+                    # Converte taxa_retirada para Decimal
+                    try:
+                        taxa_retirada = Decimal(taxa_retirada)
+                        if taxa_retirada < 0 or taxa_retirada > 100:
+                            messages.error(request, 'A taxa de retirada deve estar entre 0 e 100%.')
+                            return redirect("wallet:coin_config_panel")
+                    except (ValueError, TypeError):
+                        taxa_retirada = Decimal('0.00')
+                    
+                    moeda.taxa_retirada = taxa_retirada
+                    moeda.save()
+                    messages.success(request, f'Taxa de retirada da moeda "{moeda.nome}" atualizada para {taxa_retirada}%!')
+                except CoinConfig.DoesNotExist:
+                    messages.error(request, 'Moeda não encontrada.')
+                except Exception as e:
+                    messages.error(request, f'Erro ao atualizar taxa: {str(e)}')
                 
                 return redirect("wallet:coin_config_panel")
 

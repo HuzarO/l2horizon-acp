@@ -246,7 +246,6 @@
         <thead>
           <tr>
             <th>{% trans "Protocolo" %}</th>
-            <th>{% trans "Título" %}</th>
             <th>{% trans "Categoria" %}</th>
             <th>{% trans "Prioridade" %}</th>
             <th>{% trans "Status" %}</th>
@@ -263,14 +262,13 @@
           <tr>
             <td>
               {% if solicitation.get_display_protocol %}
-                <strong class="protocol-text">{{ solicitation.get_display_protocol }}</strong>
+                <strong class="protocol-text" title="{{ solicitation.title }}" style="cursor: help;">{{ solicitation.get_display_protocol }}</strong>
               {% else %}
-                <span class="text-warning">
+                <span class="text-warning" title="{{ solicitation.title }}" style="cursor: help;">
                   <i class="fas fa-exclamation-triangle"></i> {% trans "Gerando..." %}
                 </span>
               {% endif %}
             </td>
-            <td>{{ solicitation.title|truncatechars:50 }}</td>
             <td>
               <span class="badge bg-secondary">{{ solicitation.get_category_display }}</span>
             </td>

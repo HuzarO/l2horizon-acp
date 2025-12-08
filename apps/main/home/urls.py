@@ -7,12 +7,14 @@ from .views.public import *
 from .views.accounts import *
 from .views.commons import *
 from .views.wiki import *
+from .views.achievement_rewards import achievement_rewards_view
 
 
 urlpatterns = [
     # main index
     path('', index, name='index'),
     path('pages/dashboard/', dashboard, name="dashboard"),
+    path('pages/achievement-rewards/', achievement_rewards_view, name="achievement_rewards"),
 
     # internals views users
     path('app/profile/edit/', edit_profile, name='edit_profile'),

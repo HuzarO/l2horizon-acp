@@ -1,0 +1,55 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block extrastyle %}
+{% include 'battle_pass/manager/_base_styles.html' %}
+{% endblock %}
+
+{% block title %}{% trans "Editar Milestone" %} - {% trans "Battle Pass Manager" %}{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card card-glow">
+                    <div class="card-header">
+                        <h3 class="text-white mb-0">{% trans "Editar Milestone" %}</h3>
+                        <small class="text-white-50">{{ season.name }}</small>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Nível" %}</label>
+                                <input type="number" name="level" class="form-control" value="{{ milestone.level }}" min="1" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Título" %}</label>
+                                <input type="text" name="title" class="form-control" value="{{ milestone.title }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Descrição" %}</label>
+                                <textarea name="description" class="form-control" rows="3">{{ milestone.description }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Ícone" %}</label>
+                                <input type="text" name="icon" class="form-control" value="{{ milestone.icon }}" maxlength="10">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Bônus de XP" %}</label>
+                                <input type="number" name="bonus_xp" class="form-control" value="{{ milestone.bonus_xp }}" min="0">
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn-action">{% trans "Salvar" %}</button>
+                                <a href="{% url 'games:battle_pass_manager_milestone_list' season.id %}" class="btn btn-secondary">{% trans "Cancelar" %}</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
