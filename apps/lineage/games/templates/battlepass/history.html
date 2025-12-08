@@ -1,5 +1,6 @@
 {% extends "layouts/base.html" %}
 {% load i18n %}
+{% load itens_extras %}
 
 {% block content %}
 <style>
@@ -7,12 +8,33 @@
     --primary-glow: #4b0082;
     --secondary-glow: #8a2be2;
     --accent-color: #ffd700;
+    --success-color: #00ff7f;
+    --text-glow: 0 0 10px rgba(255, 255, 255, 0.5);
   }
 
   .history-container {
-    max-width: 1000px;
+    max-width: 1200px;
     margin: 2rem auto;
     padding: 2rem;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 1rem;
+    box-shadow: 0 0 30px rgba(75,0,130,0.4);
+  }
+
+  .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(255,255,255,0.1);
+  }
+
+  .history-header h2 {
+    color: var(--accent-color);
+    margin: 0;
+    font-size: 2rem;
+    text-shadow: var(--text-glow);
   }
 
   .history-item {
@@ -24,11 +46,26 @@
     border: 1px solid rgba(255,255,255,0.1);
     border-left: 4px solid var(--primary-glow);
     transition: all 0.3s ease;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
   }
 
   .history-item:hover {
     transform: translateX(5px);
-    box-shadow: 0 0 20px rgba(75,0,130,0.5);
+    box-shadow: 0 0 25px rgba(75,0,130,0.6);
+    border-left-color: var(--secondary-glow);
+  }
+
+  .history-item-icon {
+    font-size: 1.5rem;
+    color: var(--accent-color);
+    min-width: 40px;
+    text-align: center;
+  }
+
+  .history-item-content {
+    flex: 1;
   }
 
   .history-item .action-type {
@@ -36,22 +73,84 @@
     font-weight: bold;
     font-size: 1.1rem;
     margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .history-item .description {
     color: rgba(255,255,255,0.9);
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+  }
+
+  .history-item-details {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
     margin-bottom: 0.5rem;
   }
 
   .history-item .xp-amount {
-    color: #00ff7f;
+    color: var(--success-color);
     font-weight: bold;
-    margin-right: 1rem;
+    background: rgba(0,255,127,0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(0,255,127,0.3);
+  }
+
+  .history-item .level-badge {
+    color: var(--accent-color);
+    background: rgba(255,215,0,0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255,215,0,0.3);
+    font-weight: bold;
   }
 
   .history-item .date {
     color: rgba(255,255,255,0.5);
     font-size: 0.9rem;
+    margin-top: 0.5rem;
+  }
+
+  .history-item-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(255,255,255,0.05);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .history-item-item-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    background: rgba(255,255,255,0.1);
+    padding: 4px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  }
+
+  .history-item-item-info {
+    flex: 1;
+  }
+
+  .history-item-item-name {
+    color: rgba(255,255,255,0.9);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .history-item-item-details {
+    display: flex;
+    gap: 0.75rem;
+    color: rgba(255,255,255,0.7);
+    font-size: 0.85rem;
   }
 
   .btn-back {
@@ -60,14 +159,18 @@
     padding: 0.75rem 1.5rem;
     border-radius: 2rem;
     text-decoration: none;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     margin-bottom: 2rem;
     transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(75,0,130,0.3);
+    font-weight: 600;
   }
 
   .btn-back:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+    box-shadow: 0 6px 20px rgba(138, 43, 226, 0.5);
     color: white;
     text-decoration: none;
   }
@@ -75,22 +178,26 @@
   .pagination {
     display: flex;
     justify-content: center;
-    gap: 1rem;
+    align-items: center;
+    gap: 0.5rem;
     margin-top: 2rem;
+    flex-wrap: wrap;
   }
 
   .pagination a, .pagination span {
     background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
     color: white;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 1.25rem;
     border-radius: 2rem;
     text-decoration: none;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(75,0,130,0.3);
+    font-weight: 600;
   }
 
   .pagination a:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.5);
     color: white;
     text-decoration: none;
   }
@@ -99,33 +206,98 @@
     background: linear-gradient(135deg, var(--accent-color), #ffa500);
     color: #000;
     font-weight: bold;
+    box-shadow: 0 2px 10px rgba(255,215,0,0.4);
+  }
+
+  .empty-history {
+    text-align: center;
+    padding: 3rem;
+    color: rgba(255,255,255,0.7);
+  }
+
+  .empty-history i {
+    font-size: 4rem;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 1rem;
   }
 </style>
 
 <div class="history-container">
-  <a href="{% url 'games:battle_pass' %}" class="btn-back">
-    <i class="fas fa-arrow-left"></i> {% trans "Voltar ao Battle Pass" %}
-  </a>
-
-  <h2 style="color: var(--accent-color); margin-bottom: 2rem;">
-    <i class="fas fa-history"></i> {% trans "Histórico do Battle Pass" %}
-  </h2>
+  <div class="history-header">
+    <h2>
+      <i class="fas fa-history"></i> {% trans "Histórico do Battle Pass" %}
+    </h2>
+    <a href="{% url 'games:battle_pass' %}" class="btn-back">
+      <i class="fas fa-arrow-left"></i> {% trans "Voltar ao Battle Pass" %}
+    </a>
+  </div>
 
   {% if history %}
     {% for item in history %}
     <div class="history-item">
-      <div class="action-type">
-        <i class="fas fa-{% if item.action_type == 'level_up' %}arrow-up{% elif item.action_type == 'reward_claimed' %}gift{% elif item.action_type == 'xp_gained' %}star{% elif item.action_type == 'quest_completed' %}check-circle{% elif item.action_type == 'milestone_reached' %}trophy{% else %}circle{% endif %}"></i>
-        {{ item.get_action_type_display }}
+      <div class="history-item-icon">
+        <i class="fas fa-{% if item.action_type == 'level_up' %}arrow-up{% elif item.action_type == 'reward_claimed' %}gift{% elif item.action_type == 'xp_gained' %}star{% elif item.action_type == 'quest_completed' %}check-circle{% elif item.action_type == 'milestone_reached' %}trophy{% elif item.action_type == 'item_exchanged' %}exchange-alt{% elif item.action_type == 'premium_purchased' %}crown{% else %}circle{% endif %}"></i>
       </div>
-      <div class="description">{{ item.description }}</div>
-      {% if item.xp_amount > 0 %}
-      <span class="xp-amount">+{{ item.xp_amount }} XP</span>
-      {% endif %}
-      {% if item.level_reached %}
-      <span style="color: var(--accent-color);">Nível {{ item.level_reached }}</span>
-      {% endif %}
-      <div class="date">{{ item.created_at|date:"d/m/Y H:i" }}</div>
+      <div class="history-item-content">
+        <div class="action-type">
+          {{ item.get_action_type_display }}
+        </div>
+        <div class="description">{{ item.description }}</div>
+        
+        {% if item.reward and item.reward.item_id %}
+          <div class="history-item-item">
+            <img src="{% item_image_url item.reward.item_id %}" 
+                 alt="{{ item.reward.item_name|default:item.reward.description }}" 
+                 class="history-item-item-icon"
+                 title="{{ item.reward.item_name|default:item.reward.description }}">
+            <div class="history-item-item-info">
+              <div class="history-item-item-name">{{ item.reward.item_name|default:item.reward.description }}</div>
+              <div class="history-item-item-details">
+                {% if item.reward.item_enchant > 0 %}
+                  <span><i class="fas fa-magic"></i> +{{ item.reward.item_enchant }}</span>
+                {% endif %}
+                {% if item.reward.item_amount > 1 %}
+                  <span><i class="fas fa-layer-group"></i> x{{ item.reward.item_amount }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% elif item.item_id %}
+          <div class="history-item-item">
+            <img src="{% item_image_url item.item_id %}" 
+                 alt="{{ item.item_name|default:'Item' }}" 
+                 class="history-item-item-icon"
+                 title="{{ item.item_name|default:'Item' }}">
+            <div class="history-item-item-info">
+              <div class="history-item-item-name">{{ item.item_name|default:'Item' }}</div>
+              <div class="history-item-item-details">
+                {% if item.item_enchant > 0 %}
+                  <span><i class="fas fa-magic"></i> +{{ item.item_enchant }}</span>
+                {% endif %}
+                {% if item.item_amount > 1 %}
+                  <span><i class="fas fa-layer-group"></i> x{{ item.item_amount }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+        
+        <div class="history-item-details">
+          {% if item.xp_amount > 0 %}
+          <span class="xp-amount">
+            <i class="fas fa-star"></i> +{{ item.xp_amount }} XP
+          </span>
+          {% endif %}
+          {% if item.level_reached %}
+          <span class="level-badge">
+            <i class="fas fa-trophy"></i> Nível {{ item.level_reached }}
+          </span>
+          {% endif %}
+        </div>
+        <div class="date">
+          <i class="fas fa-clock"></i> {{ item.created_at|date:"d/m/Y H:i" }}
+        </div>
+      </div>
     </div>
     {% endfor %}
 
@@ -149,7 +321,8 @@
     </div>
     {% endif %}
   {% else %}
-    <div class="history-item" style="text-align: center;">
+    <div class="empty-history">
+      <i class="fas fa-inbox"></i>
       <div class="description">{% trans "Nenhum histórico encontrado." %}</div>
     </div>
   {% endif %}

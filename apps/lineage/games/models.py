@@ -649,6 +649,16 @@ class BattlePassQuest(BaseModel):
         ('special', _('Especial')),
     ]
     
+    OBJECTIVE_TYPE_CHOICES = [
+        ('xp', _('Ganhar XP')),
+        ('roulette_items', _('Adquirir itens pela Roleta')),
+        ('box_items', _('Adquirir itens em uma Box')),
+        ('slot_items', _('Adquirir itens no Slot Machine')),
+        ('fishing_rod_level', _('Adquirir vara de pesca nível X')),
+        ('dice_number', _('Adquirir número no Dice Game')),
+        ('game_item', _('Adquirir item específico')),
+    ]
+    
     season = models.ForeignKey(BattlePassSeason, on_delete=models.CASCADE, null=True, blank=True, verbose_name=_("Season"))
     quest_type = models.CharField(max_length=20, choices=QUEST_TYPE_CHOICES, default='daily', verbose_name=_("Quest Type"))
     title = models.CharField(max_length=200, verbose_name=_("Title"))
@@ -662,6 +672,31 @@ class BattlePassQuest(BaseModel):
     reset_daily = models.BooleanField(default=True, verbose_name=_("Reset Daily"))
     reset_weekly = models.BooleanField(default=False, verbose_name=_("Reset Weekly"))
     
+    # Sistema de objetivos
+    objective_type = models.CharField(
+        max_length=30, 
+        choices=OBJECTIVE_TYPE_CHOICES, 
+        default='xp', 
+        verbose_name=_("Tipo de Objetivo")
+    )
+    objective_target = models.PositiveIntegerField(
+        default=1, 
+        verbose_name=_("Meta do Objetivo"),
+        help_text=_("Quantidade/valor necessário para completar (ex: 5 itens, nível 3, etc)")
+    )
+    objective_metadata = models.JSONField(
+        default=dict, 
+        blank=True, 
+        verbose_name=_("Metadados do Objetivo"),
+        help_text=_("Dados adicionais (ex: item_id para game_item, número do dado para dice_number)")
+    )
+    
+    # Item a ser cobrado quando a quest é completada (para objetivos que requerem item)
+    required_item_id = models.PositiveIntegerField(null=True, blank=True, verbose_name=_("Item ID Requerido"))
+    required_item_name = models.CharField(max_length=100, null=True, blank=True, verbose_name=_("Nome do Item Requerido"))
+    required_item_enchant = models.PositiveIntegerField(default=0, verbose_name=_("Encantamento do Item"))
+    required_item_amount = models.PositiveIntegerField(default=1, verbose_name=_("Quantidade do Item"))
+    
     class Meta:
         verbose_name = _("Battle Pass Quest")
         verbose_name_plural = _("Battle Pass Quests")
@@ -669,6 +704,42 @@ class BattlePassQuest(BaseModel):
     
     def __str__(self):
         return f"{self.get_quest_type_display()} - {self.title}"
+    
+    def remove_required_item_from_user(self, user):
+        """Remove o item requerido da bag do usuário quando a quest é completada"""
+        if self.required_item_id:
+            try:
+                bag, bag_created = Bag.objects.get_or_create(user=user)
+                # Converter para int para garantir compatibilidade
+                required_item_id = int(self.required_item_id)
+                required_enchant = int(self.required_item_enchant) if self.required_item_enchant else 0
+                
+                bag_item = BagItem.objects.filter(
+                    bag=bag,
+                    item_id=required_item_id,
+                    enchant=required_enchant
+                ).first()
+                
+                # Se não encontrou com enchant específico, tentar sem enchant
+                if not bag_item:
+                    bag_item = BagItem.objects.filter(
+                        bag=bag,
+                        item_id=required_item_id
+                    ).first()
+                
+                if not bag_item:
+                    return False
+                
+                # Remover a quantidade necessária
+                if bag_item.quantity <= self.required_item_amount:
+                    bag_item.delete()
+                else:
+                    bag_item.quantity -= self.required_item_amount
+                    bag_item.save()
+                return True
+            except (Bag.DoesNotExist, BagItem.DoesNotExist, ValueError, TypeError):
+                return False
+        return False
 
 
 class BattlePassQuestProgress(BaseModel):

@@ -4,232 +4,437 @@
 {% load itens_extras %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row mb-4">
-        <div class="col">
-            <h2 class="text-center mb-4">{% trans "Trocar Itens por XP" %}</h2>
-            <div class="progress-container">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span>{% trans "Nível" %} {{ current_level }}{% if next_level %} → {{ next_level }}{% endif %}</span>
-                    <span>{{ current_xp }}/{{ xp_for_next_level }} XP</span>
-                </div>
-                <div class="progress">
-                    <div class="progress-bar bg-primary" role="progressbar" 
-                         style="width: {{ progress_percentage }}%"
-                         aria-valuenow="{{ progress_percentage }}" 
-                         aria-valuemin="0" 
-                         aria-valuemax="100">
-                    </div>
-                </div>
-                {% if not next_level %}
-                <div class="text-center mt-2">
-                    <span class="badge bg-success">{% trans "Nível Máximo Atingido!" %}</span>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        {% for exchange in exchanges %}
-        <div class="col-md-4 mb-4">
-            <div class="card h-100 {% if not exchange.has_item %}bg-light{% endif %}">
-                <div class="card-body">
-                    <div class="exchange-item-header">
-                        <img src="{% item_image_url exchange.item_id %}" 
-                             alt="{{ exchange.item_name }}" 
-                             class="exchange-item-icon"
-                             title="{{ exchange.item_name }}">
-                        <div class="exchange-item-title-container">
-                            <h5 class="card-title mb-1">{{ exchange.item_name }}</h5>
-                            {% if exchange.item_enchant > 0 %}
-                            <span class="badge bg-info">+{{ exchange.item_enchant }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <div class="mt-3">
-                        <p class="mb-2">
-                            <strong>{% trans "XP por item" %}:</strong> {{ exchange.xp_amount }}
-                        </p>
-                        {% if exchange.has_item %}
-                        <p class="mb-2">
-                            <strong>{% trans "Quantidade disponível" %}:</strong> {{ exchange.item_quantity }}
-                        </p>
-                        {% endif %}
-                        {% if exchange.max_exchanges > 0 %}
-                        <p class="mb-2">
-                            <strong>{% trans "Trocas restantes" %}:</strong> 
-                            {{ exchange.max_exchanges|default:"0"|add:"-"|add:exchange.current_exchanges|stringformat:"i" }}
-                        </p>
-                        {% endif %}
-                    </div>
-
-                    {% if exchange.has_item and exchange.can_exchange and next_level %}
-                    <form method="post" action="{% url 'games:exchange_item' exchange.id %}" class="mt-3">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <label for="quantity-{{ exchange.id }}" class="form-label">{% trans "Quantidade para trocar" %}:</label>
-                            <div class="input-group">
-                                <button type="button" class="btn btn-outline-secondary quantity-btn" data-action="decrease">-</button>
-                                <input type="number" class="form-control text-center" id="quantity-{{ exchange.id }}" 
-                                       name="quantity" value="1" min="1" max="{{ exchange.item_quantity|unlocalize }}"
-                                       data-max="{{ exchange.item_quantity|unlocalize }}">
-                                <button type="button" class="btn btn-outline-secondary quantity-btn" data-action="increase">+</button>
-                            </div>
-                            <div class="form-text">
-                                {% trans "XP total" %}: <span class="total-xp">{{ exchange.xp_amount }}</span>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">
-                            {% trans "Trocar por XP" %}
-                        </button>
-                    </form>
-                    {% elif not exchange.has_item %}
-                    <div class="alert alert-warning mt-3 mb-0">
-                        {% trans "Você não possui este item" %}
-                    </div>
-                    {% elif not exchange.can_exchange %}
-                    <div class="alert alert-warning mt-3 mb-0">
-                        {% trans "Limite de trocas atingido" %}
-                    </div>
-                    {% elif not next_level %}
-                    <div class="alert alert-info mt-3 mb-0">
-                        {% trans "Você já atingiu o nível máximo do Battle Pass!" %}
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        {% empty %}
-        <div class="col">
-            <div class="alert alert-info">
-                {% trans "Não há itens disponíveis para troca no momento." %}
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
 <style>
-.progress-container {
-    max-width: 600px;
+  :root {
+    --primary-glow: #4b0082;
+    --secondary-glow: #8a2be2;
+    --accent-color: #ffd700;
+    --success-color: #00ff7f;
+    --text-glow: 0 0 10px rgba(255, 255, 255, 0.5);
+  }
+
+  body {
+    background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 50%, #16213e 100%);
+    min-height: 100vh;
+  }
+
+  .exchange-container {
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 2rem;
+  }
+
+  .exchange-header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .exchange-header h2 {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent-color) 0%, #ffa500 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: var(--text-glow);
+    margin-bottom: 2rem;
+  }
+
+  .progress-container {
+    max-width: 700px;
     margin: 0 auto;
+    background: linear-gradient(145deg, rgba(30, 30, 47, 0.95) 0%, rgba(41, 41, 61, 0.95) 100%);
+    padding: 2rem;
+    border-radius: 1.5rem;
+    box-shadow: 
+      0 8px 32px rgba(0,0,0,0.4),
+      0 0 0 1px rgba(255,255,255,0.1),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .progress {
+    height: 24px;
     background: rgba(255,255,255,0.1);
-    padding: 1.5rem;
-    border-radius: 1rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.progress {
-    height: 20px;
-    background-color: #e9ecef;
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
-}
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  }
 
-.progress-bar {
-    background: linear-gradient(45deg, #4a90e2, #67b26f);
-    transition: width 0.3s ease;
-}
+  .progress-bar {
+    background: linear-gradient(90deg, var(--primary-glow) 0%, var(--secondary-glow) 100%);
+    transition: width 0.5s ease;
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+  }
 
-.card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+  .exchange-card {
+    background: linear-gradient(145deg, rgba(30, 30, 47, 0.95) 0%, rgba(41, 41, 61, 0.95) 100%);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 
+      0 8px 32px rgba(0,0,0,0.4),
+      0 0 0 1px rgba(255,255,255,0.1),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    color: white;
+    height: 100%;
+  }
 
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
+  .exchange-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 
+      0 16px 48px rgba(75,0,130,0.5),
+      0 0 0 1px rgba(255,215,0,0.2),
+      inset 0 1px 0 rgba(255,255,255,0.2);
+    border-color: rgba(255,215,0,0.3);
+  }
 
-.btn-primary {
-    background: linear-gradient(45deg, #4a90e2, #67b26f);
-    border: none;
-    transition: transform 0.2s ease;
-}
+  .exchange-card.disabled {
+    opacity: 0.6;
+    filter: grayscale(0.3);
+  }
 
-.btn-primary:hover {
-    transform: scale(1.02);
-    background: linear-gradient(45deg, #357abd, #5ca15f);
-}
-
-.badge {
-    font-size: 0.9em;
-    padding: 0.4em 0.8em;
-}
-
-.exchange-item-header {
+  .exchange-item-header {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
 
-.exchange-item-icon {
-    width: 64px;
-    height: 64px;
+  .exchange-item-icon {
+    width: 80px;
+    height: 80px;
     object-fit: contain;
-    border: 2px solid rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.5);
-    padding: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 2px solid rgba(255,215,0,0.3);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.05);
+    padding: 8px;
+    box-shadow: 0 4px 15px rgba(255,215,0,0.2);
     transition: all 0.3s ease;
     flex-shrink: 0;
-}
+  }
 
-.exchange-item-icon:hover {
+  .exchange-item-icon:hover {
     transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
+    box-shadow: 0 6px 20px rgba(255,215,0,0.4);
+    border-color: rgba(255,215,0,0.5);
+  }
 
-.exchange-item-title-container {
+  .exchange-item-title-container {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
+  }
 
-.exchange-item-title-container .card-title {
-    margin: 0;
-    word-break: break-word;
-}
+  .exchange-item-title-container h5 {
+    color: var(--accent-color);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
 
-@media (max-width: 768px) {
+  .exchange-info {
+    color: rgba(255,255,255,0.9);
+    margin: 1rem 0;
+  }
+
+  .exchange-info p {
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+  }
+
+  .exchange-info strong {
+    color: var(--accent-color);
+  }
+
+  .badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-weight: 700;
+  }
+
+  .badge-info {
+    background: linear-gradient(135deg, #4a90e2 0%, #67b26f 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+  }
+
+  .btn-exchange {
+    background: linear-gradient(135deg, var(--primary-glow) 0%, var(--secondary-glow) 100%);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 2rem;
+    font-weight: 700;
+    font-size: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+    width: 100%;
+  }
+
+  .btn-exchange:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
+    color: white;
+  }
+
+  .alert {
+    border-radius: 1rem;
+    border: none;
+    padding: 1rem 1.5rem;
+  }
+
+  .alert-warning {
+    background: linear-gradient(135deg, rgba(255,193,7,0.2) 0%, rgba(255,152,0,0.2) 100%);
+    color: rgba(255,255,255,0.9);
+    border-left: 4px solid rgba(255,193,7,0.5);
+  }
+
+  .alert-info {
+    background: linear-gradient(135deg, rgba(33,150,243,0.2) 0%, rgba(25,118,210,0.2) 100%);
+    color: rgba(255,255,255,0.9);
+    border-left: 4px solid rgba(33,150,243,0.5);
+  }
+
+  .input-group {
+    max-width: 250px;
+    margin: 1rem auto;
+  }
+
+  .input-group .form-control {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .input-group .form-control:focus {
+    background: rgba(255,255,255,0.15);
+    border-color: var(--accent-color);
+    color: white;
+    box-shadow: 0 0 0 0.2rem rgba(255,215,0,0.25);
+  }
+
+  .quantity-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    width: 45px;
+    transition: all 0.3s ease;
+  }
+
+  .quantity-btn:hover {
+    background: rgba(255,255,255,0.2);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transform: scale(1.1);
+  }
+
+  .form-text {
+    color: rgba(255,255,255,0.8);
+    text-align: center;
+    margin-top: 0.5rem;
+  }
+
+  .total-xp {
+    color: var(--accent-color);
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  .badge-success {
+    background: linear-gradient(135deg, var(--success-color) 0%, #00ff00 100%);
+    color: #000;
+    box-shadow: 0 4px 15px rgba(0,255,127,0.4);
+  }
+
+  .btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, var(--primary-glow) 0%, var(--secondary-glow) 100%);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 2rem;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-back::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+
+  .btn-back:hover::before {
+    width: 300px;
+    height: 300px;
+  }
+
+  .btn-back:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
+    color: white;
+    text-decoration: none;
+  }
+
+  @media (max-width: 768px) {
+    .exchange-container {
+      padding: 1rem;
+    }
+
+    .exchange-header h2 {
+      font-size: 2rem;
+    }
+
     .exchange-item-header {
-        flex-direction: column;
-        text-align: center;
+      flex-direction: column;
+      text-align: center;
     }
 
     .exchange-item-icon {
-        width: 56px;
-        height: 56px;
+      width: 64px;
+      height: 64px;
     }
-}
-
-.input-group {
-    max-width: 200px;
-    margin: 0 auto;
-}
-
-.quantity-btn {
-    width: 40px;
-}
-
-.form-control[type="number"] {
-    text-align: center;
-}
-
-.form-control[type="number"]::-webkit-inner-spin-button,
-.form-control[type="number"]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
+  }
 </style>
+
+<div class="exchange-container">
+  <a href="{% url 'games:battle_pass' %}" class="btn-back">
+    <i class="fas fa-arrow-left"></i> {% trans "Voltar ao Battle Pass" %}
+  </a>
+  
+  <div class="exchange-header">
+    <h2>
+      <i class="fas fa-exchange-alt"></i> {% trans "Trocar Itens por XP" %}
+    </h2>
+    <div class="progress-container">
+      <div class="progress-info">
+        <span>{% trans "Nível" %} {{ current_level }}{% if next_level %} → {{ next_level }}{% endif %}</span>
+        <span>{{ current_xp }}/{{ xp_for_next_level }} XP</span>
+      </div>
+      <div class="progress">
+        <div class="progress-bar" role="progressbar" 
+             style="width: {{ progress_percentage }}%"
+             aria-valuenow="{{ progress_percentage }}" 
+             aria-valuemin="0" 
+             aria-valuemax="100">
+        </div>
+      </div>
+      {% if not next_level %}
+      <div class="text-center mt-3">
+        <span class="badge badge-success">{% trans "Nível Máximo Atingido!" %}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row">
+    {% for exchange in exchanges %}
+    <div class="col-md-4 mb-4">
+      <div class="exchange-card {% if not exchange.has_item %}disabled{% endif %}">
+        <div class="exchange-item-header">
+          <img src="{% item_image_url exchange.item_id %}" 
+               alt="{{ exchange.item_name }}" 
+               class="exchange-item-icon"
+               title="{{ exchange.item_name }}">
+          <div class="exchange-item-title-container">
+            <h5>{{ exchange.item_name }}</h5>
+            {% if exchange.item_enchant > 0 %}
+            <span class="badge badge-info">+{{ exchange.item_enchant }}</span>
+            {% endif %}
+          </div>
+        </div>
+        
+        <div class="exchange-info">
+          <p>
+            <strong>{% trans "XP por item" %}:</strong> {{ exchange.xp_amount }}
+          </p>
+          {% if exchange.has_item %}
+          <p>
+            <strong>{% trans "Quantidade disponível" %}:</strong> {{ exchange.item_quantity }}
+          </p>
+          {% endif %}
+          {% if exchange.max_exchanges > 0 %}
+          <p>
+            <strong>{% trans "Trocas restantes" %}:</strong> 
+            {{ exchange.max_exchanges|default:"0"|add:"-"|add:exchange.current_exchanges|stringformat:"i" }}
+          </p>
+          {% endif %}
+        </div>
+
+        {% if exchange.has_item and exchange.can_exchange and next_level %}
+        <form method="post" action="{% url 'games:exchange_item' exchange.id %}" class="mt-3">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="quantity-{{ exchange.id }}" class="form-label text-white">{% trans "Quantidade para trocar" %}:</label>
+            <div class="input-group">
+              <button type="button" class="btn quantity-btn" data-action="decrease">-</button>
+              <input type="number" class="form-control text-center" id="quantity-{{ exchange.id }}" 
+                     name="quantity" value="1" min="1" max="{{ exchange.item_quantity|unlocalize }}"
+                     data-max="{{ exchange.item_quantity|unlocalize }}">
+              <button type="button" class="btn quantity-btn" data-action="increase">+</button>
+            </div>
+            <div class="form-text">
+              {% trans "XP total" %}: <span class="total-xp">{{ exchange.xp_amount }}</span>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-exchange">
+            <i class="fas fa-exchange-alt"></i> {% trans "Trocar por XP" %}
+          </button>
+        </form>
+        {% elif not exchange.has_item %}
+        <div class="alert alert-warning mt-3 mb-0">
+          <i class="fas fa-exclamation-triangle"></i> {% trans "Você não possui este item" %}
+        </div>
+        {% elif not exchange.can_exchange %}
+        <div class="alert alert-warning mt-3 mb-0">
+          <i class="fas fa-ban"></i> {% trans "Limite de trocas atingido" %}
+        </div>
+        {% elif not next_level %}
+        <div class="alert alert-info mt-3 mb-0">
+          <i class="fas fa-trophy"></i> {% trans "Você já atingiu o nível máximo do Battle Pass!" %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+      <div class="alert alert-info text-center">
+        <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; display: block;"></i>
+        <p class="mb-0">{% trans "Não há itens disponíveis para troca no momento." %}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

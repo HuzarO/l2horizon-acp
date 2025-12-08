@@ -146,6 +146,14 @@ def spin_ajax(request):
             bag_item.quantity += 1
             bag_item.save(update_fields=["quantity"])
 
+        # Atualizar progresso de quests relacionadas à roleta
+        try:
+            from apps.lineage.games.services.quest_progress_tracker import check_and_update_all_quests
+            check_and_update_all_quests(user)
+        except Exception as e:
+            # Não falhar se houver erro no tracking
+            pass
+
         # Campos via Item quando disponível para resposta
         if chosen.item:
             resp_name = chosen.item.name

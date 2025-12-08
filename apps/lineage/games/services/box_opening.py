@@ -76,4 +76,12 @@ def open_box(user, box_id):
         enchant=selected_item.item.enchant
     )
 
+    # Atualizar progresso de quests relacionadas a boxes
+    try:
+        from apps.lineage.games.services.quest_progress_tracker import check_and_update_all_quests
+        check_and_update_all_quests(user)
+    except Exception as e:
+        # Não falhar se houver erro no tracking
+        logger.warning(f"Erro ao atualizar progresso de quests: {e}")
+
     return selected_item.item, None

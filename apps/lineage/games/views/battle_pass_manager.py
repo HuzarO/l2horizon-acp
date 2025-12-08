@@ -472,6 +472,17 @@ def quest_create(request):
             reset_weekly = request.POST.get('reset_weekly') == 'on'
             order = request.POST.get('order', 0)
             
+            # Novos campos de objetivo
+            objective_type = request.POST.get('objective_type', 'xp')
+            objective_target = request.POST.get('objective_target', 1)
+            objective_metadata_str = request.POST.get('objective_metadata', '{}')
+            
+            # Item requerido (será removido da bag quando completar)
+            required_item_id = request.POST.get('required_item_id')
+            required_item_name = request.POST.get('required_item_name')
+            required_item_enchant = request.POST.get('required_item_enchant', 0)
+            required_item_amount = request.POST.get('required_item_amount', 1)
+            
             if not title or not description:
                 messages.error(request, _('Preencha todos os campos obrigatórios.'))
                 return redirect('games:battle_pass_manager_quest_create')
@@ -479,6 +490,30 @@ def quest_create(request):
             season = None
             if season_id:
                 season = BattlePassSeason.objects.get(id=season_id)
+            
+            # Processar metadata JSON
+            import json
+            try:
+                objective_metadata = json.loads(objective_metadata_str) if objective_metadata_str else {}
+            except:
+                objective_metadata = {}
+            
+            # Adicionar campos específicos baseados no tipo de objetivo
+            if objective_type == 'dice_number':
+                dice_number = request.POST.get('dice_number')
+                if dice_number:
+                    objective_metadata['dice_number'] = int(dice_number)
+            elif objective_type == 'fishing_rod_level':
+                rod_level = request.POST.get('rod_level')
+                if rod_level:
+                    objective_metadata['rod_level'] = int(rod_level)
+            elif objective_type == 'game_item':
+                game_item_id = request.POST.get('game_item_id')
+                game_item_name = request.POST.get('game_item_name')
+                if game_item_id:
+                    objective_metadata['item_id'] = int(game_item_id)
+                if game_item_name:
+                    objective_metadata['item_name'] = game_item_name
             
             BattlePassQuest.objects.create(
                 title=title,
@@ -490,7 +525,14 @@ def quest_create(request):
                 season=season,
                 reset_daily=reset_daily,
                 reset_weekly=reset_weekly,
-                order=int(order) if order else 0
+                order=int(order) if order else 0,
+                objective_type=objective_type,
+                objective_target=int(objective_target) if objective_target else 1,
+                objective_metadata=objective_metadata,
+                required_item_id=int(required_item_id) if required_item_id else None,
+                required_item_name=required_item_name if required_item_name else None,
+                required_item_enchant=int(required_item_enchant) if required_item_enchant else 0,
+                required_item_amount=int(required_item_amount) if required_item_amount else 1,
             )
             
             messages.success(request, _('Quest criada com sucesso!'))
@@ -524,12 +566,49 @@ def quest_edit(request, quest_id):
             quest.reset_weekly = request.POST.get('reset_weekly') == 'on'
             quest.order = int(request.POST.get('order', quest.order))
             
+            # Novos campos de objetivo
+            quest.objective_type = request.POST.get('objective_type', quest.objective_type)
+            quest.objective_target = int(request.POST.get('objective_target', quest.objective_target))
+            objective_metadata_str = request.POST.get('objective_metadata', '{}')
+            
+            # Item requerido (será removido da bag quando completar)
+            required_item_id = request.POST.get('required_item_id')
+            quest.required_item_id = int(required_item_id) if required_item_id else None
+            quest.required_item_name = request.POST.get('required_item_name', quest.required_item_name)
+            quest.required_item_enchant = int(request.POST.get('required_item_enchant', quest.required_item_enchant))
+            quest.required_item_amount = int(request.POST.get('required_item_amount', quest.required_item_amount))
+            
             season_id = request.POST.get('season')
             if season_id:
                 quest.season = BattlePassSeason.objects.get(id=season_id)
             else:
                 quest.season = None
             
+            # Processar metadata JSON
+            import json
+            try:
+                objective_metadata = json.loads(objective_metadata_str) if objective_metadata_str else {}
+            except:
+                objective_metadata = quest.objective_metadata if quest.objective_metadata else {}
+            
+            # Adicionar campos específicos baseados no tipo de objetivo
+            if quest.objective_type == 'dice_number':
+                dice_number = request.POST.get('dice_number')
+                if dice_number:
+                    objective_metadata['dice_number'] = int(dice_number)
+            elif quest.objective_type == 'fishing_rod_level':
+                rod_level = request.POST.get('rod_level')
+                if rod_level:
+                    objective_metadata['rod_level'] = int(rod_level)
+            elif quest.objective_type == 'game_item':
+                game_item_id = request.POST.get('game_item_id')
+                game_item_name = request.POST.get('game_item_name')
+                if game_item_id:
+                    objective_metadata['item_id'] = int(game_item_id)
+                if game_item_name:
+                    objective_metadata['item_name'] = game_item_name
+            
+            quest.objective_metadata = objective_metadata
             quest.save()
             
             messages.success(request, _('Quest atualizada com sucesso!'))
