@@ -134,7 +134,7 @@
                       <span class="badge-new">✨ Novo</span>
                     {% endif %}
                   </div>
-                  <div class="text-white-50 small">{% trans "Acessar módulo de configuração" %}</div>
+                  <div class="text-white-50 small">{{ e.description|default:_("Acessar módulo de configuração") }}</div>
                 </div>
               </div>
             </div>
