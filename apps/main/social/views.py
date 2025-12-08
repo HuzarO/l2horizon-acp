@@ -1739,6 +1739,56 @@ def delete_filter(request, filter_id):
 
 
 @login_required
+def bulk_delete_filters(request):
+    """Deletar múltiplos filtros de conteúdo"""
+    if not request.user.has_perm('social.can_take_moderation_actions'):
+        return JsonResponse({'error': _('Permissão negada')}, status=403)
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': _('Método não permitido')}, status=405)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        filter_ids = data.get('filter_ids', [])
+        
+        if not filter_ids:
+            return JsonResponse({'error': _('Nenhum filtro selecionado')}, status=400)
+        
+        # Verificar se os filtros existem
+        filters_to_delete = ContentFilter.objects.filter(id__in=filter_ids)
+        deleted_count = filters_to_delete.count()
+        
+        if deleted_count == 0:
+            return JsonResponse({'error': _('Nenhum filtro encontrado')}, status=404)
+        
+        # Log da ação para cada filtro
+        for content_filter in filters_to_delete:
+            ModerationLog.log_action(
+                moderator=request.user,
+                action_type='filter_deleted',
+                target_type='filter',
+                target_id=content_filter.id,
+                description=f"Filtro '{content_filter.name}' foi deletado em massa",
+                details=f"Tipo: {content_filter.get_filter_type_display()}\nPadrão: {content_filter.pattern[:100]}..."
+            )
+        
+        # Deletar os filtros
+        filters_to_delete.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': _('%(count)d filtro(s) deletado(s) com sucesso') % {'count': deleted_count},
+            'deleted_count': deleted_count
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': _('Dados inválidos')}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
 def moderation_logs(request):
     """Logs de moderação"""
     if not request.user.has_perm('social.can_view_moderation_logs'):

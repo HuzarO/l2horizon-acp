@@ -1598,34 +1598,23 @@ class ContentFilter(BaseModel):
             except re.error:
                 return False
         elif self.filter_type == 'spam_pattern':
-            # Padrões comuns de spam em português e inglês
+            # Padrões comuns de spam - APENAS COMBINAÇÕES CLARAS (menos restritivo)
             spam_patterns = [
-                # Palavras de ganho fácil (português e inglês)
-                r'\b(ganhe|ganhar|dinheiro|fácil|rápido|grátis|free|money|earn|easy|rich)\b',
-                r'\b(clique|click|here|aqui|agora|now|urgente|urgent)\b',
+                # Apenas combinações claras de spam (múltiplas palavras-chave juntas)
+                r'\b(ganhe|ganhar|dinheiro\s*fácil|renda\s*extra)\b.*\b(clique|click|agora|urgente|grátis)\b',
+                r'\b(trabalhe\s*em\s*casa|oportunidade\s*única)\b.*\b(ganhe|dinheiro|grátis)\b',
                 
-                # Frases comuns de spam
-                r'ganhe? dinheiro',
-                r'dinheiro fácil',
-                r'renda extra',
-                r'trabalhe em casa',
-                r'oportunidade única',
-                r'limited time',
-                r'act now',
-                r'click here',
-                r'clique aqui',
+                # Links para medicamentos prescritos
+                r'http[s]?://[^\s]*(viagra|cialis|levitra|pharmacy)[^\s]*',
                 
-                # Padrões originais em inglês
-                r'\b(buy|sell|cheap|discount|business|opportunity)\b',
-                r'\b(viagra|cialis|casino|poker|lottery)\b',
-                r'http[s]?://[^\s<>"{}|\\^`\[\]]{1,2000}',
+                # Esquemas financeiros explícitos
+                r'\b(pyramid\s*scheme|ponzi\s*scheme|get\s*rich\s*quick)\b',
                 
-                # Múltiplos sinais de exclamação ou interrogação
-                r'[!]{3,}',
-                r'[?]{3,}',
+                # Múltiplas URLs (4 ou mais)
+                r'(http[s]?://[^\s]+.*){4,}',
                 
-                # Caps excessivo
-                r'[A-Z]{10,}',
+                # Caps muito excessivo (30+ caracteres)
+                r'[A-Z]{30,}',
             ]
             import re
             for spam_pattern in spam_patterns:
