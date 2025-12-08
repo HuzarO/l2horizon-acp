@@ -9,8 +9,8 @@ from decimal import Decimal
 from apps.lineage.wallet.models import Wallet
 from apps.lineage.wallet.signals import aplicar_transacao
 from apps.lineage.inventory.models import Inventory, InventoryLog, InventoryItem
-from ..services.box_opening import open_box
-from ..services.box_populate import populate_box_with_items, can_populate_box
+from apps.lineage.games.services.box_opening import open_box
+from apps.lineage.games.services.box_populate import populate_box_with_items, can_populate_box
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils.translation import gettext_lazy as _
