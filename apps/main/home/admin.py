@@ -338,3 +338,30 @@ class PerfilGamerAdmin(BaseModelAdmin):
             'description': _('Informações de progresso do jogador')
         }),
     )
+
+
+@admin.register(PageView)
+class PageViewAdmin(BaseModelAdmin):
+    list_display = ('user', 'url_path', 'page_category', 'created_at')
+    search_fields = ('user__username', 'url_path', 'url_name', 'page_category')
+    list_filter = ('page_category', 'created_at', 'url_name')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-created_at',)
+    date_hierarchy = 'created_at'
+    
+    fieldsets = (
+        (_('Usuário'), {
+            'fields': ('user',)
+        }),
+        (_('Informações da Página'), {
+            'fields': ('url_path', 'url_name', 'view_name', 'page_category')
+        }),
+        (_('Informações Técnicas'), {
+            'fields': ('ip_address', 'user_agent'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.select_related('user')
