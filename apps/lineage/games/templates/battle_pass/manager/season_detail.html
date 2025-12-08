@@ -217,6 +217,9 @@
                 <a href="{% url 'games:battle_pass_manager_level_create' season_id=season.id %}" class="btn btn-info">
                     <i class="bi bi-plus-circle me-2"></i>{% trans "Adicionar Nível" %}
                 </a>
+                <a href="{% url 'games:battle_pass_manager_milestone_list' season_id=season.id %}" class="btn btn-warning">
+                    <i class="bi bi-trophy me-2"></i>{% trans "Milestones" %}
+                </a>
             </div>
         </div>
 

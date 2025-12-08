@@ -1,0 +1,1376 @@
+{% extends "layouts/base.html" %}
+{% load i18n %}
+{% load l10n %}
+{% load humanize %}
+{% load static %}
+
+{% block extrastyle %}
+<link rel="stylesheet" href="{% static 'css/wallet.css' %}">
+<style>
+  /* Estilos específicos para a tela de retirada - Versão Melhorada */
+  .transfer-container {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    background-size: 200% 200%;
+    animation: gradientShift 15s ease infinite;
+    min-height: 100vh;
+    padding: 2rem 0;
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+    position: relative;
+  }
+
+  .transfer-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  @keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .transfer-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    animation: fadeInDown 0.8s ease-out;
+    position: relative;
+    z-index: 1;
+  }
+
+  .transfer-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, #10B981 0%, #059669 50%, #34D399 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.75rem;
+    text-shadow: 0 0 40px rgba(16, 185, 129, 0.5);
+    letter-spacing: -0.02em;
+    position: relative;
+    display: inline-block;
+  }
+
+  .transfer-title::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, #10B981, transparent);
+    border-radius: 2px;
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .transfer-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+    font-weight: 400;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .transfer-breadcrumb {
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 16px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 0 20px rgba(16, 185, 129, 0.1);
+    position: relative;
+    z-index: 1;
+  }
+
+  .transfer-breadcrumb .breadcrumb {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .transfer-breadcrumb .breadcrumb-item a {
+    color: #34D399;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .transfer-breadcrumb .breadcrumb-item a:hover {
+    color: #10B981;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  }
+
+  .transfer-card {
+    background: rgba(30, 41, 59, 0.9);
+    backdrop-filter: blur(30px) saturate(180%);
+    border-radius: 24px;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    box-shadow: 
+      0 20px 25px -5px rgba(0, 0, 0, 0.4),
+      0 0 40px rgba(16, 185, 129, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    max-width: 800px;
+    margin: 0 auto;
+    z-index: 1;
+  }
+
+  .transfer-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #10B981 0%, #059669 50%, #34D399 100%);
+    background-size: 200% 100%;
+    animation: gradientFlow 3s linear infinite;
+  }
+
+  @keyframes gradientFlow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+
+  .transfer-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 
+      0 25px 30px -5px rgba(0, 0, 0, 0.5),
+      0 0 50px rgba(16, 185, 129, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    border-color: rgba(16, 185, 129, 0.5);
+  }
+
+  .transfer-card-header {
+    background: linear-gradient(135deg, #10B981 0%, #059669 50%, #047857 100%);
+    color: white;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .transfer-card-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    animation: rotate 20s linear infinite;
+  }
+
+  @keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .transfer-card-header::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.15"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.15"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .transfer-card-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    display: block;
+    text-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+    animation: pulse 2s infinite;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  }
+
+  .transfer-card-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    position: relative;
+    z-index: 1;
+    letter-spacing: 0.5px;
+  }
+
+  .transfer-card-description {
+    font-size: 1.05rem;
+    opacity: 0.95;
+    margin: 0;
+    line-height: 1.5;
+    font-weight: 400;
+    position: relative;
+    z-index: 1;
+  }
+
+  .transfer-card-body {
+    padding: 2.5rem;
+    background: rgba(15, 23, 42, 0.5);
+  }
+
+  .user-info {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+  }
+
+  .user-info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .user-info-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .user-info-item:hover {
+    transform: translateX(5px);
+  }
+
+  .user-info-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .user-info-label::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    background: #10B981;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #10B981;
+  }
+
+  .user-info-value {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    color: #ffffff;
+    font-size: 1.1rem;
+  }
+
+  .user-info-value.balance {
+    color: #34D399;
+    font-size: 1.5rem;
+    text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+    background: linear-gradient(135deg, #10B981, #34D399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .tax-info {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(251, 191, 36, 0.15) 100%);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 2px solid rgba(245, 158, 11, 0.3);
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.2),
+      0 0 20px rgba(245, 158, 11, 0.1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tax-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #F59E0B, #FBBF24);
+  }
+
+  .tax-info-title {
+    font-weight: 700;
+    color: #FBBF24;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .tax-info-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .calculation-preview {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(96, 165, 250, 0.15) 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.2),
+      0 0 30px rgba(59, 130, 246, 0.2);
+    backdrop-filter: blur(10px);
+    display: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .calculation-preview::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #3B82F6, #60A5FA);
+  }
+
+  .calculation-preview.show {
+    display: block;
+    animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .calculation-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+    transition: all 0.3s ease;
+  }
+
+  .calculation-item:hover {
+    transform: translateX(5px);
+  }
+
+  .calculation-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    font-weight: 800;
+    font-size: 1.3rem;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    border-top: 2px solid rgba(59, 130, 246, 0.3);
+  }
+
+  .calculation-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .calculation-value {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    color: #60A5FA;
+    font-size: 1.1rem;
+    text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+  }
+
+  .calculation-item:last-child .calculation-value {
+    color: #3B82F6;
+    font-size: 1.5rem;
+    text-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+  }
+
+  .character-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 2px solid rgba(16, 185, 129, 0.2);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+  }
+
+  .character-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .character-card:hover::before {
+    left: 100%;
+  }
+
+  .character-card:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: #10B981;
+    transform: translateX(8px) translateY(-2px);
+    box-shadow: 
+      0 8px 16px -4px rgba(0, 0, 0, 0.3),
+      0 0 30px rgba(16, 185, 129, 0.3);
+  }
+
+  .character-card.selected {
+    background: rgba(16, 185, 129, 0.25);
+    border-color: #10B981;
+    box-shadow: 
+      0 8px 16px -4px rgba(0, 0, 0, 0.4),
+      0 0 40px rgba(16, 185, 129, 0.5),
+      inset 0 0 20px rgba(16, 185, 129, 0.1);
+    transform: translateX(5px);
+  }
+
+  .character-card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #10B981, #059669);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+    animation: scaleIn 0.3s ease;
+  }
+
+  @keyframes scaleIn {
+    from {
+      transform: scale(0);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  .character-name {
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .character-coins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+  }
+
+  .coin-badge {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.3));
+    color: #34D399;
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    font-weight: 700;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .coin-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+    border-color: #10B981;
+  }
+
+  .coin-badge[style*="background: rgba(59, 130, 246"] {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3)) !important;
+    color: #60A5FA !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+  }
+
+  .coin-badge[style*="background: rgba(139, 92, 246"] {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.3)) !important;
+    color: #A78BFA !important;
+    border-color: rgba(139, 92, 246, 0.4) !important;
+  }
+
+  .form-group {
+    margin-bottom: 2rem;
+  }
+
+  .form-label {
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.75rem;
+    display: block;
+    font-size: 1rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .form-control, .form-select {
+    background: rgba(30, 41, 59, 0.8);
+    border: 2px solid rgba(16, 185, 129, 0.3);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    color: #ffffff;
+  }
+
+  .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .form-control:focus, .form-select:focus {
+    border-color: #10B981;
+    box-shadow: 
+      0 0 0 0.2rem rgba(16, 185, 129, 0.25),
+      0 0 20px rgba(16, 185, 129, 0.2);
+    background: rgba(30, 41, 59, 0.95);
+    outline: none;
+  }
+
+  .input-group-text {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    border: 2px solid rgba(16, 185, 129, 0.3);
+    color: white;
+    font-weight: 700;
+    border-radius: 14px 0 0 14px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .input-group .form-control {
+    border-radius: 0 14px 14px 0;
+    border-left: none;
+  }
+
+  .password-field {
+    position: relative;
+  }
+
+  .password-toggle {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10B981;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    z-index: 10;
+  }
+
+  .password-toggle:hover {
+    color: #34D399;
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10B981;
+    transform: translateY(-50%) scale(1.1);
+  }
+
+  .password-toggle:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25);
+  }
+
+  .password-field .form-control {
+    padding-right: 60px;
+  }
+
+  .btn-transfer {
+    background: linear-gradient(135deg, #10B981 0%, #059669 50%, #047857 100%);
+    background-size: 200% 100%;
+    border: none;
+    border-radius: 16px;
+    padding: 1.25rem 2.5rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: white;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100%;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 
+      0 10px 20px -5px rgba(16, 185, 129, 0.4),
+      0 0 30px rgba(16, 185, 129, 0.3);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-transfer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .btn-transfer:hover:not(:disabled)::before {
+    left: 100%;
+  }
+
+  .btn-transfer:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 
+      0 15px 25px -5px rgba(16, 185, 129, 0.5),
+      0 0 40px rgba(16, 185, 129, 0.4);
+    background-position: 100% 0;
+  }
+
+  .btn-transfer:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: rgba(16, 185, 129, 0.2);
+  }
+
+  .btn-transfer:focus {
+    box-shadow: 
+      0 0 0 0.3rem rgba(16, 185, 129, 0.3),
+      0 10px 20px -5px rgba(16, 185, 129, 0.4);
+    outline: none;
+  }
+
+  .btn-transfer:active:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  .alert {
+    border-radius: 16px;
+    border: none;
+    padding: 1.25rem 1.75rem;
+    margin-bottom: 2rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  }
+
+  .alert-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border-left: 4px solid #10B981;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+  }
+
+  .alert-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #FCA5A5;
+    border-left: 4px solid #EF4444;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+  }
+
+  .alert-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #FCD34D;
+    border-left: 4px solid #F59E0B;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+  }
+
+  .alert-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #93C5FD;
+    border-left: 4px solid #3B82F6;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 5rem 2rem;
+    color: rgba(255, 255, 255, 0.7);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+    border-radius: 20px;
+    border: 2px dashed rgba(16, 185, 129, 0.3);
+    position: relative;
+    overflow: hidden;
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  .empty-state::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+    animation: rotate 20s linear infinite;
+    pointer-events: none;
+  }
+
+  .empty-state::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 70% 70%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .empty-state > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .empty-state i {
+    font-size: 5rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, #10B981 0%, #059669 50%, #34D399 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: inline-block;
+    animation: float 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.4));
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      transform: translateY(-15px) scale(1.05);
+    }
+  }
+
+  .empty-state h3 {
+    color: #ffffff;
+    margin-bottom: 1.25rem;
+    font-size: 1.75rem;
+    font-weight: 700;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 0.5px;
+  }
+
+  .empty-state p {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .empty-state .btn {
+    background: linear-gradient(135deg, #10B981 0%, #059669 50%, #047857 100%);
+    background-size: 200% 100%;
+    border: none;
+    border-radius: 14px;
+    padding: 1rem 2.5rem;
+    font-weight: 700;
+    font-size: 1rem;
+    color: white;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+      0 10px 20px -5px rgba(16, 185, 129, 0.4),
+      0 0 30px rgba(16, 185, 129, 0.3);
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .empty-state .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .empty-state .btn:hover::before {
+    left: 100%;
+  }
+
+  .empty-state .btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 
+      0 15px 25px -5px rgba(16, 185, 129, 0.5),
+      0 0 40px rgba(16, 185, 129, 0.4);
+    background-position: 100% 0;
+    color: white;
+    text-decoration: none;
+  }
+
+  .empty-state .btn:active {
+    transform: translateY(-1px);
+  }
+
+  .empty-state .btn i {
+    font-size: 1.2rem;
+    animation: slideLeft 1.5s ease-in-out infinite;
+  }
+
+  @keyframes slideLeft {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(-5px);
+    }
+  }
+
+  /* Animações */
+  @keyframes fadeInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.08);
+    }
+  }
+
+  /* Responsividade */
+  @media (max-width: 768px) {
+    .transfer-container {
+      padding: 1rem 0;
+    }
+
+    .transfer-card-body {
+      padding: 1.5rem;
+    }
+    
+    .user-info {
+      padding: 1.5rem;
+    }
+    
+    .user-info-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .character-card {
+      padding: 1.25rem;
+    }
+
+    .calculation-preview {
+      padding: 1.5rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .transfer-card-body {
+      padding: 1.25rem;
+    }
+    
+    .transfer-card-header {
+      padding: 1.5rem 1rem;
+    }
+    
+    .transfer-card-icon {
+      font-size: 2.5rem;
+    }
+    
+    .transfer-card-title {
+      font-size: 1.4rem;
+    }
+
+    .btn-transfer {
+      padding: 1rem 1.5rem;
+      font-size: 1rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="transfer-container">
+  <div class="container">
+    <!-- Header -->
+    <div class="transfer-header">
+      <h1 class="transfer-title">
+        <i class="fas fa-download me-3"></i>{% trans "Retirar do Servidor" %}
+      </h1>
+      <p class="transfer-subtitle">
+        {% trans "Retire suas moedas do servidor para sua carteira com segurança" %}
+      </p>
+    </div>
+
+    <!-- Breadcrumbs -->
+    <div class="transfer-breadcrumb">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <a href="{% url 'dashboard' %}">{% trans "Dashboard" %}</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a href="{% url 'wallet:dashboard' %}">{% trans "Carteira" %}</a>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">{% trans "Retirar do Servidor" %}</li>
+        </ol>
+      </nav>
+    </div>
+
+    <!-- Card Principal -->
+    <div class="transfer-card">
+      <div class="transfer-card-header">
+        <i class="fas fa-download transfer-card-icon"></i>
+        <h2 class="transfer-card-title">{% trans "Retirada do Servidor" %}</h2>
+        <p class="transfer-card-description">{% trans "Selecione o personagem e a quantidade de moedas" %}</p>
+      </div>
+
+      <div class="transfer-card-body">
+        <!-- Mensagens -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+              <i class="fas fa-info-circle me-2"></i>
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{% trans 'Fechar' %}"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Informações do Usuário -->
+        <div class="user-info">
+          <div class="user-info-item">
+            <span class="user-info-label">{% trans "Usuário:" %}</span>
+            <span class="user-info-value">{{ request.user.username }}</span>
+          </div>
+          <div class="user-info-item">
+            <span class="user-info-label">{% trans "Conta do jogo:" %}</span>
+            <span class="user-info-value text-warning">{{ active_account_login }}</span>
+          </div>
+          <div class="user-info-item">
+            <span class="user-info-label">{% trans "Saldo atual:" %}</span>
+            <span class="user-info-value balance">R$ {{ wallet.saldo|floatformat:2 }}</span>
+          </div>
+        </div>
+
+        <!-- Informação sobre Taxa -->
+        {% if taxa_retirada > 0 %}
+        <div class="tax-info">
+          <div class="tax-info-title">
+            <i class="fas fa-info-circle me-2"></i>{% trans "Taxa de Retirada" %}
+          </div>
+          <div class="tax-info-text">
+            {% blocktrans with taxa=taxa_retirada %}Será cobrada uma taxa de {{ taxa }}% sobre o valor retirado.{% endblocktrans %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Preview do Cálculo -->
+        <div class="calculation-preview" id="calculation-preview">
+          <div class="calculation-item">
+            <span class="calculation-label">{% trans "Valor Bruto:" %}</span>
+            <span class="calculation-value" id="valor-bruto">R$ 0,00</span>
+          </div>
+          {% if taxa_retirada > 0 %}
+          <div class="calculation-item">
+            <span class="calculation-label">{% trans "Taxa" %} ({{ taxa_retirada }}%):</span>
+            <span class="calculation-value" id="taxa-valor">- R$ 0,00</span>
+          </div>
+          {% endif %}
+          <div class="calculation-item">
+            <span class="calculation-label">{% trans "Valor Líquido (será creditado):" %}</span>
+            <span class="calculation-value" id="valor-liquido">R$ 0,00</span>
+          </div>
+        </div>
+        
+        <!-- Formulário -->
+        {% if personagens_com_moedas %}
+        <form method="post" novalidate>
+          {% csrf_token %}
+          
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fas fa-user me-2"></i>{% trans "Selecione o Personagem" %}
+            </label>
+            {% for personagem in personagens_com_moedas %}
+            <div class="character-card" onclick="selectCharacter({{ personagem.char_id|unlocalize }}, {{ personagem.coin_amount|unlocalize }}, this)">
+              <div class="character-name">
+                {{ personagem.char_name }}
+                {% if personagem.online != 0 %}
+                <span class="badge bg-danger ms-2">{% trans "Online" %}</span>
+                {% else %}
+                <span class="badge bg-success ms-2">{% trans "Offline" %}</span>
+                {% endif %}
+              </div>
+              <div class="character-coins">
+                <span class="coin-badge">
+                  <i class="fas fa-coins me-1"></i>{% trans "Total:" %} {{ personagem.coin_amount|intcomma }}
+                </span>
+                {% if personagem.coin_inventory > 0 %}
+                <span class="coin-badge" style="background: rgba(59, 130, 246, 0.2); color: #3B82F6;">
+                  <i class="fas fa-box me-1"></i>{% trans "Inventário:" %} {{ personagem.coin_inventory|intcomma }}
+                </span>
+                {% endif %}
+                {% if personagem.coin_warehouse > 0 %}
+                <span class="coin-badge" style="background: rgba(139, 92, 246, 0.2); color: #8B5CF6;">
+                  <i class="fas fa-warehouse me-1"></i>{% trans "Depósito:" %} {{ personagem.coin_warehouse|intcomma }}
+                </span>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+            <input type="hidden" name="char_id" id="char_id" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fas fa-coins me-2"></i>{% trans "Quantidade de Moedas" %}
+            </label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fas fa-coins"></i></span>
+              <input type="number" name="quantidade_moedas" id="quantidade_moedas" class="form-control" min="1" placeholder="0" required>
+            </div>
+            <small class="form-text text-muted" id="max-coins-hint"></small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fas fa-lock me-2"></i>{% trans "Confirme sua senha" %}
+            </label>
+            <div class="password-field">
+              <input type="password" name="senha" class="form-control" id="senha" placeholder="Digite sua senha" required>
+              <button type="button" class="password-toggle" onclick="togglePassword('senha')">
+                <i class="fas fa-eye" id="eye-icon-senha"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-transfer" id="btn-transfer" disabled>
+            <i class="fas fa-check-circle me-2"></i> <span id="btn-text">{% trans "Confirmar Retirada" %}</span>
+          </button>
+          <div id="validation-hint" class="text-muted mt-2" style="text-align: center; font-size: 0.9rem; color: rgba(255, 255, 255, 0.5); min-height: 20px;"></div>
+        </form>
+        {% else %}
+        <div class="empty-state">
+          <i class="fas fa-coins"></i>
+          <h3>{% trans "Nenhum personagem com moedas encontrado" %}</h3>
+          <p>{% trans "Você precisa ter moedas no servidor para realizar uma retirada. Transfira moedas para seus personagens primeiro!" %}</p>
+          <a href="{% url 'wallet:dashboard' %}" class="btn">
+            <i class="fas fa-arrow-left"></i>{% trans "Voltar para Carteira" %}
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% trans "Máximo disponível:" as trans_max_available %}
+{% trans "Selecione um personagem para continuar" as trans_select_character %}
+{% trans "Digite a quantidade de moedas" as trans_enter_coins %}
+{% trans "Quantidade excede o disponível no personagem" as trans_exceeds_available %}
+{% trans "Digite sua senha para confirmar" as trans_enter_password %}
+{% trans "Por favor, selecione um personagem" as trans_please_select_character %}
+{% trans "A quantidade de moedas deve ser maior que zero" as trans_coins_must_be_greater %}
+{% trans "Quantidade de moedas insuficiente no personagem" as trans_insufficient_coins %}
+{% trans "Por favor, digite sua senha" as trans_please_enter_password %}
+
+<script>
+const TAXA_RETIRADA = parseFloat('{{ taxa_retirada|unlocalize|default:"0.00"|escapejs }}') || 0;
+const MULTIPLICADOR = parseFloat('{{ config.multiplicador|unlocalize|default:"1.00"|escapejs }}') || 1;
+let selectedCharId = null;
+let maxCoins = 0;
+
+// Traduções para JavaScript
+const TRANSLATIONS = {
+  maxAvailable: "{{ trans_max_available|escapejs }}",
+  selectCharacter: "{{ trans_select_character|escapejs }}",
+  enterCoins: "{{ trans_enter_coins|escapejs }}",
+  exceedsAvailable: "{{ trans_exceeds_available|escapejs }}",
+  enterPassword: "{{ trans_enter_password|escapejs }}",
+  pleaseSelectCharacter: "{{ trans_please_select_character|escapejs }}",
+  coinsMustBeGreater: "{{ trans_coins_must_be_greater|escapejs }}",
+  insufficientCoins: "{{ trans_insufficient_coins|escapejs }}",
+  pleaseEnterPassword: "{{ trans_please_enter_password|escapejs }}"
+};
+
+function togglePassword(inputId) {
+  const input = document.getElementById(inputId);
+  const icon = document.getElementById('eye-icon-' + inputId);
+  
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.classList.remove('fa-eye');
+    icon.classList.add('fa-eye-slash');
+  } else {
+    input.type = 'password';
+    icon.classList.remove('fa-eye-slash');
+    icon.classList.add('fa-eye');
+  }
+}
+
+function selectCharacter(charId, coinAmount, element) {
+  selectedCharId = charId;
+  maxCoins = coinAmount;
+  
+  // Remove seleção anterior
+  document.querySelectorAll('.character-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+  
+  // Adiciona seleção atual
+  if (element) {
+    element.classList.add('selected');
+  }
+  
+  // Atualiza o campo hidden
+  const charIdInput = document.getElementById('char_id');
+  if (charIdInput) {
+    charIdInput.value = charId;
+  }
+  
+  // Atualiza o hint
+  const maxCoinsHint = document.getElementById('max-coins-hint');
+  if (maxCoinsHint) {
+    maxCoinsHint.textContent = 
+      TRANSLATIONS.maxAvailable + ' ' + coinAmount.toLocaleString('pt-BR');
+    maxCoinsHint.style.color = '#10B981';
+    maxCoinsHint.style.fontWeight = '600';
+  }
+  
+  // Atualiza validação
+  updateValidation();
+}
+
+function calculatePreview(quantidade) {
+  if (!quantidade || quantidade <= 0) {
+    document.getElementById('calculation-preview').classList.remove('show');
+    return;
+  }
+  
+  const valorBruto = quantidade / MULTIPLICADOR;
+  const taxaValor = (valorBruto * TAXA_RETIRADA) / 100;
+  const valorLiquido = valorBruto - taxaValor;
+  
+  document.getElementById('valor-bruto').textContent = 
+    'R$ ' + valorBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  
+  if (TAXA_RETIRADA > 0) {
+    document.getElementById('taxa-valor').textContent = 
+      '- R$ ' + taxaValor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  
+  document.getElementById('valor-liquido').textContent = 
+    'R$ ' + valorLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  
+  document.getElementById('calculation-preview').classList.add('show');
+}
+
+function updateValidation() {
+  const quantidadeInput = document.getElementById('quantidade_moedas');
+  const senhaInput = document.getElementById('senha');
+  const btnTransfer = document.getElementById('btn-transfer');
+  const validationHint = document.getElementById('validation-hint');
+  
+  if (!quantidadeInput || !senhaInput || !btnTransfer) {
+    return;
+  }
+  
+  const quantidade = parseInt(quantidadeInput.value) || 0;
+  const senha = senhaInput.value.trim();
+  
+  let canSubmit = true;
+  let hintMessage = '';
+  
+  // Verifica se um personagem foi selecionado
+  if (!selectedCharId || maxCoins === 0) {
+    canSubmit = false;
+    hintMessage = TRANSLATIONS.selectCharacter;
+  }
+  // Verifica se a quantidade é válida
+  else if (quantidade < 1) {
+    canSubmit = false;
+    hintMessage = TRANSLATIONS.enterCoins;
+  } else if (maxCoins > 0 && quantidade > maxCoins) {
+    canSubmit = false;
+    hintMessage = TRANSLATIONS.exceedsAvailable;
+  }
+  // Verifica se a senha foi preenchida
+  else if (!senha || senha.length === 0) {
+    canSubmit = false;
+    hintMessage = TRANSLATIONS.enterPassword;
+  }
+  
+  btnTransfer.disabled = !canSubmit;
+  
+  // Atualiza mensagem de hint
+  if (validationHint) {
+    validationHint.textContent = hintMessage;
+    validationHint.style.color = canSubmit ? 'rgba(16, 185, 129, 0.8)' : 'rgba(255, 255, 255, 0.5)';
+  }
+  
+  // Atualiza preview apenas se houver quantidade válida
+  if (quantidade > 0 && maxCoins > 0 && quantidade <= maxCoins) {
+    calculatePreview(quantidade);
+  } else {
+    const preview = document.getElementById('calculation-preview');
+    if (preview) {
+      preview.classList.remove('show');
+    }
+  }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+  const quantidadeInput = document.getElementById('quantidade_moedas');
+  const senhaInput = document.getElementById('senha');
+  const charIdInput = document.getElementById('char_id');
+  
+  // Inicializa validação
+  updateValidation();
+  
+  if (quantidadeInput) {
+    quantidadeInput.addEventListener('input', function() {
+      updateValidation();
+    });
+    quantidadeInput.addEventListener('change', function() {
+      updateValidation();
+    });
+    quantidadeInput.addEventListener('blur', function() {
+      updateValidation();
+    });
+  }
+  
+  if (senhaInput) {
+    senhaInput.addEventListener('input', function() {
+      updateValidation();
+    });
+    senhaInput.addEventListener('blur', function() {
+      updateValidation();
+    });
+  }
+  
+  // Validação no submit
+  const form = document.querySelector('form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      if (!selectedCharId || !charIdInput || !charIdInput.value) {
+        e.preventDefault();
+        alert(TRANSLATIONS.pleaseSelectCharacter);
+        return false;
+      }
+      
+      const quantidade = parseInt(quantidadeInput.value) || 0;
+      if (quantidade < 1) {
+        e.preventDefault();
+        alert(TRANSLATIONS.coinsMustBeGreater);
+        quantidadeInput.focus();
+        return false;
+      }
+      
+      if (maxCoins > 0 && quantidade > maxCoins) {
+        e.preventDefault();
+        alert(TRANSLATIONS.insufficientCoins);
+        quantidadeInput.focus();
+        return false;
+      }
+      
+      const senha = senhaInput.value.trim();
+      if (!senha) {
+        e.preventDefault();
+        alert(TRANSLATIONS.pleaseEnterPassword);
+        senhaInput.focus();
+        return false;
+      }
+    });
+  }
+});
+</script>
+{% endblock %}
+

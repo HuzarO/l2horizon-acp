@@ -322,5 +322,8 @@ class BattlePassService:
         
         # Auto-claim de recompensas free se habilitado
         if auto_claim:
-            progress.auto_claim_free_rewards()
+            # Chama o método diretamente
+            method = getattr(progress, 'auto_claim_free_rewards', None)
+            if callable(method):
+                method()
 

@@ -1,0 +1,94 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block extrastyle %}
+{% include 'battle_pass/manager/_base_styles.html' %}
+<style>
+    .btn-success:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6) !important;
+        color: white !important;
+    }
+</style>
+{% endblock %}
+
+{% block title %}{% trans "Criar Quest" %} - {% trans "Battle Pass Manager" %}{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card card-glow">
+                    <div class="card-header">
+                        <h3 class="text-white mb-0">{% trans "Criar Nova Quest" %}</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Título" %}</label>
+                                <input type="text" name="title" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Descrição" %}</label>
+                                <textarea name="description" class="form-control" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Tipo" %}</label>
+                                <select name="quest_type" class="form-select" required>
+                                    <option value="daily">{% trans "Diária" %}</option>
+                                    <option value="weekly">{% trans "Semanal" %}</option>
+                                    <option value="seasonal">{% trans "Temporada" %}</option>
+                                    <option value="special">{% trans "Especial" %}</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "XP de Recompensa" %}</label>
+                                <input type="number" name="xp_reward" class="form-control" value="100" min="1" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Temporada" %}</label>
+                                <select name="season" class="form-select">
+                                    <option value="">{% trans "Geral (todas as temporadas)" %}</option>
+                                    {% for season in seasons %}
+                                    <option value="{{ season.id }}">{{ season.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-white">{% trans "Ordem" %}</label>
+                                <input type="number" name="order" class="form-control" value="0" min="0">
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" name="is_active" class="form-check-input" checked>
+                                <label class="form-check-label text-white">{% trans "Ativa" %}</label>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" name="is_premium" class="form-check-input">
+                                <label class="form-check-label text-white">{% trans "Premium" %}</label>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" name="reset_daily" class="form-check-input" checked>
+                                <label class="form-check-label text-white">{% trans "Reset Diário" %}</label>
+                            </div>
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" name="reset_weekly" class="form-check-input">
+                                <label class="form-check-label text-white">{% trans "Reset Semanal" %}</label>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-success" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); color: white;">
+                                    <i class="bi bi-check-circle me-2"></i>{% trans "Criar" %}
+                                </button>
+                                <a href="{% url 'games:battle_pass_manager_quest_list' %}" class="btn btn-secondary">{% trans "Cancelar" %}</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

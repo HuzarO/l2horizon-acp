@@ -3,7 +3,7 @@ Views para sistema de missões/quests do Battle Pass
 """
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _, gettext
 from django.db import transaction
 from apps.main.home.decorator import conditional_otp_required
 from django.db import models
@@ -137,7 +137,7 @@ def complete_quest(request, quest_id):
         metadata={'quest_id': quest.id, 'quest_type': quest.quest_type}
     )
     
-    messages.success(request, _("Quest completada! Você ganhou {} XP!").format(quest.xp_reward))
+    messages.success(request, gettext("Quest completada! Você ganhou {} XP!").format(quest.xp_reward))
     return redirect('games:quests')
 
 

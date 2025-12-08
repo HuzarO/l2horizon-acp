@@ -8,7 +8,9 @@ from django.http import JsonResponse
 
 from ..models import (
     BattlePassSeason, BattlePassLevel, BattlePassReward, 
-    BattlePassItemExchange, UserBattlePassProgress
+    BattlePassItemExchange, UserBattlePassProgress,
+    BattlePassQuest, BattlePassQuestProgress, BattlePassMilestone,
+    BattlePassHistory, BattlePassStatistics
 )
 
 
@@ -30,6 +32,8 @@ def dashboard(request):
     total_rewards = BattlePassReward.objects.filter(level__season=season).count() if season else 0
     total_progress = UserBattlePassProgress.objects.filter(season=season).count() if season else 0
     total_exchanges = BattlePassItemExchange.objects.filter(is_active=True).count()
+    total_quests = BattlePassQuest.objects.filter(is_active=True).count()
+    total_milestones = BattlePassMilestone.objects.filter(season=season).count() if season else 0
     
     context = {
         'season': season,
@@ -39,6 +43,8 @@ def dashboard(request):
         'total_rewards': total_rewards,
         'total_progress': total_progress,
         'total_exchanges': total_exchanges,
+        'total_quests': total_quests,
+        'total_milestones': total_milestones,
     }
     
     return render(request, 'battle_pass/manager/dashboard.html', context)
@@ -432,4 +438,236 @@ def exchange_delete(request, exchange_id):
         'exchange': exchange,
     }
     return render(request, 'battle_pass/manager/exchange_delete.html', context)
+
+
+# ==============================
+# Quest Management
+# ==============================
+
+@staff_required
+def quest_list(request):
+    """Lista todas as quests"""
+    quests = BattlePassQuest.objects.all().order_by('-created_at')
+    
+    context = {
+        'quests': quests,
+    }
+    return render(request, 'battle_pass/manager/quest_list.html', context)
+
+
+@staff_required
+@transaction.atomic
+def quest_create(request):
+    """Criar nova quest"""
+    if request.method == 'POST':
+        try:
+            title = request.POST.get('title')
+            description = request.POST.get('description')
+            quest_type = request.POST.get('quest_type', 'daily')
+            xp_reward = request.POST.get('xp_reward', 100)
+            is_active = request.POST.get('is_active') == 'on'
+            is_premium = request.POST.get('is_premium') == 'on'
+            season_id = request.POST.get('season')
+            reset_daily = request.POST.get('reset_daily') == 'on'
+            reset_weekly = request.POST.get('reset_weekly') == 'on'
+            order = request.POST.get('order', 0)
+            
+            if not title or not description:
+                messages.error(request, _('Preencha todos os campos obrigatórios.'))
+                return redirect('games:battle_pass_manager_quest_create')
+            
+            season = None
+            if season_id:
+                season = BattlePassSeason.objects.get(id=season_id)
+            
+            BattlePassQuest.objects.create(
+                title=title,
+                description=description,
+                quest_type=quest_type,
+                xp_reward=int(xp_reward) if xp_reward else 100,
+                is_active=is_active,
+                is_premium=is_premium,
+                season=season,
+                reset_daily=reset_daily,
+                reset_weekly=reset_weekly,
+                order=int(order) if order else 0
+            )
+            
+            messages.success(request, _('Quest criada com sucesso!'))
+            return redirect('games:battle_pass_manager_quest_list')
+            
+        except Exception as e:
+            messages.error(request, _('Erro ao criar quest: {}').format(str(e)))
+    
+    seasons = BattlePassSeason.objects.all()
+    context = {
+        'seasons': seasons,
+    }
+    return render(request, 'battle_pass/manager/quest_create.html', context)
+
+
+@staff_required
+@transaction.atomic
+def quest_edit(request, quest_id):
+    """Editar quest existente"""
+    quest = get_object_or_404(BattlePassQuest, id=quest_id)
+    
+    if request.method == 'POST':
+        try:
+            quest.title = request.POST.get('title', quest.title)
+            quest.description = request.POST.get('description', quest.description)
+            quest.quest_type = request.POST.get('quest_type', quest.quest_type)
+            quest.xp_reward = int(request.POST.get('xp_reward', quest.xp_reward))
+            quest.is_active = request.POST.get('is_active') == 'on'
+            quest.is_premium = request.POST.get('is_premium') == 'on'
+            quest.reset_daily = request.POST.get('reset_daily') == 'on'
+            quest.reset_weekly = request.POST.get('reset_weekly') == 'on'
+            quest.order = int(request.POST.get('order', quest.order))
+            
+            season_id = request.POST.get('season')
+            if season_id:
+                quest.season = BattlePassSeason.objects.get(id=season_id)
+            else:
+                quest.season = None
+            
+            quest.save()
+            
+            messages.success(request, _('Quest atualizada com sucesso!'))
+            return redirect('games:battle_pass_manager_quest_list')
+            
+        except Exception as e:
+            messages.error(request, _('Erro ao atualizar quest: {}').format(str(e)))
+    
+    seasons = BattlePassSeason.objects.all()
+    context = {
+        'quest': quest,
+        'seasons': seasons,
+    }
+    return render(request, 'battle_pass/manager/quest_edit.html', context)
+
+
+@staff_required
+@transaction.atomic
+def quest_delete(request, quest_id):
+    """Deletar quest"""
+    quest = get_object_or_404(BattlePassQuest, id=quest_id)
+    
+    if request.method == 'POST':
+        quest_title = quest.title
+        quest.delete()
+        messages.success(request, _('Quest "{}" deletada com sucesso!').format(quest_title))
+        return redirect('games:battle_pass_manager_quest_list')
+    
+    context = {
+        'quest': quest,
+    }
+    return render(request, 'battle_pass/manager/quest_delete.html', context)
+
+
+# ==============================
+# Milestone Management
+# ==============================
+
+@staff_required
+def milestone_list(request, season_id):
+    """Lista todos os milestones de uma temporada"""
+    season = get_object_or_404(BattlePassSeason, id=season_id)
+    milestones = BattlePassMilestone.objects.filter(season=season).order_by('level')
+    
+    context = {
+        'season': season,
+        'milestones': milestones,
+    }
+    return render(request, 'battle_pass/manager/milestone_list.html', context)
+
+
+@staff_required
+@transaction.atomic
+def milestone_create(request, season_id):
+    """Criar novo milestone"""
+    season = get_object_or_404(BattlePassSeason, id=season_id)
+    
+    if request.method == 'POST':
+        try:
+            level = int(request.POST.get('level'))
+            title = request.POST.get('title')
+            description = request.POST.get('description', '')
+            icon = request.POST.get('icon', '🏆')
+            bonus_xp = int(request.POST.get('bonus_xp', 0))
+            
+            if not title:
+                messages.error(request, _('Título é obrigatório.'))
+                return redirect('games:battle_pass_manager_milestone_create', season_id=season_id)
+            
+            if BattlePassMilestone.objects.filter(season=season, level=level).exists():
+                messages.error(request, _('Já existe um milestone no nível {} para esta temporada.').format(level))
+                return redirect('games:battle_pass_manager_milestone_create', season_id=season_id)
+            
+            BattlePassMilestone.objects.create(
+                season=season,
+                level=level,
+                title=title,
+                description=description,
+                icon=icon,
+                bonus_xp=bonus_xp
+            )
+            
+            messages.success(request, _('Milestone criado com sucesso!'))
+            return redirect('games:battle_pass_manager_milestone_list', season_id=season_id)
+            
+        except Exception as e:
+            messages.error(request, _('Erro ao criar milestone: {}').format(str(e)))
+    
+    context = {
+        'season': season,
+    }
+    return render(request, 'battle_pass/manager/milestone_create.html', context)
+
+
+@staff_required
+@transaction.atomic
+def milestone_edit(request, milestone_id):
+    """Editar milestone existente"""
+    milestone = get_object_or_404(BattlePassMilestone, id=milestone_id)
+    
+    if request.method == 'POST':
+        try:
+            milestone.level = int(request.POST.get('level', milestone.level))
+            milestone.title = request.POST.get('title', milestone.title)
+            milestone.description = request.POST.get('description', milestone.description)
+            milestone.icon = request.POST.get('icon', milestone.icon)
+            milestone.bonus_xp = int(request.POST.get('bonus_xp', milestone.bonus_xp))
+            milestone.save()
+            
+            messages.success(request, _('Milestone atualizado com sucesso!'))
+            return redirect('games:battle_pass_manager_milestone_list', season_id=milestone.season.id)
+            
+        except Exception as e:
+            messages.error(request, _('Erro ao atualizar milestone: {}').format(str(e)))
+    
+    context = {
+        'milestone': milestone,
+        'season': milestone.season,
+    }
+    return render(request, 'battle_pass/manager/milestone_edit.html', context)
+
+
+@staff_required
+@transaction.atomic
+def milestone_delete(request, milestone_id):
+    """Deletar milestone"""
+    milestone = get_object_or_404(BattlePassMilestone, id=milestone_id)
+    season_id = milestone.season.id
+    
+    if request.method == 'POST':
+        milestone_title = milestone.title
+        milestone.delete()
+        messages.success(request, _('Milestone "{}" deletado com sucesso!').format(milestone_title))
+        return redirect('games:battle_pass_manager_milestone_list', season_id=season_id)
+    
+    context = {
+        'milestone': milestone,
+        'season': milestone.season,
+    }
+    return render(request, 'battle_pass/manager/milestone_delete.html', context)
 

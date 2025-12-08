@@ -106,4 +106,14 @@ urlpatterns = [
     path('battle-pass/manager/exchange/create/', battle_pass_manager.exchange_create, name='battle_pass_manager_exchange_create'),
     path('battle-pass/manager/exchange/<int:exchange_id>/edit/', battle_pass_manager.exchange_edit, name='battle_pass_manager_exchange_edit'),
     path('battle-pass/manager/exchange/<int:exchange_id>/delete/', battle_pass_manager.exchange_delete, name='battle_pass_manager_exchange_delete'),
+    # Quest Management
+    path('battle-pass/manager/quests/', battle_pass_manager.quest_list, name='battle_pass_manager_quest_list'),
+    path('battle-pass/manager/quest/create/', battle_pass_manager.quest_create, name='battle_pass_manager_quest_create'),
+    path('battle-pass/manager/quest/<int:quest_id>/edit/', battle_pass_manager.quest_edit, name='battle_pass_manager_quest_edit'),
+    path('battle-pass/manager/quest/<int:quest_id>/delete/', battle_pass_manager.quest_delete, name='battle_pass_manager_quest_delete'),
+    # Milestone Management
+    path('battle-pass/manager/season/<int:season_id>/milestones/', battle_pass_manager.milestone_list, name='battle_pass_manager_milestone_list'),
+    path('battle-pass/manager/season/<int:season_id>/milestone/create/', battle_pass_manager.milestone_create, name='battle_pass_manager_milestone_create'),
+    path('battle-pass/manager/milestone/<int:milestone_id>/edit/', battle_pass_manager.milestone_edit, name='battle_pass_manager_milestone_edit'),
+    path('battle-pass/manager/milestone/<int:milestone_id>/delete/', battle_pass_manager.milestone_delete, name='battle_pass_manager_milestone_delete'),
 ]

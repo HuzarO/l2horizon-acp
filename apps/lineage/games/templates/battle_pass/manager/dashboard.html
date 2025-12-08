@@ -285,6 +285,31 @@
             </div>
         </div>
 
+        <!-- Additional Statistics -->
+        <div class="row g-4 mb-5">
+            <div class="col-6 col-md-3">
+                <div class="stat-card text-center position-relative">
+                    <i class="bi bi-tasks" style="font-size: 2rem; opacity: 0.3; position: absolute; top: 10px; right: 15px;"></i>
+                    <div class="stat-value">{{ total_quests }}</div>
+                    <div class="stat-label">{% trans "Quests Ativas" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card text-center position-relative">
+                    <i class="bi bi-trophy" style="font-size: 2rem; opacity: 0.3; position: absolute; top: 10px; right: 15px;"></i>
+                    <div class="stat-value">{{ total_milestones }}</div>
+                    <div class="stat-label">{% trans "Milestones" %}</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card text-center position-relative">
+                    <i class="bi bi-arrow-left-right" style="font-size: 2rem; opacity: 0.3; position: absolute; top: 10px; right: 15px;"></i>
+                    <div class="stat-value">{{ total_exchanges }}</div>
+                    <div class="stat-label">{% trans "Trocas Ativas" %}</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Active Season Card -->
         {% if season %}
         <div class="card card-glow season-card mb-4">
@@ -401,6 +426,58 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- New Features Quick Actions -->
+        <div class="row g-4 mt-2">
+            <div class="col-md-6">
+                <div class="card card-glow quick-action-card">
+                    <div class="card-header bg-transparent border-bottom">
+                        <h5 class="text-white mb-0 d-flex align-items-center">
+                            <i class="bi bi-tasks me-2 text-info" style="font-size: 1.5rem;"></i>
+                            {% trans "Missões/Quests" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-white-50 mb-4" style="line-height: 1.6;">
+                            {% trans "Gerencie missões diárias, semanais e especiais do Battle Pass." %}
+                        </p>
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'games:battle_pass_manager_quest_list' %}" class="btn btn-outline-info flex-fill">
+                                <i class="bi bi-list-ul me-2"></i>{% trans "Ver Quests" %}
+                            </a>
+                            <a href="{% url 'games:battle_pass_manager_quest_create' %}" class="btn btn-info">
+                                <i class="bi bi-plus-circle me-2"></i>{% trans "Nova" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% if season %}
+            <div class="col-md-6">
+                <div class="card card-glow quick-action-card">
+                    <div class="card-header bg-transparent border-bottom">
+                        <h5 class="text-white mb-0 d-flex align-items-center">
+                            <i class="bi bi-trophy me-2 text-warning" style="font-size: 1.5rem;"></i>
+                            {% trans "Milestones" %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-white-50 mb-4" style="line-height: 1.6;">
+                            {% trans "Configure marcos especiais com bônus de XP para níveis importantes." %}
+                        </p>
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'games:battle_pass_manager_milestone_list' season_id=season.id %}" class="btn btn-outline-warning flex-fill">
+                                <i class="bi bi-list-ul me-2"></i>{% trans "Ver Milestones" %}
+                            </a>
+                            <a href="{% url 'games:battle_pass_manager_milestone_create' season_id=season.id %}" class="btn btn-warning">
+                                <i class="bi bi-plus-circle me-2"></i>{% trans "Novo" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
