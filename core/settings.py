@@ -224,6 +224,9 @@ MIDDLEWARE = [
     
     "apps.main.licence.middleware.LicenseMiddleware",
     "apps.main.licence.middleware.LicenseFeatureMiddleware",
+    
+    # Page view tracking middleware - deve vir após autenticação
+    "middlewares.page_view_middleware.PageViewMiddleware",
 ]
 
 # =========================== TEMPLATES CONFIGS ===========================

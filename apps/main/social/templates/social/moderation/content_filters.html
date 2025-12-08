@@ -18,6 +18,9 @@
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createFilterModal">
               <i class="bi bi-plus-circle"></i> {% trans "Novo Filtro" %}
             </button>
+            <button type="button" class="btn btn-danger btn-sm" id="bulkDeleteBtn" onclick="bulkDeleteFilters()" style="display: none;">
+              <i class="bi bi-trash"></i> {% trans "Deletar Selecionados" %} (<span id="selectedCount">0</span>)
+            </button>
             <a href="{% url 'social:moderation_dashboard' %}" class="btn btn-outline-secondary btn-sm">
               <i class="bi bi-arrow-left"></i> {% trans "Voltar ao Dashboard" %}
             </a>
@@ -184,10 +187,18 @@
   <div class="row">
     <div class="col-12">
       <div class="card shadow">
-        <div class="card-header py-3">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
           <h6 class="m-0 font-weight-bold text-primary">
             {% trans "Filtros Configurados" %}
           </h6>
+          <div>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllFilters()">
+              <i class="bi bi-check-square"></i> {% trans "Selecionar Todos" %}
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllFilters()">
+              <i class="bi bi-square"></i> {% trans "Desselecionar Todos" %}
+            </button>
+          </div>
         </div>
         <div class="card-body">
           {% if filters %}
@@ -195,6 +206,9 @@
               <table class="table table-hover">
                 <thead>
                   <tr>
+                    <th style="width: 40px;">
+                      <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                    </th>
                     <th>{% trans "Nome" %}</th>
                     <th>{% trans "Tipo" %}</th>
                     <th>{% trans "Padrão" %}</th>
@@ -208,6 +222,9 @@
                 <tbody>
                   {% for filter in filters %}
                   <tr>
+                    <td>
+                      <input type="checkbox" class="filter-checkbox" value="{{ filter.id }}" onchange="updateSelectedCount()">
+                    </td>
                     <td>
                       <strong>{{ filter.name }}</strong>
                       {% if filter.description %}
@@ -538,6 +555,85 @@ function deleteFilter(filterId, filterName) {
             alert('{% trans "Erro ao processar a requisição." %}');
         });
     }
+}
+
+// Funções para seleção em massa
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.filter-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    updateSelectedCount();
+}
+
+function selectAllFilters() {
+    const checkboxes = document.querySelectorAll('.filter-checkbox');
+    checkboxes.forEach(cb => cb.checked = true);
+    document.getElementById('selectAllCheckbox').checked = true;
+    updateSelectedCount();
+}
+
+function deselectAllFilters() {
+    const checkboxes = document.querySelectorAll('.filter-checkbox');
+    checkboxes.forEach(cb => cb.checked = false);
+    document.getElementById('selectAllCheckbox').checked = false;
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.filter-checkbox:checked');
+    const count = checkboxes.length;
+    const selectedCountSpan = document.getElementById('selectedCount');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    
+    if (selectedCountSpan) {
+        selectedCountSpan.textContent = count;
+    }
+    
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+    
+    // Atualizar checkbox "Selecionar Todos"
+    const allCheckboxes = document.querySelectorAll('.filter-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox && allCheckboxes.length > 0) {
+        selectAllCheckbox.checked = count === allCheckboxes.length;
+    }
+}
+
+function bulkDeleteFilters() {
+    const checkboxes = document.querySelectorAll('.filter-checkbox:checked');
+    const filterIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    
+    if (filterIds.length === 0) {
+        alert('{% trans "Nenhum filtro selecionado." %}');
+        return;
+    }
+    
+    if (!confirm(`{% trans "Tem certeza que deseja deletar" %} ${filterIds.length} {% trans "filtro(s) selecionado(s)?" %}`)) {
+        return;
+    }
+    
+    fetch('{% url "social:bulk_delete_filters" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ filter_ids: filterIds })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || `{% trans "Filtros deletados com sucesso!" %}`);
+            location.reload();
+        } else {
+            alert('{% trans "Erro ao deletar filtros:" %} ' + (data.error || '{% trans "Erro desconhecido" %}'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('{% trans "Erro ao processar a requisição." %}');
+    });
 }
 
 // Validação do formulário de teste

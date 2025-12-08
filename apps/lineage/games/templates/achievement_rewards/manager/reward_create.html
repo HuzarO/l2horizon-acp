@@ -92,56 +92,59 @@
                         </h3>
                     </div>
                     <div class="card-body">
-                        <form method="post">
+                        <form method="post" id="reward-form">
                             {% csrf_token %}
                             
                             <div class="mb-3">
                                 <label class="form-label">{% trans "Tipo de Premiação" %}</label>
                                 <select name="tipo" id="tipo" class="form-select" required onchange="updateReferenciaField()">
                                     <option value="">{% trans "Selecione..." %}</option>
-                                    <option value="CONQUISTA">{% trans "Por Conquista" %}</option>
-                                    <option value="CONQUISTAS_MULTIPLAS">{% trans "Por Quantidade de Conquistas" %}</option>
+                                    <option value="CONQUISTA" {% if request.POST.tipo == 'CONQUISTA' %}selected{% endif %}>{% trans "Por Conquista" %}</option>
+                                    <option value="CONQUISTAS_MULTIPLAS" {% if request.POST.tipo == 'CONQUISTAS_MULTIPLAS' %}selected{% endif %}>{% trans "Por Quantidade de Conquistas" %}</option>
                                 </select>
                                 <small class="text-white-50">{% trans "Escolha se a premiação é para uma conquista específica ou baseada na quantidade total de conquistas" %}</small>
                             </div>
 
                             <div class="mb-3" id="referencia-conquista" style="display: none;">
-                                <label class="form-label">{% trans "Conquista" %}</label>
-                                <select name="referencia" id="referencia_conquista" class="form-select">
+                                <label class="form-label">{% trans "Conquista" %} <span class="text-danger">*</span></label>
+                                <select name="referencia_conquista" id="referencia_conquista" class="form-select">
                                     <option value="">{% trans "Selecione uma conquista..." %}</option>
                                     {% for conquista in conquistas %}
-                                    <option value="{{ conquista.codigo }}">{{ conquista.nome }} ({{ conquista.codigo }})</option>
+                                    <option value="{{ conquista.codigo }}" {% if request.POST.referencia_conquista == conquista.codigo or request.POST.referencia == conquista.codigo %}selected{% endif %}>{{ conquista.nome }} ({{ conquista.codigo }})</option>
                                     {% endfor %}
                                 </select>
                                 <small class="text-white-50">{% trans "Selecione a conquista que dará esta premiação" %}</small>
                             </div>
 
                             <div class="mb-3" id="referencia-quantidade" style="display: none;">
-                                <label class="form-label">{% trans "Quantidade de Conquistas" %}</label>
-                                <input type="number" name="referencia" id="referencia_quantidade" class="form-control" min="1" placeholder="Ex: 10">
+                                <label class="form-label">{% trans "Quantidade de Conquistas" %} <span class="text-danger">*</span></label>
+                                <input type="number" name="referencia_quantidade" id="referencia_quantidade" class="form-control" min="1" placeholder="Ex: 10" value="{{ request.POST.referencia_quantidade|default:request.POST.referencia|default:'' }}">
                                 <small class="text-white-50">{% trans "Número de conquistas necessárias para receber esta premiação" %}</small>
                             </div>
+                            
+                            <!-- Campo hidden para enviar o valor correto -->
+                            <input type="hidden" name="referencia" id="referencia_hidden" value="">
 
                             <div class="mb-3">
-                                <label class="form-label">{% trans "Item ID" %}</label>
-                                <input type="number" name="item_id" class="form-control" required min="1">
+                                <label class="form-label">{% trans "Item ID" %} <span class="text-danger">*</span></label>
+                                <input type="number" name="item_id" id="item_id" class="form-control" required min="1" value="{{ request.POST.item_id|default:'' }}">
                                 <small class="text-white-50">{% trans "ID do item no servidor" %}</small>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">{% trans "Nome do Item" %}</label>
-                                <input type="text" name="item_name" class="form-control" required>
+                                <label class="form-label">{% trans "Nome do Item" %} <span class="text-danger">*</span></label>
+                                <input type="text" name="item_name" id="item_name" class="form-control" required value="{{ request.POST.item_name|default:'' }}">
                                 <small class="text-white-50">{% trans "Nome do item para exibição" %}</small>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">{% trans "Quantidade" %}</label>
-                                    <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+                                    <input type="number" name="quantity" class="form-control" value="{{ request.POST.quantity|default:'1' }}" min="1" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">{% trans "Encantamento" %}</label>
-                                    <input type="number" name="enchant" class="form-control" value="0" min="0">
+                                    <input type="number" name="enchant" class="form-control" value="{{ request.POST.enchant|default:'0' }}" min="0">
                                 </div>
                             </div>
 
@@ -172,20 +175,63 @@ function updateReferenciaField() {
         quantidadeDiv.style.display = 'none';
         referenciaConquista.required = true;
         referenciaQuantidade.required = false;
+        referenciaQuantidade.removeAttribute('required');
         referenciaQuantidade.value = '';
     } else if (tipo === 'CONQUISTAS_MULTIPLAS') {
         conquistaDiv.style.display = 'none';
         quantidadeDiv.style.display = 'block';
         referenciaConquista.required = false;
         referenciaQuantidade.required = true;
+        referenciaConquista.removeAttribute('required');
         referenciaConquista.value = '';
     } else {
         conquistaDiv.style.display = 'none';
         quantidadeDiv.style.display = 'none';
         referenciaConquista.required = false;
         referenciaQuantidade.required = false;
+        referenciaConquista.removeAttribute('required');
+        referenciaQuantidade.removeAttribute('required');
     }
 }
+
+// Validação antes de enviar o formulário e inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializa os campos baseado no tipo selecionado (caso haja erro e o formulário seja recarregado)
+    const tipo = document.getElementById('tipo').value;
+    if (tipo) {
+        updateReferenciaField();
+    }
+    
+    const form = document.getElementById('reward-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const tipo = document.getElementById('tipo').value;
+            const referenciaConquista = document.getElementById('referencia_conquista');
+            const referenciaQuantidade = document.getElementById('referencia_quantidade');
+            const referenciaHidden = document.getElementById('referencia_hidden');
+            
+            if (!tipo) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Define o valor correto no campo hidden baseado no tipo
+            if (tipo === 'CONQUISTA') {
+                if (!referenciaConquista.value) {
+                    e.preventDefault();
+                    return false;
+                }
+                referenciaHidden.value = referenciaConquista.value;
+            } else if (tipo === 'CONQUISTAS_MULTIPLAS') {
+                if (!referenciaQuantidade.value) {
+                    e.preventDefault();
+                    return false;
+                }
+                referenciaHidden.value = referenciaQuantidade.value;
+            }
+        });
+    }
+});
 </script>
 {% endblock %}
 

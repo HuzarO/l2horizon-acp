@@ -1,5 +1,5 @@
 {% extends 'layouts/base.html' %}
-{% load static i18n %}
+{% load static i18n itens_extras %}
 
 {% block extrahead %}
 <link rel="stylesheet" href="{% static 'css/dashboard-custom.css' %}">
@@ -21,11 +21,288 @@
     transition: transform 0.2s ease-in-out, box-shadow 0.3s;
     color: #f8f9fa;
     margin-bottom: 1.5rem;
+    padding: 1.5rem;
   }
 
   .rewards-card:hover {
-    transform: scale(1.02);
+    transform: scale(1.01);
     box-shadow: 0 0 20px rgba(245, 158, 11, 0.7), 0 0 30px rgba(251, 191, 36, 0.5);
+  }
+
+  .platinado-header {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #f59e0b 100%);
+    background-size: 200% 200%;
+    animation: gradient-shift 3s ease infinite;
+    border: 3px solid #fbbf24;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .platinado-progress-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      #f59e0b 0%,
+      #f59e0b var(--progress),
+      rgba(107, 114, 128, 0.3) var(--progress),
+      rgba(107, 114, 128, 0.3) 100%
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    position: relative;
+  }
+
+  .platinado-progress-circle::before {
+    content: '';
+    position: absolute;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #1a1a2e;
+  }
+
+  .platinado-progress-text {
+    position: relative;
+    z-index: 1;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fbbf24;
+  }
+
+  .conquista-item {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+  }
+
+  .conquista-item:hover {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(245, 158, 11, 0.6);
+    transform: translateX(5px);
+  }
+
+  .conquista-item.completada {
+    border-color: rgba(16, 185, 129, 0.6);
+    background: rgba(16, 185, 129, 0.15);
+    position: relative;
+  }
+
+  .conquista-item.completada::before {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+  }
+
+  .conquista-item.em-progresso {
+    border-color: rgba(59, 130, 246, 0.6);
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .conquista-item.bloqueada {
+    opacity: 0.5;
+    border-color: rgba(107, 114, 128, 0.3);
+  }
+
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    color: #f8f9fa;
+    text-shadow: 1px 1px 2px #000;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+  }
+
+  .badge-status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .badge-completada {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+  }
+
+  .badge-em-progresso {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+  }
+
+  .badge-bloqueada {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+  }
+
+  .progress-bar-custom {
+    height: 12px;
+    background: rgba(107, 114, 128, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 0.75rem;
+    position: relative;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 50%, #f59e0b 100%);
+    background-size: 200% 100%;
+    animation: progress-shine 2s linear infinite;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  }
+
+  .progress-fill.completada {
+    background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+    animation: none;
+  }
+
+  @keyframes progress-shine {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .conquista-name {
+    color: #00d9ff;
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .conquista-descricao {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .progress-text {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .progress-percent {
+    color: #fbbf24;
+    font-weight: 600;
+  }
+
+  .falta-text {
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  .filtros-conquistas {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .filtro-btn {
+    padding: 0.5rem 1rem;
+    border: 2px solid rgba(245, 158, 11, 0.5);
+    background: rgba(30, 41, 59, 0.6);
+    color: #f8f9fa;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+  }
+
+  .filtro-btn:hover {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: rgba(245, 158, 11, 0.8);
+  }
+
+  .filtro-btn.active {
+    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+    border-color: #fbbf24;
+    color: #1a1a2e;
+    font-weight: 600;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-value.destaque-premios {
+    color: #f59e0b;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
+    animation: pulse-glow-number 2s infinite;
+  }
+
+  .stat-value.sem-premios {
+    color: #a78bfa;
+  }
+
+  @keyframes pulse-glow-number {
+    0%, 100% {
+      text-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
+    }
+    50% {
+      text-shadow: 0 0 20px rgba(245, 158, 11, 1), 0 0 30px rgba(245, 158, 11, 0.6);
+    }
+  }
+
+  .stat-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
   }
 
   .reward-item {
@@ -68,85 +345,66 @@
     border-color: rgba(107, 114, 128, 0.3);
   }
 
-  .section-title {
-    font-family: 'Orbitron', sans-serif;
-    color: #f8f9fa;
-    text-shadow: 1px 1px 2px #000;
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 1.5rem;
-  }
-
-  .badge-status {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .badge-recebida {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: white;
-  }
-
-  .badge-disponivel {
-    background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
-    color: white;
-    animation: pulse 2s infinite;
-  }
-
-  .badge-bloqueada {
-    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-    color: white;
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.7;
-    }
-  }
-
-  .progress-bar-custom {
-    height: 8px;
-    background: rgba(107, 114, 128, 0.3);
-    border-radius: 10px;
-    overflow: hidden;
-    margin-top: 0.5rem;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
-    border-radius: 10px;
-    transition: width 0.5s ease;
-  }
-
-  .item-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-top: 0.5rem;
-  }
-
   .item-name {
     font-weight: 600;
     color: #fbbf24;
   }
 
-  .item-details {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.9rem;
+  .reward-item-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
   }
 
-  .conquista-name {
-    color: #00d9ff;
+  .reward-item-icon:hover {
+    transform: scale(1.1);
+    border-color: #f59e0b;
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+  }
+
+  .reward-item-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .reward-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+
+  .reward-item-name {
     font-weight: 600;
+    color: #fbbf24;
+    font-size: 0.95rem;
+  }
+
+  .reward-item-details {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .reward-item-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .reward-item-detail i {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
   }
 
   .empty-state {
@@ -155,10 +413,23 @@
     color: rgba(255, 255, 255, 0.6);
   }
 
-  .empty-state i {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.3;
+  .search-box {
+    margin-bottom: 1.5rem;
+  }
+
+  .search-box input {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #f8f9fa;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    width: 100%;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: rgba(245, 158, 11, 0.8);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
   }
 </style>
 {% endblock %}
@@ -170,10 +441,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
         <h1 class="section-title mb-2">
-          <i class="fas fa-gift me-2"></i>{% trans "Prêmios de Conquistas" %}
+          <i class="fas fa-trophy me-2"></i>{% trans "Platinar Conquistas" %}
         </h1>
         <p class="text-white-50 mb-0">
-          {% trans "Visualize todas as recompensas disponíveis ao completar conquistas" %}
+          {% trans "Complete todas as conquistas e receba recompensas especiais!" %}
         </p>
       </div>
       <a href="{% url 'dashboard' %}" class="btn btn-secondary">
@@ -182,65 +453,98 @@
     </div>
 
     <!-- Estatísticas -->
-    <div class="row mb-4">
-      <div class="col-md-4">
-        <div class="rewards-card text-center p-3">
-          <h3 class="text-warning mb-1">{{ total_conquistas_usuario }}</h3>
-          <p class="text-white-50 mb-0">{% trans "Conquistas Desbloqueadas" %}</p>
-        </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value text-warning">{{ total_conquistas_usuario }}</div>
+        <div class="stat-label">{% trans "Conquistas Desbloqueadas" %}</div>
       </div>
-      <div class="col-md-4">
-        <div class="rewards-card text-center p-3">
-          <h3 class="text-success mb-1">{{ total_recebidos }}</h3>
-          <p class="text-white-50 mb-0">{% trans "Prêmios Recebidos" %}</p>
-        </div>
+      <div class="stat-card">
+        <div class="stat-value text-success">{{ conquistas_completadas }}</div>
+        <div class="stat-label">{% trans "Conquistas Completadas" %}</div>
       </div>
-      <div class="col-md-4">
-        <div class="rewards-card text-center p-3">
-          <h3 class="text-info mb-1">{{ total_disponiveis }}</h3>
-          <p class="text-white-50 mb-0">{% trans "Prêmios Disponíveis" %}</p>
-        </div>
+      <div class="stat-card">
+        <div class="stat-value text-info">{{ total_recebidos }}</div>
+        <div class="stat-label">{% trans "Prêmios Recebidos" %}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value {% if total_disponiveis > 0 %}destaque-premios{% else %}sem-premios{% endif %}">{{ total_disponiveis }}</div>
+        <div class="stat-label">{% trans "Prêmios Disponíveis" %}</div>
       </div>
     </div>
 
-    <!-- Prêmios por Conquista -->
+    <!-- Prêmios por Conquista Específica -->
     {% if recompensas_conquista %}
-    <div class="rewards-card p-4 mb-4">
+    <div class="rewards-card">
       <h3 class="section-title mb-4">
-        <i class="fas fa-trophy me-2"></i>{% trans "Prêmios por Conquista Específica" %}
+        <i class="fas fa-gift me-2"></i>{% trans "Prêmios por Conquista Específica" %}
       </h3>
       {% for item in recompensas_conquista %}
       <div class="reward-item {% if item.recebida %}recebida{% elif item.pode_receber %}pode-receber{% else %}bloqueada{% endif %}">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <div>
+          <div style="flex: 1;">
             {% if item.conquista %}
             <h5 class="conquista-name mb-1">
               <i class="fas fa-trophy me-2"></i>{{ item.conquista.nome }}
             </h5>
-            <p class="text-white-50 mb-0 small">{{ item.conquista.descricao }}</p>
+            <p class="conquista-descricao mb-2">{{ item.conquista.descricao }}</p>
+            
+            {% if item.progresso %}
+            {% if not item.progresso.completada %}
+            <div class="progress-info">
+              <span class="progress-text">
+                {{ item.progresso.descricao_progresso }}
+                {% if item.progresso.falta > 0 %}
+                <span class="falta-text ms-2">
+                  ({% trans "Faltam" %} {{ item.progresso.falta }})
+                </span>
+                {% endif %}
+              </span>
+              <span class="progress-percent">{{ item.progresso.progresso_percent }}%</span>
+            </div>
+            <div class="progress-bar-custom">
+              <div class="progress-fill" style="width: {{ item.progresso.progresso_percent }}%;"></div>
+            </div>
+            {% endif %}
+            {% endif %}
             {% else %}
             <h5 class="text-warning mb-1">
               <i class="fas fa-question-circle me-2"></i>{% trans "Conquista não encontrada" %} ({{ item.recompensa.referencia }})
             </h5>
             {% endif %}
           </div>
-          <span class="badge-status {% if item.recebida %}badge-recebida{% elif item.pode_receber %}badge-disponivel{% else %}badge-bloqueada{% endif %}">
-            {% if item.recebida %}
-            <i class="fas fa-check-circle"></i>{% trans "Recebido" %}
-            {% elif item.pode_receber %}
-            <i class="fas fa-gift"></i>{% trans "Disponível" %}
-            {% else %}
-            <i class="fas fa-lock"></i>{% trans "Bloqueado" %}
-            {% endif %}
-          </span>
-        </div>
-        <div class="item-info">
-          <div>
-            <span class="item-name">{{ item.recompensa.item_name }}</span>
-            <span class="item-details ms-2">
-              {% if item.recompensa.enchant > 0 %}+{{ item.recompensa.enchant }}{% endif %}
-              x{{ item.recompensa.quantity }}
+          <div class="ms-3">
+            <span class="badge-status {% if item.recebida %}badge-completada{% elif item.pode_receber %}badge-em-progresso{% else %}badge-bloqueada{% endif %}">
+              {% if item.recebida %}
+              <i class="fas fa-check-circle"></i>{% trans "Recebido" %}
+              {% elif item.pode_receber %}
+              <i class="fas fa-gift"></i>{% trans "Disponível" %}
+              {% else %}
+              <i class="fas fa-lock"></i>{% trans "Bloqueado" %}
+              {% endif %}
             </span>
+          </div>
+        </div>
+        <div class="reward-item-container">
+          <img src="{% item_image_url item.recompensa.item_id %}" 
+               alt="{{ item.recompensa.item_name }}" 
+               class="reward-item-icon"
+               title="{{ item.recompensa.item_name }}">
+          <div class="reward-item-info">
+            <div class="reward-item-name">{{ item.recompensa.item_name }}</div>
+            <div class="reward-item-details">
+              {% if item.recompensa.enchant > 0 %}
+              <div class="reward-item-detail">
+                <i class="fas fa-magic"></i>
+                <span>+{{ item.recompensa.enchant }}</span>
+              </div>
+              {% endif %}
+              {% if item.recompensa.quantity > 1 %}
+              <div class="reward-item-detail">
+                <i class="fas fa-layer-group"></i>
+                <span>x{{ item.recompensa.quantity }}</span>
+              </div>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
@@ -250,41 +554,65 @@
 
     <!-- Prêmios por Quantidade -->
     {% if recompensas_multiplas %}
-    <div class="rewards-card p-4">
+    <div class="rewards-card">
       <h3 class="section-title mb-4">
         <i class="fas fa-trophy-fill me-2"></i>{% trans "Prêmios por Quantidade de Conquistas" %}
       </h3>
       {% for item in recompensas_multiplas %}
       <div class="reward-item {% if item.recebida %}recebida{% elif item.pode_receber %}pode-receber{% else %}bloqueada{% endif %}">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <div>
+          <div style="flex: 1;">
             <h5 class="text-warning mb-1">
               <i class="fas fa-trophy me-2"></i>{% trans "Complete" %} {{ item.quantidade_necessaria }} {% trans "conquistas" %}
             </h5>
-            <p class="text-white-50 mb-0 small">
-              {% trans "Progresso:" %} {{ item.total_conquistas }}/{{ item.quantidade_necessaria }} {% trans "conquistas" %}
-            </p>
+            <div class="progress-info">
+              <span class="progress-text">
+                {{ item.total_conquistas }}/{{ item.quantidade_necessaria }} {% trans "conquistas" %}
+                {% if item.falta > 0 %}
+                <span class="falta-text ms-2">
+                  ({% trans "Faltam" %} {{ item.falta }})
+                </span>
+                {% endif %}
+              </span>
+              <span class="progress-percent">{{ item.progresso_percent }}%</span>
+            </div>
             <div class="progress-bar-custom">
-              <div class="progress-fill" style="width: {{ item.progresso_percent }}%;"></div>
+              <div class="progress-fill {% if item.recebida %}completada{% endif %}" style="width: {{ item.progresso_percent }}%;"></div>
             </div>
           </div>
-          <span class="badge-status {% if item.recebida %}badge-recebida{% elif item.pode_receber %}badge-disponivel{% else %}badge-bloqueada{% endif %}">
-            {% if item.recebida %}
-            <i class="fas fa-check-circle"></i>{% trans "Recebido" %}
-            {% elif item.pode_receber %}
-            <i class="fas fa-gift"></i>{% trans "Disponível" %}
-            {% else %}
-            <i class="fas fa-lock"></i>{% trans "Bloqueado" %}
-            {% endif %}
-          </span>
-        </div>
-        <div class="item-info">
-          <div>
-            <span class="item-name">{{ item.recompensa.item_name }}</span>
-            <span class="item-details ms-2">
-              {% if item.recompensa.enchant > 0 %}+{{ item.recompensa.enchant }}{% endif %}
-              x{{ item.recompensa.quantity }}
+          <div class="ms-3">
+            <span class="badge-status {% if item.recebida %}badge-completada{% elif item.pode_receber %}badge-em-progresso{% else %}badge-bloqueada{% endif %}">
+              {% if item.recebida %}
+              <i class="fas fa-check-circle"></i>{% trans "Recebido" %}
+              {% elif item.pode_receber %}
+              <i class="fas fa-gift"></i>{% trans "Disponível" %}
+              {% else %}
+              <i class="fas fa-lock"></i>{% trans "Bloqueado" %}
+              {% endif %}
             </span>
+          </div>
+        </div>
+        <div class="reward-item-container">
+          <img src="{% item_image_url item.recompensa.item_id %}" 
+               alt="{{ item.recompensa.item_name }}" 
+               class="reward-item-icon"
+               title="{{ item.recompensa.item_name }}">
+          <div class="reward-item-info">
+            <div class="reward-item-name">{{ item.recompensa.item_name }}</div>
+            <div class="reward-item-details">
+              {% if item.recompensa.enchant > 0 %}
+              <div class="reward-item-detail">
+                <i class="fas fa-magic"></i>
+                <span>+{{ item.recompensa.enchant }}</span>
+              </div>
+              {% endif %}
+              {% if item.recompensa.quantity > 1 %}
+              <div class="reward-item-detail">
+                <i class="fas fa-layer-group"></i>
+                <span>x{{ item.recompensa.quantity }}</span>
+              </div>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
@@ -292,17 +620,191 @@
     </div>
     {% endif %}
 
+    <!-- Header de Platinado -->
+    <div class="platinado-header">
+      <div class="platinado-progress-circle" style="--progress: {{ porcentagem_platinado }}%">
+        <div class="platinado-progress-text">{{ porcentagem_platinado }}%</div>
+      </div>
+      <h2 class="text-dark mb-2" style="font-family: 'Orbitron', sans-serif; font-weight: 700;">
+        {% trans "Progresso de Platinado" %}
+      </h2>
+      <p class="text-dark mb-0" style="font-size: 1.1rem;">
+        <strong>{{ conquistas_completadas }}</strong> / <strong>{{ total_conquistas_disponiveis }}</strong> {% trans "conquistas completadas" %}
+      </p>
+      {% if porcentagem_platinado == 100 %}
+      <div class="mt-3">
+        <span class="badge-status badge-completada" style="font-size: 1rem; padding: 0.75rem 1.5rem;">
+          <i class="fas fa-crown"></i> {% trans "PLATINADO!" %}
+        </span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Filtros e Busca -->
+    <div class="rewards-card">
+      <div class="search-box">
+        <input type="text" id="search-conquistas" placeholder="{% trans 'Buscar conquistas...' %}" class="form-control">
+      </div>
+      <div class="filtros-conquistas">
+        <button class="filtro-btn active" data-filtro="todas">
+          <i class="fas fa-list me-2"></i>{% trans "Todas" %} ({{ total_conquistas_disponiveis }})
+        </button>
+        <button class="filtro-btn" data-filtro="completadas">
+          <i class="fas fa-check-circle me-2"></i>{% trans "Completadas" %} ({{ conquistas_completadas }})
+        </button>
+        <button class="filtro-btn" data-filtro="em-progresso">
+          <i class="fas fa-spinner me-2"></i>{% trans "Em Progresso" %}
+        </button>
+        <button class="filtro-btn" data-filtro="bloqueadas">
+          <i class="fas fa-lock me-2"></i>{% trans "Bloqueadas" %}
+        </button>
+        <button class="filtro-btn" data-filtro="com-recompensa">
+          <i class="fas fa-gift me-2"></i>{% trans "Com Recompensa" %}
+        </button>
+      </div>
+    </div>
+
+    <!-- Lista de Conquistas com Progresso -->
+    <div class="rewards-card">
+      <h3 class="section-title mb-4">
+        <i class="fas fa-trophy me-2"></i>{% trans "Todas as Conquistas" %}
+      </h3>
+      <div id="conquistas-list">
+        {% for item in conquistas_com_progresso %}
+        <div class="conquista-item {% if item.progresso.completada %}completada{% elif item.progresso.progresso_percent > 0 %}em-progresso{% else %}bloqueada{% endif %}" 
+             data-status="{% if item.progresso.completada %}completada{% elif item.progresso.progresso_percent > 0 %}em-progresso{% else %}bloqueada{% endif %}"
+             data-tem-recompensa="{% if item.tem_recompensa %}sim{% else %}nao{% endif %}"
+             data-nome="{{ item.conquista.nome|lower }}">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div style="flex: 1;">
+              <h5 class="conquista-name mb-1">
+                <i class="fas fa-trophy me-2"></i>{{ item.conquista.nome }}
+              </h5>
+              <p class="conquista-descricao mb-2">{{ item.conquista.descricao }}</p>
+              
+              {% if item.progresso.completada %}
+              <div class="progress-info">
+                <span class="progress-text">
+                  <i class="fas fa-check-circle text-success me-2"></i>
+                  <strong>{% trans "Completada!" %}</strong>
+                </span>
+                <span class="progress-percent">100%</span>
+              </div>
+              {% else %}
+              <div class="progress-info">
+                <span class="progress-text">
+                  {{ item.progresso.descricao_progresso }}
+                  {% if item.progresso.falta > 0 %}
+                  <span class="falta-text ms-2">
+                    ({% trans "Faltam" %} {{ item.progresso.falta }})
+                  </span>
+                  {% endif %}
+                </span>
+                <span class="progress-percent">{{ item.progresso.progresso_percent }}%</span>
+              </div>
+              <div class="progress-bar-custom">
+                <div class="progress-fill {% if item.progresso.completada %}completada{% endif %}" 
+                     style="width: {{ item.progresso.progresso_percent }}%;"></div>
+              </div>
+              {% endif %}
+            </div>
+            <div class="ms-3">
+              <span class="badge-status {% if item.progresso.completada %}badge-completada{% elif item.progresso.progresso_percent > 0 %}badge-em-progresso{% else %}badge-bloqueada{% endif %}">
+                {% if item.progresso.completada %}
+                <i class="fas fa-check-circle"></i>{% trans "Completada" %}
+                {% elif item.progresso.progresso_percent > 0 %}
+                <i class="fas fa-spinner"></i>{% trans "Em Progresso" %}
+                {% else %}
+                <i class="fas fa-lock"></i>{% trans "Bloqueada" %}
+                {% endif %}
+              </span>
+              {% if item.tem_recompensa %}
+              <div class="mt-2">
+                <span class="badge bg-warning text-dark">
+                  <i class="fas fa-gift me-1"></i>{% trans "Tem Recompensa" %}
+                </span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
     <!-- Empty State -->
-    {% if not recompensas_conquista and not recompensas_multiplas %}
-    <div class="rewards-card p-5">
+    {% if not conquistas_com_progresso %}
+    <div class="rewards-card">
       <div class="empty-state">
-        <i class="fas fa-gift"></i>
-        <h4 class="text-white mb-2">{% trans "Nenhum prêmio disponível" %}</h4>
-        <p class="text-white-50">{% trans "Ainda não há prêmios configurados para conquistas." %}</p>
+        <i class="fas fa-trophy" style="font-size: 4rem; opacity: 0.3;"></i>
+        <h4 class="text-white mb-2">{% trans "Nenhuma conquista disponível" %}</h4>
+        <p class="text-white-50">{% trans "Ainda não há conquistas configuradas no sistema." %}</p>
       </div>
     </div>
     {% endif %}
   </div>
 </div>
-{% endblock %}
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const filtros = document.querySelectorAll('.filtro-btn');
+  const searchInput = document.getElementById('search-conquistas');
+  const conquistas = document.querySelectorAll('.conquista-item');
+
+  // Filtros
+  filtros.forEach(filtro => {
+    filtro.addEventListener('click', function() {
+      filtros.forEach(f => f.classList.remove('active'));
+      this.classList.add('active');
+      
+      const tipo = this.dataset.filtro;
+      let visiveis = 0;
+      
+      conquistas.forEach(conquista => {
+        const status = conquista.dataset.status;
+        const temRecompensa = conquista.dataset.temRecompensa;
+        let mostrar = false;
+        
+        if (tipo === 'todas') {
+          mostrar = true;
+        } else if (tipo === 'completadas') {
+          mostrar = status === 'completada';
+        } else if (tipo === 'em-progresso') {
+          mostrar = status === 'em-progresso';
+        } else if (tipo === 'bloqueadas') {
+          mostrar = status === 'bloqueada';
+        } else if (tipo === 'com-recompensa') {
+          mostrar = temRecompensa === 'sim';
+        }
+        
+        if (mostrar) {
+          conquista.style.display = 'block';
+          visiveis++;
+        } else {
+          conquista.style.display = 'none';
+        }
+      });
+      
+      // Atualiza contador no botão
+      if (tipo !== 'todas') {
+        this.innerHTML = this.innerHTML.split('(')[0] + `(${visiveis})`;
+      }
+    });
+  });
+
+  // Busca
+  searchInput.addEventListener('input', function() {
+    const termo = this.value.toLowerCase();
+    
+    conquistas.forEach(conquista => {
+      const nome = conquista.dataset.nome;
+      if (nome.includes(termo)) {
+        conquista.style.display = 'block';
+      } else {
+        conquista.style.display = 'none';
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

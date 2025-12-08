@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 import re
 
 from .models import Post, Comment, Like, Follow, UserProfile, Share, Hashtag, PostHashtag, CommentLike, Report, ModerationAction, ContentFilter, ModerationLog, VerificationRequest
+from apps.main.message.models import Friendship
 from .forms import PostForm, CommentForm, UserProfileForm, SearchForm, ShareForm, ReactionForm, HashtagForm, ReportForm, SearchReportForm, BulkModerationForm, ModerationActionForm, ContentFilterForm
 
 User = get_user_model()
@@ -561,10 +562,24 @@ def user_profile(request, username):
     
     # Verificar se o usuário logado segue este usuário
     is_following = False
+    is_friend = False
+    has_pending_request = False
     if request.user.is_authenticated and request.user != user:
         is_following = Follow.objects.filter(
             follower=request.user,
             following=user
+        ).exists()
+        
+        # Verificar se são amigos (amizade aceita em qualquer direção)
+        is_friend = Friendship.objects.filter(
+            Q(user=request.user, friend=user, accepted=True) |
+            Q(user=user, friend=request.user, accepted=True)
+        ).exists()
+        
+        # Verificar se já existe uma solicitação pendente
+        has_pending_request = Friendship.objects.filter(
+            Q(user=request.user, friend=user, accepted=False) |
+            Q(user=user, friend=request.user, accepted=False)
         ).exists()
     
     context = {
@@ -572,6 +587,8 @@ def user_profile(request, username):
         'profile': profile,
         'posts': posts,
         'is_following': is_following,
+        'is_friend': is_friend,
+        'has_pending_request': has_pending_request,
         'segment': 'user_profile',
         'parent': 'social',
     }
@@ -1719,6 +1736,56 @@ def delete_filter(request, filter_id):
         'success': True,
         'message': _('Filtro deletado com sucesso')
     })
+
+
+@login_required
+def bulk_delete_filters(request):
+    """Deletar múltiplos filtros de conteúdo"""
+    if not request.user.has_perm('social.can_take_moderation_actions'):
+        return JsonResponse({'error': _('Permissão negada')}, status=403)
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': _('Método não permitido')}, status=405)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        filter_ids = data.get('filter_ids', [])
+        
+        if not filter_ids:
+            return JsonResponse({'error': _('Nenhum filtro selecionado')}, status=400)
+        
+        # Verificar se os filtros existem
+        filters_to_delete = ContentFilter.objects.filter(id__in=filter_ids)
+        deleted_count = filters_to_delete.count()
+        
+        if deleted_count == 0:
+            return JsonResponse({'error': _('Nenhum filtro encontrado')}, status=404)
+        
+        # Log da ação para cada filtro
+        for content_filter in filters_to_delete:
+            ModerationLog.log_action(
+                moderator=request.user,
+                action_type='filter_deleted',
+                target_type='filter',
+                target_id=content_filter.id,
+                description=f"Filtro '{content_filter.name}' foi deletado em massa",
+                details=f"Tipo: {content_filter.get_filter_type_display()}\nPadrão: {content_filter.pattern[:100]}..."
+            )
+        
+        # Deletar os filtros
+        filters_to_delete.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': _('%(count)d filtro(s) deletado(s) com sucesso') % {'count': deleted_count},
+            'deleted_count': deleted_count
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': _('Dados inválidos')}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @login_required

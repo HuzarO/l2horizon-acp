@@ -36,6 +36,12 @@ class WebSocketChat {
             this.sendWebSocketMessage({ type: 'get_unread_count' });
             this.sendWebSocketMessage({ type: 'get_friends_stats' });
             this.sendWebSocketMessage({ type: 'get_friends_status' });
+            
+            // Verificar se há um friend_id na URL para selecionar automaticamente
+            // Aguardar um pouco para garantir que os event listeners foram inicializados
+            setTimeout(() => {
+                this.selectFriendFromUrl();
+            }, 500);
         };
         
         this.socket.onmessage = (event) => {
@@ -380,26 +386,69 @@ class WebSocketChat {
     }
 
     selectFriend(friendId, item) {
+        console.log('Selecionando amigo:', friendId, 'Item:', item);
         this.activeFriendId = friendId;
+        
+        // Re-buscar elementos se necessário
+        if (!this.friendItems || this.friendItems.length === 0) {
+            this.friendItems = document.querySelectorAll('.friend-item');
+        }
         
         // Atualizar UI
         this.friendItems.forEach(friend => friend.classList.remove('active'));
-        item.classList.add('active');
+        if (item) {
+            item.classList.add('active');
+        }
+        
+        // Esconder placeholder se existir
+        if (this.chatMessages) {
+            const placeholder = this.chatMessages.querySelector('.chat-placeholder');
+            if (placeholder) {
+                placeholder.style.display = 'none';
+            }
+        }
         
         // Mostrar área de input
-        this.chatInputContainer.style.display = 'block';
+        if (this.chatInputContainer) {
+            this.chatInputContainer.style.display = 'block';
+        }
         
-        // Carregar mensagens
-        this.sendWebSocketMessage({
-            type: 'load_messages',
-            friend_id: friendId
-        });
+        // Atualizar botão de envio
+        this.updateSendButton();
         
-        // Marcar como lidas
-        this.sendWebSocketMessage({
-            type: 'mark_as_read',
-            friend_id: friendId
-        });
+        // Verificar se o WebSocket está pronto antes de enviar mensagens
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            // Carregar mensagens
+            this.sendWebSocketMessage({
+                type: 'load_messages',
+                friend_id: friendId
+            });
+            
+            // Marcar como lidas
+            this.sendWebSocketMessage({
+                type: 'mark_as_read',
+                friend_id: friendId
+            });
+        } else {
+            console.warn('WebSocket não está pronto. Tentando novamente...');
+            // Tentar novamente quando o WebSocket estiver pronto
+            const checkSocket = setInterval(() => {
+                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                    clearInterval(checkSocket);
+                    this.sendWebSocketMessage({
+                        type: 'load_messages',
+                        friend_id: friendId
+                    });
+                    this.sendWebSocketMessage({
+                        type: 'mark_as_read',
+                        friend_id: friendId
+                    });
+                }
+            }, 100);
+            
+            // Timeout após 5 segundos
+            setTimeout(() => clearInterval(checkSocket), 5000);
+        }
     }
 
     filterFriends() {
@@ -482,9 +531,64 @@ class WebSocketChat {
             type: 'get_friends_status'
         });
     }
+
+    selectFriendFromUrl() {
+        // Verificar se há um parâmetro friend_id na URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const friendId = urlParams.get('friend_id');
+        
+        if (!friendId) {
+            return;
+        }
+        
+        // Função para tentar selecionar o amigo
+        const trySelectFriend = (attempts = 0) => {
+            // Re-buscar os elementos para garantir que estão atualizados
+            this.friendItems = document.querySelectorAll('.friend-item');
+            
+            if (this.friendItems.length === 0 && attempts < 10) {
+                // Se não encontrou elementos, tentar novamente após um delay
+                setTimeout(() => trySelectFriend(attempts + 1), 200);
+                return;
+            }
+            
+            // Procurar o item do amigo na lista (comparar como string)
+            const friendItem = Array.from(this.friendItems).find(item => {
+                const itemId = item.getAttribute('data-friend-id');
+                return itemId === friendId.toString() || itemId === friendId;
+            });
+            
+            if (friendItem) {
+                console.log('Amigo encontrado, selecionando...', friendId);
+                // Aguardar um pouco para garantir que o WebSocket está pronto
+                setTimeout(() => {
+                    this.selectFriend(friendId, friendItem);
+                    // Remover o parâmetro da URL sem recarregar a página
+                    const newUrl = window.location.pathname;
+                    window.history.replaceState({}, '', newUrl);
+                }, 300);
+            } else {
+                console.log('Amigo não encontrado na lista. Tentativas:', attempts);
+                if (attempts < 10) {
+                    // Tentar novamente se não encontrou
+                    setTimeout(() => trySelectFriend(attempts + 1), 200);
+                }
+            }
+        };
+        
+        // Iniciar a tentativa de seleção
+        trySelectFriend();
+    }
 }
 
 // Inicializar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
     window.websocketChat = new WebSocketChat();
+    
+    // Se o WebSocket já estiver conectado, tentar selecionar o amigo da URL
+    setTimeout(() => {
+        if (window.websocketChat && window.websocketChat.socket && window.websocketChat.socket.readyState === WebSocket.OPEN) {
+            window.websocketChat.selectFriendFromUrl();
+        }
+    }, 1000);
 }); 

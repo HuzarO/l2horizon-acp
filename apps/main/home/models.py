@@ -297,3 +297,42 @@ class ConquistaUsuario(BaseModel):
 
     def __str__(self):
         return f"{self.usuario.username} - {self.conquista.nome}"
+
+
+class PageView(BaseModel):
+    """Modelo para rastrear visualizações de páginas pelos usuários"""
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='page_views',
+        verbose_name=_("Usuário"),
+        null=True,
+        blank=True
+    )
+    url_path = models.CharField(max_length=500, verbose_name=_("Caminho da URL"))
+    url_name = models.CharField(max_length=200, blank=True, null=True, verbose_name=_("Nome da URL"))
+    view_name = models.CharField(max_length=200, blank=True, null=True, verbose_name=_("Nome da View"))
+    page_category = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name=_("Categoria da Página"),
+        help_text=_("Categoria da página (ex: tops, heroes, social, etc)")
+    )
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name=_("Endereço IP"))
+    user_agent = models.TextField(blank=True, null=True, verbose_name=_("User Agent"))
+    
+    class Meta:
+        verbose_name = _("Visualização de Página")
+        verbose_name_plural = _("Visualizações de Páginas")
+        indexes = [
+            models.Index(fields=['user', 'url_path', '-created_at']),
+            models.Index(fields=['page_category', '-created_at']),
+            models.Index(fields=['url_path', '-created_at']),
+        ]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        if self.user:
+            return f"{self.user.username} - {self.url_path}"
+        return f"Anônimo - {self.url_path}"

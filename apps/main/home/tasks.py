@@ -228,16 +228,6 @@ def process_cover_image_task(self, user_id, cover_image_path):
         
         logger.info(f"Imagem de capa processada para usuário {user_id}: {processed_path}")
         
-        # Notifica o usuário
-        try:
-            send_notification(
-                user=user,
-                notification_type='user',
-                message='Sua imagem de capa foi processada e otimizada com sucesso!',
-            )
-        except Exception as e:
-            logger.warning(f"Erro ao enviar notificação: {e}")
-        
         return True
     except Exception as e:
         logger.error(f"Erro ao processar imagem de capa para usuário {user_id}: {e}")
