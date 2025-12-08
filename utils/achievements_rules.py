@@ -647,20 +647,38 @@ def primeiro_battle_pass(user, request=None):
 @registrar_validador('battle_pass_nivel_10')
 def battle_pass_nivel_10(user, request=None):
     """Alcançou o nível 10 no Battle Pass"""
-    from apps.lineage.games.models import UserBattlePassProgress
-    return UserBattlePassProgress.objects.filter(user=user, level__gte=10).exists()
+    from apps.lineage.games.models import UserBattlePassProgress, BattlePassLevel
+    progress = UserBattlePassProgress.objects.filter(user=user).first()
+    if not progress:
+        return False
+    current_level = progress.get_current_level()
+    if not current_level:
+        return False
+    return current_level.level >= 10
 
 @registrar_validador('battle_pass_nivel_25')
 def battle_pass_nivel_25(user, request=None):
     """Alcançou o nível 25 no Battle Pass"""
-    from apps.lineage.games.models import UserBattlePassProgress
-    return UserBattlePassProgress.objects.filter(user=user, level__gte=25).exists()
+    from apps.lineage.games.models import UserBattlePassProgress, BattlePassLevel
+    progress = UserBattlePassProgress.objects.filter(user=user).first()
+    if not progress:
+        return False
+    current_level = progress.get_current_level()
+    if not current_level:
+        return False
+    return current_level.level >= 25
 
 @registrar_validador('battle_pass_nivel_50')
 def battle_pass_nivel_50(user, request=None):
     """Alcançou o nível 50 no Battle Pass"""
-    from apps.lineage.games.models import UserBattlePassProgress
-    return UserBattlePassProgress.objects.filter(user=user, level__gte=50).exists()
+    from apps.lineage.games.models import UserBattlePassProgress, BattlePassLevel
+    progress = UserBattlePassProgress.objects.filter(user=user).first()
+    if not progress:
+        return False
+    current_level = progress.get_current_level()
+    if not current_level:
+        return False
+    return current_level.level >= 50
 
 @registrar_validador('primeira_quest_battle_pass')
 def primeira_quest_battle_pass(user, request=None):
@@ -729,34 +747,42 @@ def daily_bonus_100dias(user, request=None):
 @registrar_validador('primeira_transacao_marketplace')
 def primeira_transacao_marketplace(user, request=None):
     """Realizou a primeira transação no Marketplace"""
-    from apps.lineage.marketplace.models import MarketplaceTransaction
-    return MarketplaceTransaction.objects.filter(
-        buyer=user
-    ).exists() or MarketplaceTransaction.objects.filter(
-        seller=user
-    ).exists()
+    from apps.lineage.marketplace.models import MarketplaceTransaction, CharacterTransfer
+    # Verifica se é comprador ou vendedor através do CharacterTransfer
+    compras = CharacterTransfer.objects.filter(buyer=user).exists()
+    vendas = CharacterTransfer.objects.filter(seller=user).exists()
+    # Ou se tem transações relacionadas
+    transacoes = MarketplaceTransaction.objects.filter(user=user).exists()
+    return compras or vendas or transacoes
 
 @registrar_validador('5_transacoes_marketplace')
 def cinco_transacoes_marketplace(user, request=None):
     """Realizou 5 ou mais transações no Marketplace"""
-    from apps.lineage.marketplace.models import MarketplaceTransaction
-    compras = MarketplaceTransaction.objects.filter(buyer=user).count()
-    vendas = MarketplaceTransaction.objects.filter(seller=user).count()
-    return (compras + vendas) >= 5
+    from apps.lineage.marketplace.models import MarketplaceTransaction, CharacterTransfer
+    # Conta compras e vendas através do CharacterTransfer
+    compras = CharacterTransfer.objects.filter(buyer=user).count()
+    vendas = CharacterTransfer.objects.filter(seller=user).count()
+    # Também conta transações diretas
+    transacoes = MarketplaceTransaction.objects.filter(user=user).count()
+    return (compras + vendas + transacoes) >= 5
 
 @registrar_validador('10_transacoes_marketplace')
 def dez_transacoes_marketplace(user, request=None):
     """Realizou 10 ou mais transações no Marketplace"""
-    from apps.lineage.marketplace.models import MarketplaceTransaction
-    compras = MarketplaceTransaction.objects.filter(buyer=user).count()
-    vendas = MarketplaceTransaction.objects.filter(seller=user).count()
-    return (compras + vendas) >= 10
+    from apps.lineage.marketplace.models import MarketplaceTransaction, CharacterTransfer
+    # Conta compras e vendas através do CharacterTransfer
+    compras = CharacterTransfer.objects.filter(buyer=user).count()
+    vendas = CharacterTransfer.objects.filter(seller=user).count()
+    # Também conta transações diretas
+    transacoes = MarketplaceTransaction.objects.filter(user=user).count()
+    return (compras + vendas + transacoes) >= 10
 
 @registrar_validador('primeira_transferencia_personagem')
 def primeira_transferencia_personagem(user, request=None):
     """Realizou a primeira transferência de personagem"""
     from apps.lineage.marketplace.models import CharacterTransfer
-    return CharacterTransfer.objects.filter(user=user).exists()
+    # Verifica se vendeu ou comprou um personagem
+    return CharacterTransfer.objects.filter(seller=user).exists() or CharacterTransfer.objects.filter(buyer=user).exists()
 
 # =========================== CONQUISTAS DE BAGS ===========================
 
