@@ -545,11 +545,88 @@
       gap: 0.5rem;
     }
   }
+
+  .season-timer {
+    margin: 1rem 0;
+  }
+
+  .season-timer .badge {
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .season-timer .badge i {
+    margin-right: 0.5rem;
+  }
+
+  #countdown-timer {
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+  }
 </style>
+
+{% if time_remaining and not time_remaining.is_ended %}
+<script>
+  // Contador regressivo em tempo real
+  let totalSeconds = {{ time_remaining.total_seconds }};
+  const countdownElement = document.getElementById('countdown-timer');
+  
+  function updateCountdown() {
+    if (totalSeconds <= 0) {
+      if (countdownElement) {
+        countdownElement.textContent = '{% trans "Encerrado" %}';
+      }
+      return;
+    }
+    
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (countdownElement) {
+      if (days > 0) {
+        countdownElement.textContent = `${days}d ${hours}h ${minutes}m`;
+      } else if (hours > 0) {
+        countdownElement.textContent = `${hours}h ${minutes}m ${seconds}s`;
+      } else {
+        countdownElement.textContent = `${minutes}m ${seconds}s`;
+      }
+    }
+    
+    totalSeconds--;
+  }
+  
+  // Atualiza a cada segundo
+  setInterval(updateCountdown, 1000);
+  updateCountdown(); // Primeira atualização imediata
+</script>
+{% endif %}
 
 <div class="container mt-4">
   <div class="season-header text-center">
     <h1 class="display-5 fw-bold">{{ season.name }}</h1>
+    {% if time_remaining %}
+    <div class="season-timer mb-3">
+      {% if time_remaining.is_ended %}
+        <span class="badge bg-danger">{% trans "Temporada Encerrada" %}</span>
+      {% elif time_remaining.is_ending_soon %}
+        <span class="badge bg-warning text-dark">
+          <i class="fas fa-clock"></i> 
+          {% trans "Termina em" %}: 
+          <span id="countdown-timer">{{ time_remaining.days }}d {{ time_remaining.hours }}h {{ time_remaining.minutes }}m</span>
+        </span>
+      {% else %}
+        <span class="badge bg-info">
+          <i class="fas fa-clock"></i> 
+          {% trans "Termina em" %}: 
+          <span id="countdown-timer">{{ time_remaining.days }}d {{ time_remaining.hours }}h {{ time_remaining.minutes }}m</span>
+        </span>
+      {% endif %}
+    </div>
+    {% endif %}
     <div class="progress-container">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <span class="level-info">
@@ -577,8 +654,25 @@
         <a href="{% url 'games:exchange_items' %}" class="btn btn-secondary">
             <i class="fas fa-exchange-alt"></i> {% trans "Trocar Itens por XP" %}
         </a>
-        {% if not user_battle_pass.is_premium %}
-            <a href="{% url 'games:buy_battle_pass_premium' %}" class="btn btn-primary">
+        <a href="{% url 'games:quests' %}" class="btn btn-info">
+            <i class="fas fa-tasks"></i> {% trans "Missões" %}
+        </a>
+        <a href="{% url 'games:battle_pass_history' %}" class="btn btn-secondary">
+            <i class="fas fa-history"></i> {% trans "Histórico" %}
+        </a>
+        <a href="{% url 'games:battle_pass_statistics' %}" class="btn btn-secondary">
+            <i class="fas fa-chart-bar"></i> {% trans "Estatísticas" %}
+        </a>
+        <a href="{% url 'games:toggle_auto_claim' %}" class="btn btn-{% if progress.auto_claim_free %}success{% else %}outline-secondary{% endif %}">
+            <i class="fas fa-{% if progress.auto_claim_free %}check-circle{% else %}circle{% endif %}"></i> 
+            {% if progress.auto_claim_free %}
+                {% trans "Auto-Resgate: Ativo" %}
+            {% else %}
+                {% trans "Auto-Resgate: Inativo" %}
+            {% endif %}
+        </a>
+        {% if not progress.has_premium %}
+            <a href="{% url 'games:buy_battle_pass_premium' %}" class="btn btn-warning">
                 <i class="fas fa-crown"></i> {% trans "Comprar Premium" %}
             </a>
         {% endif %}

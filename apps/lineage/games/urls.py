@@ -4,7 +4,7 @@ from .views import (
     daily_bonus_manager, roulette_manager, economy_manager, 
     slot_machine_views, dice_game_views, fishing_game_views,
     slot_machine_manager, dice_game_manager, fishing_game_manager,
-    battle_pass_manager
+    battle_pass_manager, battle_pass_quests
 )
 
 
@@ -60,6 +60,11 @@ urlpatterns = [
     path('battle-pass/buy-premium/', battle_pass.buy_battle_pass_premium_view, name='buy_battle_pass_premium'),
     path('battle-pass/exchange/', battle_pass.exchange_items_view, name='exchange_items'),
     path('battle-pass/exchange/<int:exchange_id>/', battle_pass.exchange_item, name='exchange_item'),
+    path('battle-pass/quests/', battle_pass_quests.quests_view, name='quests'),
+    path('battle-pass/quests/<int:quest_id>/complete/', battle_pass_quests.complete_quest, name='complete_quest'),
+    path('battle-pass/history/', battle_pass.battle_pass_history_view, name='battle_pass_history'),
+    path('battle-pass/statistics/', battle_pass.battle_pass_statistics_view, name='battle_pass_statistics'),
+    path('battle-pass/toggle-auto-claim/', battle_pass.toggle_auto_claim, name='toggle_auto_claim'),
 
     # Slot Machine
     path('slot-machine/', slot_machine_views.slot_machine_page, name='slot_machine_page'),

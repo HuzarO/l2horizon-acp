@@ -390,6 +390,12 @@ class BattlePassSeason(BaseModel):
         if self.is_active:
             BattlePassSeason.objects.filter(is_active=True).exclude(pk=self.pk).update(is_active=False)
         super().save(*args, **kwargs)
+        # Limpa o cache quando uma temporada é salva
+        try:
+            from ..services.battle_pass_service import BattlePassService
+            BattlePassService.clear_active_season_cache()
+        except ImportError:
+            pass  # Ignora se o service não estiver disponível durante migrações
 
 
 class BattlePassLevel(BaseModel):
@@ -448,6 +454,8 @@ class UserBattlePassProgress(BaseModel):
     xp = models.PositiveIntegerField(default=0, verbose_name=_("XP"))
     claimed_rewards = models.ManyToManyField(BattlePassReward, blank=True, verbose_name=_("Claimed Rewards"))
     has_premium = models.BooleanField(default=False, verbose_name=_("Has Premium"))
+    auto_claim_free = models.BooleanField(default=False, verbose_name=_("Auto Claim Free Rewards"))
+    last_level_notified = models.PositiveIntegerField(default=0, verbose_name=_("Last Level Notified"))
 
     class Meta:
         unique_together = ('user', 'season')
@@ -457,9 +465,100 @@ class UserBattlePassProgress(BaseModel):
     def get_current_level(self):
         return self.season.battlepasslevel_set.filter(required_xp__lte=self.xp).order_by('-level').first()
 
-    def add_xp(self, amount):
+    def add_xp(self, amount, source='manual', auto_claim=True):
+        """
+        Adiciona XP ao progresso do usuário
+        
+        Args:
+            amount: Quantidade de XP a adicionar
+            source: Fonte do XP ('manual', 'quest', 'exchange', 'milestone')
+            auto_claim: Se deve fazer auto-claim de recompensas free
+        """
+        old_level = self.get_current_level()
+        old_level_number = old_level.level if old_level else 0
+        
         self.xp += amount
         self.save()
+        
+        new_level = self.get_current_level()
+        new_level_number = new_level.level if new_level else 0
+        
+        # Verifica se alcançou um novo nível
+        if new_level_number > old_level_number:
+            # Importa aqui para evitar circular imports
+            from ..services.battle_pass_service import BattlePassService
+            BattlePassService.handle_level_up(self, old_level_number, new_level_number, auto_claim)
+        
+        # Registra no histórico (usa apps.get_model para evitar circular imports)
+        from django.apps import apps
+        BattlePassHistory = apps.get_model('games', 'BattlePassHistory')
+        BattlePassStatistics = apps.get_model('games', 'BattlePassStatistics')
+        
+        BattlePassHistory.objects.create(
+            user=self.user,
+            season=self.season,
+            action_type='xp_gained',
+            description=f'Ganhou {amount} XP ({source})',
+            xp_amount=amount,
+            metadata={'source': source}
+        )
+        
+        # Atualiza estatísticas
+        stats, _ = BattlePassStatistics.objects.get_or_create(
+            user=self.user,
+            season=self.season
+        )
+        stats.total_xp_earned += amount
+        stats.last_activity_date = timezone.now()
+        stats.save()
+
+    def auto_claim_free_rewards(self):
+        """Resgata automaticamente todas as recompensas free disponíveis"""
+        if not self.auto_claim_free:
+            return 0
+        
+        # Usa apps.get_model para evitar circular imports
+        from django.apps import apps
+        BattlePassHistory = apps.get_model('games', 'BattlePassHistory')
+        BattlePassStatistics = apps.get_model('games', 'BattlePassStatistics')
+        
+        current_level = self.get_current_level()
+        current_level_number = current_level.level if current_level else 0
+        
+        # Busca todas as recompensas free disponíveis que ainda não foram resgatadas
+        available_rewards = BattlePassReward.objects.filter(
+            level__season=self.season,
+            level__level__lte=current_level_number,
+            is_premium=False
+        ).exclude(id__in=self.claimed_rewards.all())
+        
+        claimed_count = 0
+        for reward in available_rewards:
+            bag_item = reward.add_to_user_bag(self.user)
+            if bag_item:
+                self.claimed_rewards.add(reward)
+                claimed_count += 1
+                
+                # Registra no histórico
+                BattlePassHistory.objects.create(
+                    user=self.user,
+                    season=self.season,
+                    action_type='reward_claimed',
+                    description=f'Auto-resgatou: {reward.description}',
+                    metadata={'auto_claim': True, 'reward_id': reward.id}
+                )
+        
+        if claimed_count > 0:
+            self.save()
+            # Atualiza estatísticas
+            stats, _ = BattlePassStatistics.objects.get_or_create(
+                user=self.user,
+                season=self.season
+            )
+            stats.total_rewards_claimed += claimed_count
+            stats.save()
+        
+        return claimed_count
 
     def __str__(self):
         return f"{self.user.username} - {self.season} (XP: {self.xp})"
@@ -512,9 +611,13 @@ class BattlePassItemExchange(BaseModel):
                 bag_item.save()
 
             # Adiciona XP ao progresso do Battle Pass
-            progress = UserBattlePassProgress.objects.get(
+            active_season = BattlePassSeason.objects.filter(is_active=True).first()
+            if not active_season:
+                return False, _("Não há temporada ativa no momento.")
+            
+            progress, created = UserBattlePassProgress.objects.get_or_create(
                 user=user,
-                season=BattlePassSeason.objects.filter(is_active=True).first()
+                season=active_season
             )
             total_xp = self.xp_amount * quantity
             progress.add_xp(total_xp)
@@ -529,10 +632,149 @@ class BattlePassItemExchange(BaseModel):
             return False, _("Você não possui uma bag.")
         except BagItem.DoesNotExist:
             return False, _("Você não possui este item.")
-        except UserBattlePassProgress.DoesNotExist:
-            return False, _("Você não possui progresso no Battle Pass atual.")
         except Exception as e:
             return False, str(e)
+
+
+# ==============================
+# Battle Pass Quests/Missions System
+# ==============================
+
+class BattlePassQuest(BaseModel):
+    """Missões/Quests do Battle Pass"""
+    QUEST_TYPE_CHOICES = [
+        ('daily', _('Diária')),
+        ('weekly', _('Semanal')),
+        ('seasonal', _('Temporada')),
+        ('special', _('Especial')),
+    ]
+    
+    season = models.ForeignKey(BattlePassSeason, on_delete=models.CASCADE, null=True, blank=True, verbose_name=_("Season"))
+    quest_type = models.CharField(max_length=20, choices=QUEST_TYPE_CHOICES, default='daily', verbose_name=_("Quest Type"))
+    title = models.CharField(max_length=200, verbose_name=_("Title"))
+    description = models.TextField(verbose_name=_("Description"))
+    xp_reward = models.PositiveIntegerField(default=100, verbose_name=_("XP Reward"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Is Active"))
+    is_premium = models.BooleanField(default=False, verbose_name=_("Is Premium Only"))
+    order = models.PositiveIntegerField(default=0, verbose_name=_("Order"))
+    
+    # Para quests diárias/semanais - reset automático
+    reset_daily = models.BooleanField(default=True, verbose_name=_("Reset Daily"))
+    reset_weekly = models.BooleanField(default=False, verbose_name=_("Reset Weekly"))
+    
+    class Meta:
+        verbose_name = _("Battle Pass Quest")
+        verbose_name_plural = _("Battle Pass Quests")
+        ordering = ['order', 'created_at']
+    
+    def __str__(self):
+        return f"{self.get_quest_type_display()} - {self.title}"
+
+
+class BattlePassQuestProgress(BaseModel):
+    """Progresso do usuário em uma quest"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    quest = models.ForeignKey(BattlePassQuest, on_delete=models.CASCADE, verbose_name=_("Quest"))
+    progress = models.PositiveIntegerField(default=0, verbose_name=_("Progress"))
+    completed = models.BooleanField(default=False, verbose_name=_("Completed"))
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name=_("Completed At"))
+    last_reset = models.DateTimeField(auto_now_add=True, verbose_name=_("Last Reset"))
+    
+    class Meta:
+        unique_together = ('user', 'quest', 'last_reset')
+        verbose_name = _("Battle Pass Quest Progress")
+        verbose_name_plural = _("Battle Pass Quest Progresses")
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.quest.title} ({self.progress})"
+
+
+# ==============================
+# Battle Pass Milestones System
+# ==============================
+
+class BattlePassMilestone(BaseModel):
+    """Marcos especiais do Battle Pass (nível 10, 25, 50, etc.)"""
+    season = models.ForeignKey(BattlePassSeason, on_delete=models.CASCADE, verbose_name=_("Season"))
+    level = models.PositiveIntegerField(verbose_name=_("Level"))
+    title = models.CharField(max_length=200, verbose_name=_("Title"))
+    description = models.TextField(blank=True, verbose_name=_("Description"))
+    icon = models.CharField(max_length=50, default='🏆', verbose_name=_("Icon"))
+    bonus_xp = models.PositiveIntegerField(default=0, verbose_name=_("Bonus XP"))
+    
+    class Meta:
+        unique_together = ('season', 'level')
+        verbose_name = _("Battle Pass Milestone")
+        verbose_name_plural = _("Battle Pass Milestones")
+        ordering = ['level']
+    
+    def __str__(self):
+        return f"{self.season.name} - Nível {self.level}: {self.title}"
+
+
+# ==============================
+# Battle Pass History & Statistics
+# ==============================
+
+class BattlePassHistory(BaseModel):
+    """Histórico de ações do Battle Pass"""
+    ACTION_TYPE_CHOICES = [
+        ('xp_gained', _('XP Ganho')),
+        ('level_up', _('Nível Alcançado')),
+        ('reward_claimed', _('Recompensa Resgatada')),
+        ('premium_purchased', _('Premium Comprado')),
+        ('quest_completed', _('Quest Completada')),
+        ('milestone_reached', _('Milestone Alcançado')),
+        ('item_exchanged', _('Item Trocado por XP')),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    season = models.ForeignKey(BattlePassSeason, on_delete=models.CASCADE, verbose_name=_("Season"))
+    action_type = models.CharField(max_length=30, choices=ACTION_TYPE_CHOICES, verbose_name=_("Action Type"))
+    description = models.CharField(max_length=255, verbose_name=_("Description"))
+    xp_amount = models.PositiveIntegerField(default=0, verbose_name=_("XP Amount"))
+    level_reached = models.PositiveIntegerField(null=True, blank=True, verbose_name=_("Level Reached"))
+    metadata = models.JSONField(default=dict, blank=True, verbose_name=_("Metadata"))
+    
+    class Meta:
+        verbose_name = _("Battle Pass History")
+        verbose_name_plural = _("Battle Pass Histories")
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'season', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_action_type_display()} - {self.description}"
+
+
+class BattlePassStatistics(BaseModel):
+    """Estatísticas do usuário no Battle Pass"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    season = models.ForeignKey(BattlePassSeason, on_delete=models.CASCADE, verbose_name=_("Season"))
+    
+    # Estatísticas gerais
+    total_xp_earned = models.PositiveIntegerField(default=0, verbose_name=_("Total XP Earned"))
+    total_rewards_claimed = models.PositiveIntegerField(default=0, verbose_name=_("Total Rewards Claimed"))
+    total_quests_completed = models.PositiveIntegerField(default=0, verbose_name=_("Total Quests Completed"))
+    total_milestones_reached = models.PositiveIntegerField(default=0, verbose_name=_("Total Milestones Reached"))
+    total_items_exchanged = models.PositiveIntegerField(default=0, verbose_name=_("Total Items Exchanged"))
+    
+    # Datas importantes
+    first_login_date = models.DateTimeField(null=True, blank=True, verbose_name=_("First Login Date"))
+    last_activity_date = models.DateTimeField(auto_now=True, verbose_name=_("Last Activity Date"))
+    premium_purchase_date = models.DateTimeField(null=True, blank=True, verbose_name=_("Premium Purchase Date"))
+    
+    # Rankings (será atualizado periodicamente)
+    rank_position = models.PositiveIntegerField(null=True, blank=True, verbose_name=_("Rank Position"))
+    
+    class Meta:
+        unique_together = ('user', 'season')
+        verbose_name = _("Battle Pass Statistics")
+        verbose_name_plural = _("Battle Pass Statistics")
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.season.name} Stats"
 
 
 # ==============================

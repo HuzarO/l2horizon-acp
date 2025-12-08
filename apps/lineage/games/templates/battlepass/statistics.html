@@ -1,0 +1,219 @@
+{% extends "layouts/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<style>
+  :root {
+    --primary-glow: #4b0082;
+    --secondary-glow: #8a2be2;
+    --accent-color: #ffd700;
+    --success-color: #00ff7f;
+  }
+
+  .statistics-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 2rem;
+  }
+
+  .stat-card {
+    background: linear-gradient(145deg, #1e1e2f, #29293d);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0 15px rgba(75,0,130,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .stat-card h3 {
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .stat-item {
+    background: rgba(255,255,255,0.05);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    text-align: center;
+  }
+
+  .stat-item .label {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-item .value {
+    color: var(--accent-color);
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+
+  .progress-bar-container {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    height: 20px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+
+  .progress-bar {
+    background: linear-gradient(45deg, #ffd700, #ffa500);
+    height: 100%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(255,215,0,0.3);
+  }
+
+  .history-item {
+    background: rgba(255,255,255,0.05);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-left: 3px solid var(--primary-glow);
+  }
+
+  .history-item .action-type {
+    color: var(--accent-color);
+    font-weight: bold;
+  }
+
+  .history-item .description {
+    color: rgba(255,255,255,0.8);
+    margin-top: 0.25rem;
+  }
+
+  .history-item .date {
+    color: rgba(255,255,255,0.5);
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+  }
+
+  .btn-back {
+    background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+  }
+
+  .btn-back:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+    color: white;
+    text-decoration: none;
+  }
+</style>
+
+<div class="statistics-container">
+  <a href="{% url 'games:battle_pass' %}" class="btn-back">
+    <i class="fas fa-arrow-left"></i> {% trans "Voltar ao Battle Pass" %}
+  </a>
+
+  <div class="stat-card">
+    <h3><i class="fas fa-chart-bar"></i> {% trans "Estatísticas Gerais" %}</h3>
+    <div class="stat-grid">
+      <div class="stat-item">
+        <div class="label">{% trans "Nível Atual" %}</div>
+        <div class="value">{{ progress_data.current_level_number }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="label">{% trans "XP Total" %}</div>
+        <div class="value">{{ progress.xp }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="label">{% trans "Recompensas Resgatadas" %}</div>
+        <div class="value">{{ stats.total_rewards_claimed }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="label">{% trans "Quests Completadas" %}</div>
+        <div class="value">{{ stats.total_quests_completed }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="label">{% trans "Milestones Alcançados" %}</div>
+        <div class="value">{{ stats.total_milestones_reached }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="label">{% trans "Itens Trocados" %}</div>
+        <div class="value">{{ stats.total_items_exchanged }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <h3><i class="fas fa-trophy"></i> {% trans "Ranking" %}</h3>
+    <div class="stat-grid">
+      <div class="stat-item">
+        <div class="label">{% trans "Sua Posição" %}</div>
+        <div class="value">#{{ rank }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="label">{% trans "Total de Jogadores" %}</div>
+        <div class="value">{{ total_users }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="label">{% trans "XP Médio" %}</div>
+        <div class="value">{{ avg_xp }}</div>
+      </div>
+      <div class="stat-item">
+        <div class="label">{% trans "XP Máximo" %}</div>
+        <div class="value">{{ max_xp }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <h3><i class="fas fa-clock"></i> {% trans "Atividade" %}</h3>
+    <div class="stat-grid">
+      {% if stats.first_login_date %}
+      <div class="stat-item">
+        <div class="label">{% trans "Primeiro Login" %}</div>
+        <div class="value" style="font-size: 1rem;">{{ stats.first_login_date|date:"d/m/Y" }}</div>
+      </div>
+      {% endif %}
+      <div class="stat-item">
+        <div class="label">{% trans "Última Atividade" %}</div>
+        <div class="value" style="font-size: 1rem;">{{ stats.last_activity_date|date:"d/m/Y H:i" }}</div>
+      </div>
+      {% if stats.premium_purchase_date %}
+      <div class="stat-item">
+        <div class="label">{% trans "Premium Comprado" %}</div>
+        <div class="value" style="font-size: 1rem;">{{ stats.premium_purchase_date|date:"d/m/Y" }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if recent_history %}
+  <div class="stat-card">
+    <h3><i class="fas fa-history"></i> {% trans "Histórico Recente" %}</h3>
+    {% for item in recent_history %}
+    <div class="history-item">
+      <div class="action-type">{{ item.get_action_type_display }}</div>
+      <div class="description">{{ item.description }}</div>
+      {% if item.xp_amount > 0 %}
+      <div class="description">+{{ item.xp_amount }} XP</div>
+      {% endif %}
+      <div class="date">{{ item.created_at|date:"d/m/Y H:i" }}</div>
+    </div>
+    {% endfor %}
+    <div style="text-align: center; margin-top: 1rem;">
+      <a href="{% url 'games:battle_pass_history' %}" class="btn-back">
+        {% trans "Ver Histórico Completo" %}
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+

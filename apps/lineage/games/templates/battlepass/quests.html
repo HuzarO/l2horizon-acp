@@ -1,0 +1,314 @@
+{% extends "layouts/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<style>
+  :root {
+    --primary-glow: #4b0082;
+    --secondary-glow: #8a2be2;
+    --accent-color: #ffd700;
+    --success-color: #00ff7f;
+  }
+
+  .quests-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 2rem;
+  }
+
+  .quest-section {
+    margin-bottom: 3rem;
+  }
+
+  .quest-section h2 {
+    color: var(--accent-color);
+    margin-bottom: 1.5rem;
+    font-size: 1.8rem;
+    border-bottom: 2px solid var(--primary-glow);
+    padding-bottom: 0.5rem;
+  }
+
+  .quest-card {
+    background: linear-gradient(145deg, #1e1e2f, #29293d);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 0 15px rgba(75,0,130,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+  }
+
+  .quest-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 20px rgba(75,0,130,0.5);
+  }
+
+  .quest-card.completed {
+    opacity: 0.7;
+    border-left: 4px solid var(--success-color);
+  }
+
+  .quest-card.premium {
+    border-left: 4px solid var(--accent-color);
+  }
+
+  .quest-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 1rem;
+  }
+
+  .quest-title {
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+
+  .quest-description {
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 1rem;
+  }
+
+  .quest-reward {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--accent-color);
+    font-weight: bold;
+  }
+
+  .quest-badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.85rem;
+    font-weight: bold;
+  }
+
+  .badge-premium {
+    background: linear-gradient(45deg, var(--accent-color), #ffa500);
+    color: #000;
+  }
+
+  .badge-completed {
+    background: linear-gradient(45deg, var(--success-color), #00ff00);
+    color: #000;
+  }
+
+  .btn-complete {
+    background: linear-gradient(135deg, var(--success-color), #00ff00);
+    color: #000;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-complete:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(0,255,127,0.4);
+    color: #000;
+    text-decoration: none;
+  }
+
+  .btn-complete:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-back {
+    background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+  }
+
+  .btn-back:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+    color: white;
+    text-decoration: none;
+  }
+
+  .empty-quests {
+    text-align: center;
+    color: rgba(255,255,255,0.7);
+    padding: 2rem;
+    background: rgba(255,255,255,0.05);
+    border-radius: 1rem;
+  }
+</style>
+
+<div class="quests-container">
+  <a href="{% url 'games:battle_pass' %}" class="btn-back">
+    <i class="fas fa-arrow-left"></i> {% trans "Voltar ao Battle Pass" %}
+  </a>
+
+  <h1 style="color: var(--accent-color); margin-bottom: 2rem;">
+    <i class="fas fa-tasks"></i> {% trans "Missões do Battle Pass" %}
+  </h1>
+
+  {% if daily_quests %}
+  <div class="quest-section">
+    <h2><i class="fas fa-calendar-day"></i> {% trans "Missões Diárias" %}</h2>
+    {% for quest_data in daily_quests %}
+    <div class="quest-card {% if quest_data.progress.completed %}completed{% endif %} {% if quest_data.quest.is_premium %}premium{% endif %}">
+      <div class="quest-header">
+        <div>
+          <div class="quest-title">{{ quest_data.quest.title }}</div>
+          <div class="quest-description">{{ quest_data.quest.description }}</div>
+        </div>
+        <div class="quest-badges">
+          {% if quest_data.quest.is_premium %}
+          <span class="badge badge-premium">Premium</span>
+          {% endif %}
+          {% if quest_data.progress.completed %}
+          <span class="badge badge-completed">{% trans "Completa" %}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="quest-reward">
+          <i class="fas fa-star"></i>
+          <span>+{{ quest_data.quest.xp_reward }} XP</span>
+        </div>
+        {% if not quest_data.progress.completed %}
+        <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+          <i class="fas fa-check"></i> {% trans "Completar" %}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if weekly_quests %}
+  <div class="quest-section">
+    <h2><i class="fas fa-calendar-week"></i> {% trans "Missões Semanais" %}</h2>
+    {% for quest_data in weekly_quests %}
+    <div class="quest-card {% if quest_data.progress.completed %}completed{% endif %} {% if quest_data.quest.is_premium %}premium{% endif %}">
+      <div class="quest-header">
+        <div>
+          <div class="quest-title">{{ quest_data.quest.title }}</div>
+          <div class="quest-description">{{ quest_data.quest.description }}</div>
+        </div>
+        <div class="quest-badges">
+          {% if quest_data.quest.is_premium %}
+          <span class="badge badge-premium">Premium</span>
+          {% endif %}
+          {% if quest_data.progress.completed %}
+          <span class="badge badge-completed">{% trans "Completa" %}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="quest-reward">
+          <i class="fas fa-star"></i>
+          <span>+{{ quest_data.quest.xp_reward }} XP</span>
+        </div>
+        {% if not quest_data.progress.completed %}
+        <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+          <i class="fas fa-check"></i> {% trans "Completar" %}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if seasonal_quests %}
+  <div class="quest-section">
+    <h2><i class="fas fa-calendar-alt"></i> {% trans "Missões de Temporada" %}</h2>
+    {% for quest_data in seasonal_quests %}
+    <div class="quest-card {% if quest_data.progress.completed %}completed{% endif %} {% if quest_data.quest.is_premium %}premium{% endif %}">
+      <div class="quest-header">
+        <div>
+          <div class="quest-title">{{ quest_data.quest.title }}</div>
+          <div class="quest-description">{{ quest_data.quest.description }}</div>
+        </div>
+        <div class="quest-badges">
+          {% if quest_data.quest.is_premium %}
+          <span class="badge badge-premium">Premium</span>
+          {% endif %}
+          {% if quest_data.progress.completed %}
+          <span class="badge badge-completed">{% trans "Completa" %}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="quest-reward">
+          <i class="fas fa-star"></i>
+          <span>+{{ quest_data.quest.xp_reward }} XP</span>
+        </div>
+        {% if not quest_data.progress.completed %}
+        <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+          <i class="fas fa-check"></i> {% trans "Completar" %}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if special_quests %}
+  <div class="quest-section">
+    <h2><i class="fas fa-star"></i> {% trans "Missões Especiais" %}</h2>
+    {% for quest_data in special_quests %}
+    <div class="quest-card {% if quest_data.progress.completed %}completed{% endif %} {% if quest_data.quest.is_premium %}premium{% endif %}">
+      <div class="quest-header">
+        <div>
+          <div class="quest-title">{{ quest_data.quest.title }}</div>
+          <div class="quest-description">{{ quest_data.quest.description }}</div>
+        </div>
+        <div class="quest-badges">
+          {% if quest_data.quest.is_premium %}
+          <span class="badge badge-premium">Premium</span>
+          {% endif %}
+          {% if quest_data.progress.completed %}
+          <span class="badge badge-completed">{% trans "Completa" %}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="quest-reward">
+          <i class="fas fa-star"></i>
+          <span>+{{ quest_data.quest.xp_reward }} XP</span>
+        </div>
+        {% if not quest_data.progress.completed %}
+        <a href="{% url 'games:complete_quest' quest_data.quest.id %}" class="btn-complete">
+          <i class="fas fa-check"></i> {% trans "Completar" %}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if not daily_quests and not weekly_quests and not seasonal_quests and not special_quests %}
+  <div class="empty-quests">
+    <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+    <p>{% trans "Não há missões disponíveis no momento." %}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
