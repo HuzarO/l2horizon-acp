@@ -1,0 +1,188 @@
+{% extends "layouts/base.html" %}
+{% load static i18n itens_extras %}
+
+{% block title %}{% trans "Detalhes da Notificação" %} - {% trans "Gerenciador" %}{% endblock %}
+
+{% block extrastyle %}
+<link rel="stylesheet" href="{% static 'css/notifications.css' %}">
+<style>
+.manager-bg { 
+    background: radial-gradient(ellipse at center, #0f172a 0%, #1a1a2e 50%, #0f0f1e 100%); 
+    min-height: 100vh; 
+    padding: 40px 0; 
+}
+.card-glow { 
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.95) 0%, rgba(18, 18, 32, 0.95) 100%); 
+    border: 1px solid rgba(111, 66, 193, 0.3); 
+    border-radius: 16px; 
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.reward-item-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-white">
+                <i class="bi bi-bell me-2"></i>{% trans "Detalhes da Notificação" %} #{{ notification.id }}
+            </h2>
+            <div class="d-flex gap-2">
+                <a href="{% url 'notification:manager_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                </a>
+                <form method="post" action="{% url 'notification:manager_delete' pk=notification.id %}" class="d-inline" onsubmit="return confirm('{% trans 'Tem certeza que deseja deletar esta notificação?' %}');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>{% trans "Deletar" %}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-8">
+                <div class="card card-glow mb-4">
+                    <div class="card-header bg-transparent border-bottom">
+                        <h5 class="text-white mb-0">{% trans "Informações" %}</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-dark">
+                            <tr>
+                                <th class="text-white-50">{% trans "Tipo" %}</th>
+                                <td>
+                                    <span class="badge bg-{% if notification.notification_type == 'user' %}primary{% elif notification.notification_type == 'system' %}info{% else %}danger{% endif %}">
+                                        {{ notification.get_notification_type_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-white-50">{% trans "Usuário" %}</th>
+                                <td>
+                                    {% if notification.user %}
+                                        <span class="text-white">{{ notification.user.username }}</span>
+                                        <small class="text-white-50 ms-2">(ID: {{ notification.user.id }})</small>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{% trans "Pública" %}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-white-50">{% trans "Mensagem" %}</th>
+                                <td class="text-white">{{ notification.message }}</td>
+                            </tr>
+                            {% if notification.link %}
+                            <tr>
+                                <th class="text-white-50">{% trans "Link" %}</th>
+                                <td>
+                                    <a href="{{ notification.link }}" target="_blank" class="text-info">
+                                        {{ notification.link }}
+                                        <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th class="text-white-50">{% trans "Status" %}</th>
+                                <td>
+                                    {% if notification.viewed %}
+                                        <span class="badge bg-secondary">{% trans "Visualizada" %}</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">{% trans "Não Visualizada" %}</span>
+                                    {% endif %}
+                                    {% if notification.rewards_claimed %}
+                                        <span class="badge bg-success ms-2">{% trans "Prêmios Reclamados" %}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-white-50">{% trans "Criada em" %}</th>
+                                <td class="text-white">{{ notification.created_at|date:"d/m/Y H:i:s" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                {% if notification.rewards.exists %}
+                <div class="card card-glow">
+                    <div class="card-header bg-transparent border-bottom">
+                        <h5 class="text-white mb-0">
+                            <i class="bi bi-gift me-2"></i>{% trans "Prêmios" %} ({{ notification.rewards.count }})
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {% for reward in notification.rewards.all %}
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center gap-3 p-3" style="background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                                    <img src="{% item_image_url reward.item_id %}" 
+                                         alt="{{ reward.item_name }}" 
+                                         class="reward-item-icon">
+                                    <div class="flex-grow-1">
+                                        <div class="text-white fw-bold">{{ reward.item_name }}</div>
+                                        <div class="text-white-50 small">
+                                            ID: {{ reward.item_id }}
+                                            {% if reward.item_enchant > 0 %}
+                                                • +{{ reward.item_enchant }}
+                                            {% endif %}
+                                            • x{{ reward.item_amount }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-4">
+                <div class="card card-glow">
+                    <div class="card-header bg-transparent border-bottom">
+                        <h5 class="text-white mb-0">{% trans "Estatísticas" %}</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="text-white-50 small">{% trans "Total de Prêmios" %}</div>
+                            <div class="text-white h4">{{ notification.rewards.count|default:0 }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="text-white-50 small">{% trans "Status de Visualização" %}</div>
+                            <div>
+                                {% if notification.viewed %}
+                                    <span class="badge bg-success">{% trans "Visualizada" %}</span>
+                                {% else %}
+                                    <span class="badge bg-warning">{% trans "Pendente" %}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if notification.rewards.exists %}
+                        <div class="mb-3">
+                            <div class="text-white-50 small">{% trans "Status dos Prêmios" %}</div>
+                            <div>
+                                {% if notification.rewards_claimed %}
+                                    <span class="badge bg-success">{% trans "Reclamados" %}</span>
+                                {% else %}
+                                    <span class="badge bg-warning">{% trans "Pendentes" %}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

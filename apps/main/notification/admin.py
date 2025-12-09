@@ -1,23 +1,30 @@
 # admin.py
 
 from django.contrib import admin
-from .models import Notification, PublicNotificationView, PushSubscription, PushNotificationLog
+from .models import Notification, PublicNotificationView, PushSubscription, PushNotificationLog, NotificationReward
 from core.admin import BaseModelAdmin
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 
+class NotificationRewardInline(admin.TabularInline):
+    model = NotificationReward
+    extra = 1
+    fields = ('item_id', 'item_name', 'item_enchant', 'item_amount')
+
+
 @admin.register(Notification)
 class NotificationAdmin(BaseModelAdmin):
-    list_display = ('user', 'notification_type', 'message', 'viewed', 'created_at', 'notification_link')
-    list_filter = ('notification_type', 'viewed', 'created_at')
+    list_display = ('user', 'notification_type', 'message', 'viewed', 'rewards_claimed', 'created_at', 'notification_link')
+    list_filter = ('notification_type', 'viewed', 'rewards_claimed', 'created_at')
     search_fields = ('user__username', 'message', 'link')
     readonly_fields = ('created_at', 'updated_at', 'notification_link')
-    fields = ('user', 'notification_type', 'message', 'link', 'viewed', 'notification_link', 'created_at', 'updated_at')
+    fields = ('user', 'notification_type', 'message', 'link', 'viewed', 'rewards_claimed', 'notification_link', 'created_at', 'updated_at')
+    inlines = [NotificationRewardInline]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.select_related('user')
+        return qs.select_related('user').prefetch_related('rewards')
 
     def notification_link(self, obj):
         if obj.link:

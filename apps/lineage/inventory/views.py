@@ -199,9 +199,29 @@ def inserir_item_servidor(request, char_name, item_id):
             account_name=active_login,
             character_name=personagem[0]['char_name']
         )
-        item = InventoryItem.objects.get(inventory=inventory, item_id=item_id)
-    except InventoryItem.DoesNotExist:
-        messages.error(request, 'Item não encontrado no inventário online.')
+        # Pode haver múltiplos itens com o mesmo item_id mas diferentes enchant
+        # Se houver enchant especificado na URL, usar ele, senão pegar o primeiro
+        enchant_level = request.GET.get('enchant', None)
+        if enchant_level is not None:
+            try:
+                enchant_level = int(enchant_level)
+                item = InventoryItem.objects.get(inventory=inventory, item_id=item_id, enchant=enchant_level)
+            except (ValueError, InventoryItem.DoesNotExist):
+                messages.error(request, 'Item com o nível de encantamento especificado não encontrado.')
+                return redirect('inventory:inventario_dashboard')
+        else:
+            # Se não especificou enchant, pegar o primeiro item encontrado
+            items = InventoryItem.objects.filter(inventory=inventory, item_id=item_id).order_by('-enchant', 'id')
+            if not items.exists():
+                messages.error(request, 'Item não encontrado no inventário online.')
+                return redirect('inventory:inventario_dashboard')
+            # Se houver múltiplos, pegar o primeiro (com maior enchant)
+            item = items.first()
+            if items.count() > 1:
+                # Avisar que há múltiplos itens e sugerir especificar o enchant
+                messages.info(request, f'Foram encontrados {items.count()} itens com o mesmo ID. Usando o item com encantamento +{item.enchant}. Se precisar de outro, especifique o nível de encantamento na URL.')
+    except Inventory.DoesNotExist:
+        messages.error(request, 'Inventário não encontrado.')
         return redirect('inventory:inventario_dashboard')
 
     if request.method == 'POST':
