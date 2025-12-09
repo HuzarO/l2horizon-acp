@@ -728,7 +728,17 @@ def reenviar_verificacao_view(request):
         email = request.POST.get('email')
 
         try:
-            user = User.objects.get(email=email)
+            # Use filter().first() instead of get() to handle multiple users with same email
+            user = User.objects.filter(email=email).first()
+            
+            if user is None:
+                messages.error(request, 'Nenhuma conta foi encontrada com este e-mail.')
+                return render(request, 'verify/reenviar_verificacao.html')
+            
+            # Log warning if multiple users exist with same email (data integrity issue)
+            user_count = User.objects.filter(email=email).count()
+            if user_count > 1:
+                logger.warning(f"Múltiplos usuários encontrados com o email {email} ({user_count} usuários). Usando o primeiro (ID: {user.pk}).")
 
             if user.is_email_verified:
                 messages.info(request, 'Seu email já está verificado.')
@@ -759,8 +769,9 @@ def reenviar_verificacao_view(request):
 
             return redirect('dashboard')
 
-        except User.DoesNotExist:
-            messages.error(request, 'Nenhuma conta foi encontrada com este e-mail.')
+        except Exception as e:
+            logger.error(f"Erro inesperado em reenviar_verificacao_view: {str(e)}")
+            messages.error(request, 'Ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde.')
 
     return render(request, 'verify/reenviar_verificacao.html')
 
