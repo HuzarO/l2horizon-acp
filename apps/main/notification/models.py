@@ -44,8 +44,60 @@ class Notification(BaseModel):
         verbose_name = _("Notificação")
         verbose_name_plural = _("Notificações")
 
+    rewards_claimed = models.BooleanField(
+        default=False,
+        verbose_name=_("Prêmios Reclamados"),
+        help_text=_("Indica se os prêmios desta notificação já foram reclamados.")
+    )
+
+    class Meta:
+        verbose_name = _("Notificação")
+        verbose_name_plural = _("Notificações")
+
     def __str__(self):
         return f"{self.get_notification_type_display()} - {self.message[:50]}..."
+
+
+class NotificationReward(BaseModel):
+    """Prêmios que podem ser entregues junto com uma notificação"""
+    notification = models.ForeignKey(
+        Notification,
+        on_delete=models.CASCADE,
+        related_name='rewards',
+        verbose_name=_("Notificação"),
+        help_text=_("Notificação relacionada a este prêmio.")
+    )
+    item_id = models.PositiveIntegerField(verbose_name=_("Item ID"))
+    item_name = models.CharField(max_length=100, verbose_name=_("Item Name"))
+    item_enchant = models.PositiveIntegerField(default=0, verbose_name=_("Item Enchant"))
+    item_amount = models.PositiveIntegerField(default=1, verbose_name=_("Item Amount"))
+
+    class Meta:
+        verbose_name = _("Prêmio de Notificação")
+        verbose_name_plural = _("Prêmios de Notificações")
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.item_name} +{self.item_enchant} x{self.item_amount}"
+
+    def add_to_user_bag(self, user):
+        """Adiciona o prêmio à bag do usuário"""
+        from apps.lineage.games.models import Bag, BagItem
+        
+        bag, created = Bag.objects.get_or_create(user=user)
+        bag_item, created = BagItem.objects.get_or_create(
+            bag=bag,
+            item_id=self.item_id,
+            enchant=self.item_enchant,
+            defaults={
+                'item_name': self.item_name,
+                'quantity': self.item_amount,
+            }
+        )
+        if not created:
+            bag_item.quantity += self.item_amount
+            bag_item.save()
+        return bag_item
 
 
 class PublicNotificationView(BaseModel):

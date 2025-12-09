@@ -244,7 +244,8 @@ def config_hub_view(request):
             'color': 'danger',
             'entries': [
                 { 'title': _('Licenças'), 'url_name': 'licence:dashboard', 'icon': 'bi-patch-check', 'description': _('Gerenciar licenças do sistema') },
-                { 'title': _('Enviar Push'), 'url_name': 'notification:send_push', 'icon': 'bi-bell', 'description': _('Enviar notificações push') },
+                { 'title': _('Gerenciador de Notificações'), 'url_name': 'notification:manager_dashboard', 'icon': 'bi-bell', 'is_new': True, 'description': _('Criar e gerenciar notificações com prêmios') },
+                { 'title': _('Enviar Push'), 'url_name': 'notification:send_push', 'icon': 'bi-bell-fill', 'description': _('Enviar notificações push') },
                 { 'title': _('Verificações'), 'url_name': 'social:verification_admin_list', 'icon': 'bi-shield-check', 'description': _('Aprovar verificações de usuários') },
             ]
         },

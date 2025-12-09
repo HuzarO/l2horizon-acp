@@ -1,0 +1,225 @@
+{% extends "layouts/base.html" %}
+{% load static i18n itens_extras %}
+
+{% block title %}{% trans "Criar Notificação" %} - {% trans "Gerenciador" %}{% endblock %}
+
+{% block extrastyle %}
+<link rel="stylesheet" href="{% static 'css/notifications.css' %}">
+<style>
+.manager-bg { 
+    background: radial-gradient(ellipse at center, #0f172a 0%, #1a1a2e 50%, #0f0f1e 100%); 
+    min-height: 100vh; 
+    padding: 40px 0; 
+}
+.card-glow { 
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.95) 0%, rgba(18, 18, 32, 0.95) 100%); 
+    border: 1px solid rgba(111, 66, 193, 0.3); 
+    border-radius: 16px; 
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.reward-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.reward-item-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-white">
+                <i class="bi bi-plus-circle me-2"></i>{% trans "Criar Nova Notificação" %}
+            </h2>
+            <a href="{% url 'notification:manager_dashboard' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+            </a>
+        </div>
+
+        <form method="post" id="notificationForm">
+            {% csrf_token %}
+            
+            <div class="card card-glow mb-4">
+                <div class="card-header bg-transparent border-bottom">
+                    <h5 class="text-white mb-0">{% trans "Informações Básicas" %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-white">{% trans "Tipo de Notificação" %}</label>
+                            <select name="notification_type" class="form-control" required>
+                                <option value="user">{% trans "Usuário" %}</option>
+                                <option value="system">{% trans "Sistema" %}</option>
+                                <option value="staff">{% trans "Staff" %}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-white">
+                                <input type="checkbox" name="is_public" id="is_public" onchange="toggleUserField()">
+                                {% trans "Notificação Pública" %}
+                            </label>
+                            <small class="text-white-50 d-block">{% trans "Se marcado, será enviada para todos os usuários" %}</small>
+                        </div>
+                        <div class="col-md-6" id="user_field">
+                            <label class="text-white">{% trans "ID do Usuário (opcional)" %}</label>
+                            <input type="number" name="user_id" class="form-control" placeholder="{% trans 'Deixe vazio para notificação pública' %}">
+                            <small class="text-white-50">{% trans "Deixe vazio se for notificação pública" %}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-white">{% trans "Link (opcional)" %}</label>
+                            <input type="url" name="link" class="form-control" placeholder="https://...">
+                        </div>
+                        <div class="col-12">
+                            <label class="text-white">{% trans "Mensagem" %} *</label>
+                            <textarea name="message" class="form-control" rows="4" required placeholder="{% trans 'Digite a mensagem da notificação...' %}"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prêmios -->
+            <div class="card card-glow mb-4">
+                <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="text-white mb-0">{% trans "Prêmios (Opcional)" %}</h5>
+                    <button type="button" class="btn btn-sm btn-success" onclick="addReward()">
+                        <i class="bi bi-plus-circle me-1"></i>{% trans "Adicionar Prêmio" %}
+                    </button>
+                </div>
+                <div class="card-body" id="rewards-container">
+                    <p class="text-white-50">{% trans "Clique em 'Adicionar Prêmio' para adicionar itens que serão entregues junto com a notificação." %}</p>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle me-2"></i>{% trans "Criar Notificação" %}
+                </button>
+                <a href="{% url 'notification:manager_dashboard' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle me-2"></i>{% trans "Cancelar" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let rewardCount = 0;
+
+function toggleUserField() {
+    const isPublic = document.getElementById('is_public').checked;
+    const userField = document.getElementById('user_field');
+    if (isPublic) {
+        userField.style.display = 'none';
+        document.querySelector('input[name="user_id"]').value = '';
+    } else {
+        userField.style.display = 'block';
+    }
+}
+
+function addReward() {
+    const container = document.getElementById('rewards-container');
+    const rewardDiv = document.createElement('div');
+    rewardDiv.className = 'reward-item';
+    rewardDiv.id = `reward_${rewardCount}`;
+    
+    rewardDiv.innerHTML = `
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="text-white">{% trans "Item ID" %} *</label>
+                <input type="number" name="reward_${rewardCount}_item_id" class="form-control" required 
+                       onchange="loadItemInfo(${rewardCount}, this.value)">
+            </div>
+            <div class="col-md-4">
+                <label class="text-white">{% trans "Nome do Item" %} *</label>
+                <input type="text" name="reward_${rewardCount}_item_name" class="form-control" required>
+            </div>
+            <div class="col-md-2">
+                <label class="text-white">{% trans "Encantamento" %}</label>
+                <input type="number" name="reward_${rewardCount}_item_enchant" class="form-control" value="0" min="0">
+            </div>
+            <div class="col-md-2">
+                <label class="text-white">{% trans "Quantidade" %}</label>
+                <input type="number" name="reward_${rewardCount}_item_amount" class="form-control" value="1" min="1">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-danger w-100" onclick="removeReward(${rewardCount})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="mt-2" id="reward_${rewardCount}_preview"></div>
+    `;
+    
+    container.appendChild(rewardDiv);
+    rewardCount++;
+    updateRewardCount();
+}
+
+function removeReward(id) {
+    const rewardDiv = document.getElementById(`reward_${id}`);
+    if (rewardDiv) {
+        rewardDiv.remove();
+        updateRewardCount();
+    }
+}
+
+function updateRewardCount() {
+    document.querySelector('input[name="reward_count"]')?.remove();
+    const form = document.getElementById('notificationForm');
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'reward_count';
+    input.value = rewardCount;
+    form.appendChild(input);
+}
+
+async function loadItemInfo(rewardIndex, itemId) {
+    if (!itemId) return;
+    
+    try {
+        const response = await fetch(`/app/notification/manager/api/item-info/?item_id=${itemId}`);
+        const data = await response.json();
+        
+        const nameInput = document.querySelector(`input[name="reward_${rewardIndex}_item_name"]`);
+        if (nameInput && data.item_name) {
+            nameInput.value = data.item_name;
+        }
+        
+        // Mostrar preview do item
+        const previewDiv = document.getElementById(`reward_${rewardIndex}_preview`);
+        if (previewDiv) {
+            const itemImageUrl = `/static/assets/img/l2/icons/5-${itemId}.jpg`;
+            previewDiv.innerHTML = `
+                <div class="d-flex align-items-center gap-2">
+                    <img src="${itemImageUrl}" 
+                         alt="${data.item_name}" 
+                         class="reward-item-icon"
+                         onerror="this.src='{% static 'assets/img/l2/icons/default.jpg' %}'">
+                    <span class="text-white">${data.item_name}</span>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Erro ao carregar informações do item:', error);
+    }
+}
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    updateRewardCount();
+});
+</script>
+{% endblock %}
+

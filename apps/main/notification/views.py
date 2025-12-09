@@ -6,7 +6,8 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.db import models
 from apps.main.home.decorator import conditional_otp_required
-from .models import Notification, PublicNotificationView, PushSubscription, PushNotificationLog
+from .models import Notification, PublicNotificationView, PushSubscription, PushNotificationLog, NotificationReward
+from utils.notifications import claim_notification_rewards
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
@@ -52,26 +53,50 @@ def get_notifications(request):
     notifications_list = []
 
     # Notificações privadas
-    for notification in user_notifications:
+    for notification in user_notifications.select_related().prefetch_related('rewards'):
+        rewards_data = []
+        for reward in notification.rewards.all():
+            rewards_data.append({
+                'item_id': reward.item_id,
+                'item_name': reward.item_name,
+                'item_enchant': reward.item_enchant,
+                'item_amount': reward.item_amount,
+            })
+        
         notifications_list.append({
             'id': notification.id,
             'message': notification.message,
             'type': notification.notification_type,
             'created_at': notification.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'viewed': notification.viewed,
-            'detail_url': reverse('notification:notification_detail', args=[notification.id])
+            'detail_url': reverse('notification:notification_detail', args=[notification.id]),
+            'has_rewards': notification.rewards.exists(),
+            'rewards_claimed': notification.rewards_claimed,
+            'rewards': rewards_data,
         })
 
     # Notificações públicas
-    for notification in public_notifications:
+    for notification in public_notifications.select_related().prefetch_related('rewards'):
         if notification.id not in public_notifications_viewed_ids:
+            rewards_data = []
+            for reward in notification.rewards.all():
+                rewards_data.append({
+                    'item_id': reward.item_id,
+                    'item_name': reward.item_name,
+                    'item_enchant': reward.item_enchant,
+                    'item_amount': reward.item_amount,
+                })
+            
             notifications_list.append({
                 'id': notification.id,
                 'message': notification.message,
                 'type': notification.notification_type,
                 'created_at': notification.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'viewed': False,
-                'detail_url': reverse('notification:notification_detail', args=[notification.id])
+                'detail_url': reverse('notification:notification_detail', args=[notification.id]),
+                'has_rewards': notification.rewards.exists(),
+                'rewards_claimed': notification.rewards_claimed,
+                'rewards': rewards_data,
             })
 
     return JsonResponse({'notifications': notifications_list})
@@ -137,11 +162,24 @@ def notification_detail(request, pk):
     else:
         return JsonResponse({'error': 'Você não tem permissão para ver esta notificação.'}, status=400)
 
+    # Busca prêmios relacionados
+    rewards_data = []
+    for reward in notification.rewards.all():
+        rewards_data.append({
+            'item_id': reward.item_id,
+            'item_name': reward.item_name,
+            'item_enchant': reward.item_enchant,
+            'item_amount': reward.item_amount,
+        })
+
     data = {
         'type': notification.get_notification_type_display(),
         'message': notification.message,
         'created_at': notification.created_at.strftime('%Y-%m-%d %H:%M:%S'),
         'link': notification.link if notification.link else None,
+        'has_rewards': notification.rewards.exists(),
+        'rewards_claimed': notification.rewards_claimed,
+        'rewards': rewards_data,
     }
 
     return JsonResponse(data)
@@ -152,12 +190,12 @@ def all_notifications(request):
     user = request.user
 
     # Private notifications
-    private_qs = Notification.objects.filter(user=user).order_by('-created_at')
+    private_qs = Notification.objects.filter(user=user).prefetch_related('rewards').order_by('-created_at')
     if not (user.is_staff or user.is_superuser):
         private_qs = private_qs.exclude(notification_type='staff')
 
     # Public notifications
-    public_qs = Notification.objects.filter(user=None).order_by('-created_at')
+    public_qs = Notification.objects.filter(user=None).prefetch_related('rewards').order_by('-created_at')
     if not (user.is_staff or user.is_superuser):
         public_qs = public_qs.exclude(notification_type='staff')
 
@@ -180,9 +218,24 @@ def all_notifications(request):
     private_notifications = private_paginator.get_page(private_page_number)
     public_notifications = public_paginator.get_page(public_page_number)
 
+    # Calcular estatísticas
+    total_notifications = private_qs.count() + public_qs.count()
+    unread_private = private_qs.filter(viewed=False).count()
+    unread_public = len([n for n in public_qs if n.id not in viewed_public_ids])
+    unread_count = unread_private + unread_public
+    
+    # Contar notificações com prêmios
+    notifications_with_rewards = (
+        private_qs.filter(rewards__isnull=False).distinct().count() +
+        public_qs.filter(rewards__isnull=False).distinct().count()
+    )
+
     context = {
         'private_notifications': private_notifications,
         'public_notifications': public_notifications,
+        'total_notifications': total_notifications,
+        'unread_count': unread_count,
+        'notifications_with_rewards': notifications_with_rewards,
         'segment': 'index',
         'parent': 'notification',
     }
@@ -204,6 +257,38 @@ def confirm_notification_view(request, pk):
             public_notification_view.save()
 
     return JsonResponse({'status': 'success'})
+
+
+@conditional_otp_required
+def claim_rewards(request, pk):
+    """Reclama os prêmios de uma notificação"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+    
+    notification = get_object_or_404(Notification, pk=pk)
+
+    # Verifica permissão
+    if notification.user and notification.user != request.user:
+        return JsonResponse({'error': 'Você não tem permissão para reclamar prêmios desta notificação.'}, status=403)
+
+    # Verifica se já foi reclamado
+    if notification.rewards_claimed:
+        return JsonResponse({'error': 'Os prêmios desta notificação já foram reclamados.'}, status=400)
+
+    # Verifica se há prêmios
+    if not notification.rewards.exists():
+        return JsonResponse({'error': 'Esta notificação não possui prêmios.'}, status=400)
+
+    # Reclama os prêmios
+    success = claim_notification_rewards(notification, request.user)
+    
+    if success:
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Prêmios reclamados com sucesso! Verifique sua bag.'
+        })
+    else:
+        return JsonResponse({'error': 'Erro ao reclamar prêmios.'}, status=500)
 
 
 @csrf_exempt

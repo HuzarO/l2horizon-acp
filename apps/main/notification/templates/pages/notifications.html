@@ -1,8 +1,57 @@
 {% extends 'layouts/base.html' %}
-{% load static i18n %}
+{% load static i18n itens_extras %}
 
 {% block extrastyle %}
 <link rel="stylesheet" href="{% static 'css/notifications.css' %}">
+<style>
+  /* Animações suaves de entrada */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .notifications-section {
+    animation: fadeInUp 0.6s ease-out;
+  }
+  
+  .notifications-section:nth-child(2) {
+    animation-delay: 0.2s;
+    animation-fill-mode: both;
+  }
+  
+  .stat-card {
+    animation: fadeInUp 0.5s ease-out;
+  }
+  
+  .stat-card:nth-child(1) { animation-delay: 0.1s; animation-fill-mode: both; }
+  .stat-card:nth-child(2) { animation-delay: 0.2s; animation-fill-mode: both; }
+  .stat-card:nth-child(3) { animation-delay: 0.3s; animation-fill-mode: both; }
+  
+  /* Scrollbar personalizado */
+  .modal-container::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .modal-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+  
+  .modal-container::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+  }
+  
+  .modal-container::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -30,6 +79,37 @@
       <span class="breadcrumb-separator">/</span>
       <span class="breadcrumb-current">{% trans "Notificações" %}</span>
     </nav>
+  </div>
+
+  <!-- Statistics Section -->
+  <div class="statistics-section">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-bell"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">{{ total_notifications|default:0 }}</div>
+        <div class="stat-label">{% trans "Total" %}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon unread">
+        <i class="fas fa-bell-slash"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">{{ unread_count|default:0 }}</div>
+        <div class="stat-label">{% trans "Não Lidas" %}</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon rewards">
+        <i class="fas fa-gift"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-value">{{ notifications_with_rewards|default:0 }}</div>
+        <div class="stat-label">{% trans "Com Prêmios" %}</div>
+      </div>
+    </div>
   </div>
 
   <!-- Actions Section -->
@@ -63,22 +143,45 @@
       <div class="notifications-list">
         {% if private_notifications %}
           {% for notification in private_notifications %}
-          <div class="notification-card {% if not notification.read %}unread{% else %}read{% endif %}" 
+          <div class="notification-card {% if not notification.viewed %}unread{% else %}read{% endif %}" 
                data-notification-id="{{ notification.id }}">
             <div class="notification-icon">
               <i class="fas fa-bell"></i>
             </div>
             <div class="notification-content">
               <div class="notification-header">
-                <h3 class="notification-title">{{ notification.title }}</h3>
+                <h3 class="notification-title">{{ notification.get_notification_type_display }}</h3>
                 <div class="notification-meta">
                   <span class="notification-date">{{ notification.created_at|date:"d/m/Y H:i" }}</span>
-                  {% if not notification.read %}
+                  {% if not notification.viewed %}
                   <span class="notification-badge">{% trans "Nova" %}</span>
                   {% endif %}
                 </div>
               </div>
               <p class="notification-message">{{ notification.message|truncatewords:20 }}</p>
+              {% if notification.rewards.exists %}
+                <div class="notification-rewards-preview">
+                  {% for reward in notification.rewards.all %}
+                    <div class="reward-item-preview" title="{{ reward.item_name }} +{{ reward.item_enchant }} x{{ reward.item_amount }}">
+                      <img src="{% item_image_url reward.item_id %}" 
+                           alt="{{ reward.item_name }}" 
+                           class="reward-item-icon-small">
+                      {% if reward.item_amount > 1 %}
+                        <span class="reward-amount">x{{ reward.item_amount }}</span>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                  {% if not notification.rewards_claimed %}
+                    <span class="badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.8rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);">
+                      <i class="fas fa-gift me-1"></i>Prêmios Disponíveis
+                    </span>
+                  {% else %}
+                    <span class="badge" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.8rem;">
+                      <i class="fas fa-check-circle me-1"></i>Prêmios Reclamados
+                    </span>
+                  {% endif %}
+                </div>
+              {% endif %}
             </div>
             <div class="notification-actions">
               <button class="view-btn" onclick="viewNotification({{ notification.id }})">
@@ -114,22 +217,45 @@
       <div class="notifications-list">
         {% if public_notifications %}
           {% for notification in public_notifications %}
-          <div class="notification-card {% if not notification.read %}unread{% else %}read{% endif %}" 
+          <div class="notification-card {% if not notification.viewed %}unread{% else %}read{% endif %}" 
                data-notification-id="{{ notification.id }}">
             <div class="notification-icon public">
               <i class="fas fa-broadcast-tower"></i>
             </div>
             <div class="notification-content">
               <div class="notification-header">
-                <h3 class="notification-title">{{ notification.title }}</h3>
+                <h3 class="notification-title">{{ notification.get_notification_type_display }}</h3>
                 <div class="notification-meta">
                   <span class="notification-date">{{ notification.created_at|date:"d/m/Y H:i" }}</span>
-                  {% if not notification.read %}
+                  {% if not notification.viewed %}
                   <span class="notification-badge">{% trans "Nova" %}</span>
                   {% endif %}
                 </div>
               </div>
               <p class="notification-message">{{ notification.message|truncatewords:20 }}</p>
+              {% if notification.rewards.exists %}
+                <div class="notification-rewards-preview">
+                  {% for reward in notification.rewards.all %}
+                    <div class="reward-item-preview" title="{{ reward.item_name }} +{{ reward.item_enchant }} x{{ reward.item_amount }}">
+                      <img src="{% item_image_url reward.item_id %}" 
+                           alt="{{ reward.item_name }}" 
+                           class="reward-item-icon-small">
+                      {% if reward.item_amount > 1 %}
+                        <span class="reward-amount">x{{ reward.item_amount }}</span>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                  {% if not notification.rewards_claimed %}
+                    <span class="badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.8rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);">
+                      <i class="fas fa-gift me-1"></i>Prêmios Disponíveis
+                    </span>
+                  {% else %}
+                    <span class="badge" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.8rem;">
+                      <i class="fas fa-check-circle me-1"></i>Prêmios Reclamados
+                    </span>
+                  {% endif %}
+                </div>
+              {% endif %}
             </div>
             <div class="notification-actions">
               <button class="view-btn" onclick="viewNotification({{ notification.id }})">
@@ -175,8 +301,8 @@
     <div class="modal-body">
       <div class="notification-details">
         <div class="detail-group">
-          <label>{% trans "Título" %}</label>
-          <div class="detail-value" id="modalTitle"></div>
+          <label>{% trans "Tipo" %}</label>
+          <div class="detail-value" id="modalType"></div>
         </div>
         <div class="detail-group">
           <label>{% trans "Mensagem" %}</label>
@@ -186,13 +312,27 @@
           <label>{% trans "Data" %}</label>
           <div class="detail-value" id="modalDate"></div>
         </div>
-        <div class="detail-group">
-          <label>{% trans "Tipo" %}</label>
-          <div class="detail-value" id="modalType"></div>
+        <div class="detail-group" id="modalLink" style="display: none;">
+          <label>{% trans "Link" %}</label>
+          <div class="detail-value">
+            <a id="modalLinkUrl" href="#" target="_blank" class="text-info">
+              <i class="fas fa-external-link-alt me-1"></i>
+              <span id="modalLinkText"></span>
+            </a>
+          </div>
+        </div>
+        <div class="detail-group" id="modalRewards" style="display: none;">
+          <label>{% trans "Prêmios" %}</label>
+          <div class="detail-value" id="modalRewardsContent"></div>
         </div>
       </div>
     </div>
     <div class="modal-footer">
+      <div id="claim-rewards-container" style="display: none;">
+        <button class="modal-btn success" id="claim-rewards-btn" onclick="claimNotificationRewards()">
+          <i class="fas fa-gift"></i> {% trans "Reclamar Prêmios" %}
+        </button>
+      </div>
       <button class="modal-btn secondary" onclick="closeModal()">
         {% trans "Fechar" %}
       </button>
@@ -201,22 +341,140 @@
 </div>
 
 <script>
+let currentNotificationId = null;
+
 function viewNotification(id) {
-  // Simular dados da notificação (em produção, isso viria de uma requisição AJAX)
+  currentNotificationId = id;
   const modal = document.getElementById('notificationModal');
-  const title = document.getElementById('modalTitle');
   const message = document.getElementById('modalMessage');
   const date = document.getElementById('modalDate');
   const type = document.getElementById('modalType');
+  const rewardsContainer = document.getElementById('modalRewards');
+  const rewardsContent = document.getElementById('modalRewardsContent');
+  const claimContainer = document.getElementById('claim-rewards-container');
   
-  // Aqui você faria uma requisição AJAX para buscar os dados da notificação
-  // Por enquanto, vamos usar dados simulados
-  title.textContent = 'Notificação #' + id;
-  message.textContent = 'Esta é uma mensagem de exemplo para a notificação #' + id + '. Aqui você pode ver todos os detalhes da notificação.';
-  date.textContent = new Date().toLocaleString('pt-BR');
-  type.textContent = id % 2 === 0 ? 'Privada' : 'Pública';
+  // Busca dados da notificação via AJAX
+  fetch(`/app/notification/detail/${id}/`)
+    .then(response => response.json())
+    .then(data => {
+      type.textContent = data.type || 'Notificação';
+      message.textContent = data.message;
+      date.textContent = data.created_at;
+      
+      // Exibir link se houver
+      const linkContainer = document.getElementById('modalLink');
+      const linkUrl = document.getElementById('modalLinkUrl');
+      const linkText = document.getElementById('modalLinkText');
+      if (data.link) {
+        linkUrl.href = data.link;
+        linkText.textContent = data.link;
+        linkContainer.style.display = 'block';
+      } else {
+        linkContainer.style.display = 'none';
+      }
+      
+      // Exibe prêmios se houver
+      if (data.has_rewards && data.rewards && data.rewards.length > 0) {
+        let rewardsHtml = '<div class="reward-items-container">';
+        data.rewards.forEach(reward => {
+          const itemImageUrl = `/static/assets/img/l2/icons/5-${reward.item_id}.jpg`;
+          rewardsHtml += `
+            <div class="reward-item-container">
+              <img src="${itemImageUrl}" 
+                   alt="${reward.item_name}" 
+                   class="reward-item-icon"
+                   title="${reward.item_name}"
+                   onerror="this.src='{% static 'assets/img/l2/icons/default.jpg' %}'">
+              <div class="reward-item-info">
+                <div class="reward-item-name">${reward.item_name}</div>
+                <div class="reward-item-details">
+                  ${reward.item_enchant > 0 ? `<div class="reward-item-detail"><i class="fas fa-magic"></i> +${reward.item_enchant}</div>` : ''}
+                  ${reward.item_amount > 1 ? `<div class="reward-item-detail"><i class="fas fa-layer-group"></i> x${reward.item_amount}</div>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        rewardsHtml += '</div>';
+        
+        if (!data.rewards_claimed) {
+          rewardsHtml += '<div class="mt-3"><span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Prêmios não reclamados</span></div>';
+          claimContainer.style.display = 'block';
+        } else {
+          rewardsHtml += '<div class="mt-3"><span class="badge bg-success"><i class="fas fa-check"></i> Prêmios Reclamados</span></div>';
+          claimContainer.style.display = 'none';
+        }
+        
+        rewardsContent.innerHTML = rewardsHtml;
+        rewardsContainer.style.display = 'block';
+      } else {
+        rewardsContainer.style.display = 'none';
+        claimContainer.style.display = 'none';
+      }
+      
+      modal.classList.add('active');
+    })
+    .catch(error => {
+      console.error('Erro ao carregar notificação:', error);
+      alert('Erro ao carregar detalhes da notificação.');
+    });
+}
+
+function claimNotificationRewards() {
+  if (!currentNotificationId) return;
   
-  modal.classList.add('active');
+  const btn = document.getElementById('claim-rewards-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reclamando...';
+  }
+
+  fetch(`/app/notification/claim-rewards/${currentNotificationId}/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'Content-Type': 'application/json',
+    },
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        alert(data.message || 'Prêmios reclamados com sucesso! Verifique sua bag.');
+        // Recarrega a notificação para atualizar o status
+        viewNotification(currentNotificationId);
+        // Recarrega a página para atualizar a lista
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        alert(data.error || 'Erro ao reclamar prêmios.');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-gift"></i> {% trans "Reclamar Prêmios" %}';
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      alert('Erro ao reclamar prêmios.');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-gift"></i> {% trans "Reclamar Prêmios" %}';
+      }
+    });
+}
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
 }
 
 function closeModal() {
@@ -233,14 +491,59 @@ document.getElementById('notificationModal').addEventListener('click', function(
 
 // Marcar todas como lidas
 document.getElementById('mark-all-as-read').addEventListener('click', function() {
-  // Implementar lógica para marcar todas como lidas
-  console.log('Marcar todas como lidas');
+  if (confirm('{% trans "Tem certeza que deseja marcar todas as notificações como lidas?" %}')) {
+    fetch('{% url "notification:mark_all_as_read" %}', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json',
+      },
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        location.reload();
+      } else {
+        alert('{% trans "Erro ao marcar notificações como lidas." %}');
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      alert('{% trans "Erro ao marcar notificações como lidas." %}');
+    });
+  }
 });
 
 // Excluir notificações lidas
 document.getElementById('delete-all-read').addEventListener('click', function() {
-  // Implementar lógica para excluir notificações lidas
-  console.log('Excluir notificações lidas');
+  if (confirm('{% trans "Tem certeza que deseja excluir todas as notificações lidas?" %}')) {
+    // Deletar notificações privadas lidas
+    const privateRead = document.querySelectorAll('.notification-card.read[data-notification-id]');
+    const privateIds = Array.from(privateRead).map(el => el.getAttribute('data-notification-id'));
+    
+    if (privateIds.length > 0) {
+      // Deletar via AJAX ou recarregar após confirmação
+      fetch('{% url "notification:clear_all_notifications" %}', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/json',
+        },
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          location.reload();
+        }
+      })
+      .catch(error => {
+        console.error('Erro:', error);
+        alert('{% trans "Erro ao excluir notificações." %}');
+      });
+    } else {
+      alert('{% trans "Não há notificações lidas para excluir." %}');
+    }
+  }
 });
 </script>
 {% endblock %}
