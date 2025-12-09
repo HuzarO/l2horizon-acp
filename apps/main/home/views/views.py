@@ -1,5 +1,6 @@
 import json, base64, logging, pyotp, os, re
 import requests
+from datetime import datetime
 
 from ..models import *
 from ..forms import *
@@ -23,7 +24,7 @@ from django.contrib import messages
 
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
-from django.utils.translation import get_language
+from django.utils.translation import get_language, gettext_lazy as _
 from django.utils import translation
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
@@ -700,6 +701,24 @@ def dashboard(request):
 
         verificar_recompensas_por_nivel(request.user, perfil.level, request)
 
+        # Calcular nível da patente (limitado a 30)
+        patent_level = perfil.get_patent_level()
+
+        # Saudação baseada no horário do dia
+        current_hour = datetime.now().hour
+        if 5 <= current_hour < 12:
+            greeting = _("Bom dia")
+            greeting_emoji = "🌅"
+        elif 12 <= current_hour < 18:
+            greeting = _("Boa tarde")
+            greeting_emoji = "☀️"
+        elif 18 <= current_hour < 22:
+            greeting = _("Boa noite")
+            greeting_emoji = "🌆"
+        else:
+            greeting = _("Boa madrugada")
+            greeting_emoji = "🌙"
+
         context = {
             'segment': 'dashboard',
             'dashboard': dashboard,
@@ -713,9 +732,12 @@ def dashboard(request):
             'perfil': perfil,
             'ganhou_bonus': ganhou_bonus,
             'xp_percent': int((perfil.xp / perfil.xp_para_proximo_nivel()) * 100),
+            'patent_level': patent_level,
             'conquistas': page_obj.object_list,
             'page_obj': page_obj,
             'debug': settings.DEBUG,
+            'greeting': greeting,
+            'greeting_emoji': greeting_emoji,
         }
         return render(request, 'dashboard_custom/dashboard.html', context)
     else:
