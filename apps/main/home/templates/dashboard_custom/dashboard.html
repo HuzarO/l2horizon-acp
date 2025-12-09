@@ -1273,6 +1273,11 @@
             {% if ganhou_bonus %}
               <small class="text-success mt-1 d-block">🎉 {% trans "Bônus diário recebido! +25 XP" %}</small>
             {% endif %}
+            <div class="mt-3">
+              <a href="{% url 'level_rewards_view' %}" class="btn btn-sm text-white" style="background: linear-gradient(135deg, rgba(13, 202, 240, 0.8), rgba(111, 66, 193, 0.8)); border: none; border-radius: 8px; padding: 8px 16px; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(13, 202, 240, 0.3);">
+                <i class="bi bi-gift me-1"></i>{% trans "Ver Prêmios Disponíveis" %}
+              </a>
+            </div>
           </div>
         </div>
       </div>
