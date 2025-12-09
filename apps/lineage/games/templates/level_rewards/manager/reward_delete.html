@@ -1,0 +1,73 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { 
+    background: radial-gradient(ellipse at center, #0f172a 0%, #1a1a2e 50%, #0f0f1e 100%); 
+    min-height: 100vh; 
+    padding: 40px 0; 
+    position: relative;
+}
+
+.card-glow { 
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.95) 0%, rgba(18, 18, 32, 0.95) 100%); 
+    border: 1px solid rgba(220, 53, 69, 0.3); 
+    border-radius: 16px; 
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(220, 53, 69, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.warning-box {
+    background: rgba(220, 53, 69, 0.1);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card card-glow">
+                    <div class="card-header text-white bg-danger">
+                        <h3 class="mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>{% trans "Confirmar Exclusão" %}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="warning-box">
+                            <h5 class="text-white mb-3">{% trans "Tem certeza que deseja deletar esta recompensa?" %}</h5>
+                            <p class="mb-2"><strong>{% trans "Nível:" %}</strong> <span class="badge bg-info">Nível {{ recompensa.referencia }}</span></p>
+                            <p class="mb-2"><strong>{% trans "Item:" %}</strong> {{ recompensa.item_name }}</p>
+                            <p class="mb-2"><strong>{% trans "Item ID:" %}</strong> <code>{{ recompensa.item_id }}</code></p>
+                            <p class="mb-2"><strong>{% trans "Quantidade:" %}</strong> {{ recompensa.quantity }}</p>
+                            <p class="mb-0"><strong>{% trans "Encantamento:" %}</strong> +{{ recompensa.enchant }}</p>
+                        </div>
+
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-trash me-2"></i>{% trans "Sim, Deletar" %}
+                                </button>
+                                <a href="{% url 'games:level_rewards_manager_reward_list' %}" class="btn btn-secondary">
+                                    {% trans "Cancelar" %}
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -8,6 +8,7 @@ from .views.accounts import *
 from .views.commons import *
 from .views.wiki import *
 from .views.achievement_rewards import achievement_rewards_view
+from .views.level_rewards import level_rewards_view
 
 
 urlpatterns = [
@@ -15,6 +16,7 @@ urlpatterns = [
     path('', index, name='index'),
     path('pages/dashboard/', dashboard, name="dashboard"),
     path('pages/achievement-rewards/', achievement_rewards_view, name="achievement_rewards"),
+    path('pages/level-rewards/', level_rewards_view, name="level_rewards_view"),
 
     # internals views users
     path('app/profile/edit/', edit_profile, name='edit_profile'),

@@ -1,0 +1,152 @@
+{% extends "layouts/base.html" %}
+{% load static i18n %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { 
+    background: radial-gradient(ellipse at center, #0f172a 0%, #1a1a2e 50%, #0f0f1e 100%); 
+    min-height: 100vh; 
+    padding: 40px 0; 
+    position: relative;
+}
+.manager-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(13, 202, 240, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(111, 66, 193, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.card-glow { 
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.95) 0%, rgba(18, 18, 32, 0.95) 100%); 
+    border: 1px solid rgba(13, 202, 240, 0.3); 
+    border-radius: 16px; 
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(13, 202, 240, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+}
+
+.btn-action {
+    background: linear-gradient(135deg, #0dcaf0 0%, #6f42c1 100%);
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(13, 202, 240, 0.4);
+}
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 202, 240, 0.6);
+    color: white;
+}
+
+.filter-box {
+    background: rgba(13, 202, 240, 0.1);
+    border: 1px solid rgba(13, 202, 240, 0.3);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manager-bg">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-white">
+                <i class="bi bi-star me-2"></i>{% trans "Recompensas por Nível" %}
+            </h2>
+            <div class="d-flex gap-2">
+                <a href="{% url 'games:level_rewards_manager' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar" %}
+                </a>
+                <a href="{% url 'games:level_rewards_manager_reward_create' %}" class="btn-action">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Nova Recompensa" %}
+                </a>
+            </div>
+        </div>
+
+        <!-- Filter -->
+        {% if niveis_unicos %}
+        <div class="filter-box">
+            <label class="form-label text-white mb-2">{% trans "Filtrar por Nível:" %}</label>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{% url 'games:level_rewards_manager_reward_list' %}" 
+                   class="btn btn-sm {% if not current_nivel %}btn-info{% else %}btn-outline-info{% endif %}">
+                    {% trans "Todos" %}
+                </a>
+                {% for nivel in niveis_unicos %}
+                <a href="{% url 'games:level_rewards_manager_reward_list' %}?nivel={{ nivel }}" 
+                   class="btn btn-sm {% if current_nivel == nivel %}btn-info{% else %}btn-outline-info{% endif %}">
+                    Nível {{ nivel }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card card-glow">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>{% trans "Nível" %}</th>
+                                <th>{% trans "Item" %}</th>
+                                <th>{% trans "Item ID" %}</th>
+                                <th>{% trans "Quantidade" %}</th>
+                                <th>{% trans "Encantamento" %}</th>
+                                <th>{% trans "Criado em" %}</th>
+                                <th>{% trans "Ações" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if rewards %}
+                                {% for reward in rewards %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            Nível {{ reward.referencia }}
+                                        </span>
+                                    </td>
+                                    <td>{{ reward.item_name }}</td>
+                                    <td><code class="text-info">{{ reward.item_id }}</code></td>
+                                    <td>{{ reward.quantity }}</td>
+                                    <td>+{{ reward.enchant }}</td>
+                                    <td>{{ reward.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        <a href="{% url 'games:level_rewards_manager_reward_edit' reward.id %}" class="btn btn-sm btn-warning">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{% url 'games:level_rewards_manager_reward_delete' reward.id %}" class="btn btn-sm btn-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-white-50">
+                                        {% trans "Nenhuma recompensa encontrada." %}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

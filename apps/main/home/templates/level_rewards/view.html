@@ -1,0 +1,634 @@
+{% extends 'layouts/base.html' %}
+{% load static i18n %}
+{% load itens_extras %}
+
+{% block extrastyle %}
+<style>
+  .rewards-bg {
+    background: radial-gradient(ellipse at center, #0f172a 0%, #1a1a2e 50%, #121220 100%);
+    min-height: 100vh;
+    padding: 40px 0;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .rewards-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 30%, rgba(13, 202, 240, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(111, 66, 193, 0.15) 0%, transparent 50%);
+    pointer-events: none;
+    animation: backgroundPulse 8s ease-in-out infinite;
+  }
+
+  @keyframes backgroundPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .rewards-header {
+    background: linear-gradient(135deg, rgba(13, 202, 240, 0.25), rgba(111, 66, 193, 0.25));
+    border: 2px solid rgba(13, 202, 240, 0.4);
+    border-radius: 20px;
+    padding: 2.5rem;
+    margin-bottom: 2.5rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    box-shadow: 
+      0 8px 32px rgba(13, 202, 240, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .rewards-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shine 3s infinite;
+  }
+
+  @keyframes shine {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+  }
+
+  .rewards-header h1 {
+    position: relative;
+    z-index: 1;
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ffffff, #0dcaf0, #6f42c1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 30px rgba(13, 202, 240, 0.5);
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .stat-card {
+    background: linear-gradient(135deg, rgba(13, 202, 240, 0.2), rgba(111, 66, 193, 0.2));
+    border: 2px solid rgba(13, 202, 240, 0.4);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    box-shadow: 
+      0 4px 20px rgba(13, 202, 240, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #0dcaf0, #6f42c1);
+    transform: scaleX(0);
+    transition: transform 0.4s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(13, 202, 240, 0.7);
+    box-shadow: 
+      0 12px 40px rgba(13, 202, 240, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .stat-card:hover::before {
+    transform: scaleX(1);
+  }
+
+  .stat-value {
+    font-size: 3.5rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #0dcaf0, #6f42c1, #0dcaf0);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientShift 3s ease infinite;
+    line-height: 1.2;
+    position: relative;
+    z-index: 1;
+  }
+
+  @keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .stat-label {
+    font-size: 1rem;
+    opacity: 0.9;
+    margin-top: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .rewards-card {
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.98), rgba(18, 18, 32, 0.98));
+    border: 2px solid rgba(13, 202, 240, 0.4);
+    border-radius: 20px;
+    padding: 2.5rem;
+    margin-bottom: 2.5rem;
+    color: white;
+    position: relative;
+    backdrop-filter: blur(10px);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(13, 202, 240, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.4s ease;
+  }
+
+  .rewards-card:hover {
+    border-color: rgba(13, 202, 240, 0.6);
+    box-shadow: 
+      0 12px 48px rgba(13, 202, 240, 0.3),
+      0 0 0 1px rgba(13, 202, 240, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid rgba(13, 202, 240, 0.3);
+  }
+
+  .section-title i {
+    font-size: 2rem;
+    margin-right: 0.75rem;
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+
+  .reward-item {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+    border: 2px solid rgba(13, 202, 240, 0.3);
+    border-radius: 16px;
+    padding: 1.75rem;
+    margin-bottom: 1.25rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(5px);
+  }
+
+  .reward-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s;
+  }
+
+  .reward-item:hover::before {
+    left: 100%;
+  }
+
+  .reward-item:hover {
+    border-color: rgba(13, 202, 240, 0.7);
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 
+      0 8px 24px rgba(13, 202, 240, 0.3),
+      0 0 0 1px rgba(13, 202, 240, 0.2);
+  }
+
+  .reward-item.disponivel {
+    border-color: rgba(13, 202, 240, 0.7);
+    background: linear-gradient(135deg, rgba(13, 202, 240, 0.15), rgba(111, 66, 193, 0.15));
+    box-shadow: 
+      0 4px 16px rgba(13, 202, 240, 0.2),
+      inset 0 0 20px rgba(13, 202, 240, 0.1);
+  }
+
+  .reward-item.disponivel:hover {
+    box-shadow: 
+      0 12px 32px rgba(13, 202, 240, 0.4),
+      inset 0 0 30px rgba(13, 202, 240, 0.15);
+  }
+
+  .reward-item.recebida {
+    border-color: rgba(40, 167, 69, 0.6);
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.15), rgba(32, 201, 151, 0.15));
+    opacity: 0.85;
+    box-shadow: 
+      0 4px 16px rgba(40, 167, 69, 0.2),
+      inset 0 0 20px rgba(40, 167, 69, 0.1);
+  }
+
+  .reward-item.recebida:hover {
+    opacity: 1;
+    box-shadow: 
+      0 8px 24px rgba(40, 167, 69, 0.3),
+      inset 0 0 30px rgba(40, 167, 69, 0.15);
+  }
+
+  .reward-item.futura {
+    border-color: rgba(108, 117, 125, 0.5);
+    background: linear-gradient(135deg, rgba(108, 117, 125, 0.1), rgba(73, 80, 87, 0.1));
+    opacity: 0.7;
+    filter: grayscale(0.3);
+  }
+
+  .reward-item.futura:hover {
+    opacity: 0.85;
+    filter: grayscale(0.1);
+  }
+
+  .reward-item-container {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 1.25rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .reward-item-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    border: 3px solid rgba(13, 202, 240, 0.4);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px;
+    transition: all 0.3s ease;
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      inset 0 0 10px rgba(13, 202, 240, 0.1);
+  }
+
+  .reward-item:hover .reward-item-icon {
+    border-color: rgba(13, 202, 240, 0.7);
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 
+      0 8px 20px rgba(13, 202, 240, 0.4),
+      inset 0 0 15px rgba(13, 202, 240, 0.2);
+  }
+
+  .reward-item-info {
+    flex: 1;
+  }
+
+  .reward-item-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.75rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .reward-item-details {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .reward-item-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem;
+    background: rgba(13, 202, 240, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(13, 202, 240, 0.2);
+  }
+
+  .reward-item-detail i {
+    font-size: 1.1rem;
+    color: #0dcaf0;
+  }
+
+  .badge-status {
+    padding: 0.6rem 1.25rem;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+  }
+
+  .badge-status:hover {
+    transform: scale(1.05);
+  }
+
+  .badge-disponivel {
+    background: linear-gradient(135deg, #0dcaf0, #6f42c1);
+    color: white;
+    box-shadow: 0 4px 15px rgba(13, 202, 240, 0.4);
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 4px 15px rgba(13, 202, 240, 0.4); }
+    50% { box-shadow: 0 4px 20px rgba(13, 202, 240, 0.6), 0 0 30px rgba(13, 202, 240, 0.3); }
+  }
+
+  .badge-recebida {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+  }
+
+  .badge-futura {
+    background: linear-gradient(135deg, rgba(108, 117, 125, 0.4), rgba(73, 80, 87, 0.4));
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(108, 117, 125, 0.3);
+  }
+
+  .level-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #0dcaf0, #6f42c1);
+    color: white;
+    padding: 0.6rem 1.25rem;
+    border-radius: 25px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 
+      0 4px 12px rgba(13, 202, 240, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+  }
+
+  .level-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 
+      0 6px 16px rgba(13, 202, 240, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  .btn-outline-light {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .btn-outline-light:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+  }
+
+  @media (max-width: 768px) {
+    .rewards-header h1 {
+      font-size: 1.75rem;
+    }
+    
+    .stat-value {
+      font-size: 2.5rem;
+    }
+    
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    
+    .reward-item-container {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rewards-bg">
+  <div class="container">
+    <!-- Header -->
+    <div class="rewards-header">
+      <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+          <h1 class="mb-2">
+            <i class="bi bi-star-fill text-info me-2"></i>{% trans "Recompensas por Nível" %}
+          </h1>
+          <p class="mb-0 text-white-50">{% trans "Visualize todas as recompensas disponíveis baseadas no seu nível atual" %}</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-light">
+          <i class="bi bi-arrow-left me-2"></i>{% trans "Voltar ao Dashboard" %}
+        </a>
+      </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">{{ current_level }}</div>
+        <div class="stat-label">{% trans "Nível Atual" %}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ total_disponiveis }}</div>
+        <div class="stat-label">{% trans "Disponíveis" %}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ total_recebidas }}</div>
+        <div class="stat-label">{% trans "Recebidas" %}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ total_futuras }}</div>
+        <div class="stat-label">{% trans "Futuras" %}</div>
+      </div>
+    </div>
+
+    <!-- Recompensas Disponíveis -->
+    {% if recompensas_disponiveis %}
+    <div class="rewards-card">
+      <h3 class="section-title">
+        <i class="bi bi-gift-fill text-info me-2"></i>{% trans "Recompensas Disponíveis" %}
+      </h3>
+      {% for item in recompensas_disponiveis %}
+      <div class="reward-item disponivel">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <span class="level-badge">Nível {{ item.nivel }}</span>
+            <p class="text-white-50 mb-0">{% trans "Você já atingiu este nível! Esta recompensa será entregue automaticamente." %}</p>
+          </div>
+          <span class="badge-status badge-disponivel">
+            <i class="bi bi-gift"></i>{% trans "Disponível" %}
+          </span>
+        </div>
+        <div class="reward-item-container">
+          <img src="{% item_image_url item.recompensa.item_id %}" 
+               alt="{{ item.recompensa.item_name }}" 
+               class="reward-item-icon"
+               title="{{ item.recompensa.item_name }}">
+          <div class="reward-item-info">
+            <div class="reward-item-name">{{ item.recompensa.item_name }}</div>
+            <div class="reward-item-details">
+              {% if item.recompensa.enchant > 0 %}
+              <div class="reward-item-detail">
+                <i class="bi bi-stars"></i>
+                <span>+{{ item.recompensa.enchant }}</span>
+              </div>
+              {% endif %}
+              {% if item.recompensa.quantity > 1 %}
+              <div class="reward-item-detail">
+                <i class="bi bi-layers"></i>
+                <span>x{{ item.recompensa.quantity }}</span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Recompensas Recebidas -->
+    {% if recompensas_recebidas %}
+    <div class="rewards-card">
+      <h3 class="section-title">
+        <i class="bi bi-check-circle-fill text-success me-2"></i>{% trans "Recompensas Recebidas" %}
+      </h3>
+      {% for item in recompensas_recebidas %}
+      <div class="reward-item recebida">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <span class="level-badge">Nível {{ item.nivel }}</span>
+            <p class="text-white-50 mb-0">{% trans "Você já recebeu esta recompensa!" %}</p>
+          </div>
+          <span class="badge-status badge-recebida">
+            <i class="bi bi-check-circle"></i>{% trans "Recebida" %}
+          </span>
+        </div>
+        <div class="reward-item-container">
+          <img src="{% item_image_url item.recompensa.item_id %}" 
+               alt="{{ item.recompensa.item_name }}" 
+               class="reward-item-icon"
+               title="{{ item.recompensa.item_name }}">
+          <div class="reward-item-info">
+            <div class="reward-item-name">{{ item.recompensa.item_name }}</div>
+            <div class="reward-item-details">
+              {% if item.recompensa.enchant > 0 %}
+              <div class="reward-item-detail">
+                <i class="bi bi-stars"></i>
+                <span>+{{ item.recompensa.enchant }}</span>
+              </div>
+              {% endif %}
+              {% if item.recompensa.quantity > 1 %}
+              <div class="reward-item-detail">
+                <i class="bi bi-layers"></i>
+                <span>x{{ item.recompensa.quantity }}</span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Recompensas Futuras -->
+    {% if recompensas_futuras %}
+    <div class="rewards-card">
+      <h3 class="section-title">
+        <i class="bi bi-lock-fill text-secondary me-2"></i>{% trans "Recompensas Futuras" %}
+      </h3>
+      {% for item in recompensas_futuras %}
+      <div class="reward-item futura">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <span class="level-badge">Nível {{ item.nivel }}</span>
+            <p class="text-white-50 mb-0">
+              {% trans "Atinga o nível" %} {{ item.nivel }} {% trans "para receber esta recompensa" %}
+              {% if item.niveis_faltantes %}
+                ({% trans "Faltam" %} {{ item.niveis_faltantes }} {% trans "níveis" %})
+              {% endif %}
+            </p>
+          </div>
+          <span class="badge-status badge-futura">
+            <i class="bi bi-lock"></i>{% trans "Bloqueada" %}
+          </span>
+        </div>
+        <div class="reward-item-container">
+          <img src="{% item_image_url item.recompensa.item_id %}" 
+               alt="{{ item.recompensa.item_name }}" 
+               class="reward-item-icon"
+               title="{{ item.recompensa.item_name }}">
+          <div class="reward-item-info">
+            <div class="reward-item-name">{{ item.recompensa.item_name }}</div>
+            <div class="reward-item-details">
+              {% if item.recompensa.enchant > 0 %}
+              <div class="reward-item-detail">
+                <i class="bi bi-stars"></i>
+                <span>+{{ item.recompensa.enchant }}</span>
+              </div>
+              {% endif %}
+              {% if item.recompensa.quantity > 1 %}
+              <div class="reward-item-detail">
+                <i class="bi bi-layers"></i>
+                <span>x{{ item.recompensa.quantity }}</span>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Mensagem quando não há recompensas -->
+    {% if not recompensas_disponiveis and not recompensas_recebidas and not recompensas_futuras %}
+    <div class="rewards-card text-center">
+      <i class="bi bi-inbox" style="font-size: 4rem; color: rgba(255, 255, 255, 0.3);"></i>
+      <h3 class="mt-3 text-white-50">{% trans "Nenhuma recompensa configurada" %}</h3>
+      <p class="text-white-50">{% trans "Ainda não há recompensas por nível configuradas no sistema." %}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
