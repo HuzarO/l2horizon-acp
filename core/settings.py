@@ -565,6 +565,10 @@ else:
             'schedule': crontab(hour=2, minute=0),  # 2h da manhã diariamente
             'args': (30,),  # Remove logs com mais de 30 dias
         },
+        'desativar-temporadas-battlepass-expiradas': {
+            'task': 'apps.lineage.games.tasks.desativar_temporadas_expiradas',
+            'schedule': crontab(minute='*/1'),  # A cada minuto
+        },
     }
 
 CELERY_ACCEPT_CONTENT = ['application/json']
