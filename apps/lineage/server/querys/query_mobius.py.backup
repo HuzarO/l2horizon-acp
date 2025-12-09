@@ -1,7 +1,7 @@
 """
 Query File: query_mobius.py
 Generated automatically by Query Generator
-Date: 2025-12-09 19:10:15
+Date: 2025-12-09 19:07:08
 Database Schema: mobius
 
 ⚠️  Este arquivo foi gerado automaticamente.
@@ -798,7 +798,7 @@ class TransferFromWalletToChar:
         
         # Colunas obrigatórias
         cols_to_insert = ['payment_id', 'owner_id', 'item_id', 'count']
-        values_to_insert = ['COALESCE(MAX(payment_id), 0) + 1', ':owner_id', ':coin_id', ':amount']
+        values_to_insert = ['COALESCE(MAX(payment_id), 0) + 1', ':owner_id', 'CAST(:coin_id AS UNSIGNED)', ':amount']
         
         # Adicionar enchant se existir
         if 'enchant_level' in columns:
