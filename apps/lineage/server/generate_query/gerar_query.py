@@ -471,11 +471,42 @@ def detectar_configuracoes(schema):
                 detected_cols['owner_id'] = candidate
                 break
         
-        # Detectar coluna de item_id
+        # Detectar coluna de item_id e seu tipo
+        item_id_type = None
         for candidate in ['item_id', 'itemId', 'item_type']:
             if candidate in items_delayed_cols:
                 detected_cols['item_id'] = candidate
+                # Capturar o tipo de dados da coluna
+                item_id_type = schema['items_delayed']['columns'].get(candidate, '')
                 break
+        
+        # Detectar se precisa de CAST (se for SMALLINT, pode ter problemas com valores > 32767)
+        needs_cast = False
+        needs_alter = False
+        if item_id_type:
+            item_id_type_lower = item_id_type.lower()
+            # Verificar se é um tipo que não suporta valores > 32767
+            if 'smallint' in item_id_type_lower:
+                needs_cast = True
+                needs_alter = True
+                print(f"      ⚠️  item_id é {item_id_type} - LIMITADO a valores até 32767")
+                print(f"      ⚠️  Recomendado: ALTER TABLE items_delayed MODIFY item_id INT UNSIGNED;")
+            elif 'tinyint' in item_id_type_lower:
+                needs_cast = True
+                needs_alter = True
+                print(f"      ⚠️  item_id é {item_id_type} - LIMITADO a valores até 255")
+                print(f"      ⚠️  Recomendado: ALTER TABLE items_delayed MODIFY item_id INT UNSIGNED;")
+            elif 'mediumint' in item_id_type_lower and 'unsigned' not in item_id_type_lower:
+                needs_cast = True
+                needs_alter = True
+                print(f"      ⚠️  item_id é {item_id_type} - LIMITADO a valores até 8388607")
+                print(f"      ⚠️  Recomendado: ALTER TABLE items_delayed MODIFY item_id INT UNSIGNED;")
+            else:
+                print(f"      ✅ item_id é {item_id_type} - suporta valores grandes")
+        
+        detected_cols['item_id_type'] = item_id_type
+        detected_cols['needs_cast'] = needs_cast
+        detected_cols['needs_alter'] = needs_alter
         
         # Detectar coluna de count/amount
         for candidate in ['count', 'amount', 'quantity']:
@@ -561,6 +592,86 @@ def detectar_configuracoes(schema):
     
     print()
     return config
+
+
+def validar_e_corrigir_items_delayed(schema, config):
+    """Valida e oferece corrigir a coluna item_id se necessário"""
+    if not config.get('has_items_delayed') or not config.get('items_delayed_cols'):
+        return
+    
+    items_delayed_cols = config['items_delayed_cols']
+    item_id_col = items_delayed_cols.get('item_id')
+    item_id_type = items_delayed_cols.get('item_id_type', '')
+    needs_alter = items_delayed_cols.get('needs_alter', False)
+    
+    if not needs_alter or not item_id_col:
+        return
+    
+    print("\n" + "=" * 70)
+    print("⚠️  VALIDAÇÃO DA TABELA items_delayed")
+    print("=" * 70)
+    print(f"\n   Coluna detectada: {item_id_col}")
+    print(f"   Tipo atual: {item_id_type}")
+    print(f"\n   ⚠️  PROBLEMA: Este tipo não suporta valores > 32767")
+    print(f"   💡 Solução: Alterar para INT UNSIGNED")
+    print(f"\n   SQL necessário:")
+    print(f"   ALTER TABLE items_delayed MODIFY {item_id_col} INT UNSIGNED;")
+    print()
+    
+    resposta = input("   Deseja executar esta alteração agora? (s/n): ").lower().strip()
+    
+    if resposta == 's':
+        try:
+            host = os.getenv('LINEAGE_DB_HOST')
+            port = int(os.getenv('LINEAGE_DB_PORT', '3306'))
+            user = os.getenv('LINEAGE_DB_USER')
+            password = os.getenv('LINEAGE_DB_PASSWORD')
+            database = os.getenv('LINEAGE_DB_NAME')
+            
+            print(f"\n   🔧 Conectando ao banco...")
+            connection = pymysql.connect(
+                host=host,
+                port=port,
+                user=user,
+                password=password,
+                database=database
+            )
+            
+            cursor = connection.cursor()
+            
+            # Executar ALTER TABLE
+            alter_query = f"ALTER TABLE items_delayed MODIFY {item_id_col} INT UNSIGNED"
+            print(f"   🔧 Executando: {alter_query}")
+            cursor.execute(alter_query)
+            connection.commit()
+            
+            # Verificar se foi alterado
+            cursor.execute(f"SHOW COLUMNS FROM items_delayed WHERE Field = '{item_id_col}'")
+            result = cursor.fetchone()
+            new_type = result[1] if result else None
+            
+            cursor.close()
+            connection.close()
+            
+            if new_type and 'int' in new_type.lower() and 'unsigned' in new_type.lower():
+                print(f"   ✅ Alteração realizada com sucesso!")
+                print(f"   ✅ Novo tipo: {new_type}")
+                # Atualizar o config para refletir a mudança
+                items_delayed_cols['item_id_type'] = new_type
+                items_delayed_cols['needs_alter'] = False
+                items_delayed_cols['needs_cast'] = False
+            else:
+                print(f"   ⚠️  Alteração executada, mas tipo não confirmado: {new_type}")
+            
+        except Exception as e:
+            print(f"   ❌ Erro ao executar alteração: {e}")
+            print(f"   💡 Execute manualmente: ALTER TABLE items_delayed MODIFY {item_id_col} INT UNSIGNED;")
+    else:
+        print(f"\n   ⏭️  Alteração não executada.")
+        print(f"   💡 Execute manualmente quando estiver pronto:")
+        print(f"      ALTER TABLE items_delayed MODIFY {item_id_col} INT UNSIGNED;")
+    
+    print()
 
 
 def gerar_arquivo_query(nome_projeto, schema, config):
@@ -771,6 +882,9 @@ def main():
     
     # Etapa 5: Detectar configurações
     config = detectar_configuracoes(schema)
+    
+    # Etapa 5.5: Validar e corrigir items_delayed se necessário
+    validar_e_corrigir_items_delayed(schema, config)
     
     # Etapa 6: Confirmação
     print("📋 RESUMO DA CONFIGURAÇÃO")

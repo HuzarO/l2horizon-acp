@@ -119,7 +119,7 @@ INSTALLED_APPS = [
 
     'jazzmin',
     "webpack_loader",
-    "frontend",
+    "frontend.apps.FrontendConfig",
 
     "django.contrib.admin",
     "django.contrib.auth",

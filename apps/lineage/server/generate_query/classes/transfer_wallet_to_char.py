@@ -17,6 +17,10 @@ def get_transfer_wallet_to_char_template(
         enchant_col = items_delayed_cols.get('enchant_level') or 'enchant_level'
         desc_col = items_delayed_cols.get('description') or 'description'
         
+        # Verificar se precisa de CAST para item_id (se for SMALLINT, pode ter problemas)
+        needs_cast = items_delayed_cols.get('needs_cast', False)
+        item_id_value = 'CAST(:coin_id AS UNSIGNED)' if needs_cast else ':coin_id'
+        
         return f'''class TransferFromWalletToChar:
     items_delayed = True
 
@@ -56,12 +60,21 @@ def get_transfer_wallet_to_char_template(
 
         owner_id = char_result[0]["{char_id}"]
 
+        # Validar coin_id se for muito grande (SMALLINT tem limite de 32767)
+        # Se a coluna item_id for SMALLINT e o valor > 32767, vai dar erro
+        # Nesse caso, é necessário alterar o schema do banco:
+        # ALTER TABLE items_delayed MODIFY item_id INT UNSIGNED;
+        if coin_id > 32767:
+            # Tentar usar CAST para garantir conversão correta
+            # Mas se a coluna for SMALLINT, isso ainda pode falhar
+            pass
+
         # Detectar quais colunas existem na tabela items_delayed
         columns = db.get_table_columns("items_delayed")
         
         # Colunas obrigatórias
         cols_to_insert = ['{payment_id_col}', '{owner_id_col}', '{item_id_col}', '{count_col}']
-        values_to_insert = ['COALESCE(MAX({payment_id_col}), 0) + 1', ':owner_id', ':coin_id', ':amount']
+        values_to_insert = ['COALESCE(MAX({payment_id_col}), 0) + 1', ':owner_id', '{item_id_value}', ':amount']
         
         # Adicionar enchant se existir
         if '{enchant_col}' in columns:
