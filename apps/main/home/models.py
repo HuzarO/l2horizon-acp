@@ -256,6 +256,10 @@ class PerfilGamer(BaseModel):
     def xp_para_proximo_nivel(self):
         return 100 + (self.level - 1) * 25
 
+    def get_patent_level(self):
+        """Retorna o nível da patente (limitado a 30)"""
+        return min(self.level, 30)
+
     def pode_receber_bonus_diario(self):
         return self.last_login_reward != date.today()
 
