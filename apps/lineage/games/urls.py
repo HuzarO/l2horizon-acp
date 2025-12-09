@@ -4,7 +4,8 @@ from .views import (
     daily_bonus_manager, roulette_manager, economy_manager, 
     slot_machine_views, dice_game_views, fishing_game_views,
     slot_machine_manager, dice_game_manager, fishing_game_manager,
-    battle_pass_manager, battle_pass_quests, achievement_rewards_manager
+    battle_pass_manager, battle_pass_quests, achievement_rewards_manager,
+    level_rewards_manager
 )
 
 
@@ -123,4 +124,11 @@ urlpatterns = [
     path('achievement-rewards/manager/reward/create/', achievement_rewards_manager.reward_create, name='achievement_rewards_manager_reward_create'),
     path('achievement-rewards/manager/reward/<int:reward_id>/edit/', achievement_rewards_manager.reward_edit, name='achievement_rewards_manager_reward_edit'),
     path('achievement-rewards/manager/reward/<int:reward_id>/delete/', achievement_rewards_manager.reward_delete, name='achievement_rewards_manager_reward_delete'),
+    
+    # Level Rewards Manager
+    path('level-rewards/manager/', level_rewards_manager.dashboard, name='level_rewards_manager'),
+    path('level-rewards/manager/rewards/', level_rewards_manager.reward_list, name='level_rewards_manager_reward_list'),
+    path('level-rewards/manager/reward/create/', level_rewards_manager.reward_create, name='level_rewards_manager_reward_create'),
+    path('level-rewards/manager/reward/<int:reward_id>/edit/', level_rewards_manager.reward_edit, name='level_rewards_manager_reward_edit'),
+    path('level-rewards/manager/reward/<int:reward_id>/delete/', level_rewards_manager.reward_delete, name='level_rewards_manager_reward_delete'),
 ]

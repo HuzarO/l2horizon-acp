@@ -215,6 +215,7 @@ def config_hub_view(request):
                 { 'title': _('Economy Manager'), 'url_name': 'games:economy_manager', 'icon': 'bi-lightning-charge', 'description': _('Gerenciar economia do jogo') },
                 { 'title': _('Battle Pass Manager'), 'url_name': 'games:battle_pass_manager', 'icon': 'bi-trophy', 'is_new': True, 'description': _('Configurar temporadas e recompensas') },
                 { 'title': _('Achievement Rewards Manager'), 'url_name': 'games:achievement_rewards_manager', 'icon': 'bi-award', 'is_new': True, 'description': _('Premiações de conquistas') },
+                { 'title': _('Level Rewards Manager'), 'url_name': 'games:level_rewards_manager', 'icon': 'bi-star', 'is_new': True, 'description': _('Recompensas por nível') },
                 { 'title': _('Slot Machine Manager'), 'url_name': 'games:slot_machine_manager', 'icon': 'bi-dice-6', 'description': _('Configurar máquina de slots') },
                 { 'title': _('Dice Game Manager'), 'url_name': 'games:dice_game_manager', 'icon': 'bi-dice-5', 'description': _('Gerenciar jogo de dados') },
                 { 'title': _('Fishing Game Manager'), 'url_name': 'games:fishing_game_manager', 'icon': 'bi-water', 'description': _('Configurar pescaria e recompensas') },
