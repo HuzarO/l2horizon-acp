@@ -68,6 +68,9 @@ urlpatterns = [
     # locale
     path('set-language/', custom_set_language, name='set_language'),
 
+    # cookies
+    path('accept-cookies/', accept_cookies_view, name='accept_cookies'),
+
     # version check
     path('check-version-update/', check_version_update, name='check_version_update'),
 

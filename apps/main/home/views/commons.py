@@ -1,9 +1,10 @@
 import logging
+from datetime import datetime, timedelta
 
 from ..models import *
 from ..forms import *
 
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, redirect
 
 from django.contrib.auth import get_user_model, login
@@ -252,3 +253,18 @@ def config_hub_view(request):
         },
     ]
     return render(request, 'config/hub.html', { 'categories': categories })
+
+
+def accept_cookies_view(request):
+    """View para aceitar cookies - salva o consentimento em cookie"""
+    response = JsonResponse({'status': 'success'})
+    # Cookie válido por 1 ano
+    expires = datetime.now() + timedelta(days=365)
+    response.set_cookie(
+        'cookie_consent',
+        'accepted',
+        expires=expires,
+        httponly=False,  # Precisa ser acessível via JavaScript
+        samesite='Lax'
+    )
+    return response

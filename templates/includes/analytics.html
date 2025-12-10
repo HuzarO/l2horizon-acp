@@ -1,3 +1,5 @@
+{% load static i18n %}
+
 {% if settings.GOOGLE_ANALYTICS_ACTIVE and settings.GOOGLE_ANALYTICS_MEASUREMENT_ID %}
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id={{ settings.GOOGLE_ANALYTICS_MEASUREMENT_ID }}"></script>
@@ -9,4 +11,14 @@
   </script>
 {% endif %}
 
+<!-- Cookie Banner Script - Funciona em todos os temas -->
+<script>
+  // Configurações do banner de cookies (para tradução)
+  window.djangoCookieAcceptText = '{% trans "Aceitar" %}';
+  window.djangoCookieMessageText = '{% trans "Este site utiliza cookies para melhorar sua experiência de navegação. Ao continuar navegando, você concorda com nossa política de cookies." %}';
+  window.djangoCookieLearnMoreText = '{% trans "Saiba mais" %}';
+  window.djangoCookiePrivacyUrl = '{% url "privacy_policy" %}';
+  window.djangoCookieAcceptUrl = '{% url "accept_cookies" %}';
+</script>
+<script src="{% static 'js/cookie-banner.js' %}"></script>
 
