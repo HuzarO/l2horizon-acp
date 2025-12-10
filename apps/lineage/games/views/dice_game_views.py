@@ -6,7 +6,7 @@ from django.utils.translation import gettext as _
 from apps.main.home.decorator import conditional_otp_required
 import random
 
-from ..models import DiceGameConfig, DiceGameHistory, DiceGamePrize, Bag, BagItem
+from ..models import DiceGameConfig, DiceGameHistory, DiceGamePrize, Bag, BagItem, TokenHistory
 
 
 @conditional_otp_required
@@ -143,6 +143,16 @@ def dice_game_play(request):
     user.fichas -= bet_amount
     user.save(update_fields=['fichas'])
     
+    # Registra gasto no histórico de fichas
+    TokenHistory.objects.create(
+        user=user,
+        transaction_type='spend',
+        game_type='dice_game',
+        amount=bet_amount,
+        description=f'Aposta no dice game: {bet_type} (valor: {bet_value_int if bet_type == "number" else "N/A"})',
+        metadata={'bet_type': bet_type, 'bet_value': bet_value_int, 'bet_amount': bet_amount}
+    )
+    
     # Rolar o dado
     dice_result = random.randint(1, 6)
     
@@ -182,6 +192,16 @@ def dice_game_play(request):
         user.fichas += prize_amount
         user.save(update_fields=['fichas'])
         
+        # Registra ganho no histórico de fichas
+        TokenHistory.objects.create(
+            user=user,
+            transaction_type='earn',
+            game_type='dice_game',
+            amount=prize_amount,
+            description=f'Ganhou {prize_amount} fichas no dice game',
+            metadata={'dice_result': dice_result, 'multiplier': multiplier, 'bet_amount': bet_amount}
+        )
+        
         # Verificar prêmios bonus
         active_prizes = DiceGamePrize.objects.filter(is_active=True)
         for prize in active_prizes:
@@ -194,6 +214,16 @@ def dice_game_play(request):
                     bonus_fichas = prize.fichas_bonus
                     user.fichas += bonus_fichas
                     user.save(update_fields=['fichas'])
+                    
+                    # Registra ganho bonus no histórico de fichas
+                    TokenHistory.objects.create(
+                        user=user,
+                        transaction_type='earn',
+                        game_type='dice_game',
+                        amount=bonus_fichas,
+                        description=f'Bônus: {bonus_fichas} fichas no dice game',
+                        metadata={'prize_id': prize.id, 'prize_name': prize.name}
+                    )
                 
                 # Adicionar item à bag
                 if prize.item:

@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from ..models import (
     FishingGameConfig, FishingRod, Fish, FishingHistory, FishingBait,
-    UserFishingBait, Bag, BagItem
+    UserFishingBait, Bag, BagItem, TokenHistory
 )
 
 
@@ -106,6 +106,16 @@ def fishing_game_cast(request):
     user.fichas -= config.cost_per_cast
     user.save(update_fields=['fichas'])
     
+    # Registra gasto no histórico de fichas
+    TokenHistory.objects.create(
+        user=user,
+        transaction_type='spend',
+        game_type='fishing_game',
+        amount=config.cost_per_cast,
+        description=f'Lançamento de linha (custo: {config.cost_per_cast} fichas)',
+        metadata={'cost_per_cast': config.cost_per_cast}
+    )
+    
     # Pegar vara do usuário
     rod = FishingRod.objects.get(user=user)
     
@@ -168,6 +178,16 @@ def fishing_game_cast(request):
         if fichas_won > 0:
             user.fichas += fichas_won
             user.save(update_fields=['fichas'])
+            
+            # Registra ganho no histórico de fichas
+            TokenHistory.objects.create(
+                user=user,
+                transaction_type='earn',
+                game_type='fishing_game',
+                amount=fichas_won,
+                description=f'Ganhou {fichas_won} fichas pescando {caught_fish.name}',
+                metadata={'fish_id': caught_fish.id, 'fish_name': caught_fish.name, 'rarity': caught_fish.rarity}
+            )
         
         # Adicionar item à bag se tiver
         if caught_fish.item_reward:
@@ -260,6 +280,16 @@ def fishing_buy_bait(request):
     # Deduzir fichas
     user.fichas -= bait.price
     user.save(update_fields=['fichas'])
+    
+    # Registra gasto no histórico de fichas
+    TokenHistory.objects.create(
+        user=user,
+        transaction_type='spend',
+        game_type='fishing_game',
+        amount=bait.price,
+        description=f'Compra de isca: {bait.name}',
+        metadata={'bait_id': bait.id, 'bait_name': bait.name}
+    )
     
     # Ativar isca
     now = timezone.now()

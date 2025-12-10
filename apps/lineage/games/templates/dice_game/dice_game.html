@@ -430,12 +430,23 @@
     }
 
     /* Modal de Compra de Fichas */
+    #buyTokensModal {
+        z-index: 9999 !important;
+    }
+
+    #buyTokensModal .modal-dialog {
+        z-index: 10000 !important;
+        position: relative;
+    }
+
     #buyTokensModal .modal-content {
         background: linear-gradient(to bottom right, #1a1a2e, #121220) !important;
         border: 2px solid #6f42c1 !important;
         border-radius: 20px !important;
         box-shadow: 0 0 20px rgba(111, 66, 193, 0.6), 0 0 30px rgba(13, 202, 240, 0.4) !important;
         color: white !important;
+        z-index: 10001 !important;
+        position: relative;
     }
 
     #buyTokensModal .modal-title {
@@ -489,6 +500,11 @@
 
     #buyTokensModal .btn-close {
         filter: invert(1) grayscale(100%) brightness(200%);
+    }
+
+    /* Garantir que o backdrop do modal tenha z-index apropriado */
+    .modal-backdrop.show {
+        z-index: 9998 !important;
     }
 </style>
 {% endblock %}

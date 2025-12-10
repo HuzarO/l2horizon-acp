@@ -1,6 +1,7 @@
 from django.core.paginator import Paginator
 from apps.main.home.decorator import conditional_otp_required
 from .models import Wallet, TransacaoWallet, TransacaoBonus, CoinConfig
+from apps.lineage.games.models import TokenHistory
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from .utils import transferir_para_jogador
@@ -25,6 +26,7 @@ TransferFromCharToWallet = get_query_class("TransferFromCharToWallet")
 LineageServices = get_query_class("LineageServices")
 
 from django.utils.translation import gettext as _
+from django.http import JsonResponse
 
 
 @conditional_otp_required
@@ -519,3 +521,107 @@ def coin_config_panel(request):
     moedas = CoinConfig.objects.all().order_by("-ativa", "nome")
     context = {"moedas": moedas}
     return render(request, "configs/coin_config_panel.html", context)
+
+
+@conditional_otp_required
+def comprar_fichas_wallet(request):
+    """
+    View para comprar fichas usando saldo normal ou saldo bônus da wallet
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+    
+    try:
+        # Valida quantidade
+        quantidade_str = request.POST.get('quantidade', '0')
+        origem_saldo = request.POST.get('origem_saldo', 'normal')  # 'normal' | 'bonus'
+        
+        try:
+            quantidade = int(quantidade_str)
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'Quantidade inválida'}, status=400)
+        
+        if quantidade <= 0:
+            return JsonResponse({'error': 'Quantidade deve ser maior que zero'}, status=400)
+        
+        if quantidade > 10000:  # Limite máximo de segurança
+            return JsonResponse({'error': 'Quantidade máxima permitida é 10.000 fichas'}, status=400)
+        
+        valor_unitario = Decimal('0.10')  # 10 centavos por ficha
+        total = valor_unitario * quantidade
+
+        # Busca ou cria wallet
+        wallet, created = Wallet.objects.get_or_create(usuario=request.user)
+
+        # Validação de saldo conforme origem selecionada
+        if origem_saldo == 'bonus':
+            if wallet.saldo_bonus < total:
+                return JsonResponse({'error': 'Saldo de bônus insuficiente'}, status=400)
+            
+            # Aplica transação de bônus
+            try:
+                aplicar_transacao_bonus(
+                    wallet=wallet,
+                    tipo='SAIDA',
+                    valor=total,
+                    descricao=f'{quantidade} ficha(s) comprada(s) com saldo bônus',
+                    origem='Wallet',
+                    destino='Sistema de Fichas'
+                )
+            except ValueError as e:
+                return JsonResponse({'error': str(e)}, status=400)
+            except Exception as e:
+                return JsonResponse({'error': f'Erro ao processar transação: {str(e)}'}, status=500)
+        else:
+            if wallet.saldo < total:
+                return JsonResponse({'error': 'Saldo insuficiente'}, status=400)
+            
+            # Aplica transação normal
+            try:
+                aplicar_transacao(
+                    wallet=wallet,
+                    tipo='SAIDA',
+                    valor=total,
+                    descricao=f'{quantidade} ficha(s) comprada(s)',
+                    origem='Wallet',
+                    destino='Sistema de Fichas'
+                )
+            except ValueError as e:
+                return JsonResponse({'error': str(e)}, status=400)
+            except Exception as e:
+                return JsonResponse({'error': f'Erro ao processar transação: {str(e)}'}, status=500)
+
+        # Credita as fichas
+        try:
+            request.user.fichas += quantidade
+            request.user.save()
+            
+            # Registra compra no histórico de fichas
+            TokenHistory.objects.create(
+                user=request.user,
+                transaction_type='purchase',
+                game_type='purchase',
+                amount=quantidade,
+                description=f'Compra de {quantidade} ficha(s) usando {"saldo bônus" if origem_saldo == "bonus" else "saldo principal"}',
+                metadata={
+                    'quantity': quantidade, 
+                    'total_cost': float(total), 
+                    'cost_per_token': 0.10,
+                    'balance_type': origem_saldo
+                }
+            )
+            
+            # Atualiza o wallet para retornar os saldos atualizados
+            wallet.refresh_from_db()
+            
+            return JsonResponse({
+                'success': True, 
+                'fichas': request.user.fichas,
+                'saldo': float(wallet.saldo),
+                'saldo_bonus': float(wallet.saldo_bonus)
+            })
+        except Exception as e:
+            return JsonResponse({'error': f'Erro ao creditar fichas: {str(e)}'}, status=500)
+            
+    except Exception as e:
+        return JsonResponse({'error': f'Erro inesperado: {str(e)}'}, status=500)

@@ -12,7 +12,9 @@ from apps.lineage.inventory.models import Inventory, InventoryLog, InventoryItem
 from apps.lineage.games.services.box_opening import open_box
 from apps.lineage.games.services.box_populate import populate_box_with_items, can_populate_box
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
+from django.core.paginator import Paginator
+from apps.lineage.server.services.account_context import get_lineage_template_context
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
 import json
@@ -103,6 +105,17 @@ def spin_ajax(request):
                     'fail_weight': fail_weight
                 })
             )
+            
+            # Registra no histórico de fichas (falha)
+            TokenHistory.objects.create(
+                user=user,
+                transaction_type='spend',
+                game_type='roulette',
+                amount=1,
+                description='Giro na roleta (sem prêmio)',
+                metadata={'prize_id': None, 'fail': True}
+            )
+            
             return JsonResponse({'fail': True, 'message': _('Você não ganhou nenhum prêmio.')})
 
         SpinHistory.objects.create(
@@ -116,6 +129,16 @@ def spin_ajax(request):
                 ],
                 'fail_weight': fail_weight
             })
+        )
+        
+        # Registra no histórico de fichas (sucesso)
+        TokenHistory.objects.create(
+            user=user,
+            transaction_type='spend',
+            game_type='roulette',
+            amount=1,
+            description=f'Giro na roleta - Ganhou: {chosen.name}',
+            metadata={'prize_id': chosen.id, 'prize_name': chosen.name, 'fail': False}
         )
 
         # Certifique-se de que o usuário tenha uma bag
@@ -250,6 +273,17 @@ def comprar_fichas(request):
         try:
             request.user.fichas += quantidade
             request.user.save()
+            
+            # Registra compra no histórico de fichas
+            TokenHistory.objects.create(
+                user=request.user,
+                transaction_type='purchase',
+                game_type='purchase',
+                amount=quantidade,
+                description=f'Compra de {quantidade} ficha(s)',
+                metadata={'quantity': quantidade, 'total_cost': float(total), 'cost_per_token': 0.10}
+            )
+            
             return JsonResponse({'success': True, 'fichas': request.user.fichas})
         except Exception as e:
             return JsonResponse({'error': f'Erro ao creditar fichas: {str(e)}'}, status=500)
@@ -330,6 +364,16 @@ def open_box_ajax(request, box_id):
     # Deduzir uma ficha do saldo
     request.user.fichas -= 1
     request.user.save()
+    
+    # Registra gasto no histórico de fichas
+    TokenHistory.objects.create(
+        user=request.user,
+        transaction_type='spend',
+        game_type='box_opening',
+        amount=1,
+        description=f'Abertura de caixa: {box.box_type.name}',
+        metadata={'box_id': box.id, 'box_type_id': box.box_type.id}
+    )
 
     # Abrir a caixa
     item, error = open_box(request.user, box_id)
@@ -545,6 +589,16 @@ def buy_and_open_box_view(request, box_type_id):
         # Deduzir uma ficha do saldo
         request.user.fichas -= 1
         request.user.save()
+        
+        # Registra gasto no histórico de fichas
+        TokenHistory.objects.create(
+            user=request.user,
+            transaction_type='spend',
+            game_type='box_opening',
+            amount=1,
+            description=f'Compra e abertura de caixa: {box_type.name}',
+            metadata={'box_id': box.id, 'box_type_id': box_type.id}
+        )
         
         # Abrir a caixa diretamente (primeiro booster)
         item, error = open_box(request.user, box.id)
@@ -871,3 +925,41 @@ def daily_bonus_claim(request):
 
     messages.success(request, _('Prêmio diário resgatado com sucesso!'))
     return redirect('games:daily_bonus_dashboard')
+
+
+@conditional_otp_required
+def tokens_history(request):
+    """Visualizar histórico de fichas do usuário"""
+    history = TokenHistory.objects.filter(user=request.user).order_by('-created_at')
+    
+    # Paginação
+    paginator = Paginator(history, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Estatísticas
+    total_spent = TokenHistory.objects.filter(
+        user=request.user,
+        transaction_type='spend'
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    total_earned = TokenHistory.objects.filter(
+        user=request.user,
+        transaction_type='earn'
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    total_purchased = TokenHistory.objects.filter(
+        user=request.user,
+        transaction_type='purchase'
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    context = {
+        'history': page_obj,
+        'page_obj': page_obj,
+        'total_spent': total_spent,
+        'total_earned': total_earned,
+        'total_purchased': total_purchased,
+        'current_fichas': request.user.fichas,
+    }
+    context.update(get_lineage_template_context(request))
+    return render(request, 'games/tokens_history.html', context)
