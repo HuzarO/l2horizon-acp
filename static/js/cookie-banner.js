@@ -54,7 +54,7 @@
             </span>
           </div>
           <div class="cookie-banner-actions">
-            <button id="accept-cookies-btn" class="cookie-btn cookie-btn-accept">
+            <button type="button" id="accept-cookies-btn" class="cookie-btn cookie-btn-accept">
               ${acceptText}
             </button>
           </div>
@@ -155,7 +155,9 @@
         transition: all 0.3s ease;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        pointer-events: auto; /* Garante que o botão seja clicável */
+        pointer-events: auto !important; /* Garante que o botão seja clicável */
+        position: relative;
+        z-index: 10001; /* Garante que o botão esteja acima de outros elementos */
       }
 
       .cookie-btn-accept {
@@ -261,16 +263,39 @@
     const banner = tempDiv.firstElementChild;
     document.body.appendChild(banner);
 
+    // Usa event delegation no banner para garantir que funcione sempre
+    // Isso funciona mesmo se o botão for adicionado dinamicamente
+    banner.addEventListener('click', function(e) {
+      const target = e.target;
+      if (target && (target.id === 'accept-cookies-btn' || target.closest('#accept-cookies-btn'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        acceptCookies();
+      }
+    });
+
+    // Também adiciona event listener direto no botão como fallback
+    function attachButtonListener() {
+      const acceptBtn = document.getElementById('accept-cookies-btn');
+      if (acceptBtn && !acceptBtn.dataset.listenerAttached) {
+        acceptBtn.dataset.listenerAttached = 'true';
+        acceptBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          acceptCookies();
+        });
+      }
+    }
+
+    // Tenta anexar o listener imediatamente
+    attachButtonListener();
+
     // Mostra o banner após um pequeno delay
     setTimeout(function() {
       banner.style.display = 'block';
+      // Tenta anexar o listener novamente após mostrar o banner
+      attachButtonListener();
     }, 1000);
-
-    // Adiciona evento ao botão
-    const acceptBtn = document.getElementById('accept-cookies-btn');
-    if (acceptBtn) {
-      acceptBtn.addEventListener('click', acceptCookies);
-    }
   }
 
   // Aguarda o DOM estar pronto
