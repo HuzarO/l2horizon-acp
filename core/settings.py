@@ -20,7 +20,7 @@ load_dotenv()  # take environment variables from .env.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # System Version
-VERSION = '1.16.99'
+VERSION = '1.17.0'
 
 # =========================== THEME CONFIGURATION ===========================
 
