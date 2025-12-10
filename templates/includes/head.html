@@ -69,3 +69,14 @@
 
 <!-- Floating Notifications CSS -->
 <link type="text/css" href="{% static 'css/floating-notifications.css' %}" rel="stylesheet">
+
+<!-- Cookie Banner Script - Funciona em todos os temas (injeção via JS) -->
+<script>
+  // Configurações do banner de cookies (para tradução)
+  window.djangoCookieAcceptText = '{% trans "Aceitar" %}';
+  window.djangoCookieMessageText = '{% trans "Este site utiliza cookies para melhorar sua experiência de navegação. Ao continuar navegando, você concorda com nossa política de cookies." %}';
+  window.djangoCookieLearnMoreText = '{% trans "Saiba mais" %}';
+  window.djangoCookiePrivacyUrl = '{% url "privacy_policy" %}';
+  window.djangoCookieAcceptUrl = '{% url "accept_cookies" %}';
+</script>
+<script src="{% static 'js/cookie-banner.js' %}" defer></script>
