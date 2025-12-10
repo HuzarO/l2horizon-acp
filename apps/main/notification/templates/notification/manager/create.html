@@ -98,7 +98,7 @@
                     </button>
                 </div>
                 <div class="card-body" id="rewards-container">
-                    <p class="text-white-50">{% trans "Clique em 'Adicionar Prêmio' para adicionar itens que serão entregues junto com a notificação." %}</p>
+                    <p class="text-white-50">{% trans "Clique em 'Adicionar Prêmio' para adicionar itens ou fichas que serão entregues junto com a notificação." %}</p>
                 </div>
             </div>
 
@@ -136,22 +136,40 @@ function addReward() {
     
     rewardDiv.innerHTML = `
         <div class="row g-3 align-items-end">
-            <div class="col-md-3">
+            <div class="col-12 mb-2">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="reward_${rewardCount}_type" id="reward_${rewardCount}_type_item" value="item" checked onchange="toggleRewardType(${rewardCount})">
+                    <label class="form-check-label text-white" for="reward_${rewardCount}_type_item">
+                        {% trans "Item" %}
+                    </label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="reward_${rewardCount}_type" id="reward_${rewardCount}_type_fichas" value="fichas" onchange="toggleRewardType(${rewardCount})">
+                    <label class="form-check-label text-white" for="reward_${rewardCount}_type_fichas">
+                        {% trans "Fichas" %}
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-3 reward-item-fields">
                 <label class="text-white">{% trans "Item ID" %} *</label>
-                <input type="number" name="reward_${rewardCount}_item_id" class="form-control" required 
+                <input type="number" name="reward_${rewardCount}_item_id" class="form-control" 
                        onchange="loadItemInfo(${rewardCount}, this.value)">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4 reward-item-fields">
                 <label class="text-white">{% trans "Nome do Item" %} *</label>
-                <input type="text" name="reward_${rewardCount}_item_name" class="form-control" required>
+                <input type="text" name="reward_${rewardCount}_item_name" class="form-control">
             </div>
-            <div class="col-md-2">
+            <div class="col-md-2 reward-item-fields">
                 <label class="text-white">{% trans "Encantamento" %}</label>
                 <input type="number" name="reward_${rewardCount}_item_enchant" class="form-control" value="0" min="0">
             </div>
-            <div class="col-md-2">
+            <div class="col-md-2 reward-item-fields">
                 <label class="text-white">{% trans "Quantidade" %}</label>
                 <input type="number" name="reward_${rewardCount}_item_amount" class="form-control" value="1" min="1">
+            </div>
+            <div class="col-md-8 reward-fichas-fields" style="display: none;">
+                <label class="text-white">{% trans "Quantidade de Fichas" %} *</label>
+                <input type="number" name="reward_${rewardCount}_fichas_amount" class="form-control" value="" min="1" disabled>
             </div>
             <div class="col-md-1">
                 <button type="button" class="btn btn-danger w-100" onclick="removeReward(${rewardCount})">
@@ -165,6 +183,71 @@ function addReward() {
     container.appendChild(rewardDiv);
     rewardCount++;
     updateRewardCount();
+}
+
+function toggleRewardType(rewardIndex) {
+    const type = document.querySelector(`input[name="reward_${rewardIndex}_type"]:checked`).value;
+    const itemFields = document.querySelectorAll(`#reward_${rewardIndex} .reward-item-fields`);
+    const fichasFields = document.querySelectorAll(`#reward_${rewardIndex} .reward-fichas-fields`);
+    
+    if (type === 'item') {
+        itemFields.forEach(field => field.style.display = '');
+        fichasFields.forEach(field => {
+            field.style.display = 'none';
+            // Ocultar e desabilitar campos de fichas
+            const input = field.querySelector('input');
+            if (input) {
+                input.style.display = 'none';
+                input.removeAttribute('required');
+                input.disabled = true;
+                input.value = '';
+            }
+        });
+        // Tornar campos de item obrigatórios
+        const itemIdInput = document.querySelector(`input[name="reward_${rewardIndex}_item_id"]`);
+        const itemNameInput = document.querySelector(`input[name="reward_${rewardIndex}_item_name"]`);
+        if (itemIdInput) {
+            itemIdInput.required = true;
+            itemIdInput.style.display = '';
+        }
+        if (itemNameInput) {
+            itemNameInput.required = true;
+            itemNameInput.style.display = '';
+        }
+    } else {
+        itemFields.forEach(field => {
+            field.style.display = 'none';
+            // Ocultar e desabilitar campos de item
+            const inputs = field.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.style.display = 'none';
+                input.removeAttribute('required');
+                if (input.type === 'number') input.value = '';
+                else if (input.type === 'text') input.value = '';
+            });
+        });
+        fichasFields.forEach(field => {
+            field.style.display = '';
+            // Mostrar e habilitar campo de fichas
+            const input = field.querySelector('input');
+            if (input) {
+                input.style.display = '';
+                input.required = true;
+                input.disabled = false;
+            }
+        });
+        // Remover obrigatoriedade de item
+        const itemIdInput = document.querySelector(`input[name="reward_${rewardIndex}_item_id"]`);
+        const itemNameInput = document.querySelector(`input[name="reward_${rewardIndex}_item_name"]`);
+        if (itemIdInput) {
+            itemIdInput.removeAttribute('required');
+            itemIdInput.style.display = 'none';
+        }
+        if (itemNameInput) {
+            itemNameInput.removeAttribute('required');
+            itemNameInput.style.display = 'none';
+        }
+    }
 }
 
 function removeReward(id) {

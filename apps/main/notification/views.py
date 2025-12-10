@@ -20,20 +20,23 @@ import logging
 @conditional_otp_required
 def get_notifications(request):
     # Notificações privadas do usuário (exclui staff se user não for staff/superuser)
+    # Inclui notificações não visualizadas OU notificações com prêmios não reclamados
     user_notifications = Notification.objects.filter(
-        user=request.user,
-        viewed=False
+        user=request.user
     ).exclude(
         notification_type='staff'
-    ).order_by('-created_at')
+    ).filter(
+        models.Q(viewed=False) | models.Q(rewards__isnull=False, rewards_claimed=False)
+    ).distinct().order_by('-created_at')
 
     if request.user.is_staff or request.user.is_superuser:
         # Se for staff/superuser, incluir também notificações staff pra ele
         staff_notifications = Notification.objects.filter(
             user=request.user,
-            notification_type='staff',
-            viewed=False
-        ).order_by('-created_at')
+            notification_type='staff'
+        ).filter(
+            models.Q(viewed=False) | models.Q(rewards__isnull=False, rewards_claimed=False)
+        ).distinct().order_by('-created_at')
         user_notifications = user_notifications | staff_notifications
 
     # Notificações públicas
@@ -56,12 +59,18 @@ def get_notifications(request):
     for notification in user_notifications.select_related().prefetch_related('rewards'):
         rewards_data = []
         for reward in notification.rewards.all():
-            rewards_data.append({
+            reward_dict = {
                 'item_id': reward.item_id,
                 'item_name': reward.item_name,
                 'item_enchant': reward.item_enchant,
                 'item_amount': reward.item_amount,
-            })
+                'fichas_amount': reward.fichas_amount or 0,
+            }
+            rewards_data.append(reward_dict)
+        
+        has_rewards = notification.rewards.exists()
+        rewards_claimed = notification.rewards_claimed
+        has_unclaimed_rewards = has_rewards and not rewards_claimed
         
         notifications_list.append({
             'id': notification.id,
@@ -70,32 +79,43 @@ def get_notifications(request):
             'created_at': notification.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'viewed': notification.viewed,
             'detail_url': reverse('notification:notification_detail', args=[notification.id]),
-            'has_rewards': notification.rewards.exists(),
-            'rewards_claimed': notification.rewards_claimed,
+            'has_rewards': has_rewards,
+            'rewards_claimed': rewards_claimed,
+            'has_unclaimed_rewards': has_unclaimed_rewards,
             'rewards': rewards_data,
         })
 
     # Notificações públicas
+    # Inclui notificações não visualizadas OU com prêmios não reclamados
     for notification in public_notifications.select_related().prefetch_related('rewards'):
-        if notification.id not in public_notifications_viewed_ids:
+        has_unclaimed_rewards = notification.rewards.exists() and not notification.rewards_claimed
+        is_unviewed = notification.id not in public_notifications_viewed_ids
+        
+        if is_unviewed or has_unclaimed_rewards:
             rewards_data = []
             for reward in notification.rewards.all():
-                rewards_data.append({
+                reward_dict = {
                     'item_id': reward.item_id,
                     'item_name': reward.item_name,
                     'item_enchant': reward.item_enchant,
                     'item_amount': reward.item_amount,
-                })
+                    'fichas_amount': reward.fichas_amount or 0,
+                }
+                rewards_data.append(reward_dict)
+            
+            has_rewards = notification.rewards.exists()
+            rewards_claimed = notification.rewards_claimed
             
             notifications_list.append({
                 'id': notification.id,
                 'message': notification.message,
                 'type': notification.notification_type,
                 'created_at': notification.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'viewed': False,
+                'viewed': not is_unviewed,
                 'detail_url': reverse('notification:notification_detail', args=[notification.id]),
-                'has_rewards': notification.rewards.exists(),
-                'rewards_claimed': notification.rewards_claimed,
+                'has_rewards': has_rewards,
+                'rewards_claimed': rewards_claimed,
+                'has_unclaimed_rewards': has_unclaimed_rewards,
                 'rewards': rewards_data,
             })
 
@@ -165,20 +185,27 @@ def notification_detail(request, pk):
     # Busca prêmios relacionados
     rewards_data = []
     for reward in notification.rewards.all():
-        rewards_data.append({
+        reward_dict = {
             'item_id': reward.item_id,
             'item_name': reward.item_name,
             'item_enchant': reward.item_enchant,
             'item_amount': reward.item_amount,
-        })
+            'fichas_amount': reward.fichas_amount or 0,
+        }
+        rewards_data.append(reward_dict)
 
+    has_rewards = notification.rewards.exists()
+    rewards_claimed = notification.rewards_claimed
+    has_unclaimed_rewards = has_rewards and not rewards_claimed
+    
     data = {
         'type': notification.get_notification_type_display(),
         'message': notification.message,
         'created_at': notification.created_at.strftime('%Y-%m-%d %H:%M:%S'),
         'link': notification.link if notification.link else None,
-        'has_rewards': notification.rewards.exists(),
-        'rewards_claimed': notification.rewards_claimed,
+        'has_rewards': has_rewards,
+        'rewards_claimed': rewards_claimed,
+        'has_unclaimed_rewards': has_unclaimed_rewards,
         'rewards': rewards_data,
     }
 
@@ -233,6 +260,8 @@ def all_notifications(request):
     context = {
         'private_notifications': private_notifications,
         'public_notifications': public_notifications,
+        'private_page_number': private_page_number,
+        'public_page_number': public_page_number,
         'total_notifications': total_notifications,
         'unread_count': unread_count,
         'notifications_with_rewards': notifications_with_rewards,
@@ -283,9 +312,17 @@ def claim_rewards(request, pk):
     success = claim_notification_rewards(notification, request.user)
     
     if success:
+        # Verifica se há fichas nos prêmios
+        has_fichas = notification.rewards.filter(fichas_amount__gt=0).exists()
+        message = 'Prêmios reclamados com sucesso!'
+        if has_fichas:
+            message += ' Verifique sua bag e suas fichas.'
+        else:
+            message += ' Verifique sua bag.'
+        
         return JsonResponse({
             'status': 'success',
-            'message': 'Prêmios reclamados com sucesso! Verifique sua bag.'
+            'message': message
         })
     else:
         return JsonResponse({'error': 'Erro ao reclamar prêmios.'}, status=500)

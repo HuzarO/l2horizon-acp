@@ -67,10 +67,11 @@ class NotificationReward(BaseModel):
         verbose_name=_("Notificação"),
         help_text=_("Notificação relacionada a este prêmio.")
     )
-    item_id = models.PositiveIntegerField(verbose_name=_("Item ID"))
-    item_name = models.CharField(max_length=100, verbose_name=_("Item Name"))
+    item_id = models.PositiveIntegerField(null=True, blank=True, verbose_name=_("Item ID"), help_text=_("ID do item (opcional se for ficha)"))
+    item_name = models.CharField(max_length=100, null=True, blank=True, verbose_name=_("Item Name"), help_text=_("Nome do item (opcional se for ficha)"))
     item_enchant = models.PositiveIntegerField(default=0, verbose_name=_("Item Enchant"))
     item_amount = models.PositiveIntegerField(default=1, verbose_name=_("Item Amount"))
+    fichas_amount = models.PositiveIntegerField(null=True, blank=True, default=0, verbose_name=_("Fichas Amount"), help_text=_("Quantidade de fichas (opcional se for item)"))
 
     class Meta:
         verbose_name = _("Prêmio de Notificação")
@@ -78,26 +79,37 @@ class NotificationReward(BaseModel):
         ordering = ['created_at']
 
     def __str__(self):
+        if self.fichas_amount and self.fichas_amount > 0:
+            return f"{self.fichas_amount} Fichas"
         return f"{self.item_name} +{self.item_enchant} x{self.item_amount}"
 
     def add_to_user_bag(self, user):
         """Adiciona o prêmio à bag do usuário"""
         from apps.lineage.games.models import Bag, BagItem
         
-        bag, created = Bag.objects.get_or_create(user=user)
-        bag_item, created = BagItem.objects.get_or_create(
-            bag=bag,
-            item_id=self.item_id,
-            enchant=self.item_enchant,
-            defaults={
-                'item_name': self.item_name,
-                'quantity': self.item_amount,
-            }
-        )
-        if not created:
-            bag_item.quantity += self.item_amount
-            bag_item.save()
-        return bag_item
+        # Adiciona fichas se houver
+        if self.fichas_amount and self.fichas_amount > 0:
+            user.fichas += self.fichas_amount
+            user.save()
+        
+        # Adiciona item se houver
+        if self.item_id and self.item_name:
+            bag, created = Bag.objects.get_or_create(user=user)
+            bag_item, created = BagItem.objects.get_or_create(
+                bag=bag,
+                item_id=self.item_id,
+                enchant=self.item_enchant,
+                defaults={
+                    'item_name': self.item_name,
+                    'quantity': self.item_amount,
+                }
+            )
+            if not created:
+                bag_item.quantity += self.item_amount
+                bag_item.save()
+            return bag_item
+        
+        return None
 
 
 class PublicNotificationView(BaseModel):

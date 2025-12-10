@@ -136,12 +136,22 @@ def notification_create(request):
             reward_count = int(request.POST.get('reward_count', 0))
             
             for i in range(reward_count):
+                reward_type = request.POST.get(f'reward_{i}_type', 'item')
                 item_id = request.POST.get(f'reward_{i}_item_id', '')
                 item_name = request.POST.get(f'reward_{i}_item_name', '')
                 item_enchant = int(request.POST.get(f'reward_{i}_item_enchant', 0) or 0)
                 item_amount = int(request.POST.get(f'reward_{i}_item_amount', 1) or 1)
+                fichas_amount = request.POST.get(f'reward_{i}_fichas_amount', '')
                 
-                if item_id and item_name:
+                if reward_type == 'fichas' and fichas_amount:
+                    # Prêmio de fichas
+                    fichas_amount = int(fichas_amount or 0)
+                    if fichas_amount > 0:
+                        rewards.append({
+                            'fichas_amount': fichas_amount,
+                        })
+                elif reward_type == 'item' and item_id and item_name:
+                    # Prêmio de item
                     rewards.append({
                         'item_id': int(item_id),
                         'item_name': item_name,
