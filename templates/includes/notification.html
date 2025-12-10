@@ -1,142 +1,33 @@
-{% load static i18n itens_extras %}
+{% load static i18n %}
 
-<!-- Modal -->
-<div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="notificationModalLabel">{% trans "Detalhes da Notificação" %}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fechar' %}"></button>
+<!-- Modal com classes customizadas -->
+<div class="modal fade pdl-notification-modal" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+  <div class="modal-dialog pdl-notification-modal__dialog" role="document">
+    <div class="modal-content pdl-notification-modal__content">
+      <div class="modal-header pdl-notification-modal__header">
+        <div class="pdl-notification-modal__title" id="notificationModalLabel">{% trans "Detalhes da Notificação" %}</div>
+        <button type="button" class="btn-close pdl-notification-modal__close" aria-label="{% trans 'Fechar' %}">
+          <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body pdl-notification-modal__body">
         <!-- Os detalhes da notificação serão carregados aqui -->
       </div>
-      <div class="modal-footer d-flex justify-content-between">
-        <div id="notification-link-container" class="d-none">
-          <a id="notification-link" href="#" class="btn btn-primary" target="_blank">
-            <i class="bi bi-box-arrow-up-right"></i> {% trans "Acessar" %}
+      <div class="modal-footer pdl-notification-modal__footer">
+        <button type="button" id="claim-rewards-btn" class="pdl-notification-modal__claim-btn" style="display: inline-flex !important; order: 1;" disabled>
+          {% trans "Reclamar Prêmios" %}
+        </button>
+        <div id="notification-link-container" class="pdl-notification-modal__link-container" style="order: 2;">
+          <a id="notification-link" href="#" class="pdl-notification-modal__link-btn" target="_blank">
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> {% trans "Acessar" %}
           </a>
         </div>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Fechar" %}</button>
       </div>
     </div>
   </div>
 </div>
 
-<style>
-  #notificationDropdown {
-    left: -220px;
-  }
-
-  /* Estilos para prêmios nas notificações (usando sistema do battle pass) */
-  .notification-rewards-preview {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .reward-item-preview {
-    position: relative;
-  }
-
-  .reward-item-icon-small {
-    width: 32px;
-    height: 32px;
-    object-fit: contain;
-    border: 2px solid rgba(255, 215, 0, 0.3);
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 2px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .reward-amount {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    background: rgba(0, 0, 0, 0.8);
-    color: #ffd700;
-    font-size: 0.7rem;
-    font-weight: bold;
-    padding: 1px 4px;
-    border-radius: 3px;
-  }
-
-  .notification-rewards {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .reward-items-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .reward-item-container {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 215, 0, 0.2);
-  }
-
-  .reward-item-icon {
-    width: 48px;
-    height: 48px;
-    object-fit: contain;
-    border: 2px solid rgba(255, 215, 0, 0.3);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
-  }
-
-  .reward-item-icon:hover {
-    transform: scale(1.1);
-    border-color: #ffd700;
-    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
-  }
-
-  .reward-item-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    flex: 1;
-  }
-
-  .reward-item-name {
-    font-weight: 600;
-    color: #ffd700;
-    font-size: 0.95rem;
-  }
-
-  .reward-item-details {
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.7);
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .reward-item-detail {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .reward-item-detail i {
-    font-size: 0.75rem;
-  }
-
-  .list-group-item {
-    position: relative;
-  }
-</style>
+<link rel="stylesheet" href="{% static 'css/notification-modal.css' %}" />
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
@@ -155,53 +46,63 @@
         .then(data => {
           const notificationList = document.getElementById('notification-list');
           const notificationBadge = document.getElementById('notification-count');
+          const notificationToggle = document.getElementById('notificationToggle');
+          const unclaimedRewardsAlert = document.getElementById('unclaimed-rewards-alert');
+          const viewAllLink = document.getElementById('view-all-notifications-link');
+          
+          if (!notificationList) return;
+          
           let notificationCount = 0;
-          notificationList.innerHTML = '';
+          let hasUnclaimedRewards = false;
+          
+          // Remover apenas os itens de notificação, preservando o elemento no-notifications-message
+          const notificationItems = notificationList.querySelectorAll('a.list-group-item');
+          notificationItems.forEach(item => item.remove());
+          
+          // Obter ou criar o elemento de mensagem "sem notificações"
+          let noNotificationsMessage = document.getElementById('no-notifications-message');
+          if (!noNotificationsMessage) {
+            noNotificationsMessage = document.createElement('p');
+            noNotificationsMessage.id = 'no-notifications-message';
+            noNotificationsMessage.className = 'text-muted text-center mt-3 mb-3 py-4';
+            noNotificationsMessage.style.display = 'none';
+            noNotificationsMessage.innerHTML = `
+              <i class="bi bi-bell-slash" style="font-size: 2rem; opacity: 0.5;"></i><br>
+              {% trans "Nenhuma notificação" %}
+            `;
+            notificationList.appendChild(noNotificationsMessage);
+          }
+
+          if (data.notifications && data.notifications.length > 0) {
+            // Ocultar mensagem de "nenhuma notificação"
+            noNotificationsMessage.style.display = 'none';
 
           data.notifications.forEach(notification => {
+              // Verificar se há prêmios não reclamados
+              if (notification.has_rewards && !notification.rewards_claimed) {
+                hasUnclaimedRewards = true;
+              }
+
+              // Adicionar indicador visual de prêmio não reclamado
+              let rewardIndicator = '';
+              if (notification.has_rewards && !notification.rewards_claimed) {
+                rewardIndicator = '<span class="badge bg-warning text-dark ms-2"><i class="bi bi-gift-fill"></i></span>';
+              }
+
             const listItem = document.createElement('a');
             listItem.href = "#";
             listItem.className = `list-group-item list-group-item-action border-bottom ${notification.viewed ? 'viewed' : ''}`;
-            listItem.setAttribute('data-bs-toggle', 'modal');
-            listItem.setAttribute('data-bs-target', '#notificationModal');
             listItem.setAttribute('data-notification-id', notification.id);
-
-            // Monta HTML dos prêmios se houver
-            let rewardsHtml = '';
-            if (notification.has_rewards && notification.rewards && notification.rewards.length > 0) {
-              rewardsHtml = '<div class="notification-rewards-preview mt-2">';
-              notification.rewards.forEach(reward => {
-                const itemImageUrl = `/static/assets/img/l2/icons/5-${reward.item_id}.jpg`;
-                rewardsHtml += `
-                  <div class="reward-item-preview d-inline-block me-2 mb-1" title="${reward.item_name}">
-                    <img src="${itemImageUrl}" 
-                         alt="${reward.item_name}" 
-                         class="reward-item-icon-small"
-                         onerror="this.src='{% static 'assets/img/l2/icons/default.jpg' %}'">
-                    ${reward.item_amount > 1 ? `<span class="reward-amount">x${reward.item_amount}</span>` : ''}
-                  </div>
-                `;
-              });
-              rewardsHtml += '</div>';
-            }
 
             listItem.innerHTML = `
               <div class="row align-items-center">
                 <div class="col-auto">
-                  ${notification.has_rewards && notification.rewards && notification.rewards.length > 0 
-                    ? `<img alt="Reward" src="/static/assets/img/l2/icons/5-${notification.rewards[0].item_id}.jpg" 
-                             class="avatar-md rounded" 
-                             onerror="this.src='{% static 'assets/img/logo_painel.png' %}'">`
-                    : `<img alt="Image placeholder" src="{% static 'assets/img/logo_painel.png' %}" class="avatar-md rounded">`
-                  }
-                  ${notification.has_rewards && !notification.rewards_claimed 
-                    ? '<span class="badge bg-success position-absolute top-0 start-100 translate-middle rounded-pill" style="font-size: 0.6rem;">🎁</span>' 
-                    : ''}
+                  <img alt="Image placeholder" src="{% static 'assets/img/logo_painel.png' %}" class="avatar-md rounded">
                 </div>
                 <div class="col ps-0 ms-2">
                   <div class="d-flex justify-content-between align-items-center">
                     <div>
-                      <h4 class="h6 mb-0 text-small">${notification.type}</h4>
+                        <h4 class="h6 mb-0 text-small">${notification.type}${rewardIndicator}</h4>
                     </div>
                     <div class="text-end">
                       <small class="text-danger">${notification.created_at}</small>
@@ -210,230 +111,572 @@
                   <p class="font-small mt-1 mb-0">
                     ${notification.message}
                   </p>
-                  ${rewardsHtml}
                 </div>
               </div>
             `;
 
+              // Adicionar event listener para abrir o modal
+              listItem.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const notificationId = this.getAttribute('data-notification-id');
+                if (!notificationId) return;
+                
+                const modalElement = document.getElementById('notificationModal');
+                if (!modalElement) return;
+                
+                // Carregar os detalhes da notificação antes de abrir o modal
+                loadNotificationDetails(notificationId, function() {
+                  // Usar método manual para evitar erros do Bootstrap
+                  showModalManually(modalElement);
+                });
+              });
+
             notificationList.appendChild(listItem);
             if (!notification.viewed) notificationCount++;
           });
+          } else {
+            // Mostrar mensagem de "nenhuma notificação"
+            noNotificationsMessage.style.display = 'block';
+          }
 
+          // Gerenciar badge de contagem
           if (notificationCount > 0) {
             notificationBadge.textContent = notificationCount;
             notificationBadge.style.display = 'inline';
           } else {
             notificationBadge.style.display = 'none';
           }
+
+          // Gerenciar sombra amarela no ícone quando há prêmios não reclamados
+          if (hasUnclaimedRewards) {
+            if (notificationToggle) {
+              notificationToggle.classList.add('has-unclaimed-rewards');
+            }
+            if (unclaimedRewardsAlert) {
+              unclaimedRewardsAlert.style.display = 'block';
+            }
+            if (viewAllLink) {
+              viewAllLink.classList.add('text-warning-emphasis');
+              viewAllLink.style.fontWeight = '700';
+            }
+          } else {
+            if (notificationToggle) {
+              notificationToggle.classList.remove('has-unclaimed-rewards');
+            }
+            if (unclaimedRewardsAlert) {
+              unclaimedRewardsAlert.style.display = 'none';
+            }
+            if (viewAllLink) {
+              viewAllLink.classList.remove('text-warning-emphasis');
+              viewAllLink.style.fontWeight = '';
+            }
+          }
         });
     }
 
-    document.getElementById('mark-as-read').addEventListener('click', function () {
+    const markAsReadBtn = document.getElementById('mark-as-read');
+    if (markAsReadBtn) {
+      markAsReadBtn.addEventListener('click', function (e) {
+        e.preventDefault();
       fetch("{% url 'notification:mark_all_as_read' %}").then(loadNotifications);
     });
+    }
 
-    document.getElementById('clear-all').addEventListener('click', function () {
-      const confirmMessage = document.getElementById('clear-confirm-message').textContent;
-      if (confirm(confirmMessage)) {
+    const clearAllBtn = document.getElementById('clear-all');
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        const confirmMessage = document.getElementById('clear-confirm-message');
+        if (confirmMessage && confirm(confirmMessage.textContent)) {
         fetch("{% url 'notification:clear_all_notifications' %}").then(loadNotifications);
       }
     });
-
-    document.getElementById('notificationModal').addEventListener('show.bs.modal', function (event) {
-      const button = event.relatedTarget;
-      const notificationId = button.getAttribute('data-notification-id');
-      const modalBody = document.querySelector('#notificationModal .modal-body');
-      const createdAtLabel = document.getElementById('created-at-label').textContent;
-      const errorLoadingDetails = document.getElementById('error-loading-details').textContent;
-
-      fetch(`/app/notification/detail/${notificationId}/`)
-        .then(response => response.json())
-        .then(data => {
-          // Monta HTML dos prêmios
-          let rewardsHtml = '';
-          if (data.has_rewards && data.rewards && data.rewards.length > 0) {
-            rewardsHtml = '<div class="notification-rewards mt-3">';
-            rewardsHtml += '<h6 class="mb-3"><i class="fas fa-gift"></i> Prêmios:</h6>';
-            rewardsHtml += '<div class="reward-items-container">';
-            data.rewards.forEach(reward => {
-              const itemImageUrl = `/static/assets/img/l2/icons/5-${reward.item_id}.jpg`;
-              rewardsHtml += `
-                <div class="reward-item-container">
-                  <img src="${itemImageUrl}" 
-                       alt="${reward.item_name}" 
-                       class="reward-item-icon"
-                       title="${reward.item_name}"
-                       onerror="this.src='{% static 'assets/img/l2/icons/default.jpg' %}'">
-                  <div class="reward-item-info">
-                    <div class="reward-item-name">${reward.item_name}</div>
-                    <div class="reward-item-details">
-                      ${reward.item_enchant > 0 ? `<div class="reward-item-detail"><i class="fas fa-magic"></i> +${reward.item_enchant}</div>` : ''}
-                      ${reward.item_amount > 1 ? `<div class="reward-item-detail"><i class="fas fa-layer-group"></i> x${reward.item_amount}</div>` : ''}
-                    </div>
-                  </div>
-                </div>
-              `;
-            });
-            rewardsHtml += '</div>';
-            
-            // Botão para reclamar prêmios se ainda não foram reclamados
-            if (!data.rewards_claimed) {
-              rewardsHtml += `
-                <div class="mt-3">
-                  <button id="claim-rewards-btn" class="btn btn-success" onclick="claimNotificationRewards(${notificationId})">
-                    <i class="fas fa-gift"></i> Reclamar Prêmios
-                  </button>
-                </div>
-              `;
-            } else {
-              rewardsHtml += `
-                <div class="mt-3">
-                  <span class="badge bg-success"><i class="fas fa-check"></i> Prêmios Reclamados</span>
-                </div>
-              `;
-            }
-            rewardsHtml += '</div>';
-          }
-
-          modalBody.innerHTML = `
-            <div class="notification-details">
-              <div class="notification-type"><i class="fas fa-info-circle"></i> ${data.type}</div>
-              <div class="notification-message">${data.message}</div>
-              <div class="notification-created-at">
-                <i class="far fa-clock"></i> ${createdAtLabel} ${data.created_at}
-              </div>
-              ${rewardsHtml}
-            </div>
-          `;
-
-          const linkContainer = document.getElementById('notification-link-container');
-          const linkButton = document.getElementById('notification-link');
-
-          if (data.link) {
-            linkButton.href = data.link;
-            linkContainer.classList.remove('d-none');
-          } else {
-            linkContainer.classList.add('d-none');
-          }
-
-          loadNotifications();
-        })
-        .catch(() => {
-          modalBody.innerHTML = `<p class="text-danger">${errorLoadingDetails}</p>`;
-        });
-    });
-
-    loadNotifications();
-  });
-
-  function claimNotificationRewards(notificationId) {
-    const btn = document.getElementById('claim-rewards-btn');
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reclamando...';
     }
 
-    fetch(`/app/notification/claim-rewards/${notificationId}/`, {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': getCookie('csrftoken'),
-        'Content-Type': 'application/json',
-      },
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success') {
-          // Mostra mensagem de sucesso
-          if (btn) {
-            btn.innerHTML = '<i class="fas fa-check"></i> Prêmios Reclamados!';
-            btn.classList.remove('btn-success');
-            btn.classList.add('btn-secondary');
+    // Função auxiliar para mostrar modal manualmente
+    function showModalManually(modalElement) {
+      // Remover qualquer backdrop existente primeiro
+      const existingBackdrop = document.querySelector('.modal-backdrop');
+      if (existingBackdrop) {
+        existingBackdrop.remove();
+      }
+      
+      // Remover classe fade inicialmente para garantir que apareça
+      modalElement.classList.remove('fade');
+      
+      // Adicionar classes e estilos necessários
+      modalElement.style.display = 'flex';
+      modalElement.style.visibility = 'visible';
+      modalElement.style.opacity = '1';
+      modalElement.style.zIndex = '9999';
+      modalElement.style.position = 'fixed';
+      modalElement.style.top = '0';
+      modalElement.style.left = '0';
+      modalElement.style.width = '100%';
+      modalElement.style.height = '100%';
+      modalElement.style.overflow = 'auto';
+      modalElement.style.alignItems = 'center';
+      modalElement.style.justifyContent = 'center';
+      modalElement.setAttribute('aria-hidden', 'false');
+      modalElement.setAttribute('aria-modal', 'true');
+      
+      // Garantir que o dialog e content também estejam visíveis e centralizados
+      const dialog = modalElement.querySelector('.modal-dialog');
+      const content = modalElement.querySelector('.modal-content');
+      if (dialog) {
+        dialog.style.pointerEvents = 'auto';
+        dialog.style.margin = 'auto';
+        dialog.style.display = 'block';
+      }
+      if (content) {
+        content.style.pointerEvents = 'auto';
+      }
+      
+      // Adicionar classe show após um pequeno delay para animação
+      setTimeout(function() {
+        modalElement.classList.add('show');
+      }, 10);
+      
+      // Adicionar classes ao body
+      document.body.classList.add('modal-open');
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = scrollbarWidth + 'px';
+      }
+      document.body.style.overflow = 'hidden';
+      
+      // Criar backdrop
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop fade show';
+      backdrop.style.position = 'fixed';
+      backdrop.style.top = '0';
+      backdrop.style.left = '0';
+      backdrop.style.width = '100%';
+      backdrop.style.height = '100%';
+      backdrop.style.zIndex = '9998';
+      backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+      document.body.appendChild(backdrop);
+      
+      // Fechar ao clicar no backdrop
+      backdrop.addEventListener('click', function() {
+        hideModalManually(modalElement);
+      });
+      
+      // Fechar com ESC
+      const escHandler = function(e) {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+          hideModalManually(modalElement);
+          document.removeEventListener('keydown', escHandler);
+        }
+      };
+      document.addEventListener('keydown', escHandler);
+      
+      // Focar no modal após um pequeno delay
+      setTimeout(function() {
+        modalElement.focus();
+      }, 100);
+    }
+    
+    // Função auxiliar para esconder modal manualmente
+    function hideModalManually(modalElement) {
+      if (!modalElement) return;
+      
+      // Remover classe show primeiro para animação
+      modalElement.classList.remove('show');
+      
+      // Remover backdrop
+      const backdrop = document.querySelector('.modal-backdrop');
+      if (backdrop) {
+        backdrop.classList.remove('show');
+        setTimeout(function() {
+          if (backdrop && backdrop.parentNode) {
+            backdrop.remove();
           }
-          
-          // Atualiza a lista de notificações
-          loadNotifications();
-          
-          // Recarrega os detalhes da notificação no modal
-          fetch(`/app/notification/detail/${notificationId}/`)
-            .then(response => response.json())
-            .then(data => {
-              const modalBody = document.querySelector('#notificationModal .modal-body');
-              const createdAtLabel = document.getElementById('created-at-label').textContent;
-              
-              // Monta HTML dos prêmios novamente
-              let rewardsHtml = '';
-              if (data.has_rewards && data.rewards && data.rewards.length > 0) {
-                rewardsHtml = '<div class="notification-rewards mt-3">';
-                rewardsHtml += '<h6 class="mb-3"><i class="fas fa-gift"></i> Prêmios:</h6>';
-                rewardsHtml += '<div class="reward-items-container">';
-                data.rewards.forEach(reward => {
+        }, 150);
+      }
+      
+      // Esconder modal após animação
+      setTimeout(function() {
+        if (!modalElement) return;
+        modalElement.style.display = 'none';
+        modalElement.style.visibility = 'hidden';
+        modalElement.style.opacity = '0';
+        modalElement.setAttribute('aria-hidden', 'true');
+        modalElement.setAttribute('aria-modal', 'false');
+        
+        // Remover classes e estilos do body
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+      }, 150);
+    }
+
+    // Função para carregar detalhes da notificação
+    function loadNotificationDetails(notificationId, callback) {
+      const modalBody = document.querySelector('#notificationModal .modal-body');
+      if (!modalBody) {
+        if (callback) callback();
+        return;
+      }
+      
+      const createdAtLabel = document.getElementById('created-at-label');
+      const errorLoadingDetails = document.getElementById('error-loading-details');
+      
+      if (!createdAtLabel || !errorLoadingDetails) {
+        if (callback) callback();
+        return;
+      }
+
+      // Mostrar loading
+      modalBody.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Carregando...</span></div></div>';
+
+      fetch(`/app/notification/detail/${notificationId}/`)
+        .then(response => {
+          if (!response.ok) throw new Error('Network response was not ok');
+          return response.json();
+        })
+        .then(data => {
+            // Construir HTML das recompensas se houver
+            let rewardsHTML = '';
+            if (data.has_rewards && data.rewards && data.rewards.length > 0) {
+              rewardsHTML = '<div class="pdl-notification-details__rewards"><div class="pdl-notification-details__rewards-title"><i class="bi bi-gift-fill"></i> Prêmios:</div><div class="pdl-notification-details__rewards-list">';
+              data.rewards.forEach(reward => {
+                if (reward.fichas_amount && reward.fichas_amount > 0) {
+                  rewardsHTML += `
+                    <div class="pdl-notification-reward-item" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+                      <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); border-radius: 8px; font-size: 20px;">
+                        <i class="bi bi-coin" style="color: white;"></i>
+                      </div>
+                      <div style="color: white; font-weight: 600;">
+                        ${reward.fichas_amount} Fichas
+                      </div>
+                    </div>
+                  `;
+                } else if (reward.item_id) {
                   const itemImageUrl = `/static/assets/img/l2/icons/5-${reward.item_id}.jpg`;
-                  rewardsHtml += `
-                    <div class="reward-item-container">
-                      <img src="${itemImageUrl}" 
-                           alt="${reward.item_name}" 
-                           class="reward-item-icon"
-                           title="${reward.item_name}"
-                           onerror="this.src='{% static 'assets/img/l2/icons/default.jpg' %}'">
-                      <div class="reward-item-info">
-                        <div class="reward-item-name">${reward.item_name}</div>
-                        <div class="reward-item-details">
-                          ${reward.item_enchant > 0 ? `<div class="reward-item-detail"><i class="fas fa-magic"></i> +${reward.item_enchant}</div>` : ''}
-                          ${reward.item_amount > 1 ? `<div class="reward-item-detail"><i class="fas fa-layer-group"></i> x${reward.item_amount}</div>` : ''}
+                  rewardsHTML += `
+                    <div class="pdl-notification-reward-item" style="background: rgba(0,0,0,0.05); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+                      <img src="${itemImageUrl}" alt="${reward.item_name || ''}" style="width: 40px; height: 40px; border-radius: 6px;">
+                      <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #1f2937;">${reward.item_name || ''}</div>
+                        <div style="font-size: 12px; color: #6b7280;">
+                          ID: ${reward.item_id}
+                          ${reward.item_enchant > 0 ? ` • +${reward.item_enchant}` : ''}
+                          ${reward.item_amount > 1 ? ` • x${reward.item_amount}` : ''}
                         </div>
                       </div>
                     </div>
                   `;
-                });
-                rewardsHtml += '</div>';
-                
-                if (data.rewards_claimed) {
-                  rewardsHtml += '<div class="mt-3"><span class="badge bg-success"><i class="fas fa-check"></i> Prêmios Reclamados</span></div>';
                 }
-                rewardsHtml += '</div>';
-              }
-              
-              modalBody.innerHTML = `
-                <div class="notification-details">
-                  <div class="notification-type"><i class="fas fa-info-circle"></i> ${data.type}</div>
-                  <div class="notification-message">${data.message}</div>
-                  <div class="notification-created-at">
-                    <i class="far fa-clock"></i> ${createdAtLabel} ${data.created_at}
-                  </div>
-                  ${rewardsHtml}
+              });
+              rewardsHTML += '</div></div>';
+            }
+
+          modalBody.innerHTML = `
+            <div class="pdl-notification-details">
+              <div class="pdl-notification-details__type">
+                  <i class="bi bi-info-circle-fill"></i> ${data.type || ''}
+              </div>
+                <div class="pdl-notification-details__message">${data.message || ''}</div>
+                ${rewardsHTML}
+              <div class="pdl-notification-details__created-at">
+                  <i class="bi bi-clock"></i> ${createdAtLabel.textContent} ${data.created_at || ''}
                 </div>
-              `;
+            </div>
+          `;
+
+            // Gerenciar botão de reclamar prêmios (usando dados da API)
+            const claimRewardsBtn = document.getElementById('claim-rewards-btn');
+            
+            if (claimRewardsBtn) {
+              // Calcular se há prêmios não reclamados (fallback se a API não retornar has_unclaimed_rewards)
+              const hasUnclaimed = data.has_unclaimed_rewards === true || 
+                                   (data.has_rewards && data.rewards && data.rewards.length > 0 && data.rewards_claimed !== true);
+              
+              // Se os prêmios já foram reclamados, esconder o botão
+              if (!hasUnclaimed && data.rewards_claimed === true) {
+                claimRewardsBtn.style.setProperty('display', 'none', 'important');
+              } else {
+                // Mostrar o botão se houver prêmios não reclamados
+                claimRewardsBtn.setAttribute('data-notification-id', notificationId);
+                claimRewardsBtn.style.setProperty('display', 'inline-flex', 'important');
+                claimRewardsBtn.style.setProperty('visibility', 'visible', 'important');
+                claimRewardsBtn.style.setProperty('opacity', '1', 'important');
+                claimRewardsBtn.style.setProperty('width', 'auto', 'important');
+                claimRewardsBtn.style.setProperty('height', 'auto', 'important');
+                claimRewardsBtn.style.setProperty('min-width', '150px', 'important');
+                claimRewardsBtn.style.setProperty('min-height', '40px', 'important');
+                claimRewardsBtn.style.setProperty('position', 'relative', 'important');
+                claimRewardsBtn.style.setProperty('z-index', '10', 'important');
+                
+                // Controlar apenas o estado disabled
+                if (hasUnclaimed) {
+                  claimRewardsBtn.disabled = false;
+                  claimRewardsBtn.style.setProperty('cursor', 'pointer', 'important');
+                } else {
+                  claimRewardsBtn.disabled = true;
+                  claimRewardsBtn.style.setProperty('cursor', 'not-allowed', 'important');
+                }
+              }
+            }
+
+            // Gerenciar link
+          const linkContainer = document.getElementById('notification-link-container');
+          const linkButton = document.getElementById('notification-link');
+
+            if (linkContainer && linkButton) {
+          if (data.link) {
+            linkButton.href = data.link;
+            linkContainer.classList.add('pdl-notification-modal__link-container--visible');
+          } else {
+            linkContainer.classList.remove('pdl-notification-modal__link-container--visible');
+              }
+          }
+
+          loadNotifications();
+            
+            if (callback) callback();
+          })
+          .catch((error) => {
+            console.error('Error loading notification details:', error);
+            modalBody.innerHTML = `<div class="pdl-notification-details__message" style="color: #ef4444;">${errorLoadingDetails.textContent}</div>`;
+            if (callback) callback();
+          });
+    }
+
+    const notificationModal = document.getElementById('notificationModal');
+    
+    // Adicionar event listener permanente ao botão de reclamar prêmios
+    const claimRewardsBtn = document.getElementById('claim-rewards-btn');
+    if (claimRewardsBtn) {
+      claimRewardsBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const notificationId = this.getAttribute('data-notification-id');
+        if (notificationId) {
+          claimNotificationRewards(notificationId);
+        }
+      });
+    }
+    
+    if (notificationModal) {
+      // Função para fechar o modal
+      function closeModalHandler(e) {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        hideModalManually(notificationModal);
+      }
+      
+      // Adicionar listeners usando delegação de eventos no modal
+      notificationModal.addEventListener('click', function(e) {
+        const target = e.target;
+        
+        // Verificar se o clique foi em um botão de fechar
+        const isCloseButton = target.classList.contains('pdl-notification-modal__close') ||
+                              target.classList.contains('btn-close') ||
+                              target.closest('.pdl-notification-modal__close') ||
+                              target.closest('.btn-close') ||
+                              (target.tagName === 'I' && target.closest('button[class*="close"]'));
+        
+        if (isCloseButton) {
+          closeModalHandler(e);
+          return false;
+        }
+        
+        // Fechar ao clicar fora do modal (no backdrop)
+        if (e.target === notificationModal) {
+          closeModalHandler(e);
+          return false;
+        }
+      });
+      
+      // Adicionar listeners diretos também para garantir
+      document.addEventListener('DOMContentLoaded', function() {
+        const closeBtnHeader = notificationModal.querySelector('.pdl-notification-modal__close, .btn-close');
+        if (closeBtnHeader) {
+          closeBtnHeader.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeModalHandler(e);
+          };
+        }
+      });
+      
+      // Adicionar listeners imediatamente também
+      setTimeout(function() {
+        const closeBtnHeader = notificationModal.querySelector('.pdl-notification-modal__close, .btn-close');
+        if (closeBtnHeader) {
+          closeBtnHeader.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeModalHandler(e);
+          };
+        }
+      }, 100);
+    }
+
+    // Função para obter CSRF token
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // Função para reclamar prêmios
+    function claimNotificationRewards(notificationId) {
+      const claimBtn = document.getElementById('claim-rewards-btn');
+      if (!claimBtn) return;
+
+      const originalHTML = claimBtn.innerHTML;
+      claimBtn.disabled = true;
+      claimBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> {% trans "Reclamando..." %}';
+
+      const csrfToken = getCookie('csrftoken');
+      
+      fetch(`/app/notification/claim-rewards/${notificationId}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+      })
+      .then(data => {
+        if (data.status === 'success') {
+          // Recarregar os detalhes da notificação para atualizar o status
+          fetch(`/app/notification/detail/${notificationId}/`)
+            .then(response => {
+              if (!response.ok) throw new Error('Network response was not ok');
+              return response.json();
+            })
+            .then(notificationData => {
+              const modalBody = document.querySelector('#notificationModal .modal-body');
+              const createdAtLabel = document.getElementById('created-at-label');
+              
+              if (modalBody && createdAtLabel) {
+                // Construir HTML das recompensas se houver
+                let rewardsHTML = '';
+                if (notificationData.has_rewards && notificationData.rewards && notificationData.rewards.length > 0) {
+                  rewardsHTML = '<div class="pdl-notification-details__rewards"><div class="pdl-notification-details__rewards-title"><i class="bi bi-gift-fill"></i> Prêmios:</div><div class="pdl-notification-details__rewards-list">';
+                  notificationData.rewards.forEach(reward => {
+                    if (reward.fichas_amount && reward.fichas_amount > 0) {
+                      rewardsHTML += `
+                        <div class="pdl-notification-reward-item" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+                          <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); border-radius: 8px; font-size: 20px;">
+                            <i class="bi bi-coin" style="color: white;"></i>
+                          </div>
+                          <div style="color: white; font-weight: 600;">
+                            ${reward.fichas_amount} Fichas
+                          </div>
+                        </div>
+                      `;
+                    } else if (reward.item_id) {
+                      const itemImageUrl = `/static/assets/img/l2/icons/5-${reward.item_id}.jpg`;
+                      rewardsHTML += `
+                        <div class="pdl-notification-reward-item" style="background: rgba(0,0,0,0.05); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+                          <img src="${itemImageUrl}" alt="${reward.item_name || ''}" style="width: 40px; height: 40px; border-radius: 6px;">
+                          <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1f2937;">${reward.item_name || ''}</div>
+                            <div style="font-size: 12px; color: #6b7280;">
+                              ID: ${reward.item_id}
+                              ${reward.item_enchant > 0 ? ` • +${reward.item_enchant}` : ''}
+                              ${reward.item_amount > 1 ? ` • x${reward.item_amount}` : ''}
+                            </div>
+                          </div>
+                        </div>
+                      `;
+                    }
+                  });
+                  rewardsHTML += '</div></div>';
+                }
+
+                // Mostrar mensagem de sucesso
+                const successMsg = document.createElement('div');
+                successMsg.className = 'alert alert-success';
+                successMsg.style.marginBottom = '16px';
+                successMsg.innerHTML = `<i class="bi bi-check-circle-fill"></i> ${data.message || 'Prêmios reclamados com sucesso!'}`;
+                
+                modalBody.innerHTML = `
+                  <div class="pdl-notification-details">
+                    <div class="pdl-notification-details__type">
+                      <i class="bi bi-info-circle-fill"></i> ${notificationData.type || ''}
+                    </div>
+                    <div class="pdl-notification-details__message">${notificationData.message || ''}</div>
+                    ${rewardsHTML}
+                    <div class="pdl-notification-details__created-at">
+                      <i class="bi bi-clock"></i> ${createdAtLabel.textContent} ${notificationData.created_at || ''}
+                    </div>
+                  </div>
+                `;
+                
+                modalBody.insertBefore(successMsg, modalBody.firstChild);
+              }
+
+              // Atualizar estado do botão de reclamar baseado nos dados atualizados
+              const claimBtn = document.getElementById('claim-rewards-btn');
+              if (claimBtn) {
+                const hasUnclaimed = notificationData.has_unclaimed_rewards === true || 
+                                     (notificationData.has_rewards && notificationData.rewards && notificationData.rewards.length > 0 && notificationData.rewards_claimed !== true);
+                
+                // Se os prêmios já foram reclamados, esconder o botão
+                if (!hasUnclaimed && notificationData.rewards_claimed === true) {
+                  claimBtn.style.setProperty('display', 'none', 'important');
+                } else {
+                  // Mostrar o botão se houver prêmios não reclamados
+                  claimBtn.style.setProperty('display', 'inline-flex', 'important');
+                  claimBtn.style.setProperty('visibility', 'visible', 'important');
+                  claimBtn.style.setProperty('opacity', '1', 'important');
+                  claimBtn.setAttribute('data-notification-id', notificationId);
+                  
+                  // Controlar apenas o estado disabled
+                  if (hasUnclaimed) {
+                    claimBtn.disabled = false;
+                    claimBtn.style.setProperty('cursor', 'pointer', 'important');
+                  } else {
+                    claimBtn.disabled = true;
+                    claimBtn.style.setProperty('cursor', 'not-allowed', 'important');
+                  }
+                }
+              }
+
+              // Recarregar notificações
+              loadNotifications();
+            })
+            .catch(error => {
+              console.error('Erro ao recarregar detalhes:', error);
+              loadNotifications();
             });
         } else {
           alert(data.error || 'Erro ao reclamar prêmios.');
-          if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-gift"></i> Reclamar Prêmios';
-          }
+          claimBtn.disabled = false;
+          claimBtn.innerHTML = originalHTML;
         }
       })
       .catch(error => {
-        console.error('Erro:', error);
-        alert('Erro ao reclamar prêmios.');
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = '<i class="fas fa-gift"></i> Reclamar Prêmios';
-        }
+        console.error('Erro ao reclamar prêmios:', error);
+        alert('Erro de conexão com o servidor.');
+        claimBtn.disabled = false;
+        claimBtn.innerHTML = originalHTML;
       });
-  }
-
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
-      }
     }
-    return cookieValue;
-  }
+
+    loadNotifications();
+  });
 </script>

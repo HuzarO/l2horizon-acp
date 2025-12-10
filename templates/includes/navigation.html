@@ -293,6 +293,65 @@
       z-index: 98 !important;
     }
   }
+
+  /* Componente de Notificações - Bootstrap 5 */
+  #notificationToggle {
+    position: relative;
+  }
+
+  #notification-count {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translate(25%, -25%);
+  }
+
+  #notification-rewards-badge {
+    display: none !important;
+  }
+
+  /* Sombra amarela no ícone quando há prêmios não reclamados */
+  #notificationToggle.has-unclaimed-rewards svg {
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.8)) drop-shadow(0 0 12px rgba(245, 158, 11, 0.6));
+    transition: filter 0.3s ease;
+  }
+
+  #notificationToggle.has-unclaimed-rewards:hover svg {
+    filter: drop-shadow(0 0 12px rgba(245, 158, 11, 1)) drop-shadow(0 0 16px rgba(245, 158, 11, 0.8));
+  }
+
+  #notificationDropdown {
+    min-width: 360px;
+    max-width: 400px;
+  }
+
+  #notification-list {
+    min-height: 200px;
+  }
+
+  #notification-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  #notification-list::-webkit-scrollbar-track {
+    background: #f8f9fa;
+  }
+
+  #notification-list::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 3px;
+  }
+
+  #notification-list::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+  }
+
+  @media (max-width: 576px) {
+    #notificationDropdown {
+      min-width: calc(100vw - 2rem);
+      max-width: calc(100vw - 2rem);
+    }
+  }
 </style>
 
 <nav class="navbar navbar-top navbar-expand navbar-dashboard navbar-dark ps-0 pe-2 pb-0">
@@ -403,7 +462,7 @@
             </svg>
             <span id="notification-count" class="badge bg-danger rounded-circle" style="display: none;">0</span>
           </a>
-          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-start mt-2 py-0" id="notificationDropdown">
+          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end mt-2 py-0" id="notificationDropdown">
             <div class="dropdown-header d-flex align-items-center justify-content-between">
               <h5 class="m-0">{% trans "Notificações" %}</h5>
               <div>
@@ -415,10 +474,22 @@
                 </a>
               </div>
             </div>
-            <div class="list-group list-group-flush" id="notification-list" style="max-height: calc(100vh - 215px); overflow-y: auto;">
-              <p class="text-muted text-center mt-3">{% trans "Nenhuma notificação" %}</p>
+            <div id="unclaimed-rewards-alert" class="alert alert-warning m-0 rounded-0 border-0 border-bottom" style="display: none; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b !important;">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-gift-fill text-warning-emphasis" style="font-size: 1.25rem;"></i>
+                <div class="flex-grow-1">
+                  <strong class="text-warning-emphasis">{% trans "Prêmios disponíveis!" %}</strong>
+                  <p class="mb-0 small text-warning-emphasis">{% trans "Você tem prêmios não reclamados. Acesse 'Ver todas as notificações' para reclamá-los." %}</p>
+                </div>
+              </div>
             </div>
-            <a href="{% url 'notification:all_notifications' %}" class="dropdown-item text-center fw-bold rounded-bottom py-3">
+            <div class="list-group list-group-flush" id="notification-list" style="max-height: calc(100vh - 215px); overflow-y: auto;">
+              <p id="no-notifications-message" class="text-muted text-center mt-3 mb-3 py-4" style="display: none;">
+                <i class="bi bi-bell-slash" style="font-size: 2rem; opacity: 0.5;"></i><br>
+                {% trans "Nenhuma notificação" %}
+              </p>
+            </div>
+            <a href="{% url 'notification:all_notifications' %}" class="dropdown-item text-center fw-bold rounded-bottom py-3" id="view-all-notifications-link">
               <svg class="icon icon-xxs text-gray-400 me-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
                 <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>
@@ -548,3 +619,5 @@
     </div>
   </div>
 </nav>
+
+

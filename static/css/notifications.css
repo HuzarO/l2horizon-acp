@@ -917,9 +917,17 @@
   color: white;
 }
 
-.modal-btn.success:hover {
+.modal-btn.success:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
+
+.modal-btn.success:disabled {
+  background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important;
+  color: #ffffff !important;
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
 }
 
 /* ============================================

@@ -4,7 +4,7 @@
  */
 class FloatingNotifications {
   constructor(options = {}) {
-    this.container = document.getElementById('floating-notifications-container');
+    this.container = document.getElementById('pdl-notifications-container');
     this.options = {
       autoClose: true,
       autoCloseDelay: 5000, // 5 segundos
@@ -36,7 +36,7 @@ class FloatingNotifications {
   }
 
   initializeExistingNotifications() {
-    const existingNotifications = this.container.querySelectorAll('.floating-notification');
+    const existingNotifications = this.container.querySelectorAll('.pdl-notification');
     
     existingNotifications.forEach((notification, index) => {
       // Adiciona delay escalonado para entrada
@@ -51,16 +51,16 @@ class FloatingNotifications {
   addCloseListeners() {
     // Listener para botões de fechar existentes
     this.container.addEventListener('click', (e) => {
-      if (e.target.closest('.notification-close')) {
-        const notification = e.target.closest('.floating-notification');
+      if (e.target.closest('.pdl-notification__close')) {
+        const notification = e.target.closest('.pdl-notification');
         this.closeNotification(notification);
       }
     });
 
     // Listener para fechar ao clicar na notificação (opcional)
     this.container.addEventListener('click', (e) => {
-      const notification = e.target.closest('.floating-notification');
-      if (notification && !e.target.closest('.notification-close')) {
+      const notification = e.target.closest('.pdl-notification');
+      if (notification && !e.target.closest('.pdl-notification__close')) {
         // Pausa o auto-close temporariamente
         this.pauseAutoClose(notification);
       }
@@ -68,7 +68,7 @@ class FloatingNotifications {
   }
 
   setupAutoClose() {
-    const notifications = this.container.querySelectorAll('.floating-notification[data-auto-close="true"]');
+    const notifications = this.container.querySelectorAll('.pdl-notification[data-auto-close="true"]');
     
     notifications.forEach((notification) => {
       const timeoutId = setTimeout(() => {
@@ -110,7 +110,7 @@ class FloatingNotifications {
     }
 
     // Adiciona classe para animação de saída
-    notification.classList.add('hiding', 'fade-out');
+    notification.classList.add('hiding', 'pdl-notification--fade-out');
     notification.classList.remove('show');
 
     // Remove a notificação após a animação
@@ -159,15 +159,17 @@ class FloatingNotifications {
 
   createNotificationElement(message, type, options) {
     const notification = document.createElement('div');
-    notification.className = `floating-notification floating-notification-${type}`;
+    notification.className = `pdl-notification pdl-notification--${type} pdl-notification--fade-in`;
     notification.dataset.autoClose = options.autoClose.toString();
+    notification.setAttribute('role', 'alert');
+    notification.setAttribute('aria-live', 'assertive');
     
     const iconMap = {
       success: 'bi-check-circle-fill',
       error: 'bi-exclamation-triangle-fill',
       warning: 'bi-exclamation-circle-fill',
       info: 'bi-info-circle-fill',
-      debug: 'bi-bug-fill'
+      debug: 'bi-bell-fill'
     };
 
     const titleMap = {
@@ -175,23 +177,29 @@ class FloatingNotifications {
       error: 'Erro',
       warning: 'Aviso',
       info: 'Informação',
-      debug: 'Debug'
+      debug: 'Notificação'
     };
 
     notification.innerHTML = `
-      <div class="notification-content">
-        <div class="notification-icon">
-          <i class="bi ${iconMap[type] || 'bi-bell-fill'}"></i>
+      <div class="pdl-notification__content">
+        <div class="pdl-notification__icon-wrapper">
+          <div class="pdl-notification__icon">
+            <i class="bi ${iconMap[type] || 'bi-bell-fill'}" aria-hidden="true"></i>
+          </div>
         </div>
-        <div class="notification-text">
-          <div class="notification-title">${titleMap[type] || 'Notificação'}</div>
-          <div class="notification-message">${message}</div>
+        <div class="pdl-notification__body">
+          <div class="pdl-notification__header">
+            <div class="pdl-notification__title">${titleMap[type] || 'Notificação'}</div>
+            <button type="button" class="pdl-notification__close" aria-label="Fechar notificação" title="Fechar">
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="pdl-notification__message">${message}</div>
         </div>
-        <button type="button" class="notification-close" aria-label="Fechar">
-          <i class="bi bi-x"></i>
-        </button>
       </div>
-      <div class="notification-progress"></div>
+      <div class="pdl-notification__progress" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+        <div class="pdl-notification__progress-bar"></div>
+      </div>
     `;
 
     return notification;

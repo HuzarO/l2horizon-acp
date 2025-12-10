@@ -12,10 +12,11 @@ def send_notification(user=None, notification_type='user', message='', created_b
     - `created_by` é opcional e pode ser usado para validar permissões de quem está criando.
     - `link` é uma URL opcional que será incluída na notificação.
     - `rewards` é uma lista opcional de dicionários com prêmios. Cada dicionário deve conter:
-        - item_id: ID do item
-        - item_name: Nome do item
+        - item_id: ID do item (opcional se for ficha)
+        - item_name: Nome do item (opcional se for ficha)
         - item_enchant: Nível de encantamento (padrão: 0)
         - item_amount: Quantidade (padrão: 1)
+        - fichas_amount: Quantidade de fichas (opcional se for item)
     """
 
     if notification_type == 'staff':
@@ -43,7 +44,8 @@ def send_notification(user=None, notification_type='user', message='', created_b
                 item_id=reward_data.get('item_id'),
                 item_name=reward_data.get('item_name'),
                 item_enchant=reward_data.get('item_enchant', 0),
-                item_amount=reward_data.get('item_amount', 1)
+                item_amount=reward_data.get('item_amount', 1),
+                fichas_amount=reward_data.get('fichas_amount', 0) or None
             )
 
     return notification

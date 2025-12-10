@@ -1,48 +1,64 @@
 {% load static i18n %}
 
 <!-- Container para notificações flutuantes -->
-<div id="floating-notifications-container" class="floating-notifications-container">
+<div id="pdl-notifications-container" class="pdl-notifications-container" role="region" aria-live="polite" aria-label="{% trans 'Notificações do sistema' %}">
   {% if messages %}
     {% for message in messages %}
-      <div class="floating-notification floating-notification-{{ message.tags }} fade-in" 
-           data-message-id="{{ forloop.counter }}" 
-           data-auto-close="true">
-        <div class="notification-content">
-          <div class="notification-icon">
-            {% if message.tags == 'error' %}
-              <i class="bi bi-exclamation-triangle-fill"></i>
-            {% elif message.tags == 'warning' %}
-              <i class="bi bi-exclamation-circle-fill"></i>
-            {% elif message.tags == 'info' %}
-              <i class="bi bi-info-circle-fill"></i>
-            {% elif message.tags == 'success' %}
-              <i class="bi bi-check-circle-fill"></i>
-            {% else %}
-              <i class="bi bi-bell-fill"></i>
-            {% endif %}
-          </div>
-          <div class="notification-text">
-            <div class="notification-title">
-              {% if message.tags == 'error' %}
-                {% trans "Erro" %}
-              {% elif message.tags == 'warning' %}
-                {% trans "Aviso" %}
-              {% elif message.tags == 'info' %}
-                {% trans "Informação" %}
-              {% elif message.tags == 'success' %}
-                {% trans "Sucesso" %}
-              {% else %}
-                {% trans "Notificação" %}
-              {% endif %}
+      {% with message_type=message.tags|default:"info" %}
+        <div class="pdl-notification pdl-notification--{% if 'error' in message.tags %}error{% elif 'warning' in message.tags %}warning{% elif 'success' in message.tags %}success{% elif 'info' in message.tags %}info{% else %}debug{% endif %} pdl-notification--fade-in" 
+             data-message-id="{{ forloop.counter }}" 
+             data-auto-close="true"
+             role="alert"
+             aria-live="assertive">
+          <div class="pdl-notification__content">
+            <div class="pdl-notification__icon-wrapper">
+              <div class="pdl-notification__icon">
+                {% if 'error' in message.tags %}
+                  <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                {% elif 'warning' in message.tags %}
+                  <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+                {% elif 'info' in message.tags %}
+                  <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                {% elif 'success' in message.tags %}
+                  <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                {% else %}
+                  <i class="bi bi-bell-fill" aria-hidden="true"></i>
+                {% endif %}
+              </div>
             </div>
-            <div class="notification-message">{{ message }}</div>
+            <div class="pdl-notification__body">
+              <div class="pdl-notification__header">
+                <div class="pdl-notification__title">
+                  {% if 'error' in message.tags %}
+                    {% trans "Erro" %}
+                  {% elif 'warning' in message.tags %}
+                    {% trans "Aviso" %}
+                  {% elif 'info' in message.tags %}
+                    {% trans "Informação" %}
+                  {% elif 'success' in message.tags %}
+                    {% trans "Sucesso" %}
+                  {% else %}
+                    {% trans "Notificação" %}
+                  {% endif %}
+                </div>
+                <button type="button" class="pdl-notification__close" aria-label="{% trans 'Fechar notificação' %}" title="{% trans 'Fechar' %}">
+                  <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div class="pdl-notification__message">
+                {% if 'safe' in message.tags %}
+                  {{ message|safe }}
+                {% else %}
+                  {{ message }}
+                {% endif %}
+              </div>
+            </div>
           </div>
-          <button type="button" class="notification-close" aria-label="{% trans 'Fechar' %}">
-            <i class="bi bi-x"></i>
-          </button>
+          <div class="pdl-notification__progress" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+            <div class="pdl-notification__progress-bar"></div>
+          </div>
         </div>
-        <div class="notification-progress"></div>
-      </div>
+      {% endwith %}
     {% endfor %}
   {% endif %}
 </div>
