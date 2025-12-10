@@ -185,6 +185,10 @@
   margin-bottom: 0;
 }
 
+.balance-card.fichas {
+  grid-column: 1 / -1; /* Ocupa toda a largura */
+}
+
 .balance-card {
   background: var(--card-bg);
   backdrop-filter: blur(20px);
@@ -223,6 +227,10 @@
   background: var(--warning-gradient);
 }
 
+.balance-card.fichas::before {
+  background: var(--danger-gradient);
+}
+
 .balance-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-heavy);
@@ -247,6 +255,10 @@
 
 .balance-card.bonus .balance-icon {
   background: var(--warning-gradient);
+}
+
+.balance-card.fichas .balance-icon {
+  background: var(--danger-gradient);
 }
 
 .balance-info {
@@ -287,6 +299,10 @@
 
 .balance-card.bonus .balance-amount {
   color: #43e97b;
+}
+
+.balance-card.fichas .balance-amount {
+  color: #fa709a;
 }
 
 .balance-description {
@@ -787,6 +803,10 @@
     grid-template-columns: 1fr 1fr;
   }
   
+  .balance-card.fichas {
+    grid-column: 1 / -1;
+  }
+  
   .balance-amount {
     font-size: clamp(0.9rem, 2vw, 1.2rem);
   }
@@ -1150,7 +1170,11 @@
   }
   
   .balance-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .balance-card.fichas {
+    grid-column: 1 / -1;
   }
   
   .actions-grid {

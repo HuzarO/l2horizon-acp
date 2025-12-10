@@ -66,6 +66,18 @@
                 <p class="balance-description">{% trans "bônus disponíveis" %}</p>
               </div>
             </div>
+            
+            <!-- Fichas -->
+            <div class="balance-card fichas">
+              <div class="balance-icon">
+                <i class="fas fa-ticket-alt"></i>
+              </div>
+              <div class="balance-info">
+                <h3 class="balance-title">{% trans "Fichas" %}</h3>
+                <div class="balance-amount">{{ user.fichas|floatformat:0 }}</div>
+                <p class="balance-description">{% trans "fichas disponíveis" %}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -128,6 +140,16 @@
                 <p class="action-description">{% trans "Envie moedas para outro jogador" %}</p>
               </div>
             </a>
+
+            <button type="button" class="action-card" data-bs-toggle="modal" data-bs-target="#buyTokensModal" style="border: none; background: none; cursor: pointer; text-align: left; width: 100%;">
+              <div class="action-icon">
+                <i class="fas fa-coins"></i>
+              </div>
+              <div class="action-content">
+                <h4 class="action-title">{% trans "Comprar Fichas" %}</h4>
+                <p class="action-description">{% trans "Compre fichas usando seu saldo ou saldo bônus" %}</p>
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -278,4 +300,184 @@
     </div>
   </div>
 </div>
+
+<!-- Modal de Compra de Fichas -->
+<div class="modal fade" id="buyTokensModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-2">
+        <h5 class="modal-title">💰 {% trans "Comprar Fichas" %}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="mb-4">{% trans "Escolha a quantidade de fichas que deseja comprar." %}</p>
+        <p class="mb-4 text-warning">
+          <strong>💵 {% trans "Valor" %}: R$0,10 {% trans "por ficha" %}</strong>
+        </p>
+        
+        <!-- Seleção de Saldo -->
+        <div class="mb-4">
+          <label class="form-label fw-bold">{% trans "Usar saldo:" %}</label>
+          <div class="btn-group w-100" role="group" aria-label="Escolha de saldo">
+            <input type="radio" class="btn-check" name="balanceType" id="balanceNormal" value="normal" checked>
+            <label class="btn btn-outline-primary" for="balanceNormal">
+              <i class="fas fa-coins me-2"></i>{% trans "Saldo Principal" %}
+              <br><small>R$ <span id="saldo-display">{{ wallet.saldo|floatformat:2 }}</span></small>
+            </label>
+
+            <input type="radio" class="btn-check" name="balanceType" id="balanceBonus" value="bonus">
+            <label class="btn btn-outline-warning" for="balanceBonus">
+              <i class="fas fa-gift me-2"></i>{% trans "Saldo Bônus" %}
+              <br><small>R$ <span id="saldo-bonus-display">{{ wallet.saldo_bonus|floatformat:2 }}</span></small>
+            </label>
+          </div>
+        </div>
+
+        <input type="number" id="buyQuantity" class="form-control mb-4" min="1" value="1" placeholder="{% trans 'Quantidade' %}">
+        
+        <div class="alert alert-info mb-3" id="total-cost" style="display: none;">
+          <strong>{% trans "Total" %}: R$<span id="total-value">0.00</span></strong>
+        </div>
+
+        <button class="btn btn-success w-100" onclick="buyFichasWallet()">
+          <i class="bi bi-cart-check me-2"></i>{% trans "Confirmar Compra" %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  #buyTokensModal {
+    z-index: 9999 !important;
+  }
+
+  #buyTokensModal .modal-dialog {
+    z-index: 10000 !important;
+    position: relative;
+  }
+
+  #buyTokensModal .modal-content {
+    z-index: 10001 !important;
+    position: relative;
+    background: linear-gradient(to bottom right, #1a1a2e, #121220);
+    border: 2px solid #6f42c1;
+    border-radius: 20px;
+    color: white;
+  }
+
+  #buyTokensModal .modal-header {
+    border-bottom: 2px solid #6f42c1;
+  }
+
+  #buyTokensModal .modal-title {
+    color: white;
+    font-weight: bold;
+  }
+
+  #buyTokensModal .form-control {
+    background: rgba(111, 66, 193, 0.2);
+    border: 2px solid rgba(111, 66, 193, 0.5);
+    color: white;
+  }
+
+  #buyTokensModal .form-control:focus {
+    background: rgba(111, 66, 193, 0.3);
+    border-color: #6f42c1;
+    color: white;
+  }
+
+  #buyTokensModal .btn-check:checked + .btn-outline-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+  }
+
+  #buyTokensModal .btn-check:checked + .btn-outline-warning {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+  }
+
+  .modal-backdrop.show {
+    z-index: 9998 !important;
+  }
+</style>
+
+<script>
+  const FICHAS_WALLET_URL = "{% url 'wallet:comprar_fichas_wallet' %}";
+
+  // Helper function to get CSRF token from cookie
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + "=")) {
+          cookieValue = decodeURIComponent(cookie.slice(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Calculate total cost
+  document.getElementById('buyQuantity').addEventListener('input', function() {
+    const quantity = parseInt(this.value) || 0;
+    const total = (quantity * 0.10).toFixed(2);
+    document.getElementById('total-value').textContent = total;
+    document.getElementById('total-cost').style.display = quantity > 0 ? 'block' : 'none';
+  });
+
+  // Function to buy fichas
+  function buyFichasWallet() {
+    const quantity = parseInt(document.getElementById("buyQuantity").value);
+    const balanceType = document.querySelector('input[name="balanceType"]:checked').value;
+    const csrfToken = getCookie('csrftoken');
+
+    if (!quantity || quantity <= 0) {
+      alert('{% trans "Por favor, informe uma quantidade válida." %}');
+      return;
+    }
+
+    const total = (quantity * 0.10).toFixed(2);
+    
+    // Confirmação
+    const balanceTypeText = balanceType === 'bonus' ? '{% trans "saldo bônus" %}' : '{% trans "saldo principal" %}';
+    if (!confirm(`{% trans "Confirmar compra de" %} ${quantity} {% trans "ficha(s) por R$" %}${total} {% trans "usando" %} ${balanceTypeText}?`)) {
+      return;
+    }
+
+    fetch(FICHAS_WALLET_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRFToken": csrfToken
+      },
+      body: `quantidade=${quantity}&origem_saldo=${balanceType}`
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(`{% trans "Compra realizada com sucesso! Você agora tem" %} ${data.fichas} {% trans "fichas." %}`);
+        // Atualiza os saldos exibidos
+        document.getElementById('saldo-display').textContent = parseFloat(data.saldo).toFixed(2);
+        document.getElementById('saldo-bonus-display').textContent = parseFloat(data.saldo_bonus).toFixed(2);
+        // Fecha o modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('buyTokensModal'));
+        modal.hide();
+        // Recarrega a página para atualizar os saldos no card
+        location.reload();
+      } else {
+        alert('{% trans "Erro" %}: ' + (data.error || '{% trans "Erro desconhecido" %}'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('{% trans "Erro ao processar a compra. Tente novamente." %}');
+    });
+  }
+</script>
 {% endblock content %}
