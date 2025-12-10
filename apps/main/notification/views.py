@@ -260,6 +260,8 @@ def all_notifications(request):
     context = {
         'private_notifications': private_notifications,
         'public_notifications': public_notifications,
+        'private_page_number': private_page_number,
+        'public_page_number': public_page_number,
         'total_notifications': total_notifications,
         'unread_count': unread_count,
         'notifications_with_rewards': notifications_with_rewards,
