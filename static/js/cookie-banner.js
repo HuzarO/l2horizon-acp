@@ -84,6 +84,7 @@
         z-index: 10000;
         border-top: 2px solid rgba(255, 255, 255, 0.1);
         animation: cookieSlideUp 0.3s ease-out;
+        pointer-events: none; /* Permite cliques através do banner */
       }
 
       @keyframes cookieSlideUp {
@@ -116,6 +117,7 @@
         justify-content: space-between;
         gap: 20px;
         flex-wrap: wrap;
+        pointer-events: auto; /* Permite interação com o conteúdo do banner */
       }
 
       .cookie-banner-text {
@@ -130,6 +132,7 @@
       .cookie-banner-text a {
         color: #4a9eff;
         text-decoration: none;
+        pointer-events: auto; /* Garante que o link seja clicável */
       }
 
       .cookie-banner-text a:hover {
@@ -152,6 +155,7 @@
         transition: all 0.3s ease;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        pointer-events: auto; /* Garante que o botão seja clicável */
       }
 
       .cookie-btn-accept {
