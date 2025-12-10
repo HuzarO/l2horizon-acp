@@ -1,0 +1,278 @@
+{% extends "layouts/base.html" %}
+{% load humanize %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Histórico de Fichas" %}{% endblock %}
+
+{% block extrastyle %}
+<link rel="stylesheet" href="{% static 'css/wallet.css' %}">
+<style>
+    .tokens-history-container {
+        background: var(--dark-bg);
+        min-height: 100vh;
+        padding: 2rem 0;
+    }
+    
+    .stats-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: var(--card-bg);
+        backdrop-filter: blur(20px);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--border-color);
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: var(--shadow-medium);
+    }
+    
+    .stat-card.spent {
+        border-left: 4px solid #ef4444;
+    }
+    
+    .stat-card.earned {
+        border-left: 4px solid #10b981;
+    }
+    
+    .stat-card.purchased {
+        border-left: 4px solid #3b82f6;
+    }
+    
+    .stat-card.current {
+        border-left: 4px solid #f59e0b;
+    }
+    
+    .stat-value {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0.5rem 0;
+    }
+    
+    .stat-card.spent .stat-value {
+        color: #ef4444;
+    }
+    
+    .stat-card.earned .stat-value {
+        color: #10b981;
+    }
+    
+    .stat-card.purchased .stat-value {
+        color: #3b82f6;
+    }
+    
+    .stat-card.current .stat-value {
+        color: #f59e0b;
+    }
+    
+    .history-item {
+        background: var(--card-bg);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--border-color);
+        padding: 1rem 1.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: var(--transition);
+    }
+    
+    .history-item:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-medium);
+    }
+    
+    .history-item.spend {
+        border-left: 4px solid #ef4444;
+    }
+    
+    .history-item.earn {
+        border-left: 4px solid #10b981;
+    }
+    
+    .history-item.purchase {
+        border-left: 4px solid #3b82f6;
+    }
+    
+    .history-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        color: white;
+        margin-right: 1rem;
+    }
+    
+    .history-item.spend .history-icon {
+        background: #ef4444;
+    }
+    
+    .history-item.earn .history-icon {
+        background: #10b981;
+    }
+    
+    .history-item.purchase .history-icon {
+        background: #3b82f6;
+    }
+    
+    .history-content {
+        flex: 1;
+    }
+    
+    .history-description {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .history-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    
+    .history-amount {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-left: 1rem;
+    }
+    
+    .history-item.spend .history-amount {
+        color: #ef4444;
+    }
+    
+    .history-item.earn .history-amount {
+        color: #10b981;
+    }
+    
+    .history-item.purchase .history-amount {
+        color: #3b82f6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tokens-history-container">
+    <div class="container">
+        <div class="wallet-header">
+            <h1 class="wallet-title">
+                <i class="fas fa-history me-3"></i>{% trans "Histórico de Fichas" %}
+            </h1>
+            <p class="wallet-subtitle">
+                {% trans "Visualize todas as suas transações de fichas" %}
+            </p>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="stats-cards">
+            <div class="stat-card current">
+                <div class="stat-label">{% trans "Fichas Atuais" %}</div>
+                <div class="stat-value">{{ current_fichas|intcomma }}</div>
+            </div>
+            <div class="stat-card spent">
+                <div class="stat-label">{% trans "Total Gasto" %}</div>
+                <div class="stat-value">-{{ total_spent|intcomma }}</div>
+            </div>
+            <div class="stat-card earned">
+                <div class="stat-label">{% trans "Total Ganho" %}</div>
+                <div class="stat-value">+{{ total_earned|intcomma }}</div>
+            </div>
+            <div class="stat-card purchased">
+                <div class="stat-label">{% trans "Total Comprado" %}</div>
+                <div class="stat-value">+{{ total_purchased|intcomma }}</div>
+            </div>
+        </div>
+
+        <!-- Histórico -->
+        <div class="wallet-card">
+            <div class="wallet-card-header">
+                <i class="fas fa-list wallet-card-icon"></i>
+                <h2 class="wallet-card-title">{% trans "Transações" %}</h2>
+            </div>
+            <div class="wallet-card-body">
+                {% if history %}
+                    {% for item in history %}
+                    <div class="history-item {{ item.transaction_type }}">
+                        <div class="history-icon">
+                            {% if item.transaction_type == 'spend' %}
+                                <i class="fas fa-arrow-down"></i>
+                            {% elif item.transaction_type == 'earn' %}
+                                <i class="fas fa-arrow-up"></i>
+                            {% else %}
+                                <i class="fas fa-shopping-cart"></i>
+                            {% endif %}
+                        </div>
+                        <div class="history-content">
+                            <div class="history-description">{{ item.description }}</div>
+                            <div class="history-meta">
+                                <i class="fas fa-gamepad me-1"></i>{{ item.get_game_type_display }}
+                                <span class="mx-2">•</span>
+                                <i class="fas fa-clock me-1"></i>{{ item.created_at|date:"d/m/Y H:i" }}
+                            </div>
+                        </div>
+                        <div class="history-amount">
+                            {% if item.transaction_type == 'spend' %}-{% else %}+{% endif %}{{ item.amount|intcomma }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Paginação -->
+                    {% if page_obj.has_other_pages %}
+                    <div class="wallet-pagination">
+                        <nav aria-label="Navegação de histórico">
+                            <ul class="pagination">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">{% trans "Anterior" %}</a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">{% trans "Próximo" %}</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-history"></i>
+                        <h3>{% trans "Nenhuma transação encontrada" %}</h3>
+                        <p>{% trans "Você ainda não realizou nenhuma transação com fichas." %}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Botão Voltar -->
+        <div class="text-center mt-4">
+            <a href="{% url 'wallet:dashboard' %}" class="wallet-back-button">
+                <i class="fas fa-arrow-left"></i>{% trans "Voltar à Carteira" %}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

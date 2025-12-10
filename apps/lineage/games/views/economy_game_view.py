@@ -8,7 +8,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.http import JsonResponse
 
-from ..models import EconomyWeapon, Monster, Bag, BagItem, RewardItem, Item
+from ..models import EconomyWeapon, Monster, Bag, BagItem, RewardItem, Item, TokenHistory, EconomyGameHistory
 
 
 def add_reward_to_bag(user, item_id, item_name, enchant=0, quantity=1):
@@ -75,6 +75,16 @@ def fight_monster(request, monster_id):
     # Consome ficha
     request.user.fichas -= 1
     request.user.save()
+    
+    # Registra gasto no histórico de fichas
+    TokenHistory.objects.create(
+        user=request.user,
+        transaction_type='spend',
+        game_type='economy_game',
+        amount=1,
+        description=f'Luta contra {monster.name}',
+        metadata={'monster_id': monster.id, 'monster_name': monster.name}
+    )
 
     # --- Atributos do jogador
     weapon_attack = weapon.level * 10
@@ -105,11 +115,30 @@ def fight_monster(request, monster_id):
         weapon.save()
         monster.last_defeated_at = timezone.now()
         monster.save()
+        
+        # Registra histórico do jogo
+        EconomyGameHistory.objects.create(
+            user=request.user,
+            monster=monster,
+            won=True,
+            rounds=rounds,
+            fragments_earned=monster.fragment_reward
+        )
+        
         messages.success(
             request,
             f"✅ Você derrotou {monster.name} em {rounds} turnos e ganhou {monster.fragment_reward} fragmentos!"
         )
     else:
+        # Registra histórico do jogo (derrota)
+        EconomyGameHistory.objects.create(
+            user=request.user,
+            monster=monster,
+            won=False,
+            rounds=rounds,
+            fragments_earned=0
+        )
+        
         messages.warning(
             request,
             f"❌ {monster.name} te derrotou após {rounds} turnos! Tente novamente com uma arma mais forte."

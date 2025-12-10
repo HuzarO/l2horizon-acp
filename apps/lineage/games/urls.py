@@ -14,6 +14,7 @@ app_name = "games"
 
 urlpatterns = [
     path('buy-tokens/', views.comprar_fichas, name='comprar_fichas'),
+    path('tokens/history/', views.tokens_history, name='tokens_history'),
 
     path('roulette/', views.roulette_page, name='roulette_page'),
     path('roulette/spin-ajax/', views.spin_ajax, name='spin_ajax'),

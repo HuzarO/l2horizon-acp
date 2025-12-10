@@ -1,6 +1,7 @@
 from django.core.paginator import Paginator
 from apps.main.home.decorator import conditional_otp_required
 from .models import Wallet, TransacaoWallet, TransacaoBonus, CoinConfig
+from apps.lineage.games.models import TokenHistory
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from .utils import transferir_para_jogador
@@ -594,6 +595,21 @@ def comprar_fichas_wallet(request):
         try:
             request.user.fichas += quantidade
             request.user.save()
+            
+            # Registra compra no histórico de fichas
+            TokenHistory.objects.create(
+                user=request.user,
+                transaction_type='purchase',
+                game_type='purchase',
+                amount=quantidade,
+                description=f'Compra de {quantidade} ficha(s) usando {"saldo bônus" if origem_saldo == "bonus" else "saldo principal"}',
+                metadata={
+                    'quantity': quantidade, 
+                    'total_cost': float(total), 
+                    'cost_per_token': 0.10,
+                    'balance_type': origem_saldo
+                }
+            )
             
             # Atualiza o wallet para retornar os saldos atualizados
             wallet.refresh_from_db()

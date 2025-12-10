@@ -1101,9 +1101,75 @@ class FishingBait(BaseModel):
     class Meta:
         verbose_name = _("Fishing Bait")
         verbose_name_plural = _("Fishing Baits")
-
+    
     def __str__(self):
         return self.name
+
+
+# ==============================
+# Token/Ficha History - Histórico Geral de Fichas
+# ==============================
+
+class TokenHistory(BaseModel):
+    """Histórico geral de todas as transações de fichas (gastos e ganhos)"""
+    TRANSACTION_TYPE_CHOICES = [
+        ('spend', _('Gasto')),
+        ('earn', _('Ganho')),
+        ('purchase', _('Compra')),
+    ]
+    
+    GAME_TYPE_CHOICES = [
+        ('roulette', _('Roleta')),
+        ('slot_machine', _('Slot Machine')),
+        ('dice_game', _('Dice Game')),
+        ('fishing_game', _('Fishing Game')),
+        ('box_opening', _('Box Opening')),
+        ('economy_game', _('Economy Game')),
+        ('purchase', _('Compra de Fichas')),
+        ('other', _('Outro')),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPE_CHOICES, verbose_name=_("Transaction Type"))
+    game_type = models.CharField(max_length=20, choices=GAME_TYPE_CHOICES, verbose_name=_("Game Type"))
+    amount = models.PositiveIntegerField(verbose_name=_("Amount (Fichas)"))
+    description = models.CharField(max_length=255, verbose_name=_("Description"))
+    metadata = models.JSONField(default=dict, blank=True, verbose_name=_("Metadata"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created At"))
+    
+    class Meta:
+        verbose_name = _("Token History")
+        verbose_name_plural = _("Token Histories")
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['user', 'game_type', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_transaction_type_display()} - {self.amount} fichas - {self.get_game_type_display()}"
+
+
+# ==============================
+# Economy Game History
+# ==============================
+
+class EconomyGameHistory(BaseModel):
+    """Histórico de lutas no Economy Game"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name=_("User"))
+    monster = models.ForeignKey('Monster', on_delete=models.CASCADE, verbose_name=_("Monster"))
+    won = models.BooleanField(default=False, verbose_name=_("Won"))
+    rounds = models.PositiveIntegerField(default=0, verbose_name=_("Rounds"))
+    fragments_earned = models.PositiveIntegerField(default=0, verbose_name=_("Fragments Earned"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created At"))
+    
+    class Meta:
+        verbose_name = _("Economy Game History")
+        verbose_name_plural = _("Economy Game Histories")
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.monster.name} - {'Won' if self.won else 'Lost'}"
 
 
 class UserFishingBait(BaseModel):

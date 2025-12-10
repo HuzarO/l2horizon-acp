@@ -321,12 +321,23 @@ body {
 }
 
 /* === MODAL DE FALHA === */
+#failModal {
+  z-index: 9999 !important;
+}
+
+#failModal .modal-dialog {
+  z-index: 10000 !important;
+  position: relative;
+}
+
 #failModal .modal-content {
   background: linear-gradient(to bottom right, #1a1a2e, #121220);
   border: 2px solid #6f42c1;
   border-radius: 20px;
   box-shadow: 0 0 20px rgba(111, 66, 193, 0.5), 0 0 30px rgba(13, 202, 240, 0.3);
   animation: pop-in 0.4s ease-out;
+  z-index: 10001 !important;
+  position: relative;
 }
 
 #failModal .modal-header {
@@ -375,6 +386,21 @@ body {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* === MODAL DE PRÊMIO (RESULTADO) === */
+#rewardModal {
+  z-index: 9999 !important;
+}
+
+#rewardModal .modal-dialog {
+  z-index: 10000 !important;
+  position: relative;
+}
+
+#rewardModal .modal-content {
+  z-index: 10001 !important;
+  position: relative;
 }
 
 /* === MODAL DE COMPRA DE FICHAS === */

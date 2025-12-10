@@ -9,7 +9,7 @@ import json
 
 from ..models import (
     SlotMachineConfig, SlotMachineSymbol, SlotMachinePrize,
-    SlotMachineHistory, Bag, BagItem, Item
+    SlotMachineHistory, Bag, BagItem, Item, TokenHistory
 )
 
 
@@ -65,6 +65,16 @@ def slot_machine_spin(request):
         # Deduzir fichas
         user.fichas -= config.cost_per_spin
         user.save(update_fields=['fichas'])
+        
+        # Registra gasto no histórico de fichas
+        TokenHistory.objects.create(
+            user=user,
+            transaction_type='spend',
+            game_type='slot_machine',
+            amount=config.cost_per_spin,
+            description=f'Giro na slot machine (custo: {config.cost_per_spin} fichas)',
+            metadata={'cost_per_spin': config.cost_per_spin}
+        )
         
         # Pegar todos os símbolos com seus pesos
         symbols = list(SlotMachineSymbol.objects.all())
@@ -129,6 +139,16 @@ def slot_machine_spin(request):
         if fichas_won > 0:
             user.fichas += fichas_won
             user.save(update_fields=['fichas'])
+            
+            # Registra ganho no histórico de fichas
+            TokenHistory.objects.create(
+                user=user,
+                transaction_type='earn',
+                game_type='slot_machine',
+                amount=fichas_won,
+                description=f'Ganhou {fichas_won} fichas na slot machine',
+                metadata={'is_jackpot': is_jackpot, 'prize_id': prize_won.id if prize_won else None}
+            )
         
         # Incrementar jackpot progressivo
         if not is_jackpot:

@@ -66,6 +66,35 @@
 .box-card:hover img {
     transform: scale(1.05);
 }
+
+/* === Z-INDEX PARA MODAIS === */
+#confirmBoxModal,
+#confirmResetModal,
+#buyTokensModal,
+#itemsModal {
+    z-index: 9999 !important;
+}
+
+#confirmBoxModal .modal-dialog,
+#confirmResetModal .modal-dialog,
+#buyTokensModal .modal-dialog,
+#itemsModal .modal-dialog {
+    z-index: 10000 !important;
+    position: relative;
+}
+
+#confirmBoxModal .modal-content,
+#confirmResetModal .modal-content,
+#buyTokensModal .modal-content,
+#itemsModal .modal-content {
+    z-index: 10001 !important;
+    position: relative;
+}
+
+/* Garantir que o backdrop do modal tenha z-index apropriado */
+.modal-backdrop.show {
+    z-index: 9998 !important;
+}
 </style>
 {% endblock extrastyle %}
 
