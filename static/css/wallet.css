@@ -204,6 +204,12 @@
   min-height: 100px;
 }
 
+.balance-action {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .balance-card::before {
   content: '';
   position: absolute;

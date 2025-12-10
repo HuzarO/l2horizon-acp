@@ -13,7 +13,7 @@ from apps.lineage.games.services.box_opening import open_box
 from apps.lineage.games.services.box_populate import populate_box_with_items, can_populate_box
 from django.db import transaction
 from django.db.models import Count, Q, Sum
-from apps.lineage.server.services.account_context import get_lineage_template_context
+from django.core.paginator import Paginator
 from apps.lineage.server.services.account_context import get_lineage_template_context
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
