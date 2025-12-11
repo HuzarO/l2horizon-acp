@@ -83,7 +83,7 @@ def validate_reward_claim_security(notification, user, request=None):
                 # Verifica quantas contas do mesmo IP reclamaram esta notificação
                 accounts_same_ip = PublicNotificationRewardClaim.objects.filter(
                     notification=notification,
-                    ip_address=ip_address
+                    ip_address=str(ip_address)
                 ).values('user').distinct().count()
                 
                 if accounts_same_ip > 0:
@@ -117,7 +117,7 @@ def validate_reward_claim_security(notification, user, request=None):
         if ip_address:
             # Conta quantas reivindicações este IP fez nas últimas 24h
             recent_claims = PublicNotificationRewardClaim.objects.filter(
-                ip_address=ip_address,
+                ip_address=str(ip_address),
                 created_at__gte=timezone.now() - timedelta(hours=24)
             ).count()
             
@@ -176,7 +176,7 @@ def claim_notification_rewards(notification, user, request=None):
             PublicNotificationRewardClaim.objects.create(
                 user=user,
                 notification=notification,
-                ip_address=ip_address or None,
+                ip_address=str(ip_address) if ip_address else None,
                 user_agent=user_agent or None
             )
     else:

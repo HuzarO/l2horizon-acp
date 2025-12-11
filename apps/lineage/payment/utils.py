@@ -28,6 +28,8 @@ def registrar_tentativa_falsificacao(request, provedor, tipo_tentativa, detalhes
         ip_address, is_routable = ipw.get_client_ip(meta=request.META)
         if not ip_address:
             ip_address = '0.0.0.0'
+        else:
+            ip_address = str(ip_address)
         
         user_agent = request.META.get('HTTP_USER_AGENT', '')
         
@@ -61,12 +63,13 @@ def enviar_alerta_seguranca(ip_address, provedor, tentativa):
     """
     try:
         # Conta tentativas recentes
-        tentativas_recentes = TentativaFalsificacao.contar_tentativas_recentes(ip_address, minutos=60)
+        ip_address_str = str(ip_address) if ip_address else None
+        tentativas_recentes = TentativaFalsificacao.contar_tentativas_recentes(ip_address_str, minutos=60)
         
         # Conta tentativas totais nas últimas 24h
         cutoff_24h = timezone.now() - timedelta(hours=24)
         tentativas_24h = TentativaFalsificacao.objects.filter(
-            ip_address=ip_address,
+            ip_address=ip_address_str,
             data_tentativa__gte=cutoff_24h
         ).count()
         
@@ -74,7 +77,7 @@ def enviar_alerta_seguranca(ip_address, provedor, tentativa):
         from django.db.models import Count
         
         tipos_comuns = TentativaFalsificacao.objects.filter(
-            ip_address=ip_address,
+            ip_address=ip_address_str,
             data_tentativa__gte=cutoff_24h
         ).values('tipo_tentativa').annotate(
             count=Count('id')
@@ -126,7 +129,7 @@ def obter_estatisticas_seguranca(ip_address=None, dias=7):
     queryset = TentativaFalsificacao.objects.filter(data_tentativa__gte=cutoff)
     
     if ip_address:
-        queryset = queryset.filter(ip_address=ip_address)
+        queryset = queryset.filter(ip_address=str(ip_address))
     
     total = queryset.count()
     
