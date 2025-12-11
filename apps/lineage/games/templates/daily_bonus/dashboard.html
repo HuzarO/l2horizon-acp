@@ -43,7 +43,10 @@
   <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4 bonus-header">
       <h3 class="m-0">{% trans "Bônus Diário" %}</h3>
-      <div>
+      <div class="d-flex gap-2">
+        <a href="{% url 'games:daily_bonus_history' %}" class="btn btn-info btn-lg rounded-pill">
+          <i class="bi bi-clock-history me-2"></i> {% trans "Histórico" %}
+        </a>
         {% if can_claim %}
           <a href="{% url 'games:daily_bonus_claim' %}" class="btn btn-warning btn-lg rounded-pill">
             <i class="bi bi-gift me-2"></i> {% trans "Resgatar prêmio de hoje" %}
@@ -77,14 +80,16 @@
                   <div class="bonus-meta bonus-random">{% trans "Aleatório do Pool" %}</div>
                 {% endif %}
                 <div class="mt-auto">
-                  {% if d.is_today %}
-                    {% if d.claimed %}
-                      <span class="badge bg-secondary">{% trans "Já resgatado" %}</span>
-                    {% elif can_claim %}
+                  {% if d.claimed %}
+                    <span class="badge bg-secondary">{% trans "Já resgatado" %}</span>
+                  {% elif d.is_today %}
+                    {% if can_claim %}
                       <a href="{% url 'games:daily_bonus_claim' %}" class="btn btn-primary btn-sm mt-2">{% trans "Resgatar" %}</a>
                     {% else %}
                       <span class="badge bg-warning text-dark">{% trans "Disponível hoje" %}</span>
                     {% endif %}
+                  {% elif allow_retroactive and d.can_claim %}
+                    <a href="{% url 'games:daily_bonus_claim' %}?day={{ d.day }}" class="btn btn-success btn-sm mt-2">{% trans "Resgatar" %}</a>
                   {% endif %}
                 </div>
               </div>

@@ -829,6 +829,105 @@ def _current_bonus_day(reset_hour_utc: int):
     return anchor.day
 
 
+def _get_month_bounds(dt):
+    """
+    Retorna o primeiro e último momento do mês para uma data.
+    Útil para filtrar claims apenas do mês atual.
+    """
+    first_day = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    # Calcula o primeiro dia do próximo mês
+    if dt.month == 12:
+        last_day = dt.replace(year=dt.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    else:
+        last_day = dt.replace(month=dt.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    return first_day, last_day
+
+
+def validate_daily_bonus_claim_security(user, season, day_of_month, request=None):
+    """
+    Valida se um usuário pode reclamar o prêmio diário.
+    Retorna (True, None) se permitido, ou (False, mensagem_erro) se bloqueado.
+    """
+    from ..models import DailyBonusClaim
+    from django.utils import timezone
+    from datetime import timedelta
+    import calendar
+    
+    # 1. Verifica se o usuário já reclamou este dia no mês/ano atual
+    now = timezone.now()
+    first_day_of_month, last_day_of_month = _get_month_bounds(now)
+    
+    if DailyBonusClaim.objects.filter(
+        user=user, 
+        season=season, 
+        day_of_month=day_of_month,
+        created_at__gte=first_day_of_month,
+        created_at__lt=last_day_of_month
+    ).exists():
+        return False, _("Você já reclamou o prêmio deste dia.")
+    
+    # 2. Verifica contas muito recentes (menos de 1 hora)
+    if user.date_joined > timezone.now() - timedelta(hours=1):
+        # Conta muito recente - verifica se há múltiplas contas do mesmo IP
+        if request:
+            from python_ipware import IpWare
+            ipw = IpWare(precedence=("X_FORWARDED_FOR", "HTTP_X_FORWARDED_FOR"))
+            ip_address, is_routable = ipw.get_client_ip(meta=request.META)
+            
+            if ip_address:
+                # Verifica quantas contas do mesmo IP reclamaram este dia no mês/ano atual
+                accounts_same_ip = DailyBonusClaim.objects.filter(
+                    season=season,
+                    day_of_month=day_of_month,
+                    ip_address=ip_address,
+                    created_at__gte=first_day_of_month,
+                    created_at__lt=last_day_of_month
+                ).values('user').distinct().count()
+                
+                if accounts_same_ip > 0:
+                    return False, _("Múltiplas contas do mesmo IP não podem reclamar os mesmos prêmios diários.")
+        
+        # Verifica se há múltiplas contas com o mesmo domínio de email
+        email_domain = user.email.split('@')[1] if '@' in user.email else None
+        if email_domain:
+            UserModel = get_user_model()
+            # Conta quantos usuários do mesmo domínio de email reclamaram este dia
+            same_domain_users = UserModel.objects.filter(
+                email__endswith=f'@{email_domain}',
+                date_joined__gt=timezone.now() - timedelta(hours=24)
+            ).exclude(id=user.id).values_list('id', flat=True)
+            
+            same_domain_claims = DailyBonusClaim.objects.filter(
+                season=season,
+                day_of_month=day_of_month,
+                user_id__in=same_domain_users,
+                created_at__gte=first_day_of_month,
+                created_at__lt=last_day_of_month
+            ).count()
+            
+            if same_domain_claims > 0:
+                return False, _("Múltiplas contas com emails do mesmo domínio não podem reclamar os mesmos prêmios diários.")
+    
+    # 3. Verifica limite de prêmios reclamados por IP em um período (últimas 24h)
+    if request:
+        from python_ipware import IpWare
+        ipw = IpWare(precedence=("X_FORWARDED_FOR", "HTTP_X_FORWARDED_FOR"))
+        ip_address, is_routable = ipw.get_client_ip(meta=request.META)
+        
+        if ip_address:
+            # Conta quantas reivindicações este IP fez nas últimas 24h
+            recent_claims = DailyBonusClaim.objects.filter(
+                ip_address=ip_address,
+                created_at__gte=timezone.now() - timedelta(hours=24)
+            ).count()
+            
+            # Limite de 3 reivindicações por IP em 24h
+            if recent_claims >= 3:
+                return False, _("Limite de prêmios diários reclamados atingido para este endereço IP. Tente novamente mais tarde.")
+    
+    return True, None
+
+
 @conditional_otp_required
 def daily_bonus_dashboard(request):
     from ..models import DailyBonusSeason, DailyBonusDay, DailyBonusClaim
@@ -840,6 +939,7 @@ def daily_bonus_dashboard(request):
             'days': [],
             'today': None,
             'can_claim': False,
+            'allow_retroactive': False,
         })
 
     today_day = _current_bonus_day(season.reset_hour_utc)
@@ -848,18 +948,34 @@ def daily_bonus_dashboard(request):
     days_in_month = calendar.monthrange(now.year, now.month)[1]
     month_days = range(1, days_in_month + 1)
     day_defs = {d.day_of_month: d for d in DailyBonusDay.objects.filter(season=season)}
-    claims = DailyBonusClaim.objects.filter(user=request.user, season=season)
+    # Filtra claims apenas do mês/ano atual para permitir reset mensal
+    first_day_of_month, last_day_of_month = _get_month_bounds(now)
+    claims = DailyBonusClaim.objects.filter(
+        user=request.user, 
+        season=season,
+        created_at__gte=first_day_of_month,
+        created_at__lt=last_day_of_month
+    )
     claimed_days = set(c.day_of_month for c in claims)
 
     context_days = []
     for d in month_days:
         dd = day_defs.get(d)
+        can_claim_this_day = False
+        if season.allow_retroactive_claim:
+            # Com resgate retroativo, pode resgatar qualquer dia anterior que não foi reclamado
+            can_claim_this_day = (d not in claimed_days) and (d < today_day)
+        else:
+            # Sem resgate retroativo, só pode resgatar o dia de hoje
+            can_claim_this_day = (d == today_day) and (d not in claimed_days)
+        
         context_days.append({
             'day': d,
             'mode': dd.mode if dd else 'RANDOM',
             'fixed_item': dd.fixed_item if dd else None,
             'claimed': d in claimed_days,
             'is_today': d == today_day,
+            'can_claim': can_claim_this_day,
         })
 
     # Só permite claim se o dia existe no mês corrente
@@ -870,6 +986,7 @@ def daily_bonus_dashboard(request):
         'days': context_days,
         'today': today_day,
         'can_claim': can_claim,
+        'allow_retroactive': season.allow_retroactive_claim,
     })
 
 
@@ -887,16 +1004,62 @@ def daily_bonus_claim(request):
     # Validar contra o número de dias do mês corrente (UTC)
     now = _now_utc()
     days_in_month = calendar.monthrange(now.year, now.month)[1]
-    if not (1 <= today_day <= days_in_month):
+    
+    # Permite resgate retroativo se configurado e se um dia específico foi fornecido
+    target_day = today_day
+    if season.allow_retroactive_claim and 'day' in request.GET:
+        try:
+            requested_day = int(request.GET.get('day'))
+            if 1 <= requested_day <= days_in_month and requested_day < today_day:
+                target_day = requested_day
+            else:
+                messages.error(request, _('Dia inválido para resgate retroativo.'))
+                return redirect('games:daily_bonus_dashboard')
+        except (ValueError, TypeError):
+            messages.error(request, _('Dia inválido.'))
+            return redirect('games:daily_bonus_dashboard')
+    elif not season.allow_retroactive_claim:
+        # Sem resgate retroativo, só permite o dia de hoje
+        if not (1 <= today_day <= days_in_month):
+            messages.error(request, _('Fora da janela de dias válidos.'))
+            return redirect('games:daily_bonus_dashboard')
+    
+    if not (1 <= target_day <= days_in_month):
         messages.error(request, _('Fora da janela de dias válidos.'))
         return redirect('games:daily_bonus_dashboard')
 
-    if DailyBonusClaim.objects.filter(user=request.user, season=season, day_of_month=today_day).exists():
-        messages.info(request, _('Você já resgatou o prêmio de hoje.'))
+    # Verifica se já reclamou (com lock para evitar race conditions)
+    # Filtra apenas claims do mês/ano atual para permitir reset mensal
+    first_day_of_month, last_day_of_month = _get_month_bounds(now)
+    
+    claim_exists = DailyBonusClaim.objects.select_for_update().filter(
+        user=request.user, 
+        season=season, 
+        day_of_month=target_day,
+        created_at__gte=first_day_of_month,
+        created_at__lt=last_day_of_month
+    ).exists()
+    
+    if claim_exists:
+        if target_day == today_day:
+            messages.info(request, _('Você já resgatou o prêmio de hoje.'))
+        else:
+            messages.info(request, _('Você já resgatou o prêmio deste dia.'))
+        return redirect('games:daily_bonus_dashboard')
+
+    # Validações de segurança para evitar multiplicação de itens
+    is_valid, error_message = validate_daily_bonus_claim_security(
+        request.user, 
+        season, 
+        target_day, 
+        request
+    )
+    if not is_valid:
+        messages.error(request, error_message)
         return redirect('games:daily_bonus_dashboard')
 
     # Resolver prêmio do dia
-    day_def = DailyBonusDay.objects.filter(season=season, day_of_month=today_day).first()
+    day_def = DailyBonusDay.objects.filter(season=season, day_of_month=target_day).first()
     chosen_item = None
     if day_def and day_def.mode == 'FIXED' and day_def.fixed_item:
         chosen_item = day_def.fixed_item
@@ -921,10 +1084,107 @@ def daily_bonus_claim(request):
         bag_item.quantity += 1
         bag_item.save(update_fields=['quantity'])
 
-    DailyBonusClaim.objects.create(user=request.user, season=season, day_of_month=today_day)
+    # Registra a reivindicação com IP e user agent
+    from python_ipware import IpWare
+    ipw = IpWare(precedence=("X_FORWARDED_FOR", "HTTP_X_FORWARDED_FOR"))
+    ip_address, is_routable = ipw.get_client_ip(meta=request.META) if request else (None, False)
+    user_agent = request.META.get('HTTP_USER_AGENT', '')[:500] if request else ''
+    
+    DailyBonusClaim.objects.create(
+        user=request.user, 
+        season=season, 
+        day_of_month=target_day,
+        ip_address=ip_address or None,
+        user_agent=user_agent or None
+    )
 
-    messages.success(request, _('Prêmio diário resgatado com sucesso!'))
+    if target_day == today_day:
+        messages.success(request, _('Prêmio diário resgatado com sucesso!'))
+    else:
+        messages.success(request, _('Prêmio retroativo do dia {} resgatado com sucesso!').format(target_day))
     return redirect('games:daily_bonus_dashboard')
+
+
+@conditional_otp_required
+def daily_bonus_history(request):
+    """Visualizar histórico de coletas do bônus diário"""
+    from ..models import DailyBonusSeason, DailyBonusClaim
+    from django.db.models import Count
+    from collections import defaultdict
+    
+    season = DailyBonusSeason.objects.filter(is_active=True).first()
+    if not season:
+        return render(request, 'daily_bonus/history.html', {
+            'season': None,
+            'history_by_month': {},
+            'total_claims': 0,
+        })
+    
+    # Busca todos os claims do usuário para esta season, ordenados por data
+    all_claims = DailyBonusClaim.objects.filter(
+        user=request.user,
+        season=season
+    ).order_by('-created_at')
+    
+    # Agrupa por mês/ano
+    history_by_month = defaultdict(lambda: {
+        'year': None,
+        'month': None,
+        'month_name': None,
+        'days_claimed': set(),
+        'total_days': 0,
+        'claims': []
+    })
+    
+    for claim in all_claims:
+        claim_date = claim.created_at
+        month_key = f"{claim_date.year}-{claim_date.month:02d}"
+        
+        if month_key not in history_by_month:
+            month_names = [
+                _('Janeiro'), _('Fevereiro'), _('Março'), _('Abril'),
+                _('Maio'), _('Junho'), _('Julho'), _('Agosto'),
+                _('Setembro'), _('Outubro'), _('Novembro'), _('Dezembro')
+            ]
+            days_in_month = calendar.monthrange(claim_date.year, claim_date.month)[1]
+            
+            history_by_month[month_key] = {
+                'year': claim_date.year,
+                'month': claim_date.month,
+                'month_name': month_names[claim_date.month - 1],
+                'days_claimed': set(),
+                'total_days': days_in_month,
+                'days_list': list(range(1, days_in_month + 1)),
+                'claims': []
+            }
+        
+        history_by_month[month_key]['days_claimed'].add(claim.day_of_month)
+        history_by_month[month_key]['claims'].append(claim)
+    
+    # Converte sets para sorted lists e ordena por mês/ano (mais recente primeiro)
+    for month_key in history_by_month:
+        history_by_month[month_key]['days_claimed'] = sorted(history_by_month[month_key]['days_claimed'])
+        history_by_month[month_key]['claims'] = sorted(
+            history_by_month[month_key]['claims'],
+            key=lambda x: x.created_at,
+            reverse=True
+        )
+    
+    # Ordena os meses (mais recente primeiro)
+    sorted_months = sorted(
+        history_by_month.items(),
+        key=lambda x: (x[1]['year'], x[1]['month']),
+        reverse=True
+    )
+    history_by_month = dict(sorted_months)
+    
+    total_claims = all_claims.count()
+    
+    return render(request, 'daily_bonus/history.html', {
+        'season': season,
+        'history_by_month': history_by_month,
+        'total_claims': total_claims,
+    })
 
 
 @conditional_otp_required

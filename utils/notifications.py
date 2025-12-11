@@ -77,7 +77,7 @@ def validate_reward_claim_security(notification, user, request=None):
         if request:
             from python_ipware import IpWare
             ipw = IpWare(precedence=("X_FORWARDED_FOR", "HTTP_X_FORWARDED_FOR"))
-            ip_address, _ = ipw.get_client_ip(meta=request.META)
+            ip_address, is_routable = ipw.get_client_ip(meta=request.META)
             
             if ip_address:
                 # Verifica quantas contas do mesmo IP reclamaram esta notificação
@@ -112,7 +112,7 @@ def validate_reward_claim_security(notification, user, request=None):
     if request:
         from python_ipware import IpWare
         ipw = IpWare(precedence=("X_FORWARDED_FOR", "HTTP_X_FORWARDED_FOR"))
-        ip_address, _ = ipw.get_client_ip(meta=request.META)
+        ip_address, is_routable = ipw.get_client_ip(meta=request.META)
         
         if ip_address:
             # Conta quantas reivindicações este IP fez nas últimas 24h
@@ -170,7 +170,7 @@ def claim_notification_rewards(notification, user, request=None):
             # Registra a reivindicação
             from python_ipware import IpWare
             ipw = IpWare(precedence=("X_FORWARDED_FOR", "HTTP_X_FORWARDED_FOR"))
-            ip_address, _ = ipw.get_client_ip(meta=request.META) if request else (None, False)
+            ip_address, is_routable = ipw.get_client_ip(meta=request.META) if request else (None, False)
             user_agent = request.META.get('HTTP_USER_AGENT', '')[:500] if request else ''
             
             PublicNotificationRewardClaim.objects.create(

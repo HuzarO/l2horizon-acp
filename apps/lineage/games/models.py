@@ -316,6 +316,11 @@ class DailyBonusSeason(BaseModel):
     end_date = models.DateField(verbose_name=_("End Date"))
     is_active = models.BooleanField(default=False, verbose_name=_("Is Active"))
     reset_hour_utc = models.PositiveSmallIntegerField(default=3, verbose_name=_("Reset Hour (UTC)"))
+    allow_retroactive_claim = models.BooleanField(
+        default=False,
+        verbose_name=_("Allow Retroactive Claim"),
+        help_text=_("Permite que usuários resgatem prêmios de dias anteriores que foram perdidos.")
+    )
 
     class Meta:
         verbose_name = _("Daily Bonus Season")
@@ -367,11 +372,28 @@ class DailyBonusClaim(BaseModel):
     season = models.ForeignKey(DailyBonusSeason, on_delete=models.CASCADE, related_name='claims', verbose_name=_("Season"))
     day_of_month = models.PositiveSmallIntegerField(verbose_name=_("Day of Month"))
     claimed_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Claimed At"))
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        verbose_name=_("IP Address"),
+        help_text=_("Endereço IP usado ao reclamar o prêmio diário.")
+    )
+    user_agent = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name=_("User Agent"),
+        help_text=_("User agent do navegador usado.")
+    )
 
     class Meta:
         unique_together = ('user', 'season', 'day_of_month')
         verbose_name = _("Daily Bonus Claim")
         verbose_name_plural = _("Daily Bonus Claims")
+        indexes = [
+            models.Index(fields=['ip_address', 'created_at']),
+            models.Index(fields=['user', 'created_at']),
+        ]
 
     def __str__(self):
         return f"{self.user.username} claimed day {self.day_of_month} of {self.season.name}"

@@ -48,6 +48,7 @@ urlpatterns = [
     # Daily Bonus
     path('daily-bonus/', views.daily_bonus_dashboard, name='daily_bonus_dashboard'),
     path('daily-bonus/claim/', views.daily_bonus_claim, name='daily_bonus_claim'),
+    path('daily-bonus/history/', views.daily_bonus_history, name='daily_bonus_history'),
     path('daily-bonus/manager/', daily_bonus_manager.manager_dashboard, name='daily_bonus_manager'),
     path('roulette/manager/', roulette_manager.dashboard, name='roulette_manager'),
 
