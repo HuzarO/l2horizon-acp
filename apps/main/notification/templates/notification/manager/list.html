@@ -135,6 +135,18 @@
                                         {% if notification.rewards_claimed %}
                                             <br><span class="badge bg-success mt-1">{% trans "Prêmios Reclamados" %}</span>
                                         {% endif %}
+                                        {% if notification.rewards.exists and notification.rewards_expires_at %}
+                                            <br>
+                                            {% if notification.rewards_expired %}
+                                                <span class="badge bg-danger mt-1">
+                                                    <i class="bi bi-clock-history me-1"></i>{% trans "Prêmios Expirados" %}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-info mt-1">
+                                                    <i class="bi bi-calendar-check me-1"></i>{% trans "Válido até" %}: {{ notification.rewards_expires_at|date:"d/m/Y H:i" }}
+                                                </span>
+                                            {% endif %}
+                                        {% endif %}
                                     </td>
                                     <td>{{ notification.created_at|date:"d/m/Y H:i" }}</td>
                                     <td>

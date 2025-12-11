@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.db import models
 from apps.main.home.decorator import conditional_otp_required
-from .models import Notification, PublicNotificationView, PushSubscription, PushNotificationLog, NotificationReward
+from .models import Notification, PublicNotificationView, PushSubscription, PushNotificationLog, NotificationReward, PublicNotificationRewardClaim
 from utils.notifications import claim_notification_rewards
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
@@ -53,6 +53,10 @@ def get_notifications(request):
     public_notifications_viewed = PublicNotificationView.objects.filter(user=request.user, viewed=True)
     public_notifications_viewed_ids = [pnv.notification.id for pnv in public_notifications_viewed]
 
+    # Prêmios públicos já reclamados por este usuário
+    public_rewards_claimed = PublicNotificationRewardClaim.objects.filter(user=request.user)
+    public_rewards_claimed_ids = set([prc.notification.id for prc in public_rewards_claimed])
+
     notifications_list = []
 
     # Notificações privadas
@@ -70,7 +74,8 @@ def get_notifications(request):
         
         has_rewards = notification.rewards.exists()
         rewards_claimed = notification.rewards_claimed
-        has_unclaimed_rewards = has_rewards and not rewards_claimed
+        rewards_expired = notification.rewards_expired()
+        has_unclaimed_rewards = has_rewards and not rewards_claimed and not rewards_expired
         
         notifications_list.append({
             'id': notification.id,
@@ -81,14 +86,20 @@ def get_notifications(request):
             'detail_url': reverse('notification:notification_detail', args=[notification.id]),
             'has_rewards': has_rewards,
             'rewards_claimed': rewards_claimed,
+            'rewards_expired': rewards_expired,
+            'rewards_expires_at': notification.rewards_expires_at.strftime('%Y-%m-%d %H:%M:%S') if notification.rewards_expires_at else None,
             'has_unclaimed_rewards': has_unclaimed_rewards,
             'rewards': rewards_data,
         })
 
     # Notificações públicas
-    # Inclui notificações não visualizadas OU com prêmios não reclamados
+    # Inclui notificações não visualizadas OU com prêmios não reclamados (e não expirados)
     for notification in public_notifications.select_related().prefetch_related('rewards'):
-        has_unclaimed_rewards = notification.rewards.exists() and not notification.rewards_claimed
+        has_rewards = notification.rewards.exists()
+        rewards_expired = notification.rewards_expired()
+        # Para notificações públicas, verifica se este usuário específico já reclamou
+        user_claimed = notification.id in public_rewards_claimed_ids
+        has_unclaimed_rewards = has_rewards and not user_claimed and not rewards_expired
         is_unviewed = notification.id not in public_notifications_viewed_ids
         
         if is_unviewed or has_unclaimed_rewards:
@@ -103,8 +114,8 @@ def get_notifications(request):
                 }
                 rewards_data.append(reward_dict)
             
-            has_rewards = notification.rewards.exists()
-            rewards_claimed = notification.rewards_claimed
+            rewards_expired = notification.rewards_expired()
+            has_unclaimed_rewards = has_rewards and not user_claimed and not rewards_expired
             
             notifications_list.append({
                 'id': notification.id,
@@ -114,7 +125,9 @@ def get_notifications(request):
                 'viewed': not is_unviewed,
                 'detail_url': reverse('notification:notification_detail', args=[notification.id]),
                 'has_rewards': has_rewards,
-                'rewards_claimed': rewards_claimed,
+                'rewards_claimed': user_claimed,
+                'rewards_expired': rewards_expired,
+                'rewards_expires_at': notification.rewards_expires_at.strftime('%Y-%m-%d %H:%M:%S') if notification.rewards_expires_at else None,
                 'has_unclaimed_rewards': has_unclaimed_rewards,
                 'rewards': rewards_data,
             })
@@ -195,8 +208,16 @@ def notification_detail(request, pk):
         rewards_data.append(reward_dict)
 
     has_rewards = notification.rewards.exists()
-    rewards_claimed = notification.rewards_claimed
-    has_unclaimed_rewards = has_rewards and not rewards_claimed
+    rewards_expired = notification.rewards_expired()
+    # Para notificações públicas, verifica se este usuário específico já reclamou
+    if notification.user is None:
+        rewards_claimed = PublicNotificationRewardClaim.objects.filter(
+            user=request.user, 
+            notification=notification
+        ).exists()
+    else:
+        rewards_claimed = notification.rewards_claimed
+    has_unclaimed_rewards = has_rewards and not rewards_claimed and not rewards_expired
     
     data = {
         'type': notification.get_notification_type_display(),
@@ -205,6 +226,8 @@ def notification_detail(request, pk):
         'link': notification.link if notification.link else None,
         'has_rewards': has_rewards,
         'rewards_claimed': rewards_claimed,
+        'rewards_expired': rewards_expired,
+        'rewards_expires_at': notification.rewards_expires_at.strftime('%Y-%m-%d %H:%M:%S') if notification.rewards_expires_at else None,
         'has_unclaimed_rewards': has_unclaimed_rewards,
         'rewards': rewards_data,
     }
@@ -296,20 +319,12 @@ def claim_rewards(request, pk):
     
     notification = get_object_or_404(Notification, pk=pk)
 
-    # Verifica permissão
+    # Verifica permissão básica (notificações privadas)
     if notification.user and notification.user != request.user:
         return JsonResponse({'error': 'Você não tem permissão para reclamar prêmios desta notificação.'}, status=403)
 
-    # Verifica se já foi reclamado
-    if notification.rewards_claimed:
-        return JsonResponse({'error': 'Os prêmios desta notificação já foram reclamados.'}, status=400)
-
-    # Verifica se há prêmios
-    if not notification.rewards.exists():
-        return JsonResponse({'error': 'Esta notificação não possui prêmios.'}, status=400)
-
-    # Reclama os prêmios
-    success = claim_notification_rewards(notification, request.user)
+    # Reclama os prêmios (a função claim_notification_rewards faz todas as validações)
+    success, error_message = claim_notification_rewards(notification, request.user, request)
     
     if success:
         # Verifica se há fichas nos prêmios
@@ -325,7 +340,9 @@ def claim_rewards(request, pk):
             'message': message
         })
     else:
-        return JsonResponse({'error': 'Erro ao reclamar prêmios.'}, status=500)
+        # Retorna a mensagem de erro específica
+        error_msg = error_message or 'Erro ao reclamar prêmios.'
+        return JsonResponse({'error': error_msg}, status=400)
 
 
 @csrf_exempt

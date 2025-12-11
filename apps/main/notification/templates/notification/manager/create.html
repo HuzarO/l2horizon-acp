@@ -100,6 +100,32 @@
                 <div class="card-body" id="rewards-container">
                     <p class="text-white-50">{% trans "Clique em 'Adicionar Prêmio' para adicionar itens ou fichas que serão entregues junto com a notificação." %}</p>
                 </div>
+                <div class="card-footer bg-transparent border-top">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-white">
+                                <i class="bi bi-calendar-x me-2"></i>{% trans "Data de Expiração dos Prêmios (Opcional)" %}
+                            </label>
+                            <input type="date" name="rewards_expires_date" id="rewards_expires_date" 
+                                   class="form-control" onchange="updateExpirationInfo()">
+                            <small class="text-white-50">{% trans "Deixe em branco para prêmios sem expiração" %}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-white">
+                                <i class="bi bi-clock me-2"></i>{% trans "Hora de Expiração (Opcional)" %}
+                            </label>
+                            <input type="time" name="rewards_expires_time" id="rewards_expires_time" 
+                                   class="form-control" onchange="updateExpirationInfo()">
+                            <small class="text-white-50">{% trans "Hora limite para reivindicar os prêmios" %}</small>
+                        </div>
+                        <div class="col-12">
+                            <div id="expiration-info" class="alert alert-info" style="display: none;">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <span id="expiration-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="d-flex gap-2">
@@ -299,9 +325,52 @@ async function loadItemInfo(rewardIndex, itemId) {
     }
 }
 
+function updateExpirationInfo() {
+    const dateInput = document.getElementById('rewards_expires_date');
+    const timeInput = document.getElementById('rewards_expires_time');
+    const infoDiv = document.getElementById('expiration-info');
+    const textSpan = document.getElementById('expiration-text');
+    
+    if (dateInput && dateInput.value) {
+        const timeValue = timeInput && timeInput.value ? timeInput.value : '23:59';
+        const dateStr = dateInput.value + 'T' + timeValue;
+        const date = new Date(dateStr + ':00');
+        const now = new Date();
+        
+        if (date < now) {
+            infoDiv.className = 'alert alert-warning';
+            textSpan.innerHTML = '⚠️ Data de expiração está no passado. Os prêmios já estarão expirados!';
+            infoDiv.style.display = 'block';
+        } else {
+            infoDiv.className = 'alert alert-info';
+            const formattedDate = date.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            textSpan.innerHTML = `ℹ️ Os prêmios poderão ser reivindicados até: <strong>${formattedDate}</strong>`;
+            infoDiv.style.display = 'block';
+        }
+    } else {
+        if (infoDiv) {
+            infoDiv.style.display = 'none';
+        }
+    }
+}
+
 // Inicializar
 document.addEventListener('DOMContentLoaded', function() {
     updateRewardCount();
+    updateExpirationInfo();
+    
+    // Definir data mínima como hoje
+    const dateInput = document.getElementById('rewards_expires_date');
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+    }
 });
 </script>
 {% endblock %}
