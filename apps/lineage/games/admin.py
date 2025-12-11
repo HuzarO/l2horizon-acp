@@ -382,12 +382,13 @@ class RewardItemAdmin(BaseModelAdmin):
 
 @admin.register(DailyBonusSeason)
 class DailyBonusSeasonAdmin(BaseModelAdmin):
-    list_display = ('name', 'is_active', 'start_date', 'end_date', 'reset_hour_utc', 'created_at')
-    list_filter = ('is_active', 'start_date', 'end_date')
+    list_display = ('name', 'is_active', 'allow_retroactive_claim', 'start_date', 'end_date', 'reset_hour_utc', 'created_at')
+    list_filter = ('is_active', 'allow_retroactive_claim', 'start_date', 'end_date')
     search_fields = ('name',)
     ordering = ('-is_active', '-start_date')
     fieldsets = (
         (_('Informações'), {'fields': ('name', 'is_active', 'start_date', 'end_date', 'reset_hour_utc')}),
+        (_('Configurações'), {'fields': ('allow_retroactive_claim',)}),
         (_('Datas'), {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
     )
     readonly_fields = ('created_at', 'updated_at')

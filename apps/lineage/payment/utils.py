@@ -25,7 +25,7 @@ def registrar_tentativa_falsificacao(request, provedor, tipo_tentativa, detalhes
         detalhes: Detalhes adicionais sobre a tentativa
     """
     try:
-        ip_address, _ = ipw.get_client_ip(meta=request.META)
+        ip_address, is_routable = ipw.get_client_ip(meta=request.META)
         if not ip_address:
             ip_address = '0.0.0.0'
         

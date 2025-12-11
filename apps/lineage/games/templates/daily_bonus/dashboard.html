@@ -77,14 +77,16 @@
                   <div class="bonus-meta bonus-random">{% trans "Aleatório do Pool" %}</div>
                 {% endif %}
                 <div class="mt-auto">
-                  {% if d.is_today %}
-                    {% if d.claimed %}
-                      <span class="badge bg-secondary">{% trans "Já resgatado" %}</span>
-                    {% elif can_claim %}
+                  {% if d.claimed %}
+                    <span class="badge bg-secondary">{% trans "Já resgatado" %}</span>
+                  {% elif d.is_today %}
+                    {% if can_claim %}
                       <a href="{% url 'games:daily_bonus_claim' %}" class="btn btn-primary btn-sm mt-2">{% trans "Resgatar" %}</a>
                     {% else %}
                       <span class="badge bg-warning text-dark">{% trans "Disponível hoje" %}</span>
                     {% endif %}
+                  {% elif allow_retroactive and d.can_claim %}
+                    <a href="{% url 'games:daily_bonus_claim' %}?day={{ d.day }}" class="btn btn-success btn-sm mt-2">{% trans "Resgatar" %}</a>
                   {% endif %}
                 </div>
               </div>

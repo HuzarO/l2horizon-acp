@@ -383,13 +383,14 @@ class FishingBaitForm(forms.ModelForm):
 class DailyBonusSeasonForm(forms.ModelForm):
     class Meta:
         model = DailyBonusSeason
-        fields = ['name', 'start_date', 'end_date', 'is_active', 'reset_hour_utc']
+        fields = ['name', 'start_date', 'end_date', 'is_active', 'reset_hour_utc', 'allow_retroactive_claim']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'start_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'end_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'reset_hour_utc': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'max': '23'}),
+            'allow_retroactive_claim': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 
