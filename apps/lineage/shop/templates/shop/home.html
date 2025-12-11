@@ -5,6 +5,372 @@
 
 {% block extrastyle %}
 <link rel="stylesheet" href="{% static 'css/reports.css' %}?v=1.1">
+<style>
+  /* Modal customizado para pacotes - classes completamente isoladas */
+  
+  /* Overlay do modal customizado */
+  .custom-package-modal-overlay {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background-color: rgba(0, 0, 0, 0.7) !important;
+    z-index: 99990 !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    overflow: hidden !important;
+  }
+  
+  .custom-package-modal-overlay.active {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    animation: fadeIn 0.3s ease !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  @keyframes fadeIn {
+    from { 
+      opacity: 0; 
+    }
+    to { 
+      opacity: 1; 
+    }
+  }
+  
+  /* Container do modal customizado */
+  .custom-package-modal-container {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    max-height: calc(100vh - 40px);
+    background: #ffffff;
+    border-radius: 24px;
+    box-shadow: 
+      0 20px 60px rgba(0, 0, 0, 0.3),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
+    z-index: 99991;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    margin: auto;
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(30px) scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+  }
+  
+  /* Header do modal customizado */
+  .custom-package-modal-header {
+    background: linear-gradient(135deg, #6f42c1 0%, #8b5cf6 50%, #e83e8c 100%);
+    color: #ffffff;
+    padding: 1.75rem 2rem;
+    border-radius: 24px 24px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .custom-package-modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  
+  .custom-package-modal-header h5 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  .custom-package-modal-header h5 i {
+    font-size: 1.75rem;
+  }
+  
+  .custom-package-modal-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 1.5rem;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+    font-weight: 300;
+  }
+  
+  .custom-package-modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: rotate(90deg) scale(1.1);
+  }
+  
+  .custom-package-modal-close:active {
+    transform: rotate(90deg) scale(0.95);
+  }
+  
+  /* Body do modal customizado - com scroll melhorado */
+  .custom-package-modal-body {
+    padding: 2rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+    background: #ffffff;
+    color: #000000;
+    position: relative;
+    z-index: 1;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(111, 66, 193, 0.5) rgba(111, 66, 193, 0.1);
+  }
+  
+  /* Custom scrollbar para webkit browsers */
+  .custom-package-modal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .custom-package-modal-body::-webkit-scrollbar-track {
+    background: rgba(111, 66, 193, 0.05);
+    border-radius: 10px;
+  }
+  
+  .custom-package-modal-body::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .custom-package-modal-body::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #8b5cf6, #f06292);
+  }
+  
+  /* Footer do modal customizado */
+  .custom-package-modal-footer {
+    padding: 1.5rem 2rem;
+    background: linear-gradient(to bottom, rgba(111, 66, 193, 0.03), rgba(111, 66, 193, 0.08));
+    border-top: 1px solid rgba(111, 66, 193, 0.15);
+    border-radius: 0 0 24px 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+  
+  .custom-package-modal-footer .btn {
+    padding: 0.875rem 2rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .custom-package-modal-footer .btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+  
+  .custom-package-modal-footer .btn:hover::before {
+    width: 300px;
+    height: 300px;
+  }
+  
+  .custom-package-modal-footer .btn-secondary {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    color: #ffffff;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .custom-package-modal-footer .btn-secondary:hover {
+    background: linear-gradient(135deg, #5a6268, #495057);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+  }
+  
+  .custom-package-modal-footer .btn-primary {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    color: #ffffff;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .custom-package-modal-footer .btn-primary:hover {
+    background: linear-gradient(135deg, #8b5cf6, #f06292);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(111, 66, 193, 0.5);
+  }
+  
+  .custom-package-modal-footer .btn:active {
+    transform: translateY(0);
+  }
+  
+  /* Melhorias no package-items-list */
+  .custom-package-modal-body .package-items-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem;
+    padding: 0.5rem 0;
+  }
+  
+  .custom-package-modal-body .package-item {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(111, 66, 193, 0.05), rgba(232, 62, 140, 0.05));
+    border: 2px solid rgba(111, 66, 193, 0.15);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 1rem;
+  }
+  
+  .custom-package-modal-body .package-item:hover {
+    background: linear-gradient(135deg, rgba(111, 66, 193, 0.1), rgba(232, 62, 140, 0.1));
+    border-color: rgba(111, 66, 193, 0.3);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(111, 66, 193, 0.2);
+  }
+  
+  .custom-package-modal-body .package-item-image {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 4px;
+    flex-shrink: 0;
+    border: 1px solid rgba(111, 66, 193, 0.1);
+  }
+  
+  .custom-package-modal-body .package-item-info {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .custom-package-modal-body .package-item-info h6 {
+    margin: 0 0 0.25rem 0;
+    color: #1a1a2e;
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .custom-package-modal-body .package-item-quantity {
+    color: #6f42c1;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: rgba(111, 66, 193, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    display: inline-block;
+  }
+  
+  /* Empty state melhorado */
+  .custom-package-modal-body .empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #6c757d;
+  }
+  
+  .custom-package-modal-body .empty-state i {
+    font-size: 3rem;
+    color: #dee2e6;
+    margin-bottom: 1rem;
+    display: block;
+  }
+  
+  /* Responsividade */
+  @media (max-width: 768px) {
+    .custom-package-modal-overlay.active {
+      padding: 10px;
+    }
+    
+    .custom-package-modal-container {
+      max-width: 100%;
+      max-height: calc(100vh - 20px);
+      border-radius: 16px;
+    }
+    
+    .custom-package-modal-header {
+      padding: 1.25rem 1.5rem;
+      border-radius: 16px 16px 0 0;
+    }
+    
+    .custom-package-modal-header h5 {
+      font-size: 1.25rem;
+    }
+    
+    .custom-package-modal-body {
+      padding: 1.5rem;
+    }
+    
+    .custom-package-modal-body .package-items-list {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    
+    .custom-package-modal-footer {
+      padding: 1.25rem 1.5rem;
+      flex-direction: column;
+      border-radius: 0 0 16px 16px;
+    }
+    
+    .custom-package-modal-footer .btn {
+      width: 100%;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -156,47 +522,9 @@
               <a href="{% url 'shop:add_package_to_cart' package.id %}" class="btn btn-primary btn-sm me-2">
                 <i class="fas fa-plus me-1"></i>{% trans "Adicionar Pacote" %}
               </a>
-              <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalPackageItems{{ package.id }}">
+              <button type="button" class="btn btn-outline-info btn-sm" onclick="openCustomPackageModal('customModalPackage{{ package.id }}')">
                 <i class="fas fa-eye me-1"></i>{% trans "Ver Itens" %}
               </button>
-            </div>
-          </div>
-
-          <!-- Modal de Itens do Pacote -->
-          <div class="modal fade" id="modalPackageItems{{ package.id }}" tabindex="-1" aria-labelledby="modalPackageItemsLabel{{ package.id }}" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title" id="modalPackageItemsLabel{{ package.id }}">
-                    <i class="fas fa-box-seam me-2"></i>{{ package.nome }} - {% trans "Itens do Pacote" %}
-                  </h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                </div>
-                <div class="modal-body">
-                  <div class="package-items-list">
-                    {% for item in package.itens.all %}
-                    <div class="package-item">
-                      <img src="{% item_image_url item.item_id %}" alt="{{ item.item_name }}" class="package-item-image">
-                      <div class="package-item-info">
-                        <h6>{{ item.nome }}</h6>
-                        <span class="package-item-quantity">x{{ item.quantidade }}</span>
-                      </div>
-                    </div>
-                    {% empty %}
-                    <div class="empty-state">
-                      <i class="fas fa-exclamation-triangle"></i>
-                      <p>{% trans "Este pacote não contém itens." %}</p>
-                    </div>
-                    {% endfor %}
-                  </div>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Fechar" %}</button>
-                  <a href="{% url 'shop:add_package_to_cart' package.id %}" class="btn btn-primary">
-                    <i class="fas fa-plus me-1"></i>{% trans "Adicionar ao Carrinho" %}
-                  </a>
-                </div>
-              </div>
             </div>
           </div>
           {% endfor %}
@@ -234,6 +562,52 @@
       </div>
     </div>
 
+    <!-- Modais Customizados de Itens do Pacote - Fora do loop, no nível principal -->
+    {% if packages %}
+      {% for package in packages %}
+      <!-- Modal Customizado de Itens do Pacote -->
+      <div class="custom-package-modal-overlay" id="customModalPackage{{ package.id }}" onclick="closeCustomPackageModalOnOverlay(event, 'customModalPackage{{ package.id }}')" style="display: none;">
+        <div class="custom-package-modal-container" onclick="event.stopPropagation()">
+          <div class="custom-package-modal-header">
+            <h5>
+              <i class="fas fa-box-seam"></i>
+              {{ package.nome }} - {% trans "Itens do Pacote" %}
+            </h5>
+            <button type="button" class="custom-package-modal-close" onclick="closeCustomPackageModal('customModalPackage{{ package.id }}')" aria-label="Fechar">
+              ×
+            </button>
+          </div>
+          <div class="custom-package-modal-body">
+            <div class="package-items-list">
+              {% for item in package.itens.all %}
+              <div class="package-item">
+                <img src="{% item_image_url item.item_id %}" alt="{{ item.item_name }}" class="package-item-image">
+                <div class="package-item-info">
+                  <h6>{{ item.nome }}</h6>
+                  <span class="package-item-quantity">x{{ item.quantidade }}</span>
+                </div>
+              </div>
+              {% empty %}
+              <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>{% trans "Este pacote não contém itens." %}</p>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="custom-package-modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeCustomPackageModal('customModalPackage{{ package.id }}')">
+              {% trans "Fechar" %}
+            </button>
+            <a href="{% url 'shop:add_package_to_cart' package.id %}" class="btn btn-primary">
+              <i class="fas fa-plus me-1"></i>{% trans "Adicionar ao Carrinho" %}
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    {% endif %}
+
     <!-- Return Button -->
     <div class="text-center mt-4">
       <a href="{% url 'dashboard' %}" class="report-back-button">
@@ -243,141 +617,56 @@
   </div>
 </div>
 
-<!-- Script para garantir que os modais e botões funcionem corretamente -->
+<!-- Script para controlar o modal customizado -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Debug: verificar se os modais estão sendo encontrados
-  const packageModals = document.querySelectorAll('[id^="modalPackageItems"]');
-  console.log('Found package modals:', packageModals.length);
-  
-  // Adicionar event listeners para debug e garantir funcionalidade
-  packageModals.forEach(function(modal) {
-    const modalId = modal.id;
-    const targetButton = document.querySelector(`[data-bs-target="#${modalId}"]`);
-    
-    if (targetButton) {
-      console.log('Found target button for modal:', modalId);
-      
-      // Garantir que o botão sempre seja clicável
-      targetButton.style.pointerEvents = 'auto';
-      targetButton.style.cursor = 'pointer';
-      targetButton.style.zIndex = '1';
-      
-      // Adicionar event listener para garantir que o botão funcione
-      targetButton.addEventListener('click', function(e) {
-        console.log('Button clicked for modal:', modalId);
-        // Garantir que o botão seja clicável
-        this.style.pointerEvents = 'auto';
-        this.style.cursor = 'pointer';
-      });
+function openCustomPackageModal(modalId) {
+  console.log('Abrindo modal:', modalId);
+  const modal = document.getElementById(modalId);
+  console.log('Modal encontrado:', modal);
+  if (modal) {
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+    modal.style.zIndex = '99990';
+    document.body.style.overflow = 'hidden'; // Previne scroll do body
+    console.log('Modal ativado');
+  } else {
+    console.error('Modal não encontrado:', modalId);
+  }
+}
+
+function closeCustomPackageModal(modalId) {
+  console.log('Fechando modal:', modalId);
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+    document.body.style.overflow = ''; // Restaura scroll do body
+  }
+}
+
+function closeCustomPackageModalOnOverlay(event, modalId) {
+  // Fecha apenas se clicou no overlay (não no container)
+  if (event.target.classList.contains('custom-package-modal-overlay')) {
+    closeCustomPackageModal(modalId);
+  }
+}
+
+// Fechar modal com ESC
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    const activeModal = document.querySelector('.custom-package-modal-overlay.active');
+    if (activeModal) {
+      closeCustomPackageModal(activeModal.id);
     }
-    
-    // Quando o modal é aberto
-    modal.addEventListener('shown.bs.modal', function() {
-      console.log('Modal opened:', modalId);
-      
-      // Garantir que todos os elementos do modal sejam clicáveis
-      const modalElements = modal.querySelectorAll('*');
-      modalElements.forEach(function(element) {
-        element.style.pointerEvents = 'auto';
-      });
-      
-      // Garantir que o modal content seja clicável
-      const modalContent = modal.querySelector('.modal-content');
-      if (modalContent) {
-        modalContent.style.pointerEvents = 'auto';
-        modalContent.style.zIndex = '10001';
-      }
-      
-      // Garantir que os botões sejam clicáveis
-      const buttons = modal.querySelectorAll('.btn, .btn-close');
-      buttons.forEach(function(button) {
-        button.style.pointerEvents = 'auto';
-        button.style.cursor = 'pointer';
-        button.style.zIndex = '10002';
-      });
-    });
-    
-    // Quando o modal é fechado
-    modal.addEventListener('hidden.bs.modal', function() {
-      console.log('Modal closed:', modalId);
-      
-      // Garantir que o botão "Ver Itens" continue funcionando
-      if (targetButton) {
-        // Forçar a reativação do botão
-        targetButton.style.pointerEvents = 'auto';
-        targetButton.style.cursor = 'pointer';
-        targetButton.style.zIndex = '10';
-        
-        // Remover qualquer classe que possa estar interferindo
-        targetButton.classList.remove('disabled');
-        targetButton.removeAttribute('disabled');
-        
-        // Garantir que o botão seja clicável
-        setTimeout(function() {
-          targetButton.style.pointerEvents = 'auto';
-          targetButton.style.cursor = 'pointer';
-          targetButton.style.zIndex = '10';
-          console.log('Button re-enabled for modal:', modalId);
-        }, 100);
-      }
-      
-      // Limpar qualquer backdrop residual
-      const backdrops = document.querySelectorAll('.modal-backdrop');
-      backdrops.forEach(function(backdrop) {
-        backdrop.style.pointerEvents = 'none';
-        backdrop.style.zIndex = '-1';
-        backdrop.style.visibility = 'hidden';
-        backdrop.style.opacity = '0';
-        backdrop.style.display = 'none';
-      });
-      
-      // Garantir que o modal fade não interfira quando fechado
-      modal.style.zIndex = '-1';
-      modal.style.pointerEvents = 'none';
-      modal.style.visibility = 'hidden';
-      modal.style.opacity = '0';
-      
-      // Remover classes que possam estar causando interferência
-      modal.classList.remove('show');
-      modal.classList.remove('fade');
-      
-      // Garantir que todos os elementos fora do modal sejam clicáveis
-      const allElements = document.querySelectorAll('.reports-container *:not(.modal):not(.modal-backdrop)');
-      allElements.forEach(function(element) {
-        if (element.tagName === 'BUTTON' || element.classList.contains('btn')) {
-          element.style.pointerEvents = 'auto';
-          element.style.cursor = 'pointer';
-          element.style.zIndex = '1';
-        }
-      });
-    });
-  });
-  
-  // Garantir que todos os botões "Ver Itens" sejam clicáveis
-  const verItensButtons = document.querySelectorAll('[data-bs-toggle="modal"]');
-  verItensButtons.forEach(function(button) {
-    button.style.pointerEvents = 'auto';
-    button.style.cursor = 'pointer';
-    button.style.zIndex = '10';
-    button.style.position = 'relative';
-    
-    // Garantir que o botão seja sempre clicável
-    button.addEventListener('click', function(e) {
-      console.log('Button clicked:', this.getAttribute('data-bs-target'));
-      this.style.pointerEvents = 'auto';
-      this.style.cursor = 'pointer';
-      this.style.zIndex = '10';
-    });
-  });
-  
-  // Garantir que todos os botões em item-actions sejam clicáveis
-  const itemActionButtons = document.querySelectorAll('.item-actions button, .item-actions .btn');
-  itemActionButtons.forEach(function(button) {
-    button.style.pointerEvents = 'auto';
-    button.style.cursor = 'pointer';
-    button.style.zIndex = '1';
-    button.style.position = 'relative';
+  }
+});
+
+// Debug: verificar se os modais foram renderizados
+document.addEventListener('DOMContentLoaded', function() {
+  const modals = document.querySelectorAll('.custom-package-modal-overlay');
+  console.log('Modais encontrados:', modals.length);
+  modals.forEach(function(modal) {
+    console.log('Modal ID:', modal.id);
   });
 });
 </script>
