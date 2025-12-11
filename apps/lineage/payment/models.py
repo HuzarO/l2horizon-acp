@@ -131,7 +131,7 @@ class TentativaFalsificacao(BaseModel):
         from django.utils import timezone
         from datetime import timedelta
         cutoff = timezone.now() - timedelta(minutes=minutos)
-        return cls.objects.filter(ip_address=ip_address, data_tentativa__gte=cutoff).count()
+        return cls.objects.filter(ip_address=str(ip_address), data_tentativa__gte=cutoff).count()
 
     @classmethod
     def deve_enviar_alerta(cls, ip_address, limite=5, minutos=60):
@@ -142,7 +142,7 @@ class TentativaFalsificacao(BaseModel):
         tentativas = cls.contar_tentativas_recentes(ip_address, minutos)
         # Verifica se já foi enviado alerta recente
         ja_alertado = cls.objects.filter(
-            ip_address=ip_address,
+            ip_address=str(ip_address),
             alerta_enviado=True,
             data_tentativa__gte=timezone.now() - timedelta(hours=24)
         ).exists()
