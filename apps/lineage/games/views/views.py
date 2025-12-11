@@ -1106,6 +1106,88 @@ def daily_bonus_claim(request):
 
 
 @conditional_otp_required
+def daily_bonus_history(request):
+    """Visualizar histórico de coletas do bônus diário"""
+    from ..models import DailyBonusSeason, DailyBonusClaim
+    from django.db.models import Count
+    from collections import defaultdict
+    
+    season = DailyBonusSeason.objects.filter(is_active=True).first()
+    if not season:
+        return render(request, 'daily_bonus/history.html', {
+            'season': None,
+            'history_by_month': {},
+            'total_claims': 0,
+        })
+    
+    # Busca todos os claims do usuário para esta season, ordenados por data
+    all_claims = DailyBonusClaim.objects.filter(
+        user=request.user,
+        season=season
+    ).order_by('-created_at')
+    
+    # Agrupa por mês/ano
+    history_by_month = defaultdict(lambda: {
+        'year': None,
+        'month': None,
+        'month_name': None,
+        'days_claimed': set(),
+        'total_days': 0,
+        'claims': []
+    })
+    
+    for claim in all_claims:
+        claim_date = claim.created_at
+        month_key = f"{claim_date.year}-{claim_date.month:02d}"
+        
+        if month_key not in history_by_month:
+            month_names = [
+                _('Janeiro'), _('Fevereiro'), _('Março'), _('Abril'),
+                _('Maio'), _('Junho'), _('Julho'), _('Agosto'),
+                _('Setembro'), _('Outubro'), _('Novembro'), _('Dezembro')
+            ]
+            days_in_month = calendar.monthrange(claim_date.year, claim_date.month)[1]
+            
+            history_by_month[month_key] = {
+                'year': claim_date.year,
+                'month': claim_date.month,
+                'month_name': month_names[claim_date.month - 1],
+                'days_claimed': set(),
+                'total_days': days_in_month,
+                'days_list': list(range(1, days_in_month + 1)),
+                'claims': []
+            }
+        
+        history_by_month[month_key]['days_claimed'].add(claim.day_of_month)
+        history_by_month[month_key]['claims'].append(claim)
+    
+    # Converte sets para sorted lists e ordena por mês/ano (mais recente primeiro)
+    for month_key in history_by_month:
+        history_by_month[month_key]['days_claimed'] = sorted(history_by_month[month_key]['days_claimed'])
+        history_by_month[month_key]['claims'] = sorted(
+            history_by_month[month_key]['claims'],
+            key=lambda x: x.created_at,
+            reverse=True
+        )
+    
+    # Ordena os meses (mais recente primeiro)
+    sorted_months = sorted(
+        history_by_month.items(),
+        key=lambda x: (x[1]['year'], x[1]['month']),
+        reverse=True
+    )
+    history_by_month = dict(sorted_months)
+    
+    total_claims = all_claims.count()
+    
+    return render(request, 'daily_bonus/history.html', {
+        'season': season,
+        'history_by_month': history_by_month,
+        'total_claims': total_claims,
+    })
+
+
+@conditional_otp_required
 def tokens_history(request):
     """Visualizar histórico de fichas do usuário"""
     history = TokenHistory.objects.filter(user=request.user).order_by('-created_at')
