@@ -1,17 +1,350 @@
 {% extends "layouts/base.html" %}
-{% load i18n %}
+{% load static i18n %}
+
+{% block title %}{% trans "Comprar Battle Pass Premium" %} - {% trans "Battle Pass" %}{% endblock %}
+
+{% block extrastyle %}
+<style>
+.manager-bg { 
+    background: radial-gradient(ellipse at center, #0f172a 0%, #1a1a2e 50%, #0f0f1e 100%); 
+    min-height: 100vh; 
+    padding: 40px 0; 
+    position: relative;
+}
+.manager-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(111, 66, 193, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.card-glow { 
+    background: linear-gradient(145deg, rgba(26, 26, 46, 0.95) 0%, rgba(18, 18, 32, 0.95) 100%); 
+    border: 1px solid rgba(111, 66, 193, 0.3); 
+    border-radius: 16px; 
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(111, 66, 193, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.card-glow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #6f42c1, #ffd700, #6f42c1);
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.premium-icon {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem;
+    box-shadow: 
+        0 0 30px rgba(255, 215, 0, 0.5),
+        0 0 60px rgba(255, 215, 0, 0.3),
+        inset 0 0 20px rgba(255, 255, 255, 0.2);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(255, 215, 0, 0.5), 0 0 60px rgba(255, 215, 0, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.2); }
+    50% { transform: scale(1.05); box-shadow: 0 0 40px rgba(255, 215, 0, 0.7), 0 0 80px rgba(255, 215, 0, 0.5), inset 0 0 25px rgba(255, 255, 255, 0.3); }
+}
+
+.premium-icon i {
+    font-size: 4rem;
+    color: #1a1a2e;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.info-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.info-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(111, 66, 193, 0.5);
+    transform: translateX(5px);
+}
+
+.info-item-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-item-value {
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.price-highlight {
+    color: #ffd700;
+    font-size: 2rem;
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.balance-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.balance-success {
+    color: #00ff7f;
+}
+
+.balance-warning {
+    color: #ffa500;
+}
+
+.balance-danger {
+    color: #ff4444;
+}
+
+.btn-premium {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    border: none;
+    color: #1a1a2e;
+    font-weight: 700;
+    padding: 1rem 2.5rem;
+    font-size: 1.125rem;
+    border-radius: 12px;
+    box-shadow: 
+        0 4px 15px rgba(255, 215, 0, 0.4),
+        0 0 0 0 rgba(255, 215, 0, 0.4);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 6px 20px rgba(255, 215, 0, 0.6),
+        0 0 0 4px rgba(255, 215, 0, 0.2);
+    color: #1a1a2e;
+}
+
+.btn-premium:active {
+    transform: translateY(0);
+}
+
+.btn-secondary-custom {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 1rem 2.5rem;
+    font-size: 1.125rem;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary-custom:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.benefits-list {
+    list-style: none;
+    padding: 0;
+}
+
+.benefits-list li {
+    padding: 0.75rem 0;
+    color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.benefits-list li i {
+    color: #ffd700;
+    font-size: 1.25rem;
+}
+
+.divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(111, 66, 193, 0.5), transparent);
+    margin: 2rem 0;
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="card p-4 shadow-lg">
-  <h2 class="mb-3">{% trans "Confirmar Compra do Passe de Batalha Premium" %}</h2>
-  <p><strong>{% trans "Temporada" %}:</strong> {{ season.name }}</p>
-  <p><strong>{% trans "Preço" %}:</strong> {{ premium_price }} {% trans "moedas" %}</p>
-  <p><strong>{% trans "Saldo atual" %}:</strong> {{ wallet.saldo }} {% trans "moedas" %}</p>
+<div class="manager-bg">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-xl-7">
+                <div class="card card-glow">
+                    <div class="card-body p-5">
+                        <!-- Header -->
+                        <div class="text-center mb-4">
+                            <div class="premium-icon">
+                                <i class="bi bi-crown-fill"></i>
+                            </div>
+                            <h1 class="text-white mb-2" style="font-size: 2.5rem; font-weight: 700;">
+                                {% trans "Battle Pass Premium" %}
+                            </h1>
+                            <p class="text-white-50 mb-0" style="font-size: 1.125rem;">
+                                {% trans "Desbloqueie todos os prêmios exclusivos" %}
+                            </p>
+                        </div>
 
-  <form method="post">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-success">{% trans "Confirmar Compra" %}</button>
-    <a href="{% url 'games:battle_pass' %}" class="btn btn-secondary">{% trans "Cancelar" %}</a>
-  </form>
+                        <div class="divider"></div>
+
+                        <!-- Informações da Temporada -->
+                        <div class="info-item">
+                            <div class="info-item-label">
+                                <i class="bi bi-calendar-event me-2"></i>{% trans "Temporada" %}
+                            </div>
+                            <div class="info-item-value">
+                                {{ season.name }}
+                            </div>
+                        </div>
+
+                        <!-- Preço -->
+                        <div class="info-item">
+                            <div class="info-item-label">
+                                <i class="bi bi-currency-exchange me-2"></i>{% trans "Preço" %}
+                            </div>
+                            <div class="info-item-value">
+                                <span class="price-highlight">{{ premium_price }}</span>
+                                <span class="text-white-50 ms-2">{% trans "moedas" %}</span>
+                            </div>
+                        </div>
+
+                        <!-- Saldo Atual -->
+                        <div class="info-item">
+                            <div class="info-item-label">
+                                <i class="bi bi-wallet2 me-2"></i>{% trans "Saldo Atual" %}
+                            </div>
+                            <div class="info-item-value balance-info">
+                                <span class="{% if wallet.saldo >= premium_price %}balance-success{% elif wallet.saldo >= premium_price|add:'-100' %}balance-warning{% else %}balance-danger{% endif %}">
+                                    {{ wallet.saldo }}
+                                </span>
+                                <span class="text-white-50">{% trans "moedas" %}</span>
+                                {% if wallet.saldo < premium_price %}
+                                    <span class="badge bg-danger ms-2">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>{% trans "Saldo Insuficiente" %}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-success ms-2">
+                                        <i class="bi bi-check-circle me-1"></i>{% trans "Saldo Suficiente" %}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Saldo Após Compra -->
+                        {% if wallet.saldo >= premium_price %}
+                        <div class="info-item" style="background: rgba(0, 255, 127, 0.1); border-color: rgba(0, 255, 127, 0.3);">
+                            <div class="info-item-label">
+                                <i class="bi bi-calculator me-2"></i>{% trans "Saldo Após Compra" %}
+                            </div>
+                            <div class="info-item-value balance-success">
+                                {{ remaining_balance }} {% trans "moedas" %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="divider"></div>
+
+                        <!-- Benefícios -->
+                        <div class="mb-4">
+                            <h5 class="text-white mb-3">
+                                <i class="bi bi-star-fill me-2" style="color: #ffd700;"></i>
+                                {% trans "Benefícios do Premium" %}
+                            </h5>
+                            <ul class="benefits-list">
+                                <li>
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span>{% trans "Acesso a todos os prêmios premium exclusivos" %}</span>
+                                </li>
+                                <li>
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span>{% trans "Recompensas extras em cada nível" %}</span>
+                                </li>
+                                <li>
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span>{% trans "Itens raros e exclusivos" %}</span>
+                                </li>
+                                <li>
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    <span>{% trans "Suporte à temporada atual" %}</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Formulário -->
+                        <form method="post" class="mt-4">
+                            {% csrf_token %}
+                            <div class="d-flex gap-3 justify-content-center flex-wrap">
+                                {% if wallet.saldo >= premium_price %}
+                                    <button type="submit" class="btn btn-premium">
+                                        <i class="bi bi-cart-check me-2"></i>
+                                        {% trans "Confirmar Compra" %}
+                                    </button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-premium" disabled title="{% trans 'Saldo insuficiente' %}">
+                                        <i class="bi bi-x-circle me-2"></i>
+                                        {% trans "Saldo Insuficiente" %}
+                                    </button>
+                                {% endif %}
+                                <a href="{% url 'games:battle_pass' %}" class="btn btn-secondary-custom">
+                                    <i class="bi bi-arrow-left me-2"></i>
+                                    {% trans "Cancelar" %}
+                                </a>
+                            </div>
+                        </form>
+
+                        {% if wallet.saldo < premium_price %}
+                        <div class="alert alert-warning mt-4" style="background: rgba(255, 165, 0, 0.1); border-color: rgba(255, 165, 0, 0.3); color: #ffa500;">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>{% trans "Atenção" %}:</strong> {% trans "Você não possui saldo suficiente para adquirir o Battle Pass Premium. Recarregue sua carteira para continuar." %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

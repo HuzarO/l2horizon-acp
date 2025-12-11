@@ -151,6 +151,28 @@
                                     {% endif %}
                                 </td>
                             </tr>
+                            {% if notification.rewards.exists %}
+                            <tr>
+                                <th class="text-white-50">{% trans "Expiração dos Prêmios" %}</th>
+                                <td>
+                                    {% if notification.rewards_expires_at %}
+                                        {% if notification.rewards_expired %}
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-clock-history me-1"></i>{% trans "Expirado em" %} {{ notification.rewards_expires_at|date:"d/m/Y H:i" }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-info">
+                                                <i class="bi bi-calendar-check me-1"></i>{% trans "Válido até" %} {{ notification.rewards_expires_at|date:"d/m/Y H:i" }}
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-infinity me-1"></i>{% trans "Sem expiração" %}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
                             <tr>
                                 <th class="text-white-50">{% trans "Criada em" %}</th>
                                 <td class="text-white">{{ notification.created_at|date:"d/m/Y H:i:s" }}</td>
@@ -231,11 +253,30 @@
                             <div>
                                 {% if notification.rewards_claimed %}
                                     <span class="badge bg-success">{% trans "Reclamados" %}</span>
+                                {% elif notification.rewards_expired %}
+                                    <span class="badge bg-danger">{% trans "Expirados" %}</span>
                                 {% else %}
                                     <span class="badge bg-warning">{% trans "Pendentes" %}</span>
                                 {% endif %}
                             </div>
                         </div>
+                        {% if notification.rewards_expires_at %}
+                        <div class="mb-3">
+                            <div class="text-white-50 small">{% trans "Expiração" %}</div>
+                            <div>
+                                {% if notification.rewards_expired %}
+                                    <span class="text-danger">
+                                        <i class="bi bi-clock-history me-1"></i>{% trans "Expirado" %}
+                                    </span>
+                                    <br><small class="text-white-50">{{ notification.rewards_expires_at|date:"d/m/Y H:i" }}</small>
+                                {% else %}
+                                    <span class="text-info">
+                                        <i class="bi bi-calendar-check me-1"></i>{{ notification.rewards_expires_at|date:"d/m/Y H:i" }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </div>

@@ -131,6 +131,25 @@ def notification_create(request):
                     messages.error(request, _('Usuário não encontrado.'))
                     return redirect('notification:manager_create')
             
+            # Processar data de expiração dos prêmios
+            rewards_expires_at = None
+            rewards_expires_date = request.POST.get('rewards_expires_date', '').strip()
+            rewards_expires_time = request.POST.get('rewards_expires_time', '').strip()
+            
+            if rewards_expires_date:
+                try:
+                    from django.utils.dateparse import parse_datetime
+                    from django.utils import timezone
+                    # Combina data e hora
+                    datetime_str = f"{rewards_expires_date} {rewards_expires_time}" if rewards_expires_time else f"{rewards_expires_date} 23:59"
+                    rewards_expires_at = parse_datetime(datetime_str)
+                    if rewards_expires_at:
+                        # Garante que está timezone-aware
+                        if timezone.is_naive(rewards_expires_at):
+                            rewards_expires_at = timezone.make_aware(rewards_expires_at)
+                except (ValueError, TypeError):
+                    messages.warning(request, _('Data de expiração inválida. Os prêmios serão criados sem expiração.'))
+            
             # Processar prêmios
             rewards = []
             reward_count = int(request.POST.get('reward_count', 0))
@@ -166,7 +185,8 @@ def notification_create(request):
                 message=message,
                 created_by=request.user,
                 link=link,
-                rewards=rewards if rewards else None
+                rewards=rewards if rewards else None,
+                rewards_expires_at=rewards_expires_at
             )
             
             messages.success(request, _('Notificação criada com sucesso!'))

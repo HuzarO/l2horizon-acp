@@ -131,10 +131,12 @@ def buy_battle_pass_premium_view(request):
             return redirect('games:battle_pass')
 
     # GET: Mostrar tela de confirmação
+    remaining_balance = wallet.saldo - PREMIUM_PRICE if wallet.saldo >= PREMIUM_PRICE else 0
     return render(request, 'battlepass/confirm_premium_purchase.html', {
         'season': season,
         'premium_price': PREMIUM_PRICE,
-        'wallet': wallet
+        'wallet': wallet,
+        'remaining_balance': remaining_balance
     })
 
 

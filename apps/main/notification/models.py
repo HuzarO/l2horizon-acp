@@ -39,15 +39,16 @@ class Notification(BaseModel):
         verbose_name=_("Link da Notificação"),
         help_text=_("URL opcional para redirecionar ao clicar na notificação.")
     )
-
-    class Meta:
-        verbose_name = _("Notificação")
-        verbose_name_plural = _("Notificações")
-
     rewards_claimed = models.BooleanField(
         default=False,
         verbose_name=_("Prêmios Reclamados"),
         help_text=_("Indica se os prêmios desta notificação já foram reclamados.")
+    )
+    rewards_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Prêmios Expirando Em"),
+        help_text=_("Data e hora limite para reclamar os prêmios desta notificação. Deixe em branco para prêmios sem expiração.")
     )
 
     class Meta:
@@ -56,6 +57,19 @@ class Notification(BaseModel):
 
     def __str__(self):
         return f"{self.get_notification_type_display()} - {self.message[:50]}..."
+    
+    def rewards_expired(self):
+        """Verifica se os prêmios desta notificação expiraram"""
+        if not self.rewards_expires_at:
+            return False
+        from django.utils import timezone
+        return timezone.now() > self.rewards_expires_at
+    
+    def rewards_available(self):
+        """Verifica se ainda é possível reclamar os prêmios (não expirou e tem prêmios)"""
+        if not self.rewards.exists():
+            return False
+        return not self.rewards_expired()
 
 
 class NotificationReward(BaseModel):
@@ -134,9 +148,52 @@ class PublicNotificationView(BaseModel):
     class Meta:
         verbose_name = _("Visualização de Notificação Pública")
         verbose_name_plural = _("Visualizações de Notificações Públicas")
+        unique_together = ['user', 'notification']
 
     def __str__(self):
         return f"{self.user.username} - {self.notification.message[:30]}..."
+
+
+class PublicNotificationRewardClaim(BaseModel):
+    """Rastreia prêmios reclamados de notificações públicas por usuário"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name=_("Usuário"),
+        help_text=_("Usuário que reclamou os prêmios.")
+    )
+    notification = models.ForeignKey(
+        Notification,
+        on_delete=models.CASCADE,
+        verbose_name=_("Notificação"),
+        help_text=_("Notificação pública da qual os prêmios foram reclamados.")
+    )
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        verbose_name=_("IP Address"),
+        help_text=_("Endereço IP usado ao reclamar os prêmios.")
+    )
+    user_agent = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name=_("User Agent"),
+        help_text=_("User agent do navegador usado.")
+    )
+
+    class Meta:
+        verbose_name = _("Prêmio de Notificação Pública Reclamado")
+        verbose_name_plural = _("Prêmios de Notificações Públicas Reclamados")
+        unique_together = ['user', 'notification']
+        indexes = [
+            models.Index(fields=['notification', 'user']),
+            models.Index(fields=['ip_address', 'created_at']),
+            models.Index(fields=['user', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.notification.id} - {self.created_at.strftime('%d/%m/%Y %H:%M')}"
 
 
 class PushSubscription(BaseModel):
