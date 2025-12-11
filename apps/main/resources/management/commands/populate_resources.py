@@ -175,6 +175,54 @@ class Command(BaseCommand):
                 'icon': 'fas fa-dice',
                 'order': 4,
             },
+            {
+                'name': 'slot_machine',
+                'display_name': 'Slot Machine',
+                'description': 'Jogo de caça-níqueis com jackpot progressivo',
+                'category': 'games',
+                'icon': 'fas fa-coins',
+                'order': 5,
+            },
+            {
+                'name': 'dice_game',
+                'display_name': 'Dice Game',
+                'description': 'Jogo de apostas com dados',
+                'category': 'games',
+                'icon': 'fas fa-dice-six',
+                'order': 6,
+            },
+            {
+                'name': 'fishing_game',
+                'display_name': 'Fishing Game',
+                'description': 'Jogo de pescaria com sistema de progressão',
+                'category': 'games',
+                'icon': 'fas fa-fish',
+                'order': 7,
+            },
+            {
+                'name': 'slot_machine_manager',
+                'display_name': 'Gerenciador Slot Machine',
+                'description': 'Painel administrativo do Slot Machine',
+                'category': 'games',
+                'icon': 'fas fa-cog',
+                'order': 8,
+            },
+            {
+                'name': 'dice_game_manager',
+                'display_name': 'Gerenciador Dice Game',
+                'description': 'Painel administrativo do Dice Game',
+                'category': 'games',
+                'icon': 'fas fa-cog',
+                'order': 9,
+            },
+            {
+                'name': 'fishing_game_manager',
+                'display_name': 'Gerenciador Fishing Game',
+                'description': 'Painel administrativo do Fishing Game',
+                'category': 'games',
+                'icon': 'fas fa-cog',
+                'order': 10,
+            },
         ]
 
         # Recursos de Leilões
@@ -277,6 +325,198 @@ class Command(BaseCommand):
             },
         ]
 
+        # Recursos de Marketplace
+        marketplace_resources = [
+            {
+                'name': 'marketplace_module',
+                'display_name': 'Módulo de Marketplace',
+                'description': 'Sistema de compra e venda de personagens',
+                'category': 'other',
+                'icon': 'fas fa-store',
+                'order': 1,
+            },
+        ]
+
+        # Recursos de Wiki
+        wiki_resources = [
+            {
+                'name': 'wiki_module',
+                'display_name': 'Módulo de Wiki',
+                'description': 'Sistema de wiki com informações do jogo',
+                'category': 'other',
+                'icon': 'fas fa-book',
+                'order': 2,
+            },
+        ]
+
+        # Recursos de Roadmap
+        roadmap_resources = [
+            {
+                'name': 'roadmap_module',
+                'display_name': 'Módulo de Roadmap',
+                'description': 'Sistema de roadmap público de funcionalidades',
+                'category': 'other',
+                'icon': 'fas fa-map-marked-alt',
+                'order': 3,
+            },
+        ]
+
+        # Recursos de Rankings (Tops)
+        tops_resources = [
+            {
+                'name': 'tops_module',
+                'display_name': 'Módulo de Rankings',
+                'description': 'Sistema de rankings e tops do servidor',
+                'category': 'other',
+                'icon': 'fas fa-trophy',
+                'order': 4,
+            },
+        ]
+
+        # Recursos de Relatórios
+        reports_resources = [
+            {
+                'name': 'reports_module',
+                'display_name': 'Módulo de Relatórios',
+                'description': 'Sistema de relatórios e estatísticas administrativas',
+                'category': 'admin',
+                'icon': 'fas fa-chart-bar',
+                'order': 2,
+            },
+        ]
+
+        # Recursos de Contabilidade
+        accountancy_resources = [
+            {
+                'name': 'accountancy_module',
+                'display_name': 'Módulo de Contabilidade',
+                'description': 'Sistema de contabilidade e registros financeiros',
+                'category': 'admin',
+                'icon': 'fas fa-calculator',
+                'order': 3,
+            },
+        ]
+
+        # Recursos de Servidor
+        server_resources = [
+            {
+                'name': 'server_module',
+                'display_name': 'Módulo de Servidor',
+                'description': 'Gerenciamento e integração com servidor L2',
+                'category': 'admin',
+                'icon': 'fas fa-server',
+                'order': 4,
+            },
+        ]
+
+        # Recursos de Notícias
+        news_resources = [
+            {
+                'name': 'news_module',
+                'display_name': 'Módulo de Notícias',
+                'description': 'Sistema de notícias e blog',
+                'category': 'other',
+                'icon': 'fas fa-newspaper',
+                'order': 5,
+            },
+        ]
+
+        # Recursos de FAQ
+        faq_resources = [
+            {
+                'name': 'faq_module',
+                'display_name': 'Módulo de FAQ',
+                'description': 'Sistema de perguntas frequentes',
+                'category': 'other',
+                'icon': 'fas fa-question-circle',
+                'order': 6,
+            },
+        ]
+
+        # Recursos de Mensagens
+        message_resources = [
+            {
+                'name': 'message_module',
+                'display_name': 'Módulo de Mensagens',
+                'description': 'Sistema de mensagens e amigos',
+                'category': 'social',
+                'icon': 'fas fa-envelope',
+                'order': 5,
+            },
+        ]
+
+        # Recursos de Downloads
+        downloads_resources = [
+            {
+                'name': 'downloads_module',
+                'display_name': 'Módulo de Downloads',
+                'description': 'Sistema de downloads (launcher, patches)',
+                'category': 'other',
+                'icon': 'fas fa-download',
+                'order': 7,
+            },
+        ]
+
+        # Recursos de Licenciamento
+        licence_resources = [
+            {
+                'name': 'licence_module',
+                'display_name': 'Módulo de Licenciamento',
+                'description': 'Sistema de licenciamento e ativação',
+                'category': 'other',
+                'icon': 'fas fa-key',
+                'order': 8,
+            },
+        ]
+
+        # Recursos de Calendário
+        calendary_resources = [
+            {
+                'name': 'calendary_module',
+                'display_name': 'Módulo de Calendário',
+                'description': 'Sistema de calendário de eventos e agendamentos',
+                'category': 'other',
+                'icon': 'fas fa-calendar-alt',
+                'order': 9,
+            },
+        ]
+
+        # Recursos de Auditoria
+        auditor_resources = [
+            {
+                'name': 'auditor_module',
+                'display_name': 'Módulo de Auditoria',
+                'description': 'Sistema de auditoria e logs',
+                'category': 'admin',
+                'icon': 'fas fa-clipboard-list',
+                'order': 5,
+            },
+        ]
+
+        # Recursos de Solicitações
+        solicitation_resources = [
+            {
+                'name': 'solicitation_module',
+                'display_name': 'Módulo de Solicitações',
+                'description': 'Sistema de solicitações e suporte',
+                'category': 'other',
+                'icon': 'fas fa-headset',
+                'order': 10,
+            },
+        ]
+
+        # Recursos de Armazenamento de Mídia
+        media_storage_resources = [
+            {
+                'name': 'media_storage_module',
+                'display_name': 'Módulo de Armazenamento de Mídia',
+                'description': 'Gerenciamento de mídia e arquivos',
+                'category': 'admin',
+                'icon': 'fas fa-images',
+                'order': 6,
+            },
+        ]
+
         # Recursos de Administração
         admin_resources = [
             {
@@ -294,7 +534,12 @@ class Command(BaseCommand):
             shop_resources + wallet_resources + social_resources + 
             games_resources + auction_resources + inventory_resources + 
             payment_resources + notification_resources + api_resources + 
-            admin_resources
+            marketplace_resources + wiki_resources + roadmap_resources + 
+            tops_resources + reports_resources + accountancy_resources + 
+            server_resources + news_resources + faq_resources + 
+            message_resources + downloads_resources + licence_resources + 
+            calendary_resources + auditor_resources + solicitation_resources + 
+            media_storage_resources + admin_resources
         )
 
         created_count = 0

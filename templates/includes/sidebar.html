@@ -1,4 +1,4 @@
-{% load i18n static admin_volt check_include %}
+{% load i18n static admin_volt check_include resource_tags %}
 
 <nav id="sidebarMenu" class="sidebar d-lg-block bg-gray-800 text-white collapse" data-simplebar>
   <div class="sidebar-inner px-2 pt-2 pb-4">
@@ -65,6 +65,8 @@
         </a>
       </li>
 
+      {% is_resource_active 'calendary_module' as calendary_active %}
+      {% if calendary_active %}
       <li class="nav-item {% if 'calendar' in segment %}active{% endif %}">
         <a href="{% url 'calendary:calendar' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -75,6 +77,9 @@
           <span class="sidebar-text">{% trans "Calendário" %}</span>
         </a>
       </li>
+      {% endif %}
+      {% is_resource_active 'roadmap_module' as roadmap_active %}
+      {% if roadmap_active %}
       <li class="nav-item {% if 'roadmap' in segment %}active{% endif %}">
         <a href="{% url 'roadmap:index' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -87,11 +92,14 @@
           <span class="sidebar-text">{% trans "Roadmap" %}</span>
         </a>
       </li>
+      {% endif %}
       
       {% if user.is_authenticated %}
 
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
 
+      {% is_resource_active 'shop_module' as shop_active %}
+      {% if shop_active %}
       <li class="nav-item {% if 'shop' in segment %}active{% endif %}">
         <a href="{% url 'shop:shop_home' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -103,7 +111,10 @@
           <span class="sidebar-text">{% trans "Loja Online" %}</span>
         </a>
       </li>
+      {% endif %}
 
+      {% is_resource_active 'shop_purchases' as shop_purchases_active %}
+      {% if shop_purchases_active %}
       <li class="nav-item {% if 'history' in segment %}active{% endif %}">
         <a href="{% url 'shop:purchase_history' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -114,7 +125,10 @@
           <span class="sidebar-text">{% trans "Histórico de Compras" %}</span>
         </a>
       </li>
+      {% endif %}
 
+      {% is_resource_active 'auction_module' as auction_active %}
+      {% if auction_active %}
       <li class="nav-item {% if 'auction' in segment %}active{% endif %}">
         <a href="{% url 'auction:listar_leiloes' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -126,9 +140,12 @@
           <span class="sidebar-text">{% trans "Leilões" %}</span>
         </a>
       </li>
+      {% endif %}
 
       <li role="separator" class="dropdown-divider my-3 border-gray-700"></li>
 
+      {% is_resource_active 'marketplace_module' as marketplace_active %}
+      {% if marketplace_active %}
       <li class="nav-item {% if 'marketplace' in segment %}active{% endif %}">
         <a href="{% url 'marketplace:list' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -139,9 +156,12 @@
           <span class="sidebar-text">{% trans "Marketplace" %}</span>
         </a>
       </li>
+      {% endif %}
 
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
 
+      {% is_resource_active 'games_module' as games_active %}
+      {% if games_active %}
       <li class="nav-item {% if 'bag' in segment %}active{% endif %}">
         <a href="{% url 'games:bag_dashboard' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -151,8 +171,11 @@
           </span>
           <span class="sidebar-text">{% trans "Minha Bag" %}</span>
         </a>
-      </li>      
+      </li>
+      {% endif %}      
 
+      {% is_resource_active 'games_module' as games_active %}
+      {% if games_active %}
       <li class="nav-item">
         <span class="nav-link collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
           data-bs-target="#submenu-games">
@@ -177,46 +200,58 @@
         <div class="multi-level collapse {% if 'games' in parent %}show{% endif %}" role="list" id="submenu-games" aria-expanded="false">
           <ul class="flex-column nav">
       
+            {% is_resource_active 'roulette' as roulette_active %}
+            {% if roulette_active %}
             <li class="nav-item {% if 'top-level' in segment %}active{% endif %}">
               <a class="nav-link" href="{% url 'games:roulette_page' %}">
                 <span class="sidebar-text">🎡 {% trans "Roleta" %}</span>
               </a>
             </li>
+            {% endif %}
 
+            {% is_resource_active 'box_opening' as box_opening_active %}
+            {% if box_opening_active %}
             <li class="nav-item {% if 'box' in segment %}active{% endif %}">
               <a class="nav-link" href="{% url 'games:box_user_dashboard' %}">
                 <span class="sidebar-text">📦 {% trans "Caixas" %}</span>
               </a>
             </li>
+            {% endif %}
 
-            <li class="nav-item {% if 'economy' in segment %}active{% endif %}">
-              <a class="nav-link" href="{% url 'games:economy-game' %}">
-                <span class="sidebar-text">💰 {% trans "Economia Mortal" %}</span>
-              </a>
-            </li>
-
+            {% is_resource_active 'slot_machine' as slot_machine_active %}
+            {% if slot_machine_active %}
             <li class="nav-item {% if 'slot-machine' in segment %}active{% endif %}">
               <a class="nav-link" href="{% url 'games:slot_machine_page' %}">
                 <span class="sidebar-text">🎰 {% trans "Slot Machine" %}</span>
               </a>
             </li>
+            {% endif %}
 
+            {% is_resource_active 'dice_game' as dice_game_active %}
+            {% if dice_game_active %}
             <li class="nav-item {% if 'dice-game' in segment %}active{% endif %}">
               <a class="nav-link" href="{% url 'games:dice_game_page' %}">
                 <span class="sidebar-text">🎲 {% trans "Dice Game" %}</span>
               </a>
             </li>
+            {% endif %}
 
+            {% is_resource_active 'fishing_game' as fishing_game_active %}
+            {% if fishing_game_active %}
             <li class="nav-item {% if 'fishing' in segment %}active{% endif %}">
               <a class="nav-link" href="{% url 'games:fishing_game_page' %}">
                 <span class="sidebar-text">🎣 {% trans "Pescaria" %}</span>
               </a>
             </li>
+            {% endif %}
       
           </ul>
         </div>
       </li>  
+      {% endif %}
       
+      {% is_resource_active 'battle_pass' as battle_pass_active %}
+      {% if battle_pass_active %}
       <li class="nav-item {% if 'battle-pass' in segment %}active{% endif %}">
         <a href="{% url 'games:battle_pass' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -227,7 +262,10 @@
           <span class="sidebar-text">{% trans "Battle Pass" %}</span>
         </a>
       </li>
+      {% endif %}
 
+      {% is_resource_active 'games_module' as games_active %}
+      {% if games_active %}
       <li class="nav-item {% if 'daily-bonus' in segment %}active{% endif %}">
         <a href="{% url 'games:daily_bonus_dashboard' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -238,9 +276,12 @@
           <span class="sidebar-text">{% trans "Bônus Diário" %}</span>
         </a>
       </li>
+      {% endif %}
 
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
 
+      {% is_resource_active 'faq_module' as faq_active %}
+      {% if faq_active %}
       <li class="nav-item {% if 'faq' in segment %}active{% endif %}">
         <a href="{% url 'faq:faq_list' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -252,7 +293,10 @@
           <span class="sidebar-text">{% trans "Ajuda (FAQ)" %}</span>
         </a>
       </li> 
+      {% endif %}
 
+      {% is_resource_active 'news_module' as news_active %}
+      {% if news_active %}
       <li class="nav-item {% if 'news' in segment %}active{% endif %}">
         <a href="{% url 'news:index' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -264,7 +308,10 @@
           <span class="sidebar-text">{% trans "Notícias" %}</span>
         </a>
       </li> 
+      {% endif %}
 
+      {% is_resource_active 'message_module' as message_active %}
+      {% if message_active %}
       <li class="nav-item {% if 'message' in segment %}active{% endif %}">
         <a href="{% url 'message:index' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -276,7 +323,10 @@
           <span class="sidebar-text">{% trans "Mensagens" %}</span>
         </a>
       </li> 
+      {% endif %}
 
+      {% is_resource_active 'solicitation_module' as solicitation_active %}
+      {% if solicitation_active %}
       <li class="nav-item {% if 'solicitation' in segment %}active{% endif %}">
         <a href="{% url 'solicitation:solicitation_list' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -288,7 +338,10 @@
           <span class="sidebar-text">{% trans "Solicitações" %}</span>
         </a>
       </li> 
+      {% endif %}
 
+      {% is_resource_active 'downloads_module' as downloads_active %}
+      {% if downloads_active %}
       <li class="nav-item {% if 'downloads' in segment %}active{% endif %}">
         <a href="{% url 'downloads:internal_download_list' %}" class="nav-link">
           <span class="sidebar-icon">
@@ -299,11 +352,14 @@
           <span class="sidebar-text">{% trans "Downloads" %}</span>
         </a>
       </li>
+      {% endif %}
 
       {% endif %}
 
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
 
+      {% is_resource_active 'tops_module' as tops_active %}
+      {% if tops_active %}
       <li class="nav-item">
         <span class="nav-link  collapsed  d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
           data-bs-target="#submenu-tops">
@@ -374,7 +430,10 @@
           </ul>
         </div>
       </li>
+      {% endif %}
 
+      {% is_resource_active 'server_module' as server_active %}
+      {% if server_active %}
       <li class="nav-item">
         <span class="nav-link collapsed d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
           data-bs-target="#submenu-heroes">
@@ -454,10 +513,13 @@
           <span class="sidebar-text">{% trans "Grand Boss Status" %}</span>
         </a>
       </li>
+      {% endif %}
 
       {% if request.user.is_superuser %}
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
 
+      {% is_resource_active 'accountancy_module' as accountancy_active %}
+      {% if accountancy_active %}
       <li class="nav-item">
         <a href="{% url 'accountancy:dashboard' %}" class="nav-link d-flex align-items-center">
           <span class="sidebar-icon">
@@ -470,7 +532,10 @@
           <span class="sidebar-text">{% trans "Dashboard Contábil" %}</span>
         </a>
       </li>   
+      {% endif %}
 
+      {% is_resource_active 'reports_module' as reports_active %}
+      {% if reports_active %}
       <li class="nav-item">
         <a href="{% url 'reports:dashboard' %}" class="nav-link d-flex align-items-center">
           <span class="sidebar-icon">
@@ -483,6 +548,7 @@
           <span class="sidebar-text">{% trans "Dashboard de Relatórios" %}</span>
         </a>
       </li>
+      {% endif %}
 
       <li class="nav-item {% if 'inflation' in segment %}active{% endif %}">
         <a href="{% url 'server:inflation_dashboard' %}" class="nav-link d-flex align-items-center">
@@ -499,6 +565,8 @@
 
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
 
+      {% is_resource_active 'auditor_module' as auditor_active %}
+      {% if auditor_active %}
       <li class="nav-item">
         <a href="{% url 'auditor:auditor' %}" class="nav-link d-flex align-items-center">
           <span class="sidebar-icon">
@@ -511,6 +579,7 @@
           <span class="sidebar-text">{% trans "Auditoria" %}</span>
         </a>
       </li>
+      {% endif %}
       
       <!-- Logs Info -->
       <li class="nav-item">

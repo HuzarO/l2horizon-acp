@@ -16,6 +16,12 @@ def _get_parent_module(resource_name):
         'battle_pass': 'games_module',
         'box_opening': 'games_module', 
         'roulette': 'games_module',
+        'slot_machine': 'games_module',
+        'dice_game': 'games_module',
+        'fishing_game': 'games_module',
+        'slot_machine_manager': 'games_module',
+        'dice_game_manager': 'games_module',
+        'fishing_game_manager': 'games_module',
         'shop_dashboard': 'shop_module',
         'shop_items': 'shop_module',
         'shop_packages': 'shop_module',
@@ -28,6 +34,7 @@ def _get_parent_module(resource_name):
         'social_feed': 'social_module',
         'social_profile': 'social_module',
         'social_search': 'social_module',
+        'message_module': 'social_module',
         'auction_list': 'auction_module',
         'auction_create': 'auction_module',
         'inventory_dashboard': 'inventory_module',
@@ -81,7 +88,11 @@ def resources_dashboard(request):
     master_modules = {
         'shop_module', 'wallet_module', 'social_module', 'games_module',
         'auction_module', 'inventory_module', 'payment_module', 
-        'notification_module', 'admin_module', 'api_module'
+        'notification_module', 'admin_module', 'api_module',
+        'marketplace_module', 'wiki_module', 'roadmap_module', 'tops_module',
+        'reports_module', 'accountancy_module', 'server_module', 'news_module',
+        'faq_module', 'message_module', 'downloads_module', 'licence_module',
+        'calendary_module', 'auditor_module', 'solicitation_module', 'media_storage_module'
     }
     
     # Pega apenas os módulos master para estatísticas
