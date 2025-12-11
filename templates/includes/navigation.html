@@ -1,5 +1,5 @@
 {% load static %}
-{% load i18n %}
+{% load i18n resource_tags %}
 
 <style>
   /* Estilos para o botão Social */
@@ -370,6 +370,8 @@
       <ul class="navbar-nav align-items-center">
         {% if request.user.is_authenticated %}
         
+        {% is_resource_active 'social_module' as social_active %}
+        {% if social_active %}
         <!-- Botão Social Mobile - PRIMEIRO no modo mobile -->
         <li class="nav-item d-lg-none me-2 order-first">
           <a href="{% url 'social:feed' %}" class="btn btn-social" title="{% trans 'Rede Social' %}">
@@ -393,6 +395,7 @@
             </div>
           </a>
         </li>
+        {% endif %}
 
         <!-- Botão de Admin -->
         {% if request.user.is_staff %}
@@ -571,26 +574,35 @@
                 {% trans "Conta L2" %}
               </a>
 
+              {% is_resource_active 'wallet_module' as wallet_active %}
+              {% if wallet_active %}
               <a class="dropdown-item d-flex align-items-center" href="{% url 'wallet:dashboard' %}">
                 <svg class="dropdown-icon text-gray-400 me-2" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M21 7H3a1 1 0 00-1 1v8a1 1 0 001 1h18a1 1 0 001-1V8a1 1 0 00-1-1zM3 9h18v6H3V9zm16 2h-2a1 1 0 100 2h2a1 1 0 100-2z"/>
                 </svg>
                 <span>{% trans "Carteira" %}</span>
               </a>
+              {% endif %}
 
+              {% is_resource_active 'inventory_module' as inventory_active %}
+              {% if inventory_active %}
               <a class="dropdown-item d-flex align-items-center" href="{% url 'inventory:inventario_dashboard' %}">
                 <svg class="dropdown-icon text-gray-400 me-2" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M4 4h16v2H4V4zm0 4h16v2H4V8zm0 4h10v2H4v-2zm0 4h10v2H4v-2z"/>
                 </svg>
                 <span>{% trans "Inventário" %}</span>
               </a>
+              {% endif %}
 
+              {% is_resource_active 'auction_module' as auction_active %}
+              {% if auction_active %}
               <a class="dropdown-item d-flex align-items-center" href="{% url 'auction:listar_leiloes' %}">
                 <svg class="dropdown-icon text-gray-400 me-2" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2L2 7v2c0 5.25 3.75 9.75 10 12 6.25-2.25 10-6.75 10-12V7l-10-5zm0 2.18l7.5 3.64v1.18c0 4.11-2.94 7.8-7.5 9.71-4.56-1.91-7.5-5.6-7.5-9.71V7l7.5-3.64zM11 10v5h2v-5h-2zm0-4v2h2V6h-2z"/>
                 </svg>
                 <span>{% trans "Leilões" %}</span>
-              </a>              
+              </a>
+              {% endif %}              
             
               <div role="separator" class="dropdown-divider my-1"></div>
 

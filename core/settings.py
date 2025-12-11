@@ -142,7 +142,7 @@ INSTALLED_APPS = [
 
     "apps.main.licence",
     "apps.main.social",
-    "apps.main.resources",
+    "apps.main.resources.apps.ResourcesConfig",
 
     "apps.main.administrator",
     "apps.main.auditor",

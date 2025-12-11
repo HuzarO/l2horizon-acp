@@ -43,6 +43,12 @@ class ResourceAccessMiddleware:
             '/app/game/battle-pass/': 'battle_pass',
             '/app/game/box-opening/': 'box_opening',
             '/app/game/roulette/': 'roulette',
+            '/app/game/slot-machine/': 'slot_machine',
+            '/app/game/dice-game/': 'dice_game',
+            '/app/game/fishing/': 'fishing_game',
+            '/app/game/slot-machine/manager/': 'slot_machine_manager',
+            '/app/game/dice-game/manager/': 'dice_game_manager',
+            '/app/game/fishing/manager/': 'fishing_game_manager',
 
             # Auction
             '/app/auction/': 'auction_module',
@@ -57,6 +63,54 @@ class ResourceAccessMiddleware:
             '/app/payment/': 'payment_module',
             '/app/payment/process/': 'payment_process',
             '/app/payment/history/': 'payment_history',
+
+            # Marketplace
+            '/app/marketplace/': 'marketplace_module',
+
+            # Wiki
+            '/app/wiki/': 'wiki_module',
+
+            # Roadmap
+            '/app/roadmap/': 'roadmap_module',
+
+            # Tops
+            '/app/tops/': 'tops_module',
+
+            # Reports
+            '/app/report/': 'reports_module',
+
+            # Accountancy
+            '/app/accountancy/': 'accountancy_module',
+
+            # Server
+            '/app/server/': 'server_module',
+
+            # News
+            '/app/news/': 'news_module',
+
+            # FAQ
+            '/app/faq/': 'faq_module',
+
+            # Message
+            '/app/message/': 'message_module',
+
+            # Downloads
+            '/downloads/': 'downloads_module',
+
+            # Licence
+            '/licence/': 'licence_module',
+
+            # Calendary
+            '/app/calendary/': 'calendary_module',
+
+            # Auditor
+            '/app/auditor/': 'auditor_module',
+
+            # Solicitation
+            '/app/solicitation/': 'solicitation_module',
+
+            # Media Storage
+            '/app/media/': 'media_storage_module',
         }
 
         # Hierarquia pré-definida
@@ -64,6 +118,12 @@ class ResourceAccessMiddleware:
             'battle_pass': 'games_module',
             'box_opening': 'games_module',
             'roulette': 'games_module',
+            'slot_machine': 'games_module',
+            'dice_game': 'games_module',
+            'fishing_game': 'games_module',
+            'slot_machine_manager': 'games_module',
+            'dice_game_manager': 'games_module',
+            'fishing_game_manager': 'games_module',
             'shop_dashboard': 'shop_module',
             'shop_items': 'shop_module',
             'shop_packages': 'shop_module',
