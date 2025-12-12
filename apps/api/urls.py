@@ -62,6 +62,10 @@ v1_patterns = [
     # =========================== PUSH NOTIFICATIONS ===========================
     path('push-subscription/', PushSubscriptionView.as_view(), name='push_subscription'),
     path('vapid-public-key/', VapidPublicKeyView.as_view(), name='vapid_public_key'),
+    
+    # =========================== DISCORD BOT ===========================
+    path('discord/server/', views.DiscordServerView.as_view(), name='discord_server'),
+    path('discord/server/by-domain/', views.DiscordServerByDomainView.as_view(), name='discord_server_by_domain'),
 ]
 
 # URLs principais com versionamento

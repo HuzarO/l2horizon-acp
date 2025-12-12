@@ -239,4 +239,16 @@ class ServerStatusSerializer(serializers.Serializer):
     uptime = serializers.CharField(required=False)
     last_update = serializers.DateTimeField()
     version = serializers.CharField(required=False)
-    maintenance_mode = serializers.BooleanField(default=False) 
+    maintenance_mode = serializers.BooleanField(default=False)
+
+
+# =========================== DISCORD BOT SERIALIZERS ===========================
+
+class DiscordServerSerializer(serializers.ModelSerializer):
+    """Serializer para servidor Discord"""
+    class Meta:
+        from .models import DiscordServer
+        model = DiscordServer
+        fields = ['uuid', 'discord_guild_id', 'site_domain', 'server_name', 
+                  'is_active', 'notes', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'created_at', 'updated_at'] 
