@@ -22,7 +22,7 @@ from .serializers import (
     CustomTokenObtainPairSerializer, RefreshTokenSerializer, LoginSerializer,
     UserProfileSerializer, ChangePasswordSerializer, CharacterSerializer,
     ItemSerializer, ClanDetailSerializer, AuctionItemSerializer,
-    APIResponseSerializer, ServerStatusSerializer
+    APIResponseSerializer, ServerStatusSerializer, DiscordServerSerializer
 )
 from .forms import ApiEndpointToggleForm
 from .permissions import IsSuperUser, IsAPIAdmin, IsMonitoringAdmin
@@ -34,6 +34,7 @@ from apps.lineage.server.decorators import endpoint_enabled
 from apps.lineage.server.models import ApiEndpointToggle
 from apps.main.notification.models import PushSubscription
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from .models import DiscordServer
 
 # Carrega a classe LineageStats baseada na configuração
 LineageStats = get_query_class("LineageStats")
@@ -2047,3 +2048,102 @@ class PushSubscriptionView(APIView):
             return Response({'ok': True, 'deleted': deleted})
         else:
             return Response({'error': 'Inscrição não encontrada'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# =========================== DISCORD BOT ENDPOINTS ===========================
+
+class DiscordServerView(APIView):
+    """
+    Endpoint para o bot Discord consultar informações de servidores cadastrados
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [PublicAPIRateThrottle]
+    
+    @extend_schema(
+        summary="Obter informações do servidor Discord",
+        description="Retorna informações do servidor Discord cadastrado para este site",
+        parameters=[
+            OpenApiParameter(
+                name='discord_guild_id',
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description='ID do servidor Discord',
+                required=True
+            )
+        ],
+        responses={200: DiscordServerSerializer, 404: None}
+    )
+    def get(self, request):
+        """Busca servidor Discord pelo ID"""
+        discord_guild_id = request.query_params.get('discord_guild_id')
+        
+        if not discord_guild_id:
+            return Response(
+                {'error': 'discord_guild_id é obrigatório'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            discord_guild_id = int(discord_guild_id)
+        except ValueError:
+            return Response(
+                {'error': 'discord_guild_id deve ser um número'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            server = DiscordServer.objects.get(
+                discord_guild_id=discord_guild_id,
+                is_active=True
+            )
+            serializer = DiscordServerSerializer(server)
+            return Response(serializer.data)
+        except DiscordServer.DoesNotExist:
+            return Response(
+                {'error': 'Servidor Discord não encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Erro ao buscar servidor Discord: {e}", exc_info=True)
+            return Response(
+                {'error': 'Erro ao buscar servidor'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class DiscordServerByDomainView(APIView):
+    """
+    Endpoint para verificar se um domínio tem servidor Discord cadastrado
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [PublicAPIRateThrottle]
+    
+    @extend_schema(
+        summary="Verificar servidor Discord por domínio",
+        description="Verifica se existe um servidor Discord cadastrado para este domínio",
+        responses={200: DiscordServerSerializer, 404: None}
+    )
+    def get(self, request):
+        """Busca servidor Discord pelo domínio atual"""
+        # Obter o domínio da requisição
+        host = request.get_host()
+        domain = host.split(':')[0]  # Remove porta se houver
+        
+        try:
+            server = DiscordServer.objects.get(
+                site_domain=domain,
+                is_active=True
+            )
+            serializer = DiscordServerSerializer(server)
+            return Response(serializer.data)
+        except DiscordServer.DoesNotExist:
+            return Response(
+                {'error': 'Nenhum servidor Discord cadastrado para este domínio'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Erro ao buscar servidor Discord por domínio: {e}", exc_info=True)
+            return Response(
+                {'error': 'Erro ao buscar servidor'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
