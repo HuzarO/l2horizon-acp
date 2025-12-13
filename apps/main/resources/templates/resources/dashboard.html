@@ -371,6 +371,12 @@ document.addEventListener('DOMContentLoaded', function() {
         'battle_pass': 'games_module',
         'box_opening': 'games_module', 
         'roulette': 'games_module',
+        'slot_machine': 'games_module',
+        'dice_game': 'games_module',
+        'fishing_game': 'games_module',
+        'slot_machine_manager': 'games_module',
+        'dice_game_manager': 'games_module',
+        'fishing_game_manager': 'games_module',
         'shop_dashboard': 'shop_module',
         'shop_items': 'shop_module',
         'shop_packages': 'shop_module',
@@ -383,6 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'social_feed': 'social_module',
         'social_profile': 'social_module',
         'social_search': 'social_module',
+        'message_module': 'social_module',
         'auction_list': 'auction_module',
         'auction_create': 'auction_module',
         'inventory_dashboard': 'inventory_module',
@@ -394,7 +401,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const masterModules = new Set([
         'shop_module', 'wallet_module', 'social_module', 'games_module',
         'auction_module', 'inventory_module', 'payment_module', 
-        'notification_module', 'admin_module', 'api_module'
+        'notification_module', 'admin_module', 'api_module',
+        'marketplace_module', 'wiki_module', 'roadmap_module', 'tops_module',
+        'reports_module', 'accountancy_module', 'server_module', 'news_module',
+        'faq_module', 'message_module', 'downloads_module', 'licence_module',
+        'calendary_module', 'auditor_module', 'solicitation_module', 'media_storage_module'
     ]);
 
     toggles.forEach(toggle => {
@@ -420,8 +431,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Atualiza o recurso atual
                     updateResourceStatus(resourceName, data.is_active);
                     
-                    // Se é um módulo master, atualiza todos os sub-recursos
-                    if (masterModules.has(resourceName)) {
+                    // Se é um módulo master e foi desativado, atualiza os recursos filhos
+                    if (data.is_master && !data.is_active && data.deactivated_children) {
+                        // Atualiza cada recurso filho que foi desativado pelo backend
+                        data.deactivated_children.forEach(childName => {
+                            updateResourceStatus(childName, false);
+                            // Também atualiza visualmente para mostrar como indisponível
+                            const childItem = document.querySelector(`[data-resource="${childName}"]`);
+                            if (childItem) {
+                                const resourceItem = childItem.closest('.resource-item');
+                                resourceItem.classList.add('resource-disabled');
+                                childItem.classList.add('disabled');
+                                childItem.style.pointerEvents = 'none';
+                                childItem.title = '{% trans "Módulo pai inativo" %}';
+                                
+                                const statusBadge = resourceItem.querySelector('.status-badge');
+                                if (statusBadge) {
+                                    statusBadge.className = 'status-badge status-inactive me-3';
+                                    statusBadge.innerHTML = '<i class="fas fa-times me-1"></i>{% trans "Indisponível" %}';
+                                }
+                            }
+                        });
+                    } else if (data.is_master && data.is_active) {
+                        // Se o master foi ativado, habilita os recursos filhos (mas não os ativa)
                         updateChildResources(resourceName, data.is_active);
                     }
                     
