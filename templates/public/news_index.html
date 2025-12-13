@@ -9,14 +9,16 @@
 
   .news-container {
     background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%);
-    min-height: 100vh;
     padding: 2rem 0;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: visible;
+    width: 100%;
   }
 
   .news-header {
     text-align: center;
     margin-bottom: 3rem;
-    animation: fadeInDown 0.8s ease-out;
   }
 
   .news-title {
@@ -59,7 +61,6 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    animation: slideInUp 0.6s ease-out;
   }
 
   .news-card::before {
@@ -592,88 +593,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // Adiciona efeitos de interação aos cards de notícias
   const newsCards = document.querySelectorAll('.news-card');
   
-  newsCards.forEach((card, index) => {
-    // Efeito de entrada para cada card
-    card.style.opacity = '0';
-    card.style.transform = 'translateY(20px)';
-    
-    setTimeout(() => {
-      card.style.transition = 'all 0.6s ease';
-      card.style.opacity = '1';
-      card.style.transform = 'translateY(0)';
-    }, 100 + (index * 100));
-    
-    // Adiciona classe active quando hover
-    card.addEventListener('mouseenter', function() {
-      this.classList.add('active');
-    });
-    
-    card.addEventListener('mouseleave', function() {
-      this.classList.remove('active');
-    });
-  });
+  // Removidas animações de entrada e efeitos de pulo indesejados
+  // Os cards aparecem normalmente sem animações de entrada
   
-  // Efeito de parallax suave no fundo
-  window.addEventListener('scroll', function() {
-    const scrolled = window.pageYOffset;
-    const parallax = document.querySelector('.news-container');
-    const speed = scrolled * 0.5;
-    
-    if (parallax) {
-      parallax.style.transform = `translateY(${speed}px)`;
-    }
-  });
+  // Efeito de parallax removido - estava causando movimento indesejado
   
-  // Adiciona efeito de destaque ao hover nos botões
-  const newsButtons = document.querySelectorAll('.news-btn');
+  // Animação do ícone principal removida - estava causando efeito de balanço indesejado
   
-  newsButtons.forEach(button => {
-    button.addEventListener('mouseenter', function() {
-      this.style.transform = 'translateX(5px) scale(1.02)';
-    });
-    
-    button.addEventListener('mouseleave', function() {
-      this.style.transform = 'translateX(0) scale(1)';
-    });
-  });
-
-  // Efeitos de hover nos botões de paginação
-  const paginationButtons = document.querySelectorAll('.pagination-btn, .pagination-number');
-  
-  paginationButtons.forEach(button => {
-    button.addEventListener('mouseenter', function() {
-      this.style.transform = 'translateY(-2px) scale(1.05)';
-    });
-    
-    button.addEventListener('mouseleave', function() {
-      this.style.transform = 'translateY(0) scale(1)';
-    });
-  });
-
-  // Animação do ícone principal
-  const newsIcon = document.querySelector('.news-title i');
-  if (newsIcon) {
-    setInterval(() => {
-      newsIcon.style.transform = 'rotate(5deg)';
-      setTimeout(() => {
-        newsIcon.style.transform = 'rotate(-5deg)';
-        setTimeout(() => {
-          newsIcon.style.transform = 'rotate(0deg)';
-        }, 200);
-      }, 200);
-    }, 5000);
-  }
-  
-  // Animação do ícone vazio
-  const emptyIcon = document.querySelector('.news-empty-icon');
-  if (emptyIcon) {
-    setInterval(() => {
-      emptyIcon.style.transform = 'scale(1.1)';
-      setTimeout(() => {
-        emptyIcon.style.transform = 'scale(1)';
-      }, 300);
-    }, 3000);
-  }
+  // Animação do ícone vazio removida - estava causando efeito de pulo indesejado
 });
 </script>
 {% endblock content %}

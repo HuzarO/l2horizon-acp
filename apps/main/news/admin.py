@@ -40,16 +40,16 @@ class NewsAdmin(BaseModelAdmin):
     form = NewsForm
     inlines = [NewsTranslationInline]
 
-    list_display = ('get_title', 'author', 'pub_date', 'is_published', 'is_private', 'get_languages', 'created_at')
-    list_filter = ('is_published', 'is_private', 'pub_date', 'created_at', 'author', 'translations__language')
+    list_display = ('get_title', 'author', 'pub_date', 'is_published', 'is_private', 'show_in_internal', 'get_languages', 'created_at')
+    list_filter = ('is_published', 'is_private', 'show_in_internal', 'pub_date', 'created_at', 'author', 'translations__language')
     search_fields = ('translations__title', 'translations__content', 'translations__summary', 'author__username')
-    list_editable = ('is_published', 'is_private')
+    list_editable = ('is_published', 'is_private', 'show_in_internal')
     ordering = ('-pub_date', '-created_at')
     exclude = ('author',)
     
     fieldsets = (
         (_('Configurações de Publicação'), {
-            'fields': ('pub_date', 'is_published', 'is_private'),
+            'fields': ('pub_date', 'is_published', 'is_private', 'show_in_internal'),
             'description': _('Configure quando e como a notícia será exibida')
         }),
     )

@@ -43,6 +43,11 @@ class News(BaseModel):
         verbose_name=_("Privado"),
         help_text=_("Se marcado, a notícia será visível apenas para usuários autorizados.")
     )
+    show_in_internal = models.BooleanField(
+        default=True,
+        verbose_name=_("Mostrar na view interna"),
+        help_text=_("Se marcado, esta notícia aparecerá na view interna mesmo sendo pública.")
+    )
 
     class Meta:
         verbose_name = _("Notícia")
