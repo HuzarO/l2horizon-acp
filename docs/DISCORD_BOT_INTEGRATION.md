@@ -27,7 +27,7 @@ No painel administrativo do Django (`/admin/api/discordserver/`):
 1. Clique em "Adicionar Servidor Discord"
 2. Preencha os campos:
    - **ID do Servidor Discord**: ID numérico do servidor (ex: 1101010101100)
-   - **Domínio do Site**: Domínio desta instância (ex: l2iron.com)
+   - **Domínio do Site**: Domínio desta instância (ex: pdl.denky.dev.br)
    - **Nome do Servidor**: Nome do servidor Discord (opcional)
    - **Ativo**: Marque como ativo
 3. Salve
@@ -36,7 +36,7 @@ No painel administrativo do Django (`/admin/api/discordserver/`):
 
 ```
 ID do Servidor Discord: 1101010101100
-Domínio do Site: l2iron.com
+Domínio do Site: pdl.denky.dev.br
 Nome do Servidor: L2Iron Server
 Ativo: ✅
 ```
@@ -55,7 +55,7 @@ Retorna informações do servidor Discord cadastrado.
 {
   "uuid": "123e4567-e89b-12d3-a456-426614174000",
   "discord_guild_id": 1101010101100,
-  "site_domain": "l2iron.com",
+  "site_domain": "pdl.denky.dev.br",
   "server_name": "L2Iron Server",
   "is_active": true,
   "notes": null,
@@ -80,7 +80,7 @@ Retorna informações do servidor Discord cadastrado para o domínio atual.
 {
   "uuid": "123e4567-e89b-12d3-a456-426614174000",
   "discord_guild_id": 1101010101100,
-  "site_domain": "l2iron.com",
+  "site_domain": "pdl.denky.dev.br",
   "server_name": "L2Iron Server",
   "is_active": true
 }
@@ -108,7 +108,7 @@ Quando o bot entra em um servidor Discord:
 No servidor Discord, um administrador pode usar:
 
 ```
-/register l2iron.com
+/register pdl.denky.dev.br
 ```
 
 Isso registra o servidor no MongoDB do bot.
@@ -139,7 +139,7 @@ class DiscordServer(BaseModel):
 ```javascript
 {
   discord_guild_id: "1101010101100",
-  site_domain: "l2iron.com",
+  site_domain: "pdl.denky.dev.br",
   server_name: "L2Iron Server",
   is_active: true,
   created_at: ISODate("2024-01-01T00:00:00Z")

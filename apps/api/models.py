@@ -19,7 +19,7 @@ class DiscordServer(BaseModel):
     site_domain = models.CharField(
         max_length=255,
         verbose_name=_("Domínio do Site"),
-        help_text=_("Domínio do site PDL (ex: l2iron.com)"),
+        help_text=_("Domínio do site PDL (ex: pdl.denky.dev.br)"),
         db_index=True
     )
     
