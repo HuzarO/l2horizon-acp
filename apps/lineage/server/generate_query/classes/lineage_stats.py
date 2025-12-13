@@ -7,7 +7,8 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
                                 raidboss_id_col: str = 'boss_id', raidboss_respawn_col: str = 'respawn_time',
                                 has_grandboss_table: bool = False, grandboss_table_name: str = 'grandboss_data',
                                 grandboss_id_col: str = 'boss_id', grandboss_respawn_col: str = 'respawn_time',
-                                castle_siege_date_col: str = 'siegeDate', castle_treasury_col: str = 'treasury') -> str:
+                                castle_siege_date_col: str = 'siegeDate', castle_treasury_col: str = 'treasury',
+                                subclass_filter_base: str = "isBase = '1'", subclass_filter_sub: str = "isBase = '0'") -> str:
     """
     Gera o código da classe LineageStats
     
@@ -57,8 +58,11 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
     class_source = f"C.{base_class_col}"
     
     if has_subclass:
+        # Extrair apenas o nome da coluna do filtro (sem CS. e sem o valor)
+        filter_col_name = subclass_filter_base.split('=')[0].strip().replace('CS.', '').replace('C.', '')
+        filter_value = subclass_filter_base.split('=')[1].strip()
         subclass_join = f"""
-            LEFT JOIN character_subclasses CS ON CS.{subclass_char_id} = C.{char_id} AND CS.isBase = '1'"""
+            LEFT JOIN character_subclasses CS ON CS.{subclass_char_id} = C.{char_id} AND CS.{filter_col_name} = {filter_value}"""
         level_source = "CS.level"
         class_source = "CS.class_id"
     
@@ -92,6 +96,68 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
         # Se não tem coluna de leader, buscar via subquery ou deixar NULL
         leader_join = ""
         leader_select = "NULL AS char_name"
+    
+    # Construir query de get_clan_details baseada na estrutura de clan
+    if clan_structure['clan_name_source'] == 'clan_data':
+        # clan_name diretamente em clan_data
+        if clan_leader_col:
+            leader_join_clan = f"LEFT JOIN characters P ON P.{char_id} = C.{clan_leader_col}"
+            leader_select_clan = "P.char_name AS leader_name"
+        else:
+            leader_join_clan = ""
+            leader_select_clan = f"(SELECT char_name FROM characters WHERE clanid = C.{clan_id_col} AND {access_level} = '0' LIMIT 1) AS leader_name"
+        
+        get_clan_details_sql = f'''sql = f"""
+            SELECT 
+                C.{clan_id_col}, 
+                C.clan_name,
+                C.clan_level AS level, 
+                C.reputation_score AS reputation, 
+                C.ally_id,
+                (SELECT COUNT(*) FROM characters WHERE clanid = C.{clan_id_col}) AS member_count,
+                {leader_select_clan}
+            FROM clan_data C
+            {leader_join_clan}
+            WHERE C.clan_name = :clan_name
+            LIMIT 1
+        """
+        result = LineageStats._run_query(sql, {{"clan_name": clan_name}})
+        return result[0] if result and len(result) > 0 else None'''
+    else:
+        # clan_name em clan_subpledges
+        filter_col = clan_structure.get('subpledge_filter', 'sub_pledge_id')
+        # Determinar como buscar o leader
+        if clan_leader_col:
+            if 'leader_id' in clan_leader_col:
+                leader_join_clan = f"LEFT JOIN characters P ON P.{char_id} = D.{clan_leader_col.replace('C.', '')}"
+                leader_select_clan = "P.char_name AS leader_name"
+            elif 'leader_name' in clan_leader_col:
+                leader_join_clan = "LEFT JOIN characters P ON P.char_name = D.leader_name"
+                leader_select_clan = "P.char_name AS leader_name"
+            else:
+                leader_join_clan = ""
+                leader_select_clan = f"(SELECT char_name FROM characters WHERE clanid = C.{clan_id_col} AND {access_level} = '0' LIMIT 1) AS leader_name"
+        else:
+            leader_join_clan = ""
+            leader_select_clan = f"(SELECT char_name FROM characters WHERE clanid = C.{clan_id_col} AND {access_level} = '0' LIMIT 1) AS leader_name"
+        
+        get_clan_details_sql = f'''sql = f"""
+            SELECT 
+                C.{clan_id_col}, 
+                D.name AS clan_name,
+                C.clan_level AS level, 
+                C.reputation_score AS reputation, 
+                C.ally_id,
+                (SELECT COUNT(*) FROM characters WHERE clanid = C.{clan_id_col}) AS member_count,
+                {leader_select_clan}
+            FROM clan_data C
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.{clan_id_col} AND D.{filter_col} = 0
+            {leader_join_clan}
+            WHERE D.name = :clan_name
+            LIMIT 1
+        """
+        result = LineageStats._run_query(sql, {{"clan_name": clan_name}})
+        return result[0] if result and len(result) > 0 else None'''
     
     return f'''class LineageStats:
 
@@ -370,6 +436,38 @@ def get_lineage_stats_template(char_id: str, access_level: str, has_subclass: bo
             LEFT JOIN ally_data A ON A.ally_id = CLAN.ally_id
         """
         return LineageStats._run_query(sql)
+
+    @staticmethod
+    @cache_lineage_result(timeout=300)
+    def search_characters(query, limit=20):
+        """Busca personagens por nome (busca parcial)"""
+        sql = """
+            SELECT 
+                C.{char_id} as char_id,
+                C.char_name, 
+                {level_source},
+                {class_source} AS base,
+                C.online,
+                C.lastAccess,
+                {clan_name_field},
+                C.clanid AS clan_id,
+                {ally_field} AS ally_id,
+                C.x,
+                C.y,
+                C.z
+            FROM characters C{subclass_join}{clan_join}
+            WHERE C.{access_level} = '0' 
+            AND C.char_name LIKE :query
+            ORDER BY {level_source} DESC, C.char_name ASC
+            LIMIT :limit
+        """
+        return LineageStats._run_query(sql, {{"query": "%" + query + "%", "limit": limit}})
+
+    @staticmethod
+    @cache_lineage_result(timeout=300)
+    def get_clan_details(clan_name):
+        """Busca detalhes de um clã específico por nome"""
+        {get_clan_details_sql}
 
     @staticmethod
     @cache_lineage_result(timeout=300)

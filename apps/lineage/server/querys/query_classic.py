@@ -357,6 +357,56 @@ class LineageStats:
 
     @staticmethod
     @cache_lineage_result(timeout=300)
+    def search_characters(query, limit=20):
+        """Busca personagens por nome (busca parcial)"""
+        sql = """
+            SELECT 
+                C.obj_Id as char_id,
+                C.char_name, 
+                CS.level,
+                CS.class_id AS base,
+                C.online,
+                C.lastAccess,
+                D.name AS clan_name,
+                C.clanid AS clan_id,
+                CD.ally_id AS ally_id,
+                C.x,
+                C.y,
+                C.z
+            FROM characters C
+            LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
+            LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = '0'
+            LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
+            WHERE C.accesslevel = '0' 
+            AND C.char_name LIKE :query
+            ORDER BY CS.level DESC, C.char_name ASC
+            LIMIT :limit
+        """
+        return LineageStats._run_query(sql, {"query": f"%{query}%", "limit": limit})
+
+    @staticmethod
+    @cache_lineage_result(timeout=300)
+    def get_clan_details(clan_name):
+        """Busca detalhes de um clã específico por nome"""
+        sql = """
+            SELECT 
+                C.clan_id, 
+                S.name AS clan_name,
+                C.clan_level AS level, 
+                C.reputation_score AS reputation, 
+                C.ally_id,
+                (SELECT COUNT(*) FROM characters WHERE clanid = C.clan_id) AS member_count,
+                (SELECT char_name FROM characters WHERE clanid = C.clan_id AND accesslevel = '0' LIMIT 1) AS leader_name
+            FROM clan_data C
+            LEFT JOIN clan_subpledges S ON S.clan_id = C.clan_id AND S.type = '0'
+            WHERE S.name = :clan_name
+            LIMIT 1
+        """
+        result = LineageStats._run_query(sql, {"clan_name": clan_name})
+        return result[0] if result and len(result) > 0 else None
+
+    @staticmethod
+    @cache_lineage_result(timeout=300)
     def boss_jewel_locations(boss_jewel_ids):
         # Gera bind dinâmico para IN
         bind_ids = [f":id{i}" for i in range(len(boss_jewel_ids))]

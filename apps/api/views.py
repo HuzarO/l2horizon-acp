@@ -30,6 +30,9 @@ from .permissions import IsSuperUser, IsAPIAdmin, IsMonitoringAdmin
 from .schema import ServerAPISchema, AuthAPISchema, UserAPISchema, SearchAPISchema, GameDataAPISchema, ServerStatusAPISchema, APIInfoSchema
 
 from utils.dynamic_import import get_query_class
+from utils.resources import get_class_name
+from apps.lineage.server.utils.crest import attach_crests_to_clans
+from apps.lineage.server.utils.bosses import enrich_grandboss_status, enrich_raidboss_status
 from apps.lineage.server.decorators import endpoint_enabled
 from apps.lineage.server.models import ApiEndpointToggle
 from apps.main.notification.models import PushSubscription
@@ -110,6 +113,27 @@ class TopPvPView(GenericAPIView):
     throttle_classes = [PublicAPIRateThrottle]
     queryset = ApiEndpointToggle.objects.none()  # Empty queryset for DRF Spectacular
     
+    @staticmethod
+    def _humanize_time(seconds):
+        """Formata tempo em segundos para formato legível (ex: 2d 5h 30m)"""
+        from datetime import timedelta
+        try:
+            seconds = int(seconds)
+        except Exception:
+            return "0m"
+        delta = timedelta(seconds=seconds)
+        days = delta.days
+        hours, remainder = divmod(delta.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        parts = []
+        if days > 0:
+            parts.append(f"{days}d")
+        if hours > 0:
+            parts.append(f"{hours}h")
+        if minutes > 0:
+            parts.append(f"{minutes}m")
+        return ' '.join(parts) if parts else "0m"
+    
     def get(self, request):
         """
         Retorna o ranking PvP
@@ -123,6 +147,14 @@ class TopPvPView(GenericAPIView):
             
             if cached_data is None:
                 data = LineageStats.top_pvp(limit=limit)
+                # Aplica tradução de nomes de classe
+                for player in data:
+                    if 'base' in player and player.get('base') is not None:
+                        player['class_name'] = get_class_name(player['base'])
+                    elif 'class_name' not in player:
+                        player['class_name'] = None
+                # Adiciona crests dos clãs
+                data = attach_crests_to_clans(data)
                 cache.set(cache_key, data, 60)  # Cache por 1 minuto
             else:
                 data = cached_data
@@ -151,6 +183,27 @@ class TopPKView(GenericAPIView):
     throttle_classes = [PublicAPIRateThrottle]
     queryset = ApiEndpointToggle.objects.none()  # Empty queryset for DRF Spectacular
     
+    @staticmethod
+    def _humanize_time(seconds):
+        """Formata tempo em segundos para formato legível (ex: 2d 5h 30m)"""
+        from datetime import timedelta
+        try:
+            seconds = int(seconds)
+        except Exception:
+            return "0m"
+        delta = timedelta(seconds=seconds)
+        days = delta.days
+        hours, remainder = divmod(delta.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        parts = []
+        if days > 0:
+            parts.append(f"{days}d")
+        if hours > 0:
+            parts.append(f"{hours}h")
+        if minutes > 0:
+            parts.append(f"{minutes}m")
+        return ' '.join(parts) if parts else "0m"
+    
     def get(self, request):
         """
         Retorna o ranking PK
@@ -164,6 +217,14 @@ class TopPKView(GenericAPIView):
             
             if cached_data is None:
                 data = LineageStats.top_pk(limit=limit)
+                # Aplica tradução de nomes de classe
+                for player in data:
+                    if 'base' in player and player.get('base') is not None:
+                        player['class_name'] = get_class_name(player['base'])
+                    elif 'class_name' not in player:
+                        player['class_name'] = None
+                # Adiciona crests dos clãs
+                data = attach_crests_to_clans(data)
                 cache.set(cache_key, data, 60)
             else:
                 data = cached_data
@@ -255,6 +316,27 @@ class TopRichView(GenericAPIView):
     throttle_classes = [PublicAPIRateThrottle]
     queryset = ApiEndpointToggle.objects.none()  # Empty queryset for DRF Spectacular
     
+    @staticmethod
+    def _humanize_time(seconds):
+        """Formata tempo em segundos para formato legível (ex: 2d 5h 30m)"""
+        from datetime import timedelta
+        try:
+            seconds = int(seconds)
+        except Exception:
+            return "0m"
+        delta = timedelta(seconds=seconds)
+        days = delta.days
+        hours, remainder = divmod(delta.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        parts = []
+        if days > 0:
+            parts.append(f"{days}d")
+        if hours > 0:
+            parts.append(f"{hours}h")
+        if minutes > 0:
+            parts.append(f"{minutes}m")
+        return ' '.join(parts) if parts else "0m"
+    
     def get(self, request):
         """
         Retorna o ranking de riqueza (Adena)
@@ -268,6 +350,21 @@ class TopRichView(GenericAPIView):
             
             if cached_data is None:
                 data = LineageStats.top_adena(limit=limit)
+                # Padroniza campo adena (adenas -> adena)
+                for player in data:
+                    if 'adenas' in player and 'adena' not in player:
+                        player['adena'] = player['adenas']
+                    # Formata tempo online humanizado
+                    if 'onlinetime' in player:
+                        player['human_onlinetime'] = self._humanize_time(player.get('onlinetime', 0))
+                # Aplica tradução de nomes de classe
+                for player in data:
+                    if 'base' in player and player.get('base') is not None:
+                        player['class_name'] = get_class_name(player['base'])
+                    elif 'class_name' not in player:
+                        player['class_name'] = None
+                # Adiciona crests dos clãs
+                data = attach_crests_to_clans(data)
                 cache.set(cache_key, data, 60)
             else:
                 data = cached_data
@@ -296,6 +393,27 @@ class TopOnlineView(GenericAPIView):
     throttle_classes = [PublicAPIRateThrottle]
     queryset = ApiEndpointToggle.objects.none()  # Empty queryset for DRF Spectacular
     
+    @staticmethod
+    def _humanize_time(seconds):
+        """Formata tempo em segundos para formato legível (ex: 2d 5h 30m)"""
+        from datetime import timedelta
+        try:
+            seconds = int(seconds)
+        except Exception:
+            return "0m"
+        delta = timedelta(seconds=seconds)
+        days = delta.days
+        hours, remainder = divmod(delta.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        parts = []
+        if days > 0:
+            parts.append(f"{days}d")
+        if hours > 0:
+            parts.append(f"{hours}h")
+        if minutes > 0:
+            parts.append(f"{minutes}m")
+        return ' '.join(parts) if parts else "0m"
+    
     def get(self, request):
         """
         Retorna o ranking de tempo online
@@ -309,6 +427,18 @@ class TopOnlineView(GenericAPIView):
             
             if cached_data is None:
                 data = LineageStats.top_online(limit=limit)
+                # Formata tempo online humanizado
+                for player in data:
+                    if 'onlinetime' in player:
+                        player['human_onlinetime'] = self._humanize_time(player.get('onlinetime', 0))
+                # Aplica tradução de nomes de classe
+                for player in data:
+                    if 'base' in player and player.get('base') is not None:
+                        player['class_name'] = get_class_name(player['base'])
+                    elif 'class_name' not in player:
+                        player['class_name'] = None
+                # Adiciona crests dos clãs
+                data = attach_crests_to_clans(data)
                 cache.set(cache_key, data, 60)
             else:
                 data = cached_data
@@ -350,6 +480,14 @@ class TopLevelView(GenericAPIView):
             
             if cached_data is None:
                 data = LineageStats.top_level(limit=limit)
+                # Aplica tradução de nomes de classe
+                for player in data:
+                    if 'base' in player and player.get('base') is not None:
+                        player['class_name'] = get_class_name(player['base'])
+                    elif 'class_name' not in player:
+                        player['class_name'] = None
+                # Adiciona crests dos clãs
+                data = attach_crests_to_clans(data)
                 cache.set(cache_key, data, 60)
             else:
                 data = cached_data
@@ -401,11 +539,9 @@ class OlympiadRankingView(GenericAPIView):
             # Processa os dados para o formato esperado pelo serializer
             processed_data = []
             for i, player in enumerate(filtered_data, 1):
-                from utils.resources import get_class_name
-                
                 processed_player = {
                     'char_name': player.get('char_name', ''),
-                    'class_name': get_class_name(player.get('base')) if player.get('base') else '',
+                    'class_name': get_class_name(player.get('base')) if player.get('base') else '-',
                     'points': player.get('olympiad_points', 0),
                     'rank': i
                 }
@@ -447,10 +583,15 @@ class OlympiadAllHeroesView(GenericAPIView):
             else:
                 data = cached_data
             
-            # Filtra registros com valores None
+            # Filtra registros com valores None e aplica tradução de nomes de classe
             filtered_data = []
             for player in data:
                 if player.get('char_name') is not None:
+                    # Aplica tradução de nomes de classe
+                    if 'base' in player and player.get('base') is not None:
+                        player['class_name'] = get_class_name(player['base'])
+                    elif 'class_id' in player and player.get('class_id') is not None:
+                        player['class_name'] = get_class_name(player['class_id'])
                     filtered_data.append(player)
             
             serializer = self.get_serializer(filtered_data, many=True)
@@ -486,10 +627,15 @@ class OlympiadCurrentHeroesView(GenericAPIView):
             else:
                 data = cached_data
             
-            # Filtra registros com valores None
+            # Filtra registros com valores None e aplica tradução de nomes de classe
             filtered_data = []
             for player in data:
                 if player.get('char_name') is not None:
+                    # Aplica tradução de nomes de classe
+                    if 'base' in player and player.get('base') is not None:
+                        player['class_name'] = get_class_name(player['base'])
+                    elif 'class_id' in player and player.get('class_id') is not None:
+                        player['class_name'] = get_class_name(player['class_id'])
                     filtered_data.append(player)
             
             serializer = self.get_serializer(filtered_data, many=True)
@@ -520,7 +666,9 @@ class GrandBossStatusView(GenericAPIView):
             cached_data = cache.get(cache_key)
             
             if cached_data is None:
-                data = LineageStats.grandboss_status()
+                raw_data = LineageStats.grandboss_status() if hasattr(LineageStats, 'grandboss_status') else []
+                # Enriquece os dados de bosses (normaliza status, respawn, etc.)
+                data = enrich_grandboss_status(raw_data)
                 cache.set(cache_key, data, 60)
             else:
                 data = cached_data
@@ -535,47 +683,12 @@ class GrandBossStatusView(GenericAPIView):
             # Processa os dados para o formato esperado pelo serializer
             processed_data = []
             for boss in data:
-                boss_id = boss.get('boss_id')
-                respawn_time = boss.get('respawn')
-                
-                # Determina se o boss está vivo baseado no respawn time
-                import time
-                current_time = time.time()
-                is_alive = True
-                
-                if respawn_time:
-                    # Converte vários formatos para string ISO ou deixa vazio
-                    from datetime import datetime, timezone as dt_timezone
-                    if isinstance(respawn_time, (int, float)):
-                        # Converte timestamp -> ISO UTC
-                        try:
-                            respawn_time_str = datetime.fromtimestamp(respawn_time, tz=dt_timezone.utc).isoformat()
-                        except Exception:
-                            respawn_time_str = None
-                    elif isinstance(respawn_time, str):
-                        # Normaliza strings ISO com Z
-                        try:
-                            parsed = datetime.fromisoformat(respawn_time.replace('Z', '+00:00'))
-                            if parsed.tzinfo is None:
-                                parsed = parsed.replace(tzinfo=dt_timezone.utc)
-                            respawn_time_str = parsed.isoformat()
-                        except Exception:
-                            respawn_time_str = respawn_time  # mantém como veio
-                    else:
-                        respawn_time_str = None
-
-                    # Para o status vivo/morto, use timestamp se conseguirmos
-                    if isinstance(respawn_time, (int, float)) and respawn_time > current_time:
-                        is_alive = False
-                else:
-                    respawn_time_str = None
-                
                 processed_boss = {
-                    'boss_name': f"Boss {boss_id}",  # Pode ser melhorado com um mapeamento
-                    'boss_id': boss_id,
-                    'is_alive': is_alive,
-                    'respawn_time': respawn_time_str,
-                    'location': 'Unknown'  # Pode ser melhorado
+                    'boss_id': boss.get('boss_id', 0),
+                    'boss_name': boss.get('name', 'Unknown'),
+                    'is_alive': boss.get('is_alive', False),
+                    'respawn_time': boss.get('respawn_human', '-'),
+                    'location': boss.get('location', 'Unknown'),
                 }
                 processed_data.append(processed_boss)
             
@@ -679,6 +792,13 @@ class SiegeParticipantsView(GenericAPIView):
             
             if cached_data is None:
                 data = LineageStats.siege_participants(castle_id=castle_id)
+                # Aplica tradução de nomes de classe se os dados contiverem informações de personagens
+                if data and isinstance(data, list):
+                    for participant in data:
+                        if 'base' in participant and participant.get('base') is not None:
+                            participant['class_name'] = get_class_name(participant['base'])
+                        elif 'class_id' in participant and participant.get('class_id') is not None:
+                            participant['class_name'] = get_class_name(participant['class_id'])
                 cache.set(cache_key, data, 300)
             else:
                 data = cached_data
@@ -793,7 +913,9 @@ class RaidBossStatusView(GenericAPIView):
             cached_data = cache.get(cache_key)
             
             if cached_data is None:
-                data = LineageStats.raidboss_status() if hasattr(LineageStats, 'raidboss_status') else []
+                raw_data = LineageStats.raidboss_status() if hasattr(LineageStats, 'raidboss_status') else []
+                # Enriquece os dados de bosses (normaliza status, respawn, etc.)
+                data = enrich_raidboss_status(raw_data)
                 cache.set(cache_key, data, 60)
             else:
                 data = cached_data
@@ -810,11 +932,10 @@ class RaidBossStatusView(GenericAPIView):
             for boss in data:
                 processed_boss = {
                     'boss_id': boss.get('boss_id', 0),
-                    'name': boss.get('name', 'Unknown'),
-                    'level': boss.get('level', 0),
-                    'status': boss.get('status', 'Unknown'),
+                    'boss_name': boss.get('name', 'Unknown'),
+                    'is_alive': boss.get('is_alive', False),
                     'respawn_time': boss.get('respawn_human', '-'),
-                    'last_kill': boss.get('last_kill', None),
+                    'location': boss.get('location', 'Unknown'),
                 }
                 processed_data.append(processed_boss)
             
@@ -838,20 +959,50 @@ class LoginView(TokenObtainPairView):
     
     def post(self, request, *args, **kwargs):
         try:
+            # Valida se username e password foram fornecidos
+            username = request.data.get('username')
+            password = request.data.get('password')
+            
+            if not username or not password:
+                return Response(
+                    {'error': 'Username e password são obrigatórios'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Tenta fazer login
             response = super().post(request, *args, **kwargs)
             
+            # Se chegou aqui, o login foi bem-sucedido
             # Adiciona informações extras à resposta
-            response.data.update({
-                'message': 'Login realizado com sucesso',
-                'timestamp': timezone.now().isoformat(),
-            })
+            if hasattr(response, 'data') and response.status_code == 200:
+                response.data.update({
+                    'message': 'Login realizado com sucesso',
+                    'timestamp': timezone.now().isoformat(),
+                })
             
             return response
         except Exception as e:
             logger = logging.getLogger(__name__)
             logger.error(f"Erro no login: {str(e)}", exc_info=True)
+            
+            # Retorna erro mais específico
+            error_message = 'Erro ao realizar login'
+            if 'authentication' in str(e).lower() or 'credentials' in str(e).lower():
+                error_message = 'Credenciais inválidas'
+                return Response(
+                    {'error': error_message},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            # Em desenvolvimento, mostra o erro completo. Em produção, apenas a mensagem genérica
+            import sys
+            error_detail = str(e)
+            if settings.DEBUG:
+                import traceback
+                error_detail = traceback.format_exc()
+            
             return Response(
-                {'error': 'Erro ao realizar login'},
+                {'error': error_message, 'detail': error_detail},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -913,13 +1064,24 @@ class UserProfileView(APIView):
     def get(self, request):
         """Retorna o perfil do usuário logado"""
         try:
-            serializer = UserProfileSerializer(request.user)
-            return Response({
-                'success': True,
-                'data': serializer.data,
-                'timestamp': timezone.now().isoformat(),
-            })
+            user = request.user
+            serializer = UserProfileSerializer(user)
+            
+            # Retorna dados diretamente para compatibilidade com o bot
+            # O bot espera receber os dados diretamente, não dentro de um wrapper
+            profile_data = serializer.data
+            
+            # Adiciona campos adicionais que podem ser úteis
+            profile_data['username'] = user.username
+            profile_data['email'] = user.email
+            profile_data['date_joined'] = user.date_joined.isoformat() if user.date_joined else None
+            profile_data['last_login'] = user.last_login.isoformat() if user.last_login else None
+            
+            return Response(profile_data)
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Erro ao buscar perfil: {e}", exc_info=True)
             return Response(
                 {'error': 'Erro ao buscar perfil do usuário'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -997,7 +1159,8 @@ class CharacterSearchView(APIView):
     
     def get(self, request):
         try:
-            query = request.GET.get('q', '').strip()
+            # O bot usa 'name' como parâmetro, mas a API espera 'q'
+            query = request.GET.get('name', request.GET.get('q', '')).strip()
             if not query or len(query) < 2:
                 return Response(
                     {'error': 'Query deve ter pelo menos 2 caracteres'},
@@ -1009,20 +1172,21 @@ class CharacterSearchView(APIView):
             cached_data = cache.get(cache_key)
             
             if cached_data is None:
-                # Aqui você implementaria a busca real no banco do jogo
-                # Por enquanto, retorna dados mock
-                data = LineageStats.search_characters(query) if hasattr(LineageStats, 'search_characters') else []
+                # Usa método da classe LineageStats
+                data = LineageStats.search_characters(query, limit=20) if hasattr(LineageStats, 'search_characters') else []
+                # Aplica tradução de nomes de classe
+                for character in data:
+                    if 'base' in character and character.get('base') is not None:
+                        character['class_name'] = get_class_name(character['base'])
+                    elif 'class_id' in character and character.get('class_id') is not None:
+                        character['class_name'] = get_class_name(character['class_id'])
                 cache.set(cache_key, data, 300)  # Cache por 5 minutos
             else:
                 data = cached_data
             
             serializer = CharacterSerializer(data, many=True)
-            return Response({
-                'success': True,
-                'data': serializer.data,
-                'count': len(serializer.data),
-                'timestamp': timezone.now().isoformat(),
-            })
+            # Retorna dados diretamente para compatibilidade com o bot
+            return Response(serializer.data)
         except Exception as e:
             return Response(
                 {'error': 'Erro ao buscar personagens'},
@@ -1040,7 +1204,8 @@ class ItemSearchView(APIView):
     
     def get(self, request):
         try:
-            query = request.GET.get('q', '').strip()
+            # O bot usa 'name' como parâmetro, mas a API espera 'q'
+            query = request.GET.get('name', request.GET.get('q', '')).strip()
             if not query or len(query) < 2:
                 return Response(
                     {'error': 'Query deve ter pelo menos 2 caracteres'},
@@ -1051,19 +1216,55 @@ class ItemSearchView(APIView):
             cached_data = cache.get(cache_key)
             
             if cached_data is None:
-                # Implementar busca real de itens
-                data = LineageStats.search_items(query) if hasattr(LineageStats, 'search_items') else []
+                # Busca itens no modelo Django Item e no arquivo JSON
+                from apps.lineage.games.models import Item
+                from apps.lineage.inventory.utils.items import get_itens_json
+                
+                data = []
+                query_lower = query.lower()
+                
+                # Busca no modelo Django
+                items = Item.objects.filter(name__icontains=query)[:20]
+                for item in items:
+                    data.append({
+                        'item_id': item.item_id,
+                        'item_name': item.name,
+                        'item_type': item.get_rarity_display() if hasattr(item, 'get_rarity_display') else 'Unknown',
+                        'grade': item.rarity if hasattr(item, 'rarity') else None,
+                        'enchant_level': item.enchant if hasattr(item, 'enchant') else 0,
+                        'description': item.description if hasattr(item, 'description') else ''
+                    })
+                
+                # Busca no arquivo JSON (se não encontrou muitos resultados)
+                if len(data) < 20:
+                    try:
+                        itens_data = get_itens_json()
+                        for item_id, item_info in itens_data.items():
+                            if len(data) >= 20:
+                                break
+                            if isinstance(item_info, list) and len(item_info) > 0:
+                                item_name = item_info[0]
+                                if query_lower in item_name.lower():
+                                    # Evita duplicatas
+                                    if not any(d['item_id'] == int(item_id) for d in data):
+                                        data.append({
+                                            'item_id': int(item_id),
+                                            'item_name': item_name,
+                                            'item_type': 'Unknown',
+                                            'grade': None,
+                                            'enchant_level': 0,
+                                            'description': ''
+                                        })
+                    except Exception:
+                        pass  # Se der erro ao ler JSON, continua com o que já tem
+                
                 cache.set(cache_key, data, 600)  # Cache por 10 minutos
             else:
                 data = cached_data
             
             serializer = ItemSerializer(data, many=True)
-            return Response({
-                'success': True,
-                'data': serializer.data,
-                'count': len(serializer.data),
-                'timestamp': timezone.now().isoformat(),
-            })
+            # Retorna dados diretamente para compatibilidade com o bot
+            return Response(serializer.data)
         except Exception as e:
             return Response(
                 {'error': 'Erro ao buscar itens'},
@@ -1085,7 +1286,7 @@ class ClanDetailView(APIView):
             cached_data = cache.get(cache_key)
             
             if cached_data is None:
-                # Busca dados do clã
+                # Usa método da classe LineageStats
                 data = LineageStats.get_clan_details(clan_name) if hasattr(LineageStats, 'get_clan_details') else None
                 if data:
                     cache.set(cache_key, data, 300)  # Cache por 5 minutos
@@ -1099,11 +1300,8 @@ class ClanDetailView(APIView):
                 )
             
             serializer = ClanDetailSerializer(data)
-            return Response({
-                'success': True,
-                'data': serializer.data,
-                'timestamp': timezone.now().isoformat(),
-            })
+            # Retorna dados diretamente para compatibilidade com o bot
+            return Response(serializer.data)
         except Exception as e:
             return Response(
                 {'error': 'Erro ao buscar dados do clã'},
@@ -1135,12 +1333,8 @@ class AuctionItemsView(APIView):
                 data = cached_data
             
             serializer = AuctionItemSerializer(data, many=True)
-            return Response({
-                'success': True,
-                'data': serializer.data,
-                'count': len(serializer.data),
-                'timestamp': timezone.now().isoformat(),
-            })
+            # Retorna dados diretamente para compatibilidade com o bot
+            return Response(serializer.data)
         except ValueError:
             return Response(
                 {'error': 'Parâmetro limit deve ser um número válido'},
@@ -1169,26 +1363,32 @@ class UserDashboardView(APIView):
             # Busca dados do usuário no jogo
             game_data = LineageStats.get_user_stats(user.username) if hasattr(LineageStats, 'get_user_stats') else {}
             
+            # Retorna dados diretamente para compatibilidade com o bot
             dashboard_data = {
-                'user_info': {
-                    'username': user.username,
-                    'email': user.email,
-                    'date_joined': user.date_joined,
-                    'last_login': user.last_login,
-                },
-                'game_stats': game_data,
-                'server_status': {
-                    'online': True,
-                    'players_online': LineageStats.players_online()[0].get('quant', 0) if LineageStats.players_online() else 0,
-                }
+                'username': user.username,
+                'email': user.email,
+                'date_joined': user.date_joined.isoformat() if user.date_joined else None,
+                'last_login': user.last_login.isoformat() if user.last_login else None,
             }
             
-            return Response({
-                'success': True,
-                'data': dashboard_data,
-                'timestamp': timezone.now().isoformat(),
-            })
+            # Adiciona dados do jogo se disponíveis
+            if game_data:
+                dashboard_data.update(game_data)
+            
+            # Adiciona informações do servidor
+            try:
+                players_online = LineageStats.players_online()[0].get('quant', 0) if LineageStats.players_online() else 0
+                dashboard_data['server_online'] = True
+                dashboard_data['players_online'] = players_online
+            except:
+                dashboard_data['server_online'] = False
+                dashboard_data['players_online'] = 0
+            
+            return Response(dashboard_data)
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Erro ao buscar dashboard: {e}", exc_info=True)
             return Response(
                 {'error': 'Erro ao buscar dados do dashboard'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -1209,12 +1409,27 @@ class UserStatsView(APIView):
             # Busca estatísticas do usuário
             stats_data = LineageStats.get_user_detailed_stats(user.username) if hasattr(LineageStats, 'get_user_detailed_stats') else {}
             
-            return Response({
-                'success': True,
-                'data': stats_data,
-                'timestamp': timezone.now().isoformat(),
-            })
+            # Se não houver dados, retorna estrutura básica
+            if not stats_data:
+                stats_data = {
+                    'username': user.username,
+                    'characters_count': 0,
+                    'total_level': 0,
+                    'total_online_time': 0,
+                    'total_pvp': 0,
+                    'total_pk': 0,
+                }
+            
+            # Garante que sempre retorna um dicionário
+            if not isinstance(stats_data, dict):
+                stats_data = {'stats': stats_data}
+            
+            # Retorna dados diretamente para compatibilidade com o bot
+            return Response(stats_data)
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Erro ao buscar stats: {e}", exc_info=True)
             return Response(
                 {'error': 'Erro ao buscar estatísticas do usuário'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
