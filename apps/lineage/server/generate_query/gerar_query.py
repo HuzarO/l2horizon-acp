@@ -715,7 +715,9 @@ def gerar_arquivo_query(nome_projeto, schema, config):
         grandboss_id_col=config.get('grandboss_id_col', 'boss_id'),
         grandboss_respawn_col=config.get('grandboss_respawn_col', 'respawn_time'),
         castle_siege_date_col=config.get('castle_siege_date_col', 'siegeDate'),
-        castle_treasury_col=config.get('castle_treasury_col', 'treasury')
+        castle_treasury_col=config.get('castle_treasury_col', 'treasury'),
+        subclass_filter_base=config.get('subclass_filter_base', "isBase = '1'"),
+        subclass_filter_sub=config.get('subclass_filter_sub', "isBase = '0'")
     )
     
     print("   📝 Gerando classe LineageServices...")

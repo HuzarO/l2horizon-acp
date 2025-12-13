@@ -93,21 +93,27 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Serializer customizado para login JWT"""
     
     def validate(self, attrs):
-        data = super().validate(attrs)
-        
-        # Adiciona informações extras do usuário
-        user = self.user
-        data.update({
-            'user_id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'is_staff': user.is_staff,
-            'is_superuser': user.is_superuser,
-        })
-        
-        return data
+        try:
+            # Chama o validate do pai primeiro (isso define self.user)
+            data = super().validate(attrs)
+            
+            # Adiciona informações extras do usuário
+            if hasattr(self, 'user') and self.user:
+                user = self.user
+                data.update({
+                    'user_id': user.id,
+                    'username': user.username,
+                    'email': user.email if hasattr(user, 'email') else '',
+                    'first_name': user.first_name if hasattr(user, 'first_name') else '',
+                    'last_name': user.last_name if hasattr(user, 'last_name') else '',
+                    'is_staff': user.is_staff if hasattr(user, 'is_staff') else False,
+                    'is_superuser': user.is_superuser if hasattr(user, 'is_superuser') else False,
+                })
+            
+            return data
+        except Exception as e:
+            # Re-raise para que a view possa tratar adequadamente
+            raise
 
 
 class RefreshTokenSerializer(serializers.Serializer):
