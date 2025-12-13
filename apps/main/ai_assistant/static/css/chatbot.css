@@ -1,0 +1,39 @@
+/* Estilos adicionais para o chatbot (complementam os estilos inline) */
+
+.chatbot-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chatbot-messages::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.chatbot-messages::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    border-radius: 10px;
+}
+
+.chatbot-messages::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5a2d9e, #d12672);
+}
+
+/* Animações suaves */
+.message {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .chatbot-card {
+        height: calc(100vh - 150px);
+    }
+
+    .message-content {
+        max-width: 85%;
+    }
+
+    .chatbot-header h2 {
+        font-size: 1.4rem;
+    }
+}

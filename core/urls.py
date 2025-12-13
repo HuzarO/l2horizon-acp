@@ -75,6 +75,7 @@ native_patterns = [
     path("notification/", include("apps.main.notification.urls")),
     path("solicitation/", include("apps.main.solicitation.urls")),
     path("calendary/", include("apps.main.calendary.urls")),
+    path("ai-assistant/", include("apps.main.ai_assistant.urls")),
 ]
 
 lineage_patterns = [

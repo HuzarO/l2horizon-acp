@@ -86,6 +86,30 @@ class SolicitationCreateView(LoginRequiredMixin, CreateView):
     template_name = 'pages/solicitation_create.html'
     success_url = reverse_lazy('solicitation:solicitation_list')
 
+    def get_initial(self):
+        """Pré-preenche o formulário com dados do chatbot, se houver"""
+        initial = super().get_initial()
+        
+        # Verifica se veio do chatbot
+        if self.request.GET.get('from_chatbot') == 'true':
+            suggested_title = self.request.GET.get('suggested_title', '')
+            category = self.request.GET.get('category', '')
+            priority = self.request.GET.get('priority', '')
+            
+            if suggested_title:
+                initial['title'] = suggested_title
+            if category:
+                initial['category'] = category
+            if priority:
+                initial['priority'] = priority
+        
+        return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['from_chatbot'] = self.request.GET.get('from_chatbot') == 'true'
+        return context
+
     def form_valid(self, form):
         form.instance.user = self.request.user
         response = super().form_valid(form)

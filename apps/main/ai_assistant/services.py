@@ -1,0 +1,321 @@
+import os
+import logging
+import json
+import re
+from typing import List, Dict, Optional, Tuple
+from anthropic import Anthropic
+from django.conf import settings
+from django.utils.translation import get_language
+from apps.main.faq.models import FAQ, FAQTranslation
+from apps.main.solicitation.models import Solicitation
+from apps.main.solicitation.choices import CATEGORY_CHOICES, PRIORITY_CHOICES
+
+logger = logging.getLogger(__name__)
+
+
+class AIAssistantService:
+    """Serviço para interação com a IA Anthropic/Claude"""
+
+    def __init__(self):
+        api_key = os.environ.get('ANTHROPIC_API_KEY') or getattr(settings, 'ANTHROPIC_API_KEY', None)
+        if not api_key:
+            logger.warning("ANTHROPIC_API_KEY não configurada. O serviço de IA não funcionará.")
+            self.client = None
+        else:
+            self.client = Anthropic(api_key=api_key)
+
+    def get_faq_context(self, language: str = 'pt') -> str:
+        """Obtém contexto das FAQs públicas para incluir no prompt"""
+        try:
+            faqs = FAQ.objects.filter(is_public=True)
+            context_parts = []
+            
+            for faq in faqs[:20]:  # Limitar a 20 FAQs para não exceder o contexto
+                translation = faq.translations.filter(language=language).first()
+                if translation:
+                    context_parts.append(
+                        f"P: {translation.question}\nR: {translation.answer}\n"
+                    )
+            
+            return "\n".join(context_parts) if context_parts else ""
+        except Exception as e:
+            logger.error(f"Erro ao buscar FAQs: {str(e)}")
+            return ""
+
+    def get_solicitation_categories_context(self) -> str:
+        """Retorna contexto sobre categorias de solicitação"""
+        categories = dict(CATEGORY_CHOICES)
+        priorities = dict(PRIORITY_CHOICES)
+        
+        return f"""
+Categorias de solicitação disponíveis:
+{chr(10).join([f"- {key}: {value}" for key, value in categories.items()])}
+
+Prioridades disponíveis:
+{chr(10).join([f"- {key}: {value}" for key, value in priorities.items()])}
+"""
+
+    def create_system_prompt(self, language: str = 'pt') -> str:
+        """Cria o prompt do sistema para a IA"""
+        faq_context = self.get_faq_context(language)
+        
+        system_prompt = f"""Você é um assistente virtual de pré-atendimento para o Painel Definitivo Lineage (PDL), 
+um sistema de gerenciamento para servidores privados de Lineage 2.
+
+Sua função PRINCIPAL é responder perguntas usando as FAQs abaixo e resolver dúvidas simples.
+
+INSTRUÇÕES IMPORTANTES:
+1. Tente SEMPRE responder a pergunta do usuário usando as FAQs ou seu conhecimento
+2. Seja útil, objetivo e resolva a dúvida quando possível
+3. NÃO sugira criar solicitação a menos que seja realmente necessário
+4. Só sugira criar solicitação quando:
+   - A questão for muito complexa e não puder ser resolvida pelo chat
+   - Envolver problemas técnicos que precisam de intervenção (bugs, erros críticos)
+   - Envolver questões sensíveis (conta comprometida, segurança, pagamentos não processados)
+   - O usuário explicitamente pedir ajuda humana ou reportar um problema
+   - Não houver informação suficiente nas FAQs para ajudar adequadamente
+
+5. NÃO sugira criar solicitação para:
+   - Perguntas simples que você pode responder
+   - Dúvidas sobre funcionalidades que estão nas FAQs
+   - Questões que você conseguiu resolver ou explicar
+
+FORMATO DE RESPOSTA:
+- Responda diretamente à pergunta do usuário
+- Se precisar sugerir uma solicitação, adicione no FINAL da resposta, de forma discreta:
+  "Se precisar de ajuda adicional, posso ajudar você a criar uma solicitação de suporte."
+
+Ao sugerir criar uma solicitação, use o formato JSON especial no final:
+<suggestion>
+{{
+  "suggest": true,
+  "category": "categoria_aqui",
+  "priority": "prioridade_aqui",
+  "reason": "breve justificativa"
+}}
+</suggestion>
+
+FAQs Disponíveis:
+{faq_context if faq_context else "Nenhuma FAQ disponível no momento."}
+
+{self.get_solicitation_categories_context()}
+
+Seja útil e objetivo. Priorize resolver a dúvida ao invés de direcionar para suporte."""
+        
+        return system_prompt
+
+    def generate_response(
+        self,
+        user_message: str,
+        conversation_history: List[Dict[str, str]] = None,
+        language: str = 'pt'
+    ) -> Tuple[str, Dict]:
+        """
+        Gera uma resposta da IA baseada na mensagem do usuário
+        
+        Returns:
+            Tuple[str, Dict]: (resposta_texto, metadados)
+        """
+        if not self.client:
+            return (
+                "Desculpe, o serviço de IA não está disponível no momento. "
+                "Por favor, crie uma solicitação de suporte ou entre em contato com nossa equipe.",
+                {"error": "IA service not available", "suggest_create_solicitation": True}
+            )
+
+        try:
+            # Preparar histórico de conversa
+            messages = []
+            if conversation_history:
+                # Converter histórico para formato Anthropic (últimas 20 mensagens)
+                recent_history = conversation_history[-20:]
+                for msg in recent_history:
+                    messages.append({
+                        "role": msg.get("role", "user"),
+                        "content": msg.get("content", "")
+                    })
+            
+            # Adicionar mensagem atual
+            messages.append({
+                "role": "user",
+                "content": user_message
+            })
+
+            # Criar prompt do sistema
+            system_prompt = self.create_system_prompt(language)
+
+            # Chamar API da Anthropic
+            try:
+                response = self.client.messages.create(
+                    model="claude-3-5-sonnet-20241022",  # ou claude-3-haiku-20240307 para versão mais rápida/barata
+                    max_tokens=1024,
+                    system=system_prompt,
+                    messages=messages
+                )
+            except Exception as api_error:
+                # Re-lançar como exceção mais específica para tratamento adequado
+                raise api_error
+
+            # Extrair resposta
+            assistant_message = response.content[0].text
+            tokens_used = response.usage.input_tokens + response.usage.output_tokens
+
+            # Verificar se há sugestão estruturada na resposta
+            suggestion_data = self._extract_suggestion_from_message(assistant_message)
+            
+            # Se não houver sugestão estruturada, verificar se a mensagem indica sugestão naturalmente
+            if not suggestion_data.get("suggest", False):
+                suggestion_data = {
+                    "suggest": self._should_suggest_solicitation(assistant_message),
+                    "category": self._extract_category_suggestion(assistant_message),
+                    "priority": self._extract_priority_suggestion(assistant_message),
+                    "reason": None
+                }
+            
+            # Remover tag de sugestão da mensagem final (se existir)
+            cleaned_message = self._remove_suggestion_tag(assistant_message)
+            
+            metadata = {
+                "tokens_used": tokens_used,
+                "suggest_create_solicitation": suggestion_data.get("suggest", False),
+                "category_suggestion": suggestion_data.get("category"),
+                "priority_suggestion": suggestion_data.get("priority"),
+                "suggestion_reason": suggestion_data.get("reason"),
+            }
+
+            return cleaned_message, metadata
+
+        except Exception as e:
+            # Log completo do erro para debug (não enviar ao usuário)
+            error_details = str(e)
+            logger.error(f"Erro ao gerar resposta da IA: {error_details}", exc_info=True)
+            
+            # Tratar erros específicos da API e retornar mensagem amigável SEM detalhes técnicos
+            error_message_lower = error_details.lower()
+            user_friendly_message = "Desculpe, ocorreu um erro ao processar sua mensagem."
+            should_suggest = True
+            
+            if "credit balance is too low" in error_message_lower or "credits" in error_message_lower:
+                user_friendly_message = (
+                    "Desculpe, o serviço de IA está temporariamente indisponível. "
+                    "Nossa equipe foi notificada e está trabalhando para resolver. "
+                    "Por favor, crie uma solicitação de suporte para que possamos atendê-lo diretamente."
+                )
+                should_suggest = True
+            elif "invalid_request_error" in error_message_lower or "400" in error_message_lower:
+                user_friendly_message = (
+                    "Desculpe, houve um problema ao processar sua solicitação. "
+                    "Por favor, tente reformular sua pergunta ou crie uma solicitação de suporte."
+                )
+                should_suggest = True
+            elif "401" in error_message_lower or "unauthorized" in error_message_lower:
+                user_friendly_message = (
+                    "Desculpe, há um problema de configuração com o serviço de IA. "
+                    "Nossa equipe foi notificada. Por favor, crie uma solicitação de suporte."
+                )
+                should_suggest = True
+            elif "429" in error_message_lower or "rate limit" in error_message_lower:
+                user_friendly_message = (
+                    "Desculpe, o serviço está temporariamente sobrecarregado. "
+                    "Por favor, aguarde alguns instantes e tente novamente."
+                )
+                should_suggest = False  # Rate limit é temporário
+            else:
+                user_friendly_message = (
+                    "Desculpe, ocorreu um erro inesperado ao processar sua mensagem. "
+                    "Por favor, tente novamente ou crie uma solicitação de suporte."
+                )
+                should_suggest = True
+            
+            # Retornar apenas mensagem amigável (sem detalhes técnicos no conteúdo)
+            # Detalhes técnicos ficam apenas nos logs e no metadata
+            return (
+                user_friendly_message,
+                {
+                    "error": True,  # Flag de erro (sem detalhes técnicos)
+                    "error_type": "api_error",
+                    "suggest_create_solicitation": should_suggest, 
+                    "category_suggestion": "technical" if should_suggest else None, 
+                    "priority_suggestion": "high" if should_suggest else None,
+                    "tokens_used": 0
+                }
+            )
+
+    def _extract_suggestion_from_message(self, message: str) -> Dict:
+        """Extrai sugestão estruturada da mensagem usando formato XML-like"""
+        # Procura por tag <suggestion>
+        pattern = r'<suggestion>\s*(\{.*?\})\s*</suggestion>'
+        match = re.search(pattern, message, re.DOTALL)
+        
+        if match:
+            try:
+                suggestion_json = json.loads(match.group(1))
+                return suggestion_json
+            except json.JSONDecodeError:
+                pass
+        
+        return {"suggest": False}
+    
+    def _remove_suggestion_tag(self, message: str) -> str:
+        """Remove a tag de sugestão da mensagem final"""
+        pattern = r'<suggestion>.*?</suggestion>'
+        cleaned = re.sub(pattern, '', message, flags=re.DOTALL)
+        return cleaned.strip()
+    
+    def _should_suggest_solicitation(self, message: str) -> bool:
+        """Verifica se a resposta sugere criar uma solicitação de forma natural"""
+        # Palavras-chave mais específicas que indicam necessidade real de suporte
+        strong_keywords = [
+            "não consigo resolver", "preciso de ajuda adicional", 
+            "não encontrei a solução", "problema técnico", "bug",
+            "erro crítico", "conta comprometida", "segurança",
+            "pagamento não processado", "perda de acesso"
+        ]
+        
+        # Verificar se há contexto suficiente na mensagem
+        message_lower = message.lower()
+        
+        # Se a mensagem é muito curta ou genérica, não sugerir
+        if len(message.strip()) < 50:
+            return False
+        
+        # Verificar keywords fortes
+        has_strong_keyword = any(keyword in message_lower for keyword in strong_keywords)
+        
+        # Verificar se menciona explicitamente necessidade de suporte humano
+        explicit_support = any(phrase in message_lower for phrase in [
+            "criar uma solicitação", "abrir um ticket", "contatar o suporte",
+            "equipe de suporte", "ajuda humana", "atendimento humano"
+        ])
+        
+        return has_strong_keyword or explicit_support
+
+    def _extract_category_suggestion(self, message: str) -> Optional[str]:
+        """Extrai sugestão de categoria da resposta"""
+        categories = dict(CATEGORY_CHOICES)
+        message_lower = message.lower()
+        
+        for key, value in categories.items():
+            if key.lower() in message_lower or value.lower() in message_lower:
+                return key
+        
+        return None
+
+    def _extract_priority_suggestion(self, message: str) -> Optional[str]:
+        """Extrai sugestão de prioridade da resposta"""
+        priorities = dict(PRIORITY_CHOICES)
+        message_lower = message.lower()
+        
+        # Palavras-chave para prioridades
+        priority_keywords = {
+            'urgent': ['urgente', 'emergência', 'crítico'],
+            'high': ['alta', 'importante', 'rapidamente'],
+            'medium': ['média', 'normal'],
+            'low': ['baixa', 'não urgente']
+        }
+        
+        for key, keywords in priority_keywords.items():
+            if any(kw in message_lower for kw in keywords):
+                return key
+        
+        return 'medium'  # Default

@@ -1,0 +1,228 @@
+{% extends 'layouts/base.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "Detalhes da Conversa" %}{% endblock title %}
+
+{% block extrastyle %}
+<link rel="stylesheet" href="{% static 'css/chatbot.css' %}">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap');
+
+  .session-detail-container {
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%);
+    min-height: 100vh;
+    padding: 2rem 0;
+  }
+
+  .session-detail-header {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    border: 2px solid #6f42c1;
+    border-radius: 20px;
+    box-shadow: 0 0 25px rgba(111, 66, 193, 0.3);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .session-detail-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.3;
+  }
+
+  .session-detail-header-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .session-detail-header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .session-info {
+    display: flex;
+    gap: 2rem;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    opacity: 0.9;
+  }
+
+  .messages-container {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(15px);
+    border-radius: 20px;
+    box-shadow: 0 0 25px rgba(111, 66, 193, 0.3);
+    border: 2px solid transparent;
+    padding: 2rem;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .message {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .message.user {
+    flex-direction: row-reverse;
+  }
+
+  .message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .message.user .message-avatar {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    color: white;
+  }
+
+  .message.assistant .message-avatar {
+    background: linear-gradient(135deg, #0dcaf0, #6f42c1);
+    color: white;
+  }
+
+  .message-content {
+    max-width: 70%;
+    padding: 1rem 1.25rem;
+    border-radius: 18px;
+    position: relative;
+    word-wrap: break-word;
+  }
+
+  .message.user .message-content {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+
+  .message.assistant .message-content {
+    background: #f0f0f0;
+    color: #333;
+    border-bottom-left-radius: 4px;
+  }
+
+  .message-time {
+    font-size: 0.75rem;
+    opacity: 0.6;
+    margin-top: 0.5rem;
+  }
+
+  .message-metadata {
+    font-size: 0.7rem;
+    opacity: 0.5;
+    margin-top: 0.25rem;
+  }
+
+  .btn-back {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .btn-back:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+  }
+</style>
+{% endblock extrastyle %}
+
+{% block content %}
+<div class="session-detail-container">
+  <div class="container">
+    <div class="session-detail-header">
+      <div class="session-detail-header-content">
+        <a href="{% url 'ai_assistant:chatbot_sessions' %}" class="btn-back mb-3">
+          <i class="fas fa-arrow-left"></i> {% trans "Voltar para histórico" %}
+        </a>
+        <h1>
+          {% if session.title %}
+            {{ session.title }}
+          {% else %}
+            {% trans "Conversa" %} #{{ session.id }}
+          {% endif %}
+        </h1>
+        <div class="session-info">
+          <span><i class="far fa-calendar me-1"></i>{{ session.created_at|date:"d/m/Y H:i" }}</span>
+          <span><i class="fas fa-comments me-1"></i>{{ chat_messages|length }} {% trans "mensagens" %}</span>
+          {% if session.solicitation %}
+            <span>
+              <i class="fas fa-ticket-alt me-1"></i>
+              {% trans "Solicitação" %}: 
+              <a href="{% url 'solicitation:solicitation_dashboard' session.solicitation.protocol %}" style="color: white; text-decoration: underline;">
+                {{ session.solicitation.protocol }}
+              </a>
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="messages-container">
+      {% if chat_messages %}
+        {% for message in chat_messages %}
+          <div class="message {{ message.role }}">
+            <div class="message-avatar">
+              {% if message.role == 'user' %}
+                <i class="fas fa-user"></i>
+              {% elif message.role == 'assistant' %}
+                <i class="fas fa-robot"></i>
+              {% else %}
+                <i class="fas fa-info-circle"></i>
+              {% endif %}
+            </div>
+            <div class="message-content">
+              <div>{% if message.cleaned_content %}{{ message.cleaned_content|linebreaks|safe }}{% else %}{{ message.content|linebreaks|safe }}{% endif %}</div>
+              <div class="message-time">
+                {{ message.created_at|date:"d/m/Y H:i:s" }}
+              </div>
+              {% if message.role == 'assistant' %}
+                {% if message.tokens_used %}
+                  <div class="message-metadata">
+                    <i class="fas fa-coins"></i> {{ message.tokens_used }} {% trans "tokens" %}
+                  </div>
+                {% endif %}
+                {% if message.metadata.error %}
+                  <div class="message-metadata" style="color: #dc3545;">
+                    <i class="fas fa-exclamation-triangle"></i> {% trans "Erro no processamento" %}
+                  </div>
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-center text-muted py-5">
+          <i class="fas fa-comment-slash fa-3x mb-3"></i>
+          <p>{% trans "Nenhuma mensagem nesta conversa." %}</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock content %}
