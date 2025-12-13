@@ -96,7 +96,13 @@
       
       {% if user.is_authenticated %}
 
+      {% comment %} Verifica se há links ativos na seção de compras/vendas {% endcomment %}
+      {% is_resource_active 'shop_module' as shop_active %}
+      {% is_resource_active 'shop_purchases' as shop_purchases_active %}
+      {% is_resource_active 'auction_module' as auction_active %}
+      {% if shop_active or shop_purchases_active or auction_active %}
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
+      {% endif %}
 
       {% is_resource_active 'shop_module' as shop_active %}
       {% if shop_active %}
@@ -142,7 +148,11 @@
       </li>
       {% endif %}
 
+      {% comment %} Verifica se há links ativos na seção de marketplace {% endcomment %}
+      {% is_resource_active 'marketplace_module' as marketplace_active %}
+      {% if marketplace_active %}
       <li role="separator" class="dropdown-divider my-3 border-gray-700"></li>
+      {% endif %}
 
       {% is_resource_active 'marketplace_module' as marketplace_active %}
       {% if marketplace_active %}
@@ -158,7 +168,12 @@
       </li>
       {% endif %}
 
+      {% comment %} Verifica se há links ativos na seção de games {% endcomment %}
+      {% is_resource_active 'games_module' as games_active %}
+      {% is_resource_active 'battle_pass' as battle_pass_active %}
+      {% if games_active or battle_pass_active %}
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
+      {% endif %}
 
       {% is_resource_active 'games_module' as games_active %}
       {% if games_active %}
@@ -278,7 +293,15 @@
       </li>
       {% endif %}
 
+      {% comment %} Verifica se há links ativos na seção de informações/ajuda {% endcomment %}
+      {% is_resource_active 'faq_module' as faq_active %}
+      {% is_resource_active 'news_module' as news_active %}
+      {% is_resource_active 'message_module' as message_active %}
+      {% is_resource_active 'solicitation_module' as solicitation_active %}
+      {% is_resource_active 'downloads_module' as downloads_active %}
+      {% if faq_active or news_active or message_active or solicitation_active or downloads_active %}
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
+      {% endif %}
 
       {% is_resource_active 'faq_module' as faq_active %}
       {% if faq_active %}
@@ -356,7 +379,12 @@
 
       {% endif %}
 
+      {% comment %} Verifica se há links ativos na seção de tops/heroes/servidor {% endcomment %}
+      {% is_resource_active 'tops_module' as tops_active %}
+      {% is_resource_active 'server_module' as server_active %}
+      {% if tops_active or server_active %}
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
+      {% endif %}
 
       {% is_resource_active 'tops_module' as tops_active %}
       {% if tops_active %}
@@ -516,7 +544,14 @@
       {% endif %}
 
       {% if request.user.is_superuser %}
+      {% comment %} Verifica se há links ativos na seção de administração {% endcomment %}
+      {% is_resource_active 'accountancy_module' as accountancy_active %}
+      {% is_resource_active 'reports_module' as reports_active %}
+      {% is_resource_active 'server_module' as server_active %}
+      {% comment %} O separador aparece se houver pelo menos um recurso ativo OU se houver links que não dependem de recursos (Logs) {% endcomment %}
+      {% if accountancy_active or reports_active or server_active %}
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
+      {% endif %}
 
       {% is_resource_active 'accountancy_module' as accountancy_active %}
       {% if accountancy_active %}
@@ -550,6 +585,8 @@
       </li>
       {% endif %}
 
+      {% is_resource_active 'server_module' as server_active %}
+      {% if server_active %}
       <li class="nav-item {% if 'inflation' in segment %}active{% endif %}">
         <a href="{% url 'server:inflation_dashboard' %}" class="nav-link d-flex align-items-center">
           <span class="sidebar-icon">
@@ -562,8 +599,14 @@
           <span class="sidebar-text">{% trans "Dashboard de Inflação" %}</span>
         </a>
       </li>
+      {% endif %}
 
+      {% comment %} Verifica se há links ativos na seção de auditoria/logs {% endcomment %}
+      {% is_resource_active 'auditor_module' as auditor_active %}
+      {% comment %} O separador aparece se houver auditoria ativa OU se for superuser (pois os logs sempre aparecem para superusers) {% endcomment %}
+      {% if auditor_active or request.user.is_superuser %}
       <li role="separator" class="dropdown-divider mt-4 mb-3 border-gray-700"></li>
+      {% endif %}
 
       {% is_resource_active 'auditor_module' as auditor_active %}
       {% if auditor_active %}
