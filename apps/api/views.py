@@ -147,17 +147,32 @@ class TopPvPView(GenericAPIView):
             
             if cached_data is None:
                 data = LineageStats.top_pvp(limit=limit)
-                # Aplica tradução de nomes de classe
+                # Aplica tradução de nomes de classe e mapeia campos
                 for player in data:
                     if 'base' in player and player.get('base') is not None:
                         player['class_name'] = get_class_name(player['base'])
                     elif 'class_name' not in player:
                         player['class_name'] = None
+                    # Mapeia pvpkills para pvp_count
+                    if 'pvpkills' in player:
+                        player['pvp_count'] = player['pvpkills']
+                    # Mapeia pkkills para pk_count
+                    if 'pkkills' in player:
+                        player['pk_count'] = player['pkkills']
                 # Adiciona crests dos clãs
                 data = attach_crests_to_clans(data)
                 cache.set(cache_key, data, 60)  # Cache por 1 minuto
             else:
                 data = cached_data
+            
+            # Mapeia campos do banco para o formato esperado pelo serializer (também quando vem do cache)
+            for player in data:
+                # Mapeia pvpkills para pvp_count
+                if 'pvpkills' in player:
+                    player['pvp_count'] = player['pvpkills']
+                # Mapeia pkkills para pk_count
+                if 'pkkills' in player:
+                    player['pk_count'] = player['pkkills']
             
             serializer = self.get_serializer(data, many=True)
             return Response(serializer.data)
@@ -217,17 +232,32 @@ class TopPKView(GenericAPIView):
             
             if cached_data is None:
                 data = LineageStats.top_pk(limit=limit)
-                # Aplica tradução de nomes de classe
+                # Aplica tradução de nomes de classe e mapeia campos
                 for player in data:
                     if 'base' in player and player.get('base') is not None:
                         player['class_name'] = get_class_name(player['base'])
                     elif 'class_name' not in player:
                         player['class_name'] = None
+                    # Mapeia pvpkills para pvp_count
+                    if 'pvpkills' in player:
+                        player['pvp_count'] = player['pvpkills']
+                    # Mapeia pkkills para pk_count
+                    if 'pkkills' in player:
+                        player['pk_count'] = player['pkkills']
                 # Adiciona crests dos clãs
                 data = attach_crests_to_clans(data)
                 cache.set(cache_key, data, 60)
             else:
                 data = cached_data
+            
+            # Mapeia campos do banco para o formato esperado pelo serializer
+            for player in data:
+                # Mapeia pvpkills para pvp_count
+                if 'pvpkills' in player:
+                    player['pvp_count'] = player['pvpkills']
+                # Mapeia pkkills para pk_count
+                if 'pkkills' in player:
+                    player['pk_count'] = player['pkkills']
             
             serializer = self.get_serializer(data, many=True)
             return Response(serializer.data)
@@ -350,13 +380,15 @@ class TopRichView(GenericAPIView):
             
             if cached_data is None:
                 data = LineageStats.top_adena(limit=limit)
-                # Padroniza campo adena (adenas -> adena)
+                # Padroniza campo adena (adenas -> adena) e mapeia campos
                 for player in data:
                     if 'adenas' in player and 'adena' not in player:
                         player['adena'] = player['adenas']
                     # Formata tempo online humanizado
                     if 'onlinetime' in player:
                         player['human_onlinetime'] = self._humanize_time(player.get('onlinetime', 0))
+                        # Mapeia onlinetime para online_time
+                        player['online_time'] = player['onlinetime']
                 # Aplica tradução de nomes de classe
                 for player in data:
                     if 'base' in player and player.get('base') is not None:
@@ -368,6 +400,15 @@ class TopRichView(GenericAPIView):
                 cache.set(cache_key, data, 60)
             else:
                 data = cached_data
+            
+            # Mapeia campos do banco para o formato esperado pelo serializer (também quando vem do cache)
+            for player in data:
+                # Mapeia onlinetime para online_time
+                if 'onlinetime' in player and 'online_time' not in player:
+                    player['online_time'] = player['onlinetime']
+                # Garante que human_onlinetime existe se onlinetime existe
+                if 'onlinetime' in player and 'human_onlinetime' not in player:
+                    player['human_onlinetime'] = self._humanize_time(player.get('onlinetime', 0))
             
             serializer = self.get_serializer(data, many=True)
             return Response(serializer.data)
@@ -427,10 +468,12 @@ class TopOnlineView(GenericAPIView):
             
             if cached_data is None:
                 data = LineageStats.top_online(limit=limit)
-                # Formata tempo online humanizado
+                # Formata tempo online humanizado e mapeia campos
                 for player in data:
                     if 'onlinetime' in player:
                         player['human_onlinetime'] = self._humanize_time(player.get('onlinetime', 0))
+                        # Mapeia onlinetime para online_time
+                        player['online_time'] = player['onlinetime']
                 # Aplica tradução de nomes de classe
                 for player in data:
                     if 'base' in player and player.get('base') is not None:
@@ -442,6 +485,15 @@ class TopOnlineView(GenericAPIView):
                 cache.set(cache_key, data, 60)
             else:
                 data = cached_data
+            
+            # Mapeia campos do banco para o formato esperado pelo serializer (também quando vem do cache)
+            for player in data:
+                # Mapeia onlinetime para online_time
+                if 'onlinetime' in player and 'online_time' not in player:
+                    player['online_time'] = player['onlinetime']
+                # Garante que human_onlinetime existe se onlinetime existe
+                if 'onlinetime' in player and 'human_onlinetime' not in player:
+                    player['human_onlinetime'] = self._humanize_time(player.get('onlinetime', 0))
             
             serializer = self.get_serializer(data, many=True)
             return Response(serializer.data)
@@ -1406,23 +1458,66 @@ class UserStatsView(APIView):
         try:
             user = request.user
             
-            # Busca estatísticas do usuário
-            stats_data = LineageStats.get_user_detailed_stats(user.username) if hasattr(LineageStats, 'get_user_detailed_stats') else {}
+            # Busca estatísticas do usuário usando LineageServices.find_chars
+            from utils.dynamic_import import get_query_class
+            LineageServices = get_query_class("LineageServices")
             
-            # Se não houver dados, retorna estrutura básica
-            if not stats_data:
-                stats_data = {
-                    'username': user.username,
-                    'characters_count': 0,
-                    'total_level': 0,
-                    'total_online_time': 0,
-                    'total_pvp': 0,
-                    'total_pk': 0,
-                }
+            characters = []
+            if hasattr(LineageServices, 'find_chars'):
+                try:
+                    characters = LineageServices.find_chars(user.username) or []
+                except:
+                    characters = []
             
-            # Garante que sempre retorna um dicionário
-            if not isinstance(stats_data, dict):
-                stats_data = {'stats': stats_data}
+            # Calcula estatísticas agregadas
+            characters_count = len(characters) if characters else 0
+            total_level = 0
+            total_online_time = 0
+            total_pvp = 0
+            total_pk = 0
+            
+            if characters:
+                for char in characters:
+                    # Soma níveis (usa base_level se disponível, senão level)
+                    level = char.get('base_level') or char.get('level', 0)
+                    if level:
+                        try:
+                            total_level += int(level)
+                        except:
+                            pass
+                    
+                    # Soma tempo online
+                    onlinetime = char.get('onlinetime', 0)
+                    if onlinetime:
+                        try:
+                            total_online_time += int(onlinetime)
+                        except:
+                            pass
+                    
+                    # Soma PvP
+                    pvpkills = char.get('pvpkills', 0)
+                    if pvpkills:
+                        try:
+                            total_pvp += int(pvpkills)
+                        except:
+                            pass
+                    
+                    # Soma PK
+                    pkkills = char.get('pkkills', 0)
+                    if pkkills:
+                        try:
+                            total_pk += int(pkkills)
+                        except:
+                            pass
+            
+            stats_data = {
+                'username': user.username,
+                'characters_count': characters_count,
+                'total_level': total_level,
+                'total_online_time': total_online_time,
+                'total_pvp': total_pvp,
+                'total_pk': total_pk,
+            }
             
             # Retorna dados diretamente para compatibilidade com o bot
             return Response(stats_data)
