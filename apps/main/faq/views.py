@@ -7,7 +7,8 @@ from apps.main.home.decorator import conditional_otp_required
 @conditional_otp_required
 def faq_list(request):
     language = get_language()  # Obtém o idioma atual
-    public_faqs = FAQ.objects.filter(is_public=True)
+    # Mostra FAQs públicas que podem aparecer na view interna OU FAQs privadas
+    public_faqs = FAQ.objects.filter(is_public=True, show_in_internal=True)
     private_faqs = FAQ.objects.filter(is_public=False)
 
     # Obter traduções para o idioma atual

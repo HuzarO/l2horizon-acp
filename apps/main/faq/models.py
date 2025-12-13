@@ -8,6 +8,11 @@ class FAQ(BaseModel):
     question = models.CharField(max_length=255, verbose_name=_("Pergunta"))
     order = models.PositiveIntegerField(default=0, verbose_name=_("Ordem"))
     is_public = models.BooleanField(default=True, verbose_name=_("Está público"))
+    show_in_internal = models.BooleanField(
+        default=True,
+        verbose_name=_("Mostrar na view interna"),
+        help_text=_("Se marcado, esta FAQ aparecerá na view interna mesmo sendo pública.")
+    )
 
     class Meta:
         ordering = ['order']

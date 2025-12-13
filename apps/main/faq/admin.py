@@ -14,6 +14,7 @@ class FAQAdminForm(forms.ModelForm):
             'question': forms.TextInput(attrs={'class': 'form-control', 'placeholder': _('Pergunta')}),
             'order': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': _('Ordem')}),
             'is_public': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_in_internal': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 
@@ -46,16 +47,16 @@ class FAQTranslationInline(admin.TabularInline):
 @admin.register(FAQ)
 class FAQAdmin(BaseModelAdmin):
     form = FAQAdminForm
-    list_display = ('get_question', 'order', 'is_public', 'get_languages', 'created_at')
+    list_display = ('get_question', 'order', 'is_public', 'show_in_internal', 'get_languages', 'created_at')
     ordering = ('order', 'created_at')
-    list_filter = ('is_public', 'created_at', 'translations__language')
+    list_filter = ('is_public', 'show_in_internal', 'created_at', 'translations__language')
     search_fields = ('translations__question', 'translations__answer')
-    list_editable = ('order', 'is_public')
+    list_editable = ('order', 'is_public', 'show_in_internal')
     inlines = [FAQTranslationInline]
     
     fieldsets = (
         (_('Configurações Básicas'), {
-            'fields': ('order', 'is_public'),
+            'fields': ('order', 'is_public', 'show_in_internal'),
             'description': _('Configure a ordem de exibição e visibilidade da FAQ')
         }),
     )

@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.db.models import Q
 from .models import News
 from django.utils import translation
 from apps.main.home.decorator import conditional_otp_required
@@ -8,7 +9,12 @@ from .forms import NewsForm
 @conditional_otp_required
 def index(request):
     language = translation.get_language()
-    private_news_list = News.objects.filter(is_published=True, is_private=True).order_by('-pub_date')[:5]
+    # Mostra notícias privadas OU notícias públicas que podem aparecer na view interna
+    private_news_list = News.objects.filter(
+        is_published=True
+    ).filter(
+        Q(is_private=True) | Q(is_private=False, show_in_internal=True)
+    ).order_by('-pub_date')[:5]
 
     # adiciona a tradução correta ou fallback em português
     translated_news = []

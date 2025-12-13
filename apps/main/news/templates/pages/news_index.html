@@ -10,8 +10,11 @@
 
   .news-container {
     background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%);
-    min-height: 100vh;
     padding: 2rem 0;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: visible;
+    width: 100%;
   }
 
   .news-header {
@@ -367,16 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
-  // Efeito de parallax suave no fundo
-  window.addEventListener('scroll', function() {
-    const scrolled = window.pageYOffset;
-    const parallax = document.querySelector('.news-container');
-    const speed = scrolled * 0.3;
-    
-    if (parallax) {
-      parallax.style.transform = `translateY(${speed}px)`;
-    }
-  });
+  // Efeito de parallax removido - estava causando movimento indesejado e quebrando o footer
   
   // Animação dos botões "Leia mais"
   const readMoreButtons = document.querySelectorAll('.news-read-more');
@@ -391,19 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
-  // Animação do ícone principal
-  const newsIcon = document.querySelector('.news-title i');
-  if (newsIcon) {
-    setInterval(() => {
-      newsIcon.style.transform = 'rotate(5deg)';
-      setTimeout(() => {
-        newsIcon.style.transform = 'rotate(-5deg)';
-        setTimeout(() => {
-          newsIcon.style.transform = 'rotate(0deg)';
-        }, 200);
-      }, 200);
-    }, 5000);
-  }
+  // Animação do ícone principal removida - estava causando efeito de balanço indesejado
 });
 </script>
 {% endblock content %}

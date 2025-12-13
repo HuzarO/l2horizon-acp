@@ -10,8 +10,11 @@
 
   .faq-container {
     background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%);
-    min-height: 100vh;
     padding: 2rem 0;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: visible;
+    width: 100%;
   }
 
   .faq-header {
@@ -377,16 +380,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100 + (Array.from(faqItems).indexOf(item) * 100));
   });
   
-  // Efeito de parallax suave no fundo
-  window.addEventListener('scroll', function() {
-    const scrolled = window.pageYOffset;
-    const parallax = document.querySelector('.faq-container');
-    const speed = scrolled * 0.5;
-    
-    if (parallax) {
-      parallax.style.transform = `translateY(${speed}px)`;
-    }
-  });
+  // Removido efeito de parallax que estava quebrando o footer
   
   // Adiciona efeito de destaque ao hover nos botões
   const faqButtons = document.querySelectorAll('.faq-button');
