@@ -154,6 +154,7 @@ INSTALLED_APPS = [
     "apps.main.solicitation",
     "apps.main.downloads",
     "apps.main.calendary",
+    "apps.main.ai_assistant",
 
     "apps.media_storage",
 

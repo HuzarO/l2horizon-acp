@@ -43,6 +43,13 @@ def get_websocket_urlpatterns():
     except ImportError:
         pass
     
+    # Tenta importar as rotas do chatbot de IA
+    try:
+        from apps.main.ai_assistant.routing import websocket_urlpatterns as chatbot_ws
+        patterns.extend(chatbot_ws)
+    except ImportError:
+        pass
+    
     return patterns
 
 application = ProtocolTypeRouter({

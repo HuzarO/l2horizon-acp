@@ -1,0 +1,317 @@
+{% extends 'layouts/base.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "Histórico de Conversas" %}{% endblock title %}
+
+{% block extrastyle %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap');
+
+  .sessions-container {
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #121220 100%);
+    min-height: 100vh;
+    padding: 2rem 0;
+  }
+
+  .sessions-header {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    border: 2px solid #6f42c1;
+    border-radius: 20px;
+    box-shadow: 0 0 25px rgba(111, 66, 193, 0.3);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sessions-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    opacity: 0.3;
+  }
+
+  .sessions-header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 1;
+  }
+
+  .session-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(15px);
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(111, 66, 193, 0.2);
+    border: 2px solid #6f42c1;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .session-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 30px rgba(111, 66, 193, 0.4);
+  }
+
+  .session-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 1rem;
+  }
+
+  .session-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #333;
+    margin: 0;
+    flex: 1;
+  }
+
+  .session-date {
+    font-size: 0.85rem;
+    color: #666;
+    margin-left: 1rem;
+  }
+
+  .session-meta {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 0.5rem;
+  }
+
+  .session-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .session-meta-item i {
+    color: #6f42c1;
+  }
+
+  .session-link {
+    color: #6f42c1;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .session-link:hover {
+    color: #e83e8c;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #666;
+  }
+
+  .empty-state i {
+    font-size: 4rem;
+    color: #ccc;
+    margin-bottom: 1rem;
+  }
+
+  .btn-new-chat {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .btn-new-chat:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 20px rgba(111, 66, 193, 0.4);
+    color: white;
+  }
+
+  /* Paginação customizada */
+  .pagination-custom {
+    margin-top: 2rem;
+    justify-content: center;
+  }
+
+  .pagination-custom .page-link {
+    background: linear-gradient(to bottom right, #1a1a2e, #121220);
+    border: 1px solid #6f42c1;
+    color: #f8f9fa;
+    padding: 0.75rem 1.25rem;
+    margin: 0 0.25rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .pagination-custom .page-link:hover {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    border-color: #6f42c1;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(111, 66, 193, 0.4);
+  }
+
+  .pagination-custom .page-item.active .page-link {
+    background: linear-gradient(135deg, #6f42c1, #e83e8c);
+    border-color: #6f42c1;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(111, 66, 193, 0.5);
+  }
+
+  .pagination-custom .page-item.disabled .page-link {
+    background: rgba(26, 26, 46, 0.5);
+    border-color: rgba(111, 66, 193, 0.3);
+    color: rgba(248, 249, 250, 0.5);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .pagination-custom .page-item.disabled .page-link:hover {
+    transform: none;
+    box-shadow: none;
+  }
+</style>
+{% endblock extrastyle %}
+
+{% block content %}
+<div class="sessions-container">
+  <div class="container">
+    <div class="sessions-header">
+      <h1><i class="fas fa-history me-2"></i>{% trans "Histórico de Conversas" %}</h1>
+      <p style="margin: 0.5rem 0 0 0; opacity: 0.9; position: relative; z-index: 1;">
+        {% trans "Visualize todas as suas conversas com o assistente virtual" %}
+      </p>
+    </div>
+
+    <div class="text-end mb-4">
+      <a href="{% url 'ai_assistant:chatbot' %}" class="btn-new-chat">
+        <i class="fas fa-plus"></i> {% trans "Nova Conversa" %}
+      </a>
+    </div>
+
+    {% if sessions %}
+      {% for session in sessions %}
+        <div class="session-card" onclick="window.location.href='{% url 'ai_assistant:chatbot_session_detail' session.id %}'">
+          <div class="session-card-header">
+            <h3 class="session-title">
+              {% if session.title %}
+                {{ session.title }}
+              {% else %}
+                {% trans "Conversa sem título" %}
+              {% endif %}
+            </h3>
+            <span class="session-date">
+              <i class="far fa-calendar me-1"></i>
+              {{ session.created_at|date:"d/m/Y H:i" }}
+            </span>
+          </div>
+
+          <div class="session-meta">
+            <div class="session-meta-item">
+              <i class="fas fa-comments"></i>
+              <span>{% if session.message_count %}{{ session.message_count }}{% else %}{{ session.messages.count }}{% endif %} {% trans "mensagens" %}</span>
+            </div>
+            {% if session.solicitation %}
+              <div class="session-meta-item">
+                <i class="fas fa-ticket-alt"></i>
+                <span>{% trans "Solicitação" %}: {{ session.solicitation.protocol }}</span>
+              </div>
+            {% endif %}
+            <div class="session-meta-item">
+              <i class="fas fa-circle" style="color: {% if session.is_active %}#4ade80{% else %}#9ca3af{% endif %}; font-size: 0.5rem;"></i>
+              <span>{% if session.is_active %}{% trans "Ativa" %}{% else %}{% trans "Encerrada" %}{% endif %}</span>
+            </div>
+          </div>
+
+          <a href="{% url 'ai_assistant:chatbot_session_detail' session.id %}" class="session-link">
+            {% trans "Ver conversa completa" %} <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+      {% endfor %}
+
+      {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+          <ul class="pagination pagination-custom">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page=1" aria-label="{% trans 'Primeira' %}">
+                  <span aria-hidden="true">&laquo;&laquo;</span>
+                </a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="{% trans 'Anterior' %}">
+                  <span aria-hidden="true">&laquo;</span>
+                </a>
+              </li>
+            {% else %}
+              <li class="page-item disabled">
+                <span class="page-link">&laquo;&laquo;</span>
+              </li>
+              <li class="page-item disabled">
+                <span class="page-link">&laquo;</span>
+              </li>
+            {% endif %}
+            
+            <li class="page-item active">
+              <span class="page-link">
+                {% trans "Página" %} {{ page_obj.number }} {% trans "de" %} {{ page_obj.paginator.num_pages }}
+              </span>
+            </li>
+            
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="{% trans 'Próxima' %}">
+                  <span aria-hidden="true">&raquo;</span>
+                </a>
+              </li>
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="{% trans 'Última' %}">
+                  <span aria-hidden="true">&raquo;&raquo;</span>
+                </a>
+              </li>
+            {% else %}
+              <li class="page-item disabled">
+                <span class="page-link">&raquo;</span>
+              </li>
+              <li class="page-item disabled">
+                <span class="page-link">&raquo;&raquo;</span>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <h3>{% trans "Nenhuma conversa encontrada" %}</h3>
+        <p>{% trans "Você ainda não iniciou nenhuma conversa com o assistente virtual." %}</p>
+        <a href="{% url 'ai_assistant:chatbot' %}" class="btn-new-chat mt-3">
+          <i class="fas fa-comment"></i> {% trans "Iniciar primeira conversa" %}
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock content %}
