@@ -83,10 +83,14 @@ def license_list(request):
     pro_licenses = licenses.filter(license_type='pro').count()
     free_licenses = licenses.filter(license_type='free').count()
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     context = {
         'page_obj': page_obj,
         'license_types': License.LICENSE_TYPES,
         'license_status': License.LICENSE_STATUS,
+        **pagination_context,
         'total_licenses': total_licenses,
         'active_licenses': active_licenses,
         'pro_licenses': pro_licenses,

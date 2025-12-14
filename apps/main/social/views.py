@@ -78,6 +78,9 @@ def feed(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     # Buscar perfil do usuário
     profile, created = UserProfile.objects.get_or_create(user=request.user)
     
@@ -167,6 +170,7 @@ def feed(request):
         'form': form,
         'profile': profile,
         'user_stats': user_stats,
+        **pagination_context,
         'popular_hashtags': popular_hashtags,
         'suggested_users': suggested_users,
         'network_stats': network_stats,
@@ -211,6 +215,9 @@ def my_posts(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     # Timestamp para cache busting de avatares
     import time
     timestamp = int(time.time())
@@ -219,6 +226,7 @@ def my_posts(request):
         'page_obj': page_obj,
         'can_moderate': can_moderate,
         'timestamp': timestamp,
+        **pagination_context,
         'segment': 'my_posts',
         'parent': 'social',
     }
@@ -730,11 +738,15 @@ def hashtag_detail(request, hashtag_name):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     context = {
         'hashtag': hashtag,
         'page_obj': page_obj,
         'segment': 'hashtag_detail',
         'parent': 'social',
+        **pagination_context,
     }
     return render(request, 'social/hashtag_detail.html', context)
 
@@ -1249,6 +1261,9 @@ def reports_list(request):
     resolved_page_number = request.GET.get('resolved_page', 1)
     resolved_page_obj = resolved_paginator.get_page(resolved_page_number)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     # Formulário para ações em massa
     bulk_form = BulkModerationForm()
     
@@ -1267,6 +1282,7 @@ def reports_list(request):
         'total_reports': total_reports,
         'pending_count': pending_count,
         'urgent_count': urgent_count,
+        **pagination_context,
         'resolved_count': resolved_count,
         'unresolved_count': unresolved_count,
     }
@@ -1820,6 +1836,9 @@ def moderation_logs(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     # Estatísticas
     total_actions = logs.count()
     actions_today = logs.filter(created_at__date=timezone.now().date()).count()
@@ -1833,6 +1852,7 @@ def moderation_logs(request):
         'page_obj': page_obj,
         'total_actions': total_actions,
         'actions_today': actions_today,
+        **pagination_context,
         'active_moderators': active_moderators,
         'action_types': ModerationLog.LOG_TYPES,
         'moderators': User.objects.filter(is_staff=True),
@@ -2558,11 +2578,15 @@ def verification_admin_list_view(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     context = {
         'page_obj': page_obj,
         'status_filter': status_filter,
         'search': search,
-        'status_choices': VerificationRequest.STATUS_CHOICES
+        'status_choices': VerificationRequest.STATUS_CHOICES,
+        **pagination_context,
     }
     return render(request, 'social/verification/admin/list.html', context)
 

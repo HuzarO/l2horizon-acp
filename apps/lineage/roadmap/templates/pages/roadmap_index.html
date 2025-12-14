@@ -479,37 +479,10 @@
 
     <!-- Paginação -->
     {% if has_other_pages %}
-      <div class="roadmap-pagination fade-in-up">
-        <div class="pagination-info">
-          <span>{% trans "Página" %} {{ current_page }} {% trans "de" %} {{ num_pages }}</span>
-          <span>{% trans "Total de" %} {{ total_items }} {% trans "itens" %}</span>
-        </div>
-        
-        <div class="pagination-controls">
-          {% if has_previous %}
-            <a href="?page={{ previous_page_number }}" class="pagination-btn">
-              <i class="fas fa-chevron-left"></i>
-              {% trans "Anterior" %}
-            </a>
-          {% endif %}
-          
-          <div class="pagination-numbers">
-            {% for page_num in roadmaps_page.paginator.page_range %}
-              {% if page_num == current_page %}
-                <span class="pagination-current">{{ page_num }}</span>
-              {% elif page_num <= current_page|add:2 and page_num >= current_page|add:-2 %}
-                <a href="?page={{ page_num }}" class="pagination-number">{{ page_num }}</a>
-              {% endif %}
-            {% endfor %}
-          </div>
-          
-          {% if has_next %}
-            <a href="?page={{ next_page_number }}" class="pagination-btn">
-              {% trans "Próxima" %}
-              <i class="fas fa-chevron-right"></i>
-            </a>
-          {% endif %}
-        </div>
+      <div class="mt-4">
+        {% with query_params=request.GET.urlencode %}
+          {% include 'includes/pagination.html' %}
+        {% endwith %}
       </div>
     {% endif %}
   </div>

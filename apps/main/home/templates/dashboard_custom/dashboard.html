@@ -1429,30 +1429,10 @@
 
         <!-- Paginação -->
         {% if page_obj.has_other_pages %}
-          <div class="mt-4 text-center">
-            <nav aria-label="Paginação das conquistas">
-              <ul class="pagination pagination-custom justify-content-center">
-                {% if page_obj.has_previous %}
-                  <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Anterior">
-                      &laquo; {% trans "Anterior" %}
-                    </a>
-                  </li>
-                {% endif %}
-                {% for num in page_obj.paginator.page_range %}
-                  <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                  </li>
-                {% endfor %}
-                {% if page_obj.has_next %}
-                  <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Próximo">
-                      {% trans "Próximo" %} &raquo;
-                    </a>
-                  </li>
-                {% endif %}
-              </ul>
-            </nav>
+          <div class="mt-4">
+            {% with query_params=request.GET.urlencode %}
+              {% include 'includes/pagination.html' %}
+            {% endwith %}
           </div>
         {% endif %}
       {% else %}

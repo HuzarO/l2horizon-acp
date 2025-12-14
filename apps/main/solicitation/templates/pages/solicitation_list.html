@@ -327,45 +327,13 @@
     </div>
 
     <!-- Paginação -->
-    <nav aria-label="Page navigation" class="d-flex justify-content-center mt-4">
-      <ul class="pagination pagination-custom">
-                 {% if page_obj.has_previous %}
-           <li class="page-item">
-             <a class="page-link" href="?page=1" aria-label="{% trans 'Primeira' %}">
-               <span aria-hidden="true" class="text-white">&laquo;&laquo;</span>
-             </a>
-           </li>
-           <li class="page-item">
-             <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="{% trans 'Anterior' %}">
-               <span aria-hidden="true" class="text-white">&laquo;</span>
-             </a>
-           </li>
-         {% else %}
-           <li class="page-item disabled"><span class="page-link text-white">&laquo;&laquo;</span></li>
-           <li class="page-item disabled"><span class="page-link text-white">&laquo;</span></li>
-         {% endif %}
-
-                 <li class="page-item disabled">
-           <span class="page-link text-white">{% trans "Página" %} {{ page_obj.number }} {% trans "de" %} {{ page_obj.paginator.num_pages }}</span>
-         </li>
-
-                 {% if page_obj.has_next %}
-           <li class="page-item">
-             <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="{% trans 'Próxima' %}">
-               <span aria-hidden="true" class="text-white">&raquo;</span>
-             </a>
-           </li>
-           <li class="page-item">
-             <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="{% trans 'Última' %}">
-               <span aria-hidden="true" class="text-white">&raquo;&raquo;</span>
-             </a>
-           </li>
-         {% else %}
-           <li class="page-item disabled"><span class="page-link text-white">&raquo;</span></li>
-           <li class="page-item disabled"><span class="page-link text-white">&raquo;&raquo;</span></li>
-         {% endif %}
-      </ul>
-    </nav>
+    {% if page_obj.has_other_pages %}
+    <div class="mt-4">
+      {% with query_params=request.GET.urlencode %}
+        {% include 'includes/pagination.html' %}
+      {% endwith %}
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock content %}

@@ -12,45 +12,31 @@
     </div>
 
     {% if page.has_other_pages %}
-      <nav>
-        <ul class="pagination">
-          {% if page.has_previous %}
-            <li class="page-item">
-              <a class="page-link" href="?{{ page_param }}={{ page.previous_page_number }}" aria-label="Previous">
-                <span aria-hidden="true">&laquo;</span>
-              </a>
-            </li>
+      <div class="mt-4">
+        {% with current_page=page.number total_pages=page.paginator.num_pages has_previous=page.has_previous has_next=page.has_next previous_page_number=page.previous_page_number next_page_number=page.next_page_number %}
+          {% if page.paginator.num_pages <= 7 %}
+            {% with page_range=page.paginator.page_range show_first=False show_last=False show_first_ellipsis=False show_last_ellipsis=False query_params='' %}
+              {% include 'includes/pagination_custom.html' %}
+            {% endwith %}
           {% else %}
-            <li class="page-item disabled">
-              <span class="page-link">&laquo;</span>
-            </li>
-          {% endif %}
-
-          {% for num in page.paginator.page_range %}
-            {% if page.number == num %}
-              <li class="page-item active">
-                <span class="page-link">{{ num }}</span>
-              </li>
+            {% if page.number <= 4 %}
+              {% with page_range=page.paginator.page_range|slice:":5" show_first=False show_last=True show_first_ellipsis=False show_last_ellipsis=True query_params='' %}
+                {% include 'includes/pagination_custom.html' %}
+              {% endwith %}
+            {% elif page.number >= page.paginator.num_pages|add:"-3" %}
+              {% with page_range=page.paginator.page_range|slice:"-5:" show_first=True show_last=False show_first_ellipsis=True show_last_ellipsis=False query_params='' %}
+                {% include 'includes/pagination_custom.html' %}
+              {% endwith %}
             {% else %}
-              <li class="page-item">
-                <a class="page-link" href="?{{ page_param }}={{ num }}">{{ num }}</a>
-              </li>
+              {% with start=page.number|add:"-3" end=page.number|add:"2" %}
+                {% with page_range=page.paginator.page_range|slice:start:end show_first=True show_last=True show_first_ellipsis=True show_last_ellipsis=True query_params='' %}
+                  {% include 'includes/pagination_custom.html' %}
+                {% endwith %}
+              {% endwith %}
             {% endif %}
-          {% endfor %}
-
-          {% if page.has_next %}
-            <li class="page-item">
-              <a class="page-link" href="?{{ page_param }}={{ page.next_page_number }}" aria-label="Next">
-                <span aria-hidden="true">&raquo;</span>
-              </a>
-            </li>
-          {% else %}
-            <li class="page-item disabled">
-              <span class="page-link">&raquo;</span>
-            </li>
           {% endif %}
-        </ul>
-      </nav>
+        {% endwith %}
+      </div>
     {% endif %}
   {% else %}
     <div class="alert alert-secondary text-center" role="alert">

@@ -98,12 +98,16 @@ def relatorio_saldo_usuarios(request):
     paginator = Paginator(relatorio_completo, 50)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
 
     return render(request, 'accountancy/relatorio_saldo.html', {
         'relatorio': list(page_obj),
         'resumo': resumo,
         'page_obj': page_obj,
         'filter_form': filter_form,
+        **pagination_context,
     })
 
 
@@ -141,6 +145,9 @@ def relatorio_fluxo_caixa(request):
     paginator = Paginator(relatorio, 50)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+    
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
 
     context = {
         'labels': json.dumps(labels),
@@ -150,6 +157,7 @@ def relatorio_fluxo_caixa(request):
         'relatorio': list(page_obj),
         'resumo': resumo,
         'page_obj': page_obj,
+        **pagination_context,
         'filter_form': filter_form,
     }
 
@@ -211,6 +219,9 @@ def relatorio_pedidos_pagamentos(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     # Processa apenas os pedidos da página atual para o relatório
     from .reports.pedidos_pagamentos import validar_origem_pagamento
     relatorio = []
@@ -243,6 +254,7 @@ def relatorio_pedidos_pagamentos(request):
         'resumo': resumo,
         'page_obj': page_obj,
         'filter_form': filter_form,
+        **pagination_context,
     })
 
 
@@ -298,11 +310,15 @@ def relatorio_reconciliacao_wallet(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     return render(request, 'accountancy/relatorio_reconciliacao_wallet.html', {
         'relatorio': list(page_obj),
         'resumo': resumo,
         'page_obj': page_obj,
         'filter_form': filter_form,
+        **pagination_context,
     })
 
 

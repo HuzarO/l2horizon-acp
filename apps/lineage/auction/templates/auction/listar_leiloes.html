@@ -349,33 +349,11 @@
         
         <!-- Paginação -->
         {% if leiloes_ativos.has_other_pages %}
-        <nav aria-label="Navegação de leilões ativos" class="mt-4">
-          <ul class="pagination justify-content-center">
-            {% if leiloes_ativos.has_previous %}
-              <li class="page-item">
-                <a class="page-link" href="?page_ativos={{ leiloes_ativos.previous_page_number }}">{% trans "Anterior" %}</a>
-              </li>
-            {% endif %}
-            
-            {% for num in leiloes_ativos.paginator.page_range %}
-              {% if leiloes_ativos.number == num %}
-                <li class="page-item active">
-                  <span class="page-link">{{ num }}</span>
-                </li>
-              {% elif num > leiloes_ativos.number|add:'-3' and num < leiloes_ativos.number|add:'3' %}
-                <li class="page-item">
-                  <a class="page-link" href="?page_ativos={{ num }}">{{ num }}</a>
-                </li>
-              {% endif %}
-            {% endfor %}
-            
-            {% if leiloes_ativos.has_next %}
-              <li class="page-item">
-                <a class="page-link" href="?page_ativos={{ leiloes_ativos.next_page_number }}">{% trans "Próximo" %}</a>
-              </li>
-            {% endif %}
-          </ul>
-        </nav>
+        <div class="mt-4">
+          {% with page_param='page_ativos' current_page=ativos_current_page total_pages=ativos_total_pages has_previous=ativos_has_previous has_next=ativos_has_next previous_page_number=ativos_previous_page_number next_page_number=ativos_next_page_number page_range=ativos_page_range show_first=ativos_show_first show_last=ativos_show_last show_first_ellipsis=ativos_show_first_ellipsis show_last_ellipsis=ativos_show_last_ellipsis query_params='' %}
+            {% include 'includes/pagination_custom.html' %}
+          {% endwith %}
+        </div>
         {% endif %}
         
       {% else %}
@@ -426,33 +404,11 @@
         
         <!-- Paginação -->
         {% if leiloes_pendentes_entrega.has_other_pages %}
-        <nav aria-label="Navegação de leilões pendentes" class="mt-4">
-          <ul class="pagination justify-content-center">
-            {% if leiloes_pendentes_entrega.has_previous %}
-              <li class="page-item">
-                <a class="page-link" href="?page_pendentes_entrega={{ leiloes_pendentes_entrega.previous_page_number }}">{% trans "Anterior" %}</a>
-              </li>
-            {% endif %}
-            
-            {% for num in leiloes_pendentes_entrega.paginator.page_range %}
-              {% if leiloes_pendentes_entrega.number == num %}
-                <li class="page-item active">
-                  <span class="page-link">{{ num }}</span>
-                </li>
-              {% elif num > leiloes_pendentes_entrega.number|add:'-3' and num < leiloes_pendentes_entrega.number|add:'3' %}
-                <li class="page-item">
-                  <a class="page-link" href="?page_pendentes_entrega={{ num }}">{{ num }}</a>
-                </li>
-              {% endif %}
-            {% endfor %}
-            
-            {% if leiloes_pendentes_entrega.has_next %}
-              <li class="page-item">
-                <a class="page-link" href="?page_pendentes_entrega={{ leiloes_pendentes_entrega.next_page_number }}">{% trans "Próximo" %}</a>
-              </li>
-            {% endif %}
-          </ul>
-        </nav>
+        <div class="mt-4">
+          {% with page_param='page_pendentes_entrega' current_page=pendentes_current_page total_pages=pendentes_total_pages has_previous=pendentes_has_previous has_next=pendentes_has_next previous_page_number=pendentes_previous_page_number next_page_number=pendentes_next_page_number page_range=pendentes_page_range show_first=pendentes_show_first show_last=pendentes_show_last show_first_ellipsis=pendentes_show_first_ellipsis show_last_ellipsis=pendentes_show_last_ellipsis query_params='' %}
+            {% include 'includes/pagination_custom.html' %}
+          {% endwith %}
+        </div>
         {% endif %}
         
       {% else %}
@@ -504,33 +460,11 @@
         
         <!-- Paginação -->
         {% if leiloes_finalizados.has_other_pages %}
-        <nav aria-label="Navegação de leilões finalizados" class="mt-4">
-          <ul class="pagination justify-content-center">
-            {% if leiloes_finalizados.has_previous %}
-              <li class="page-item">
-                <a class="page-link" href="?page_finalizados={{ leiloes_finalizados.previous_page_number }}">{% trans "Anterior" %}</a>
-              </li>
-            {% endif %}
-            
-            {% for num in leiloes_finalizados.paginator.page_range %}
-              {% if leiloes_finalizados.number == num %}
-                <li class="page-item active">
-                  <span class="page-link">{{ num }}</span>
-                </li>
-              {% elif num > leiloes_finalizados.number|add:'-3' and num < leiloes_finalizados.number|add:'3' %}
-                <li class="page-item">
-                  <a class="page-link" href="?page_finalizados={{ num }}">{{ num }}</a>
-                </li>
-              {% endif %}
-            {% endfor %}
-            
-            {% if leiloes_finalizados.has_next %}
-              <li class="page-item">
-                <a class="page-link" href="?page_finalizados={{ leiloes_finalizados.next_page_number }}">{% trans "Próximo" %}</a>
-              </li>
-            {% endif %}
-          </ul>
-        </nav>
+        <div class="mt-4">
+          {% with page_param='page_finalizados' current_page=finalizados_current_page total_pages=finalizados_total_pages has_previous=finalizados_has_previous has_next=finalizados_has_next previous_page_number=finalizados_previous_page_number next_page_number=finalizados_next_page_number page_range=finalizados_page_range show_first=finalizados_show_first show_last=finalizados_show_last show_first_ellipsis=finalizados_show_first_ellipsis show_last_ellipsis=finalizados_show_last_ellipsis query_params='' %}
+            {% include 'includes/pagination_custom.html' %}
+          {% endwith %}
+        </div>
         {% endif %}
         
       {% else %}
@@ -581,33 +515,11 @@
         
         <!-- Paginação -->
         {% if leiloes_cancelados.has_other_pages %}
-        <nav aria-label="Navegação de leilões cancelados" class="mt-4">
-          <ul class="pagination justify-content-center">
-            {% if leiloes_cancelados.has_previous %}
-              <li class="page-item">
-                <a class="page-link" href="?page_cancelados={{ leiloes_cancelados.previous_page_number }}">{% trans "Anterior" %}</a>
-              </li>
-            {% endif %}
-            
-            {% for num in leiloes_cancelados.paginator.page_range %}
-              {% if leiloes_cancelados.number == num %}
-                <li class="page-item active">
-                  <span class="page-link">{{ num }}</span>
-                </li>
-              {% elif num > leiloes_cancelados.number|add:'-3' and num < leiloes_cancelados.number|add:'3' %}
-                <li class="page-item">
-                  <a class="page-link" href="?page_cancelados={{ num }}">{{ num }}</a>
-                </li>
-              {% endif %}
-            {% endfor %}
-            
-            {% if leiloes_cancelados.has_next %}
-              <li class="page-item">
-                <a class="page-link" href="?page_cancelados={{ leiloes_cancelados.next_page_number }}">{% trans "Próximo" %}</a>
-              </li>
-            {% endif %}
-          </ul>
-        </nav>
+        <div class="mt-4">
+          {% with page_param='page_cancelados' current_page=cancelados_current_page total_pages=cancelados_total_pages has_previous=cancelados_has_previous has_next=cancelados_has_next previous_page_number=cancelados_previous_page_number next_page_number=cancelados_next_page_number page_range=cancelados_page_range show_first=cancelados_show_first show_last=cancelados_show_last show_first_ellipsis=cancelados_show_first_ellipsis show_last_ellipsis=cancelados_show_last_ellipsis query_params='' %}
+            {% include 'includes/pagination_custom.html' %}
+          {% endwith %}
+        </div>
         {% endif %}
         
       {% else %}

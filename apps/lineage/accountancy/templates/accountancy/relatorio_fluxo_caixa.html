@@ -411,76 +411,16 @@
             
             <!-- Paginação -->
             {% if page_obj.has_other_pages %}
-            <nav aria-label="{% trans 'Navegação de páginas' %}" class="mt-4">
-              <ul class="pagination justify-content-center">
-                {% if page_obj.has_previous %}
-                  <li class="page-item">
-                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page=1" aria-label="{% trans 'Primeira página' %}">
-                      <i class="fas fa-angle-double-left"></i>
-                      <span class="ms-1 d-none d-sm-inline">{% trans "Primeira" %}</span>
-                    </a>
-                  </li>
-                  <li class="page-item">
-                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}" aria-label="{% trans 'Página anterior' %}">
-                      <i class="fas fa-angle-left"></i>
-                      <span class="ms-1 d-none d-sm-inline">{% trans "Anterior" %}</span>
-                    </a>
-                  </li>
-                {% else %}
-                  <li class="page-item disabled">
-                    <span class="page-link">
-                      <i class="fas fa-angle-double-left"></i>
-                      <span class="ms-1 d-none d-sm-inline">{% trans "Primeira" %}</span>
-                    </span>
-                  </li>
-                  <li class="page-item disabled">
-                    <span class="page-link">
-                      <i class="fas fa-angle-left"></i>
-                      <span class="ms-1 d-none d-sm-inline">{% trans "Anterior" %}</span>
-                    </span>
-                  </li>
-                {% endif %}
-
-                <li class="page-item disabled">
-                  <span class="page-link">
-                    {% trans "Página" %} {{ page_obj.number }} {% trans "de" %} {{ page_obj.paginator.num_pages }}
-                  </span>
-                </li>
-
-                {% if page_obj.has_next %}
-                  <li class="page-item">
-                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}" aria-label="{% trans 'Próxima página' %}">
-                      <span class="me-1 d-none d-sm-inline">{% trans "Próxima" %}</span>
-                      <i class="fas fa-angle-right"></i>
-                    </a>
-                  </li>
-                  <li class="page-item">
-                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}" aria-label="{% trans 'Última página' %}">
-                      <span class="me-1 d-none d-sm-inline">{% trans "Última" %}</span>
-                      <i class="fas fa-angle-double-right"></i>
-                    </a>
-                  </li>
-                {% else %}
-                  <li class="page-item disabled">
-                    <span class="page-link">
-                      <span class="me-1 d-none d-sm-inline">{% trans "Próxima" %}</span>
-                      <i class="fas fa-angle-right"></i>
-                    </span>
-                  </li>
-                  <li class="page-item disabled">
-                    <span class="page-link">
-                      <span class="me-1 d-none d-sm-inline">{% trans "Última" %}</span>
-                      <i class="fas fa-angle-double-right"></i>
-                    </span>
-                  </li>
-                {% endif %}
-              </ul>
+            <div class="mt-4">
+              {% with query_params=request.GET.urlencode %}
+                {% include 'includes/pagination.html' %}
+              {% endwith %}
               <div class="text-center mt-2">
                 <small class="text-muted">
                   {% trans "Mostrando" %} {{ page_obj.start_index }} {% trans "até" %} {{ page_obj.end_index }} {% trans "de" %} {{ page_obj.paginator.count }} {% trans "dias" %}
                 </small>
               </div>
-            </nav>
+            </div>
             {% endif %}
 
             <div class="text-center mt-4">

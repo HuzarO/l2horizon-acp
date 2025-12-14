@@ -302,22 +302,10 @@
     {% endfor %}
 
     {% if history.has_other_pages %}
-    <div class="pagination">
-      {% if history.has_previous %}
-      <a href="?page={{ history.previous_page_number }}">
-        <i class="fas fa-chevron-left"></i> {% trans "Anterior" %}
-      </a>
-      {% endif %}
-
-      <span class="current">
-        {% trans "Página" %} {{ history.number }} {% trans "de" %} {{ history.paginator.num_pages }}
-      </span>
-
-      {% if history.has_next %}
-      <a href="?page={{ history.next_page_number }}">
-        {% trans "Próxima" %} <i class="fas fa-chevron-right"></i>
-      </a>
-      {% endif %}
+    <div class="mt-4">
+      {% with query_params=request.GET.urlencode %}
+        {% include 'includes/pagination.html' %}
+      {% endwith %}
     </div>
     {% endif %}
   {% else %}

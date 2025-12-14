@@ -1197,6 +1197,9 @@ def tokens_history(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     # Estatísticas
     total_spent = TokenHistory.objects.filter(
         user=request.user,
@@ -1220,6 +1223,7 @@ def tokens_history(request):
         'total_earned': total_earned,
         'total_purchased': total_purchased,
         'current_fichas': request.user.fichas,
+        **pagination_context,
     }
     context.update(get_lineage_template_context(request))
     return render(request, 'games/tokens_history.html', context)

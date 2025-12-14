@@ -523,10 +523,14 @@ def all_items_list(request):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+    
     context = {
         'page_obj': page_obj,
         'total_items': len(all_items),
         'filtered_items': len(filtered_items),
+        **pagination_context,
         'favorite_item_ids': favorite_item_ids,
         'filters': {
             'search': request.GET.get('search', ''),

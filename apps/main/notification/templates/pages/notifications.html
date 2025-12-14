@@ -202,42 +202,10 @@
           
           <!-- Paginação Notificações Privadas -->
           {% if private_notifications.has_other_pages %}
-          <div class="notifications-pagination">
-            <div class="pagination-info">
-              <span>{% trans "Página" %} {{ private_notifications.number }} {% trans "de" %} {{ private_notifications.paginator.num_pages }}</span>
-              <span>{% trans "Total" %}: {{ private_notifications.paginator.count }} {% trans "notificações" %}</span>
-            </div>
-            <div class="pagination-controls">
-              {% if private_notifications.has_previous %}
-                <a href="?private_page=1{% if public_page_number %}&public_page={{ public_page_number }}{% endif %}" class="pagination-btn">
-                  <i class="fas fa-angle-double-left"></i>
-                </a>
-                <a href="?private_page={{ private_notifications.previous_page_number }}{% if public_page_number %}&public_page={{ public_page_number }}{% endif %}" class="pagination-btn">
-                  <i class="fas fa-chevron-left"></i>
-                  {% trans "Anterior" %}
-                </a>
-              {% endif %}
-              
-              <div class="pagination-numbers">
-                {% for page_num in private_notifications.paginator.page_range %}
-                  {% if page_num == private_notifications.number %}
-                    <span class="pagination-current">{{ page_num }}</span>
-                  {% elif page_num <= private_notifications.number|add:2 and page_num >= private_notifications.number|add:-2 %}
-                    <a href="?private_page={{ page_num }}{% if public_page_number %}&public_page={{ public_page_number }}{% endif %}" class="pagination-number">{{ page_num }}</a>
-                  {% endif %}
-                {% endfor %}
-              </div>
-              
-              {% if private_notifications.has_next %}
-                <a href="?private_page={{ private_notifications.next_page_number }}{% if public_page_number %}&public_page={{ public_page_number }}{% endif %}" class="pagination-btn">
-                  {% trans "Próxima" %}
-                  <i class="fas fa-chevron-right"></i>
-                </a>
-                <a href="?private_page={{ private_notifications.paginator.num_pages }}{% if public_page_number %}&public_page={{ public_page_number }}{% endif %}" class="pagination-btn">
-                  <i class="fas fa-angle-double-right"></i>
-                </a>
-              {% endif %}
-            </div>
+          <div class="mt-4">
+            {% with page_param='private_page' current_page=private_current_page total_pages=private_total_pages has_previous=private_has_previous has_next=private_has_next previous_page_number=private_previous_page_number next_page_number=private_next_page_number page_range=private_page_range show_first=private_show_first show_last=private_show_last show_first_ellipsis=private_show_first_ellipsis show_last_ellipsis=private_show_last_ellipsis query_params=request.GET.urlencode %}
+              {% include 'includes/pagination_custom.html' %}
+            {% endwith %}
           </div>
           {% endif %}
         {% else %}
@@ -324,42 +292,10 @@
           
           <!-- Paginação Notificações Públicas -->
           {% if public_notifications.has_other_pages %}
-          <div class="notifications-pagination">
-            <div class="pagination-info">
-              <span>{% trans "Página" %} {{ public_notifications.number }} {% trans "de" %} {{ public_notifications.paginator.num_pages }}</span>
-              <span>{% trans "Total" %}: {{ public_notifications.paginator.count }} {% trans "notificações" %}</span>
-            </div>
-            <div class="pagination-controls">
-              {% if public_notifications.has_previous %}
-                <a href="?public_page=1{% if private_page_number %}&private_page={{ private_page_number }}{% endif %}" class="pagination-btn">
-                  <i class="fas fa-angle-double-left"></i>
-                </a>
-                <a href="?public_page={{ public_notifications.previous_page_number }}{% if private_page_number %}&private_page={{ private_page_number }}{% endif %}" class="pagination-btn">
-                  <i class="fas fa-chevron-left"></i>
-                  {% trans "Anterior" %}
-                </a>
-              {% endif %}
-              
-              <div class="pagination-numbers">
-                {% for page_num in public_notifications.paginator.page_range %}
-                  {% if page_num == public_notifications.number %}
-                    <span class="pagination-current">{{ page_num }}</span>
-                  {% elif page_num <= public_notifications.number|add:2 and page_num >= public_notifications.number|add:-2 %}
-                    <a href="?public_page={{ page_num }}{% if private_page_number %}&private_page={{ private_page_number }}{% endif %}" class="pagination-number">{{ page_num }}</a>
-                  {% endif %}
-                {% endfor %}
-              </div>
-              
-              {% if public_notifications.has_next %}
-                <a href="?public_page={{ public_notifications.next_page_number }}{% if private_page_number %}&private_page={{ private_page_number }}{% endif %}" class="pagination-btn">
-                  {% trans "Próxima" %}
-                  <i class="fas fa-chevron-right"></i>
-                </a>
-                <a href="?public_page={{ public_notifications.paginator.num_pages }}{% if private_page_number %}&private_page={{ private_page_number }}{% endif %}" class="pagination-btn">
-                  <i class="fas fa-angle-double-right"></i>
-                </a>
-              {% endif %}
-            </div>
+          <div class="mt-4">
+            {% with page_param='public_page' current_page=public_current_page total_pages=public_total_pages has_previous=public_has_previous has_next=public_has_next previous_page_number=public_previous_page_number next_page_number=public_next_page_number page_range=public_page_range show_first=public_show_first show_last=public_show_last show_first_ellipsis=public_show_first_ellipsis show_last_ellipsis=public_show_last_ellipsis query_params=request.GET.urlencode %}
+              {% include 'includes/pagination_custom.html' %}
+            {% endwith %}
           </div>
           {% endif %}
         {% else %}

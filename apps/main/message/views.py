@@ -262,11 +262,46 @@ def friends_list(request):
         'search_query': search_query,
     }
     
+    from utils.pagination_helper import prepare_pagination_context
+    
+    # Prepara paginação para friends (se for paginado)
+    friends_pagination_context = {}
+    if hasattr(accepted_friendships, 'paginator'):
+        friends_pagination = prepare_pagination_context(accepted_friendships)
+        friends_pagination_context = {
+            'friends_current_page': accepted_friendships.number,
+            'friends_total_pages': accepted_friendships.paginator.num_pages,
+            'friends_has_previous': accepted_friendships.has_previous(),
+            'friends_has_next': accepted_friendships.has_next(),
+            'friends_previous_page_number': accepted_friendships.previous_page_number() if accepted_friendships.has_previous() else None,
+            'friends_next_page_number': accepted_friendships.next_page_number() if accepted_friendships.has_next() else None,
+            'friends_page_range': friends_pagination.get('page_range', []),
+            'friends_show_first': friends_pagination.get('show_first', False),
+            'friends_show_last': friends_pagination.get('show_last', False),
+            'friends_show_first_ellipsis': friends_pagination.get('show_first_ellipsis', False),
+            'friends_show_last_ellipsis': friends_pagination.get('show_last_ellipsis', False),
+        }
+    
+    # Prepara paginação para users
+    users_pagination = prepare_pagination_context(users_page)
+    
     context = {
         'accepted_friendships': accepted_friendships,
         'pending_friend_requests': pending_friend_requests,
         'sent_friend_requests': sent_friend_requests,
         'users': users_page,
+        **friends_pagination_context,
+        'users_current_page': users_page.number,
+        'users_total_pages': users_page.paginator.num_pages,
+        'users_has_previous': users_page.has_previous(),
+        'users_has_next': users_page.has_next(),
+        'users_previous_page_number': users_page.previous_page_number() if users_page.has_previous() else None,
+        'users_next_page_number': users_page.next_page_number() if users_page.has_next() else None,
+        'users_page_range': users_pagination.get('page_range', []),
+        'users_show_first': users_pagination.get('show_first', False),
+        'users_show_last': users_pagination.get('show_last', False),
+        'users_show_first_ellipsis': users_pagination.get('show_first_ellipsis', False),
+        'users_show_last_ellipsis': users_pagination.get('show_last_ellipsis', False),
         'stats': stats,
         'segment': 'friend-list',
         'parent': 'message',

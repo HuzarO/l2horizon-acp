@@ -38,6 +38,9 @@ def index(request):
                 'translation': translation_obj,
             })
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(roadmaps_page)
+    
     context = {
         'items': items,
         'segment': 'roadmap',
@@ -50,6 +53,7 @@ def index(request):
         'current_page': roadmaps_page.number,
         'num_pages': paginator.num_pages,
         'total_items': paginator.count,
+        **pagination_context,
     }
     
     return render(request, 'pages/roadmap_index.html', context)

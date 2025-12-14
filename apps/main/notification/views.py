@@ -280,6 +280,10 @@ def all_notifications(request):
         public_qs.filter(rewards__isnull=False).distinct().count()
     )
 
+    from utils.pagination_helper import prepare_pagination_context
+    private_pagination = prepare_pagination_context(private_notifications)
+    public_pagination = prepare_pagination_context(public_notifications)
+    
     context = {
         'private_notifications': private_notifications,
         'public_notifications': public_notifications,
@@ -290,6 +294,30 @@ def all_notifications(request):
         'notifications_with_rewards': notifications_with_rewards,
         'segment': 'index',
         'parent': 'notification',
+        # Paginação privada
+        'private_current_page': private_notifications.number,
+        'private_total_pages': private_notifications.paginator.num_pages,
+        'private_has_previous': private_notifications.has_previous(),
+        'private_has_next': private_notifications.has_next(),
+        'private_previous_page_number': private_notifications.previous_page_number() if private_notifications.has_previous() else None,
+        'private_next_page_number': private_notifications.next_page_number() if private_notifications.has_next() else None,
+        'private_page_range': private_pagination.get('page_range', []),
+        'private_show_first': private_pagination.get('show_first', False),
+        'private_show_last': private_pagination.get('show_last', False),
+        'private_show_first_ellipsis': private_pagination.get('show_first_ellipsis', False),
+        'private_show_last_ellipsis': private_pagination.get('show_last_ellipsis', False),
+        # Paginação pública
+        'public_current_page': public_notifications.number,
+        'public_total_pages': public_notifications.paginator.num_pages,
+        'public_has_previous': public_notifications.has_previous(),
+        'public_has_next': public_notifications.has_next(),
+        'public_previous_page_number': public_notifications.previous_page_number() if public_notifications.has_previous() else None,
+        'public_next_page_number': public_notifications.next_page_number() if public_notifications.has_next() else None,
+        'public_page_range': public_pagination.get('page_range', []),
+        'public_show_first': public_pagination.get('show_first', False),
+        'public_show_last': public_pagination.get('show_last', False),
+        'public_show_first_ellipsis': public_pagination.get('show_first_ellipsis', False),
+        'public_show_last_ellipsis': public_pagination.get('show_last_ellipsis', False),
     }
     return render(request, 'pages/notifications.html', context)
 

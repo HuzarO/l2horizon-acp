@@ -451,25 +451,18 @@
 
         <!-- Pagination for Items -->
         {% if items.has_other_pages %}
-        <div class="logs-pagination">
-          {% if items.has_previous %}
-          <a href="?items_page={{ items.previous_page_number }}{% if packages.number %}&packages_page={{ packages.number }}{% endif %}" class="pagination-item">
-            <i class="fas fa-chevron-left"></i>
-          </a>
-          {% endif %}
-          
-          {% for num in items.paginator.page_range %}
-          <a href="?items_page={{ num }}{% if packages.number %}&packages_page={{ packages.number }}{% endif %}" 
-             class="pagination-item {% if num == items.number %}active{% endif %}">
-            {{ num }}
-          </a>
-          {% endfor %}
-          
-          {% if items.has_next %}
-          <a href="?items_page={{ items.next_page_number }}{% if packages.number %}&packages_page={{ packages.number }}{% endif %}" class="pagination-item">
-            <i class="fas fa-chevron-right"></i>
-          </a>
-          {% endif %}
+        <div class="mt-4">
+          {% with page_param='items_page' current_page=items_current_page total_pages=items_total_pages has_previous=items_has_previous has_next=items_has_next previous_page_number=items_previous_page_number next_page_number=items_next_page_number page_range=items_page_range show_first=items_show_first show_last=items_show_last show_first_ellipsis=items_show_first_ellipsis show_last_ellipsis=items_show_last_ellipsis %}
+            {% if packages.number %}
+              {% with query_params='packages_page='|add:packages.number %}
+                {% include 'includes/pagination_custom.html' %}
+              {% endwith %}
+            {% else %}
+              {% with query_params='' %}
+                {% include 'includes/pagination_custom.html' %}
+              {% endwith %}
+            {% endif %}
+          {% endwith %}
         </div>
         {% endif %}
         {% else %}
@@ -532,25 +525,18 @@
 
         <!-- Pagination for Packages -->
         {% if packages.has_other_pages %}
-        <div class="logs-pagination">
-          {% if packages.has_previous %}
-          <a href="?packages_page={{ packages.previous_page_number }}{% if items.number %}&items_page={{ items.number }}{% endif %}" class="pagination-item">
-            <i class="fas fa-chevron-left"></i>
-          </a>
-          {% endif %}
-          
-          {% for num in packages.paginator.page_range %}
-          <a href="?packages_page={{ num }}{% if items.number %}&items_page={{ items.number }}{% endif %}" 
-             class="pagination-item {% if num == packages.number %}active{% endif %}">
-            {{ num }}
-          </a>
-          {% endfor %}
-          
-          {% if packages.has_next %}
-          <a href="?packages_page={{ packages.next_page_number }}{% if items.number %}&items_page={{ items.number }}{% endif %}" class="pagination-item">
-            <i class="fas fa-chevron-right"></i>
-          </a>
-          {% endif %}
+        <div class="mt-4">
+          {% with page_param='packages_page' current_page=packages_current_page total_pages=packages_total_pages has_previous=packages_has_previous has_next=packages_has_next previous_page_number=packages_previous_page_number next_page_number=packages_next_page_number page_range=packages_page_range show_first=packages_show_first show_last=packages_show_last show_first_ellipsis=packages_show_first_ellipsis show_last_ellipsis=packages_show_last_ellipsis %}
+            {% if items.number %}
+              {% with query_params='items_page='|add:items.number %}
+                {% include 'includes/pagination_custom.html' %}
+              {% endwith %}
+            {% else %}
+              {% with query_params='' %}
+                {% include 'includes/pagination_custom.html' %}
+              {% endwith %}
+            {% endif %}
+          {% endwith %}
         </div>
         {% endif %}
         {% else %}

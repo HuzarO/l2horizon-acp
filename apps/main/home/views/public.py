@@ -36,6 +36,9 @@ def public_news_list(request):
                 'translation': translation
             })
 
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(news_page)
+    
     context = {
         'latest_news_list': news_with_translations,
         'news_page': news_page,
@@ -47,6 +50,7 @@ def public_news_list(request):
         'next_page_number': news_page.next_page_number() if news_page.has_next() else None,
         'current_page': news_page.number,
         'num_pages': paginator.num_pages,
+        **pagination_context,
     }
 
     return render_theme_page(request, 'public', 'news_index.html', context)
