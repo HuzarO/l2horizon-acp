@@ -323,13 +323,46 @@ Seja útil e objetivo. Priorize resolver a dúvida ao invés de direcionar para 
                 "content": user_message
             })
 
-            # Chamar API da Anthropic
-            response = self.anthropic_client.messages.create(
-                model="claude-3-5-sonnet-20241022",  # ou claude-3-haiku-20240307 para versão mais rápida/barata
-                max_tokens=1024,
-                system=system_prompt,
-                messages=messages
-            )
+            # Lista de modelos para tentar (do mais recente ao mais antigo)
+            # Priorizar Sonnet (balanceado), depois Haiku (rápido), depois Opus (mais capaz)
+            model_names = [
+                'claude-sonnet-4-5-20250929',  # Mais recente Sonnet
+                'claude-haiku-4-5-20251001',  # Mais recente Haiku
+                'claude-opus-4-1-20250805',   # Mais recente Opus
+                'claude-3-5-sonnet-20241022', # Versão anterior Sonnet
+                'claude-3-5-haiku-20241022', # Versão anterior Haiku
+                'claude-3-opus-20240229',    # Versão anterior Opus
+                'claude-3-sonnet-20240229',  # Versão anterior Sonnet
+                'claude-3-haiku-20240307',   # Versão anterior Haiku
+            ]
+            
+            last_error = None
+            response = None
+            
+            # Tentar cada modelo até encontrar um que funcione
+            for model_name in model_names:
+                try:
+                    response = self.anthropic_client.messages.create(
+                        model=model_name,
+                        max_tokens=1024,
+                        system=system_prompt,
+                        messages=messages
+                    )
+                    logger.info(f"Usando modelo Anthropic: {model_name}")
+                    break  # Sucesso, sair do loop
+                except Exception as e:
+                    last_error = e
+                    error_str = str(e).lower()
+                    # Se for erro 404 (modelo não encontrado), tentar próximo
+                    if '404' in error_str or 'not_found' in error_str:
+                        logger.warning(f"Modelo {model_name} não disponível, tentando próximo...")
+                        continue
+                    else:
+                        # Se for outro tipo de erro, re-lançar
+                        raise e
+            
+            if response is None:
+                raise Exception(f"Nenhum modelo Anthropic disponível. Último erro: {str(last_error)}")
 
             # Extrair resposta
             assistant_message = response.content[0].text
