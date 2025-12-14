@@ -301,9 +301,54 @@ class ChatBotClient {
         // Obter última mensagem do usuário para sugerir título
         const userMessages = this.messagesContainer.querySelectorAll('.message.user');
         const lastUserMessage = userMessages[userMessages.length - 1];
-        const suggestedTitle = lastUserMessage 
-            ? lastUserMessage.querySelector('.message-content').textContent.trim().substring(0, 100)
-            : '';
+        
+        // Função para limpar texto (remover hora e espaços extras)
+        const cleanText = (text) => {
+            if (!text) return '';
+            // Remover hora no formato HH:MM ou HH:MM:SS no final
+            text = text.replace(/\s*\d{1,2}:\d{2}(:\d{2})?\s*$/g, '').trim();
+            // Remover espaços múltiplos
+            text = text.replace(/\s+/g, ' ');
+            return text;
+        };
+        
+        let suggestedTitle = '';
+        if (lastUserMessage) {
+            const messageContent = lastUserMessage.querySelector('.message-content');
+            if (messageContent) {
+                // Obter texto sem a hora
+                const textContent = messageContent.cloneNode(true);
+                // Remover elemento de hora se existir
+                const timeElement = textContent.querySelector('.message-time');
+                if (timeElement) {
+                    timeElement.remove();
+                }
+                suggestedTitle = cleanText(textContent.textContent.trim().substring(0, 100));
+            }
+        }
+        
+        // Coletar conversa completa para descrição
+        let conversationText = '';
+        const allMessages = this.messagesContainer.querySelectorAll('.message.user, .message.assistant');
+        allMessages.forEach((msg) => {
+            const contentDiv = msg.querySelector('.message-content');
+            if (contentDiv) {
+                const textContent = contentDiv.cloneNode(true);
+                // Remover elemento de hora
+                const timeElement = textContent.querySelector('.message-time');
+                if (timeElement) {
+                    timeElement.remove();
+                }
+                const role = msg.classList.contains('user') ? 'Usuário' : 'Assistente';
+                const text = cleanText(textContent.textContent.trim());
+                if (text) {
+                    conversationText += `${role}: ${text}\n\n`;
+                }
+            }
+        });
+        
+        // Limitar tamanho da descrição
+        const suggestedDescription = conversationText.trim().substring(0, 2000);
         
         // Obter metadados da última resposta da IA (se houver sugestão de categoria/prioridade)
         const assistantMessages = this.messagesContainer.querySelectorAll('.message.assistant');
@@ -330,6 +375,10 @@ class ChatBotClient {
             from_chatbot: 'true',
             suggested_title: suggestedTitle
         });
+        
+        if (suggestedDescription) {
+            params.append('suggested_description', suggestedDescription);
+        }
         
         if (category) {
             params.append('category', category);

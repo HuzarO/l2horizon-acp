@@ -5,6 +5,43 @@ from apps.main.home.models import User
 from apps.main.solicitation.models import Solicitation
 
 
+class AIProviderConfig(BaseModel):
+    """Configuração do provedor de IA"""
+    PROVIDER_CHOICES = [
+        ('anthropic', _('Anthropic (Claude)')),
+        ('gemini', _('Google Gemini')),
+    ]
+    
+    provider = models.CharField(
+        max_length=20,
+        choices=PROVIDER_CHOICES,
+        default='anthropic',
+        verbose_name=_("Provedor"),
+        help_text=_("Provedor de IA a ser usado para o assistente virtual.")
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_("Ativo"),
+        help_text=_("Indica se esta configuração está ativa.")
+    )
+    
+    class Meta:
+        verbose_name = _("Configuração de Provedor de IA")
+        verbose_name_plural = _("Configurações de Provedor de IA")
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.get_provider_display()} - {'Ativo' if self.is_active else 'Inativo'}"
+    
+    @classmethod
+    def get_active_provider(cls):
+        """Retorna o provedor ativo atual"""
+        config = cls.objects.filter(is_active=True).first()
+        if config:
+            return config.provider
+        return 'anthropic'  # Default
+
+
 class ChatSession(BaseModel):
     """Sessão de conversa com o assistente de IA"""
     user = models.ForeignKey(

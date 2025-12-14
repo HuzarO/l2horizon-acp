@@ -44,8 +44,16 @@ def release_lock(lock_file):
         except Exception:
             pass
 
-# Verifica se o banco Lineage está habilitado
-if os.getenv("LINEAGE_DB_ENABLED", "false").lower() == "true":
+def ensure_lineage_columns():
+    """
+    Verifica e cria colunas necessárias no banco Lineage.
+    Esta função é chamada de forma lazy para evitar acesso ao banco durante inicialização.
+    """
+    # Verifica se o banco Lineage está habilitado
+    if os.getenv("LINEAGE_DB_ENABLED", "false").lower() != "true":
+        print("ℹ️ Lineage DB desabilitado - funcionalidades L2 não estarão disponíveis")
+        return
+    
     # Usa lock de arquivo para garantir que apenas UM worker verifica as colunas
     # Caminho compatível com Windows e Unix
     if sys.platform == 'win32':
@@ -82,7 +90,7 @@ if os.getenv("LINEAGE_DB_ENABLED", "false").lower() == "true":
             
     except Exception as e:
         print(f"⚠️ Erro inesperado ao verificar colunas: {str(e)[:100]}")
-        print("ℹ️ Sistema continuará funcionando, mas funcionalidades L2 podem estar limitadas")
+        print("ℹ️ Sistema continuará funcionando, mas funcionalidades L2 não estarão disponíveis")
         
     finally:
         # Libera o lock se foi adquirido
@@ -95,6 +103,3 @@ if os.getenv("LINEAGE_DB_ENABLED", "false").lower() == "true":
                     lock_file_path.unlink()
             except Exception:
                 pass
-                
-else:
-    print("ℹ️ Lineage DB desabilitado - funcionalidades L2 não estarão disponíveis")

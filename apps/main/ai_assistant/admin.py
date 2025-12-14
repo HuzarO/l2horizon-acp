@@ -1,5 +1,34 @@
 from django.contrib import admin
-from .models import ChatSession, ChatMessage
+from django.utils.translation import gettext_lazy as _
+from django.contrib import messages
+from .models import ChatSession, ChatMessage, AIProviderConfig
+
+
+@admin.register(AIProviderConfig)
+class AIProviderConfigAdmin(admin.ModelAdmin):
+    list_display = ('provider', 'is_active', 'created_at', 'updated_at')
+    list_filter = ('provider', 'is_active', 'created_at')
+    search_fields = ('provider',)
+    readonly_fields = ('uuid', 'created_at', 'updated_at', 'created_by', 'updated_by')
+    date_hierarchy = 'created_at'
+    
+    fieldsets = (
+        ('Configuração', {
+            'fields': ('provider', 'is_active')
+        }),
+        ('Metadados', {
+            'fields': ('uuid', 'created_at', 'updated_at', 'created_by', 'updated_by'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """Garante que apenas uma configuração esteja ativa por vez"""
+        if obj.is_active:
+            # Desativar todas as outras configurações
+            AIProviderConfig.objects.filter(is_active=True).exclude(pk=obj.pk).update(is_active=False)
+        super().save_model(request, obj, form, change)
+        messages.success(request, f"Provedor {obj.get_provider_display()} configurado com sucesso!")
 
 
 @admin.register(ChatSession)

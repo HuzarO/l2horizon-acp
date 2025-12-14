@@ -13,6 +13,7 @@ from django.shortcuts import redirect
 from utils.notifications import send_notification
 from django.urls import reverse
 import logging
+import re
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -93,11 +94,19 @@ class SolicitationCreateView(LoginRequiredMixin, CreateView):
         # Verifica se veio do chatbot
         if self.request.GET.get('from_chatbot') == 'true':
             suggested_title = self.request.GET.get('suggested_title', '')
+            suggested_description = self.request.GET.get('suggested_description', '')
             category = self.request.GET.get('category', '')
             priority = self.request.GET.get('priority', '')
             
+            # Limpar título de qualquer hora que possa ter sobrado
             if suggested_title:
+                # Remover hora no formato HH:MM ou HH:MM:SS no final
+                suggested_title = re.sub(r'\s*\d{1,2}:\d{2}(:\d{2})?\s*$', '', suggested_title).strip()
                 initial['title'] = suggested_title
+            
+            if suggested_description:
+                initial['description'] = suggested_description
+            
             if category:
                 initial['category'] = category
             if priority:
