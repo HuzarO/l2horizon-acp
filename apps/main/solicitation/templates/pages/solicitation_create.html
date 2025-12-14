@@ -295,6 +295,38 @@
       </div>
     </div>
 
+    <!-- Banner do Assistente de IA -->
+    {% if not from_chatbot %}
+    <div class="info-card p-4 mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-color: #667eea; box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);">
+      <div class="d-flex align-items-center justify-content-between">
+        <div class="flex-grow-1">
+          <h4 class="text-white mb-2" style="font-weight: 600; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);">
+            <i class="fas fa-robot me-2" style="color: #00d9ff;"></i>
+            {% trans "Antes de criar uma solicitação..." %}
+          </h4>
+          <p class="mb-3" style="color: #e0e0e0; font-size: 0.95rem; line-height: 1.6;">
+            {% trans "Tente usar nosso Assistente de IA primeiro! Ele pode resolver sua dúvida rapidamente sem precisar criar uma solicitação." %}
+          </p>
+          <a href="{% url 'ai_assistant:chatbot' %}" class="btn btn-light btn-sm fw-bold" style="background: #ffffff; color: #667eea; border: 2px solid #ffffff; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); transition: all 0.3s ease;">
+            <i class="fas fa-comments me-2"></i>
+            {% trans "Falar com o Assistente de IA" %}
+          </a>
+        </div>
+        <div class="ms-3 d-none d-md-block">
+          <i class="fas fa-robot fa-3x" style="color: rgba(255, 255, 255, 0.2);"></i>
+        </div>
+      </div>
+    </div>
+    <style>
+      .info-card a.btn-light:hover {
+        background: #f8f9fa !important;
+        color: #764ba2 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3) !important;
+      }
+    </style>
+    {% endif %}
+
     <!-- Informações Importantes -->
     <div class="info-card p-4">
       <h4 class="text-white mb-3">
