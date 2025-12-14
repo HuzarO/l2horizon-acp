@@ -283,8 +283,9 @@ Este documento lista todas as variáveis de ambiente possíveis utilizadas no pr
 |----------|------|--------|-----------|
 | `ANTHROPIC_API_KEY` | String | - | Chave da API da Anthropic (Claude) |
 | `GEMINI_API_KEY` | String | - | Chave da API do Google Gemini |
+| `XAI_API_KEY` | String | - | Chave da API do xAI (Grok) |
 
-**Nota**: O provedor de IA pode ser escolhido no admin através do modelo `AIProviderConfig`. Apenas uma configuração pode estar ativa por vez.
+**Nota**: O provedor de IA pode ser escolhido no admin através do modelo `AIProviderConfig`. Apenas uma configuração pode estar ativa por vez. Opções disponíveis: Anthropic (Claude), Google Gemini ou xAI Grok.
 
 ---
 

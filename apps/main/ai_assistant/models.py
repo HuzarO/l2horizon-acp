@@ -10,6 +10,7 @@ class AIProviderConfig(BaseModel):
     PROVIDER_CHOICES = [
         ('anthropic', _('Anthropic (Claude)')),
         ('gemini', _('Google Gemini')),
+        ('grok', _('xAI Grok')),
     ]
     
     provider = models.CharField(
