@@ -102,27 +102,15 @@
 
             <!-- Paginação -->
             {% if items.has_other_pages %}
-              <nav aria-label="Navegação de itens" class="mt-4">
-                <ul class="pagination justify-content-center">
-                  {% if items.has_previous %}
-                    <li class="page-item">
-                      <a class="page-link" href="?char_id={{ char_id }}&page={{ items.previous_page_number }}">{% trans "Anterior" %}</a>
-                    </li>
-                  {% else %}
-                    <li class="page-item disabled"><span class="page-link">{% trans "Anterior" %}</span></li>
-                  {% endif %}
-
-                  <li class="page-item disabled"><span class="page-link">{{ items.number }} / {{ items.paginator.num_pages }}</span></li>
-
-                  {% if items.has_next %}
-                    <li class="page-item">
-                      <a class="page-link" href="?char_id={{ char_id }}&page={{ items.next_page_number }}">{% trans "Próxima" %}</a>
-                    </li>
-                  {% else %}
-                    <li class="page-item disabled"><span class="page-link">{% trans "Próxima" %}</span></li>
-                  {% endif %}
-                </ul>
-              </nav>
+              {% if items.has_other_pages %}
+              <div class="mt-4">
+                {% with page_param='page' current_page=current_page total_pages=total_pages has_previous=has_previous has_next=has_next previous_page_number=previous_page_number next_page_number=next_page_number page_range=page_range show_first=show_first show_last=show_last show_first_ellipsis=show_first_ellipsis show_last_ellipsis=show_last_ellipsis %}
+                  {% with query_params='char_id='|add:char_id %}
+                    {% include 'includes/pagination_custom.html' %}
+                  {% endwith %}
+                {% endwith %}
+              </div>
+              {% endif %}
             {% endif %}
           </div>
         </div>

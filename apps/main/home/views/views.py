@@ -551,10 +551,15 @@ def log_info_dashboard(request):
     paginator = Paginator(logs, logs_per_page)
     page_number = request.GET.get('page')
     page_logs = paginator.get_page(page_number)
+    
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_logs)
+    
     context = {
         'segment': 'logs',
         'parent': 'system',
-        'page_logs': page_logs
+        'page_logs': page_logs,
+        **pagination_context,
     }
 
     return render(request, 'pages/logs_info.html', context)
@@ -574,10 +579,15 @@ def log_error_dashboard(request):
     paginator = Paginator(logs, logs_per_page)
     page_number = request.GET.get('page')
     page_logs = paginator.get_page(page_number)
+    
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_logs)
+    
     context = {
         'segment': 'logs',
         'parent': 'system',
-        'page_logs': page_logs
+        'page_logs': page_logs,
+        **pagination_context,
     }
 
     return render(request, 'pages/logs_error.html', context)

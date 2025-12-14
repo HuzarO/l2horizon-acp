@@ -431,30 +431,52 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Atualiza o recurso atual
                     updateResourceStatus(resourceName, data.is_active);
                     
-                    // Se é um módulo master e foi desativado, atualiza os recursos filhos
-                    if (data.is_master && !data.is_active && data.deactivated_children) {
-                        // Atualiza cada recurso filho que foi desativado pelo backend
-                        data.deactivated_children.forEach(childName => {
-                            updateResourceStatus(childName, false);
-                            // Também atualiza visualmente para mostrar como indisponível
-                            const childItem = document.querySelector(`[data-resource="${childName}"]`);
-                            if (childItem) {
-                                const resourceItem = childItem.closest('.resource-item');
-                                resourceItem.classList.add('resource-disabled');
-                                childItem.classList.add('disabled');
-                                childItem.style.pointerEvents = 'none';
-                                childItem.title = '{% trans "Módulo pai inativo" %}';
-                                
-                                const statusBadge = resourceItem.querySelector('.status-badge');
-                                if (statusBadge) {
-                                    statusBadge.className = 'status-badge status-inactive me-3';
-                                    statusBadge.innerHTML = '<i class="fas fa-times me-1"></i>{% trans "Indisponível" %}';
+                    // Se é um módulo master, atualiza os recursos filhos
+                    if (data.is_master) {
+                        if (!data.is_active && data.deactivated_children) {
+                            // Master foi desativado - desativa os filhos
+                            data.deactivated_children.forEach(childName => {
+                                updateResourceStatus(childName, false);
+                                // Também atualiza visualmente para mostrar como indisponível
+                                const childItem = document.querySelector(`[data-resource="${childName}"]`);
+                                if (childItem) {
+                                    const resourceItem = childItem.closest('.resource-item');
+                                    resourceItem.classList.add('resource-disabled');
+                                    childItem.classList.add('disabled');
+                                    childItem.style.pointerEvents = 'none';
+                                    childItem.title = '{% trans "Módulo pai inativo" %}';
+                                    
+                                    const statusBadge = resourceItem.querySelector('.status-badge');
+                                    if (statusBadge) {
+                                        statusBadge.className = 'status-badge status-inactive me-3';
+                                        statusBadge.innerHTML = '<i class="fas fa-times me-1"></i>{% trans "Indisponível" %}';
+                                    }
                                 }
-                            }
-                        });
-                    } else if (data.is_master && data.is_active) {
-                        // Se o master foi ativado, habilita os recursos filhos (mas não os ativa)
-                        updateChildResources(resourceName, data.is_active);
+                            });
+                        } else if (data.is_active && data.activated_children) {
+                            // Master foi ativado - ativa os filhos
+                            data.activated_children.forEach(childName => {
+                                updateResourceStatus(childName, true);
+                                // Remove a classe de desabilitado e habilita o toggle
+                                const childItem = document.querySelector(`[data-resource="${childName}"]`);
+                                if (childItem) {
+                                    const resourceItem = childItem.closest('.resource-item');
+                                    resourceItem.classList.remove('resource-disabled');
+                                    childItem.classList.remove('disabled');
+                                    childItem.style.pointerEvents = '';
+                                    childItem.title = '';
+                                    
+                                    const statusBadge = resourceItem.querySelector('.status-badge');
+                                    if (statusBadge) {
+                                        statusBadge.className = 'status-badge status-active me-3';
+                                        statusBadge.innerHTML = '<i class="fas fa-check me-1"></i>{% trans "Ativo" %}';
+                                    }
+                                }
+                            });
+                        } else if (data.is_active) {
+                            // Se o master foi ativado mas não há filhos para ativar, apenas habilita visualmente
+                            updateChildResources(resourceName, data.is_active);
+                        }
                     }
                     
                     // Atualiza estatísticas

@@ -73,11 +73,67 @@ def listar_leiloes(request):
         leiloes_cancelados_paginated = paginator_cancelados.get_page(paginator_cancelados.num_pages)
         leiloes_pendentes_entrega_paginated = paginator_pendentes_entrega.get_page(paginator_pendentes_entrega.num_pages)
 
+    from utils.pagination_helper import prepare_pagination_context
+    
+    # Prepara contexto de paginação para cada seção
+    ativos_pagination = prepare_pagination_context(leiloes_ativos_paginated)
+    pendentes_pagination = prepare_pagination_context(leiloes_pendentes_entrega_paginated)
+    finalizados_pagination = prepare_pagination_context(leiloes_finalizados_paginated)
+    cancelados_pagination = prepare_pagination_context(leiloes_cancelados_paginated)
+    
     context = {
         'leiloes_ativos': leiloes_ativos_paginated,
         'leiloes_pendentes_entrega': leiloes_pendentes_entrega_paginated,
         'leiloes_finalizados': leiloes_finalizados_paginated,
         'leiloes_cancelados': leiloes_cancelados_paginated,
+        # Paginação ativos
+        'ativos_current_page': leiloes_ativos_paginated.number,
+        'ativos_total_pages': leiloes_ativos_paginated.paginator.num_pages,
+        'ativos_has_previous': leiloes_ativos_paginated.has_previous(),
+        'ativos_has_next': leiloes_ativos_paginated.has_next(),
+        'ativos_previous_page_number': leiloes_ativos_paginated.previous_page_number() if leiloes_ativos_paginated.has_previous() else None,
+        'ativos_next_page_number': leiloes_ativos_paginated.next_page_number() if leiloes_ativos_paginated.has_next() else None,
+        'ativos_page_range': ativos_pagination.get('page_range', []),
+        'ativos_show_first': ativos_pagination.get('show_first', False),
+        'ativos_show_last': ativos_pagination.get('show_last', False),
+        'ativos_show_first_ellipsis': ativos_pagination.get('show_first_ellipsis', False),
+        'ativos_show_last_ellipsis': ativos_pagination.get('show_last_ellipsis', False),
+        # Paginação pendentes
+        'pendentes_current_page': leiloes_pendentes_entrega_paginated.number,
+        'pendentes_total_pages': leiloes_pendentes_entrega_paginated.paginator.num_pages,
+        'pendentes_has_previous': leiloes_pendentes_entrega_paginated.has_previous(),
+        'pendentes_has_next': leiloes_pendentes_entrega_paginated.has_next(),
+        'pendentes_previous_page_number': leiloes_pendentes_entrega_paginated.previous_page_number() if leiloes_pendentes_entrega_paginated.has_previous() else None,
+        'pendentes_next_page_number': leiloes_pendentes_entrega_paginated.next_page_number() if leiloes_pendentes_entrega_paginated.has_next() else None,
+        'pendentes_page_range': pendentes_pagination.get('page_range', []),
+        'pendentes_show_first': pendentes_pagination.get('show_first', False),
+        'pendentes_show_last': pendentes_pagination.get('show_last', False),
+        'pendentes_show_first_ellipsis': pendentes_pagination.get('show_first_ellipsis', False),
+        'pendentes_show_last_ellipsis': pendentes_pagination.get('show_last_ellipsis', False),
+        # Paginação finalizados
+        'finalizados_current_page': leiloes_finalizados_paginated.number,
+        'finalizados_total_pages': leiloes_finalizados_paginated.paginator.num_pages,
+        'finalizados_has_previous': leiloes_finalizados_paginated.has_previous(),
+        'finalizados_has_next': leiloes_finalizados_paginated.has_next(),
+        'finalizados_previous_page_number': leiloes_finalizados_paginated.previous_page_number() if leiloes_finalizados_paginated.has_previous() else None,
+        'finalizados_next_page_number': leiloes_finalizados_paginated.next_page_number() if leiloes_finalizados_paginated.has_next() else None,
+        'finalizados_page_range': finalizados_pagination.get('page_range', []),
+        'finalizados_show_first': finalizados_pagination.get('show_first', False),
+        'finalizados_show_last': finalizados_pagination.get('show_last', False),
+        'finalizados_show_first_ellipsis': finalizados_pagination.get('show_first_ellipsis', False),
+        'finalizados_show_last_ellipsis': finalizados_pagination.get('show_last_ellipsis', False),
+        # Paginação cancelados
+        'cancelados_current_page': leiloes_cancelados_paginated.number,
+        'cancelados_total_pages': leiloes_cancelados_paginated.paginator.num_pages,
+        'cancelados_has_previous': leiloes_cancelados_paginated.has_previous(),
+        'cancelados_has_next': leiloes_cancelados_paginated.has_next(),
+        'cancelados_previous_page_number': leiloes_cancelados_paginated.previous_page_number() if leiloes_cancelados_paginated.has_previous() else None,
+        'cancelados_next_page_number': leiloes_cancelados_paginated.next_page_number() if leiloes_cancelados_paginated.has_next() else None,
+        'cancelados_page_range': cancelados_pagination.get('page_range', []),
+        'cancelados_show_first': cancelados_pagination.get('show_first', False),
+        'cancelados_show_last': cancelados_pagination.get('show_last', False),
+        'cancelados_show_first_ellipsis': cancelados_pagination.get('show_first_ellipsis', False),
+        'cancelados_show_last_ellipsis': cancelados_pagination.get('show_last_ellipsis', False),
     }
 
     return render(request, 'auction/listar_leiloes.html', context)

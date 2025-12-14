@@ -168,33 +168,11 @@
 
                     <!-- Paginação -->
                     {% if notifications.has_other_pages %}
-                    <nav aria-label="Page navigation">
-                        <ul class="pagination justify-content-center">
-                            {% if notifications.has_previous %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=1{% if notification_type %}&type={{ notification_type }}{% endif %}{% if has_rewards %}&has_rewards={{ has_rewards }}{% endif %}{% if viewed %}&viewed={{ viewed }}{% endif %}{% if search %}&search={{ search }}{% endif %}">{% trans "Primeira" %}</a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ notifications.previous_page_number }}{% if notification_type %}&type={{ notification_type }}{% endif %}{% if has_rewards %}&has_rewards={{ has_rewards }}{% endif %}{% if viewed %}&viewed={{ viewed }}{% endif %}{% if search %}&search={{ search }}{% endif %}">{% trans "Anterior" %}</a>
-                                </li>
-                            {% endif %}
-                            
-                            <li class="page-item active">
-                                <span class="page-link">
-                                    {% trans "Página" %} {{ notifications.number }} {% trans "de" %} {{ notifications.paginator.num_pages }}
-                                </span>
-                            </li>
-                            
-                            {% if notifications.has_next %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ notifications.next_page_number }}{% if notification_type %}&type={{ notification_type }}{% endif %}{% if has_rewards %}&has_rewards={{ has_rewards }}{% endif %}{% if viewed %}&viewed={{ viewed }}{% endif %}{% if search %}&search={{ search }}{% endif %}">{% trans "Próxima" %}</a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ notifications.paginator.num_pages }}{% if notification_type %}&type={{ notification_type }}{% endif %}{% if has_rewards %}&has_rewards={{ has_rewards }}{% endif %}{% if viewed %}&viewed={{ viewed }}{% endif %}{% if search %}&search={{ search }}{% endif %}">{% trans "Última" %}</a>
-                                </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
+                    <div class="mt-4">
+                      {% with query_params=request.GET.urlencode %}
+                        {% include 'includes/pagination.html' %}
+                      {% endwith %}
+                    </div>
                     {% endif %}
                 {% else %}
                     <div class="text-center py-5">

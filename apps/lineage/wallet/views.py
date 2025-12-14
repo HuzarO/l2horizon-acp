@@ -71,10 +71,14 @@ def dashboard_wallet(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(page_obj)
+
     context = {
         'wallet': wallet,
         'transacoes': page_obj.object_list,
         'page_obj': page_obj,
+        **pagination_context,
     }
     context.update(get_lineage_template_context(request))
     return render(request, 'wallet/dashboard.html', context)

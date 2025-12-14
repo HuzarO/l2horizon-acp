@@ -94,6 +94,9 @@ def retirar_item_servidor(request):
 
             paginator = Paginator(all_items, 10)  # 10 itens por página
             items = paginator.get_page(page_number)
+            
+            from utils.pagination_helper import prepare_pagination_context
+            pagination_context = prepare_pagination_context(items)
 
         except Exception as e:
             messages.error(request, f'Erro ao buscar o inventário: {str(e)}')
@@ -169,8 +172,16 @@ def retirar_item_servidor(request):
         'personagens': personagens,
         'char_id': char_id,
         'items': items,
-        'personagem': personagem[0] if personagem else None
+        'personagem': personagem[0] if personagem else None,
     }
+    
+    # Adiciona contexto de paginação se items existir e for paginado
+    if 'items' in locals() and items and hasattr(items, 'paginator'):
+        context.update(pagination_context if 'pagination_context' in locals() else {})
+    
+    # Adiciona contexto de paginação se items existir e for paginado
+    if 'items' in locals() and items and hasattr(items, 'paginator'):
+        context.update(pagination_context if 'pagination_context' in locals() else {})
     context.update(get_lineage_template_context(request))
     return render(request, 'pages/retirar_item.html', context)
 

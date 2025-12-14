@@ -39,6 +39,9 @@ def battle_pass_view(request):
     except EmptyPage:
         levels_page = paginator.page(paginator.num_pages)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(levels_page)
+    
     context = {
         'season': season,
         'progress': progress,
@@ -58,6 +61,7 @@ def battle_pass_view(request):
         'current_page': levels_page.number,
         'num_pages': paginator.num_pages,
         'total_levels': paginator.count,
+        **pagination_context,
     }
     
     return render(request, 'battlepass/battle_pass.html', context)
@@ -228,6 +232,9 @@ def battle_pass_history_view(request):
     except:
         history_page = paginator.page(1)
     
+    from utils.pagination_helper import prepare_pagination_context
+    pagination_context = prepare_pagination_context(history_page)
+    
     # Buscar rewards para exibir ícones de itens
     reward_ids = []
     for item in history_page:
@@ -256,6 +263,7 @@ def battle_pass_history_view(request):
     context = {
         'season': season,
         'history': history_page,
+        **pagination_context,
     }
     
     return render(request, 'battlepass/history.html', context)

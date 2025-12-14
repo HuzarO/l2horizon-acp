@@ -34,10 +34,46 @@ def shop_home(request):
 
     items = item_paginator.get_page(item_page)
     packages = package_paginator.get_page(package_page)
+    
+    from utils.pagination_helper import prepare_pagination_context
+    items_pagination = prepare_pagination_context(items)
+    packages_pagination = prepare_pagination_context(packages)
+    
+    # Prepara contexto de paginação para items
+    items_pagination_context = {
+        'items_current_page': items.number,
+        'items_total_pages': items.paginator.num_pages,
+        'items_has_previous': items.has_previous(),
+        'items_has_next': items.has_next(),
+        'items_previous_page_number': items.previous_page_number() if items.has_previous() else None,
+        'items_next_page_number': items.next_page_number() if items.has_next() else None,
+        'items_page_range': items_pagination.get('page_range', []),
+        'items_show_first': items_pagination.get('show_first', False),
+        'items_show_last': items_pagination.get('show_last', False),
+        'items_show_first_ellipsis': items_pagination.get('show_first_ellipsis', False),
+        'items_show_last_ellipsis': items_pagination.get('show_last_ellipsis', False),
+    }
+    
+    # Prepara contexto de paginação para packages
+    packages_pagination_context = {
+        'packages_current_page': packages.number,
+        'packages_total_pages': packages.paginator.num_pages,
+        'packages_has_previous': packages.has_previous(),
+        'packages_has_next': packages.has_next(),
+        'packages_previous_page_number': packages.previous_page_number() if packages.has_previous() else None,
+        'packages_next_page_number': packages.next_page_number() if packages.has_next() else None,
+        'packages_page_range': packages_pagination.get('page_range', []),
+        'packages_show_first': packages_pagination.get('show_first', False),
+        'packages_show_last': packages_pagination.get('show_last', False),
+        'packages_show_first_ellipsis': packages_pagination.get('show_first_ellipsis', False),
+        'packages_show_last_ellipsis': packages_pagination.get('show_last_ellipsis', False),
+    }
 
     return render(request, 'shop/home.html', {
         'items': items,
-        'packages': packages
+        'packages': packages,
+        **items_pagination_context,
+        **packages_pagination_context,
     })
 
 

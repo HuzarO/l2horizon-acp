@@ -127,30 +127,18 @@
           
           <!-- Friends Pagination -->
           {% if accepted_friendships.has_other_pages %}
-            <div class="pagination-section">
-              <nav class="pagination-nav">
-                {% if accepted_friendships.has_previous %}
-                  <a href="?friends_page={{ accepted_friendships.previous_page_number }}{% if stats.search_query %}&search={{ stats.search_query }}{% endif %}" class="page-btn">
-                    <i class="fas fa-chevron-left"></i>
-                  </a>
+            <div class="mt-4">
+              {% with page_param='friends_page' current_page=friends_current_page total_pages=friends_total_pages has_previous=friends_has_previous has_next=friends_has_next previous_page_number=friends_previous_page_number next_page_number=friends_next_page_number page_range=friends_page_range show_first=friends_show_first show_last=friends_show_last show_first_ellipsis=friends_show_first_ellipsis show_last_ellipsis=friends_show_last_ellipsis %}
+                {% if stats.search_query %}
+                  {% with query_params='search='|add:stats.search_query %}
+                    {% include 'includes/pagination_custom.html' %}
+                  {% endwith %}
+                {% else %}
+                  {% with query_params='' %}
+                    {% include 'includes/pagination_custom.html' %}
+                  {% endwith %}
                 {% endif %}
-                
-                <div class="page-numbers">
-                  {% for num in accepted_friendships.paginator.page_range %}
-                    {% if accepted_friendships.number == num %}
-                      <span class="page-btn active">{{ num }}</span>
-                    {% elif num > accepted_friendships.number|add:'-3' and num < accepted_friendships.number|add:'3' %}
-                      <a href="?friends_page={{ num }}{% if stats.search_query %}&search={{ stats.search_query }}{% endif %}" class="page-btn">{{ num }}</a>
-                    {% endif %}
-                  {% endfor %}
-                </div>
-                
-                {% if accepted_friendships.has_next %}
-                  <a href="?friends_page={{ accepted_friendships.next_page_number }}{% if stats.search_query %}&search={{ stats.search_query }}{% endif %}" class="page-btn">
-                    <i class="fas fa-chevron-right"></i>
-                  </a>
-                {% endif %}
-              </nav>
+              {% endwith %}
             </div>
           {% endif %}
         {% else %}
@@ -272,30 +260,18 @@
         
         <!-- Users Pagination -->
         {% if users.has_other_pages %}
-          <div class="pagination-section">
-            <nav class="pagination-nav">
-              {% if users.has_previous %}
-                <a href="?page={{ users.previous_page_number }}{% if stats.search_query %}&search={{ stats.search_query }}{% endif %}{% if request.GET.friends_page %}&friends_page={{ request.GET.friends_page }}{% endif %}" class="page-btn">
-                  <i class="fas fa-chevron-left"></i>
-                </a>
+          <div class="mt-4">
+            {% with page_param='page' current_page=users_current_page total_pages=users_total_pages has_previous=users_has_previous has_next=users_has_next previous_page_number=users_previous_page_number next_page_number=users_next_page_number page_range=users_page_range show_first=users_show_first show_last=users_show_last show_first_ellipsis=users_show_first_ellipsis show_last_ellipsis=users_show_last_ellipsis %}
+              {% if stats.search_query or request.GET.friends_page %}
+                {% with query_params=request.GET.urlencode %}
+                  {% include 'includes/pagination_custom.html' %}
+                {% endwith %}
+              {% else %}
+                {% with query_params='' %}
+                  {% include 'includes/pagination_custom.html' %}
+                {% endwith %}
               {% endif %}
-              
-              <div class="page-numbers">
-                {% for num in users.paginator.page_range %}
-                  {% if users.number == num %}
-                    <span class="page-btn active">{{ num }}</span>
-                  {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
-                    <a href="?page={{ num }}{% if stats.search_query %}&search={{ stats.search_query }}{% endif %}{% if request.GET.friends_page %}&friends_page={{ request.GET.friends_page }}{% endif %}" class="page-btn">{{ num }}</a>
-                  {% endif %}
-                {% endfor %}
-              </div>
-              
-              {% if users.has_next %}
-                <a href="?page={{ users.next_page_number }}{% if stats.search_query %}&search={{ stats.search_query }}{% endif %}{% if request.GET.friends_page %}&friends_page={{ request.GET.friends_page }}{% endif %}" class="page-btn">
-                  <i class="fas fa-chevron-right"></i>
-                </a>
-              {% endif %}
-            </nav>
+            {% endwith %}
           </div>
         {% endif %}
       </div>

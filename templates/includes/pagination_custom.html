@@ -1,0 +1,97 @@
+{% load i18n %}
+{% load pagination_tags %}
+
+{% comment %}
+Template de paginação customizado para casos com parâmetros de página customizados
+Parâmetros esperados:
+- page_param: nome do parâmetro de página (ex: 'private_page', 'public_page', 'page_ativos')
+- current_page: número da página atual
+- total_pages: total de páginas
+- has_previous: se tem página anterior
+- has_next: se tem próxima página
+- previous_page_number: número da página anterior
+- next_page_number: número da próxima página
+- page_range: lista de números de páginas a mostrar
+- show_first: mostrar primeira página
+- show_last: mostrar última página
+- show_first_ellipsis: mostrar reticências antes
+- show_last_ellipsis: mostrar reticências depois
+- query_params: string de query params (opcional, para manter outros parâmetros)
+{% endcomment %}
+
+<nav aria-label="{% trans 'Paginação' %}">
+    <ul class="pagination justify-content-center mb-0">
+        <!-- Botão Anterior -->
+        {% if has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{{ page_param }}={{ previous_page_number }}{% if query_params %}&{{ query_params|build_query_string }}{% endif %}">
+                <i class="fas fa-chevron-left me-1"></i>
+                {% trans "Anterior" %}
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">
+                <i class="fas fa-chevron-left me-1"></i>
+                {% trans "Anterior" %}
+            </span>
+        </li>
+        {% endif %}
+        
+        <!-- Primeira página -->
+        {% if show_first %}
+        <li class="page-item">
+            <a class="page-link" href="?{{ page_param }}=1{% if query_params %}&{{ query_params|build_query_string }}{% endif %}">1</a>
+        </li>
+        {% endif %}
+        
+        <!-- Reticências antes -->
+        {% if show_first_ellipsis %}
+        <li class="page-item disabled">
+            <span class="page-link">...</span>
+        </li>
+        {% endif %}
+        
+        <!-- Páginas do range -->
+        {% for num in page_range %}
+        <li class="page-item {% if num == current_page %}active{% endif %}">
+            {% if num == current_page %}
+            <span class="page-link">{{ num }}</span>
+            {% else %}
+            <a class="page-link" href="?{{ page_param }}={{ num }}{% if query_params %}&{{ query_params|build_query_string }}{% endif %}">{{ num }}</a>
+            {% endif %}
+        </li>
+        {% endfor %}
+        
+        <!-- Reticências depois -->
+        {% if show_last_ellipsis %}
+        <li class="page-item disabled">
+            <span class="page-link">...</span>
+        </li>
+        {% endif %}
+        
+        <!-- Última página -->
+        {% if show_last %}
+        <li class="page-item">
+            <a class="page-link" href="?{{ page_param }}={{ total_pages }}{% if query_params %}&{{ query_params|build_query_string }}{% endif %}">{{ total_pages }}</a>
+        </li>
+        {% endif %}
+        
+        <!-- Botão Próximo -->
+        {% if has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{{ page_param }}={{ next_page_number }}{% if query_params %}&{{ query_params|build_query_string }}{% endif %}">
+                {% trans "Próximo" %}
+                <i class="fas fa-chevron-right ms-1"></i>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">
+                {% trans "Próximo" %}
+                <i class="fas fa-chevron-right ms-1"></i>
+            </span>
+        </li>
+        {% endif %}
+    </ul>
+</nav>

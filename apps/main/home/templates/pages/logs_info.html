@@ -35,19 +35,11 @@
                         </ul>
 
                         {% if page_logs.has_other_pages %}
-                        <nav class="logs-pagination" aria-label="{% trans 'Navegação de páginas' %}">
-                            {% if page_logs.has_previous %}
-                            <a href="?page=1" class="pagination-item">{% trans 'Primeira' %}</a>
-                            <a href="?page={{ page_logs.previous_page_number }}" class="pagination-item">{% trans 'Anterior' %}</a>
-                            {% endif %}
-
-                            <span class="pagination-item active">{% trans 'Página' %} {{ page_logs.number }} {% trans 'de' %} {{ page_logs.paginator.num_pages }}</span>
-
-                            {% if page_logs.has_next %}
-                            <a href="?page={{ page_logs.next_page_number }}" class="pagination-item">{% trans 'Próxima' %}</a>
-                            <a href="?page={{ page_logs.paginator.num_pages }}" class="pagination-item">{% trans 'Última' %}</a>
-                            {% endif %}
-                        </nav>
+                        <div class="mt-4">
+                          {% with query_params=request.GET.urlencode %}
+                            {% include 'includes/pagination.html' %}
+                          {% endwith %}
+                        </div>
                         {% endif %}
                     </div>
                 </div>
