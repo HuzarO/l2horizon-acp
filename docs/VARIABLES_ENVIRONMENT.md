@@ -277,6 +277,17 @@ Este documento lista todas as variáveis de ambiente possíveis utilizadas no pr
 
 ---
 
+## 🤖 Assistente de IA
+
+| Variável | Tipo | Padrão | Descrição |
+|----------|------|--------|-----------|
+| `ANTHROPIC_API_KEY` | String | - | Chave da API da Anthropic (Claude) |
+| `GEMINI_API_KEY` | String | - | Chave da API do Google Gemini |
+
+**Nota**: O provedor de IA pode ser escolhido no admin através do modelo `AIProviderConfig`. Apenas uma configuração pode estar ativa por vez.
+
+---
+
 ## 📝 Exemplo de Arquivo .env
 
 ```bash

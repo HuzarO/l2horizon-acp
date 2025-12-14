@@ -4,25 +4,42 @@ import json
 import re
 from typing import List, Dict, Optional, Tuple
 from anthropic import Anthropic
+import google.generativeai as genai
 from django.conf import settings
 from django.utils.translation import get_language
 from apps.main.faq.models import FAQ, FAQTranslation
 from apps.main.solicitation.models import Solicitation
 from apps.main.solicitation.choices import CATEGORY_CHOICES, PRIORITY_CHOICES
+from .models import AIProviderConfig
 
 logger = logging.getLogger(__name__)
 
 
 class AIAssistantService:
-    """Serviço para interação com a IA Anthropic/Claude"""
+    """Serviço para interação com a IA (Anthropic/Claude ou Google Gemini)"""
 
     def __init__(self):
-        api_key = os.environ.get('ANTHROPIC_API_KEY') or getattr(settings, 'ANTHROPIC_API_KEY', None)
-        if not api_key:
-            logger.warning("ANTHROPIC_API_KEY não configurada. O serviço de IA não funcionará.")
-            self.client = None
-        else:
-            self.client = Anthropic(api_key=api_key)
+        # Obter provedor ativo da configuração
+        self.provider = AIProviderConfig.get_active_provider()
+        
+        # Inicializar clientes baseado no provedor
+        self.anthropic_client = None
+        self.gemini_client = None
+        
+        if self.provider == 'anthropic':
+            api_key = os.environ.get('ANTHROPIC_API_KEY') or getattr(settings, 'ANTHROPIC_API_KEY', None)
+            if not api_key:
+                logger.warning("ANTHROPIC_API_KEY não configurada. O serviço de IA não funcionará.")
+            else:
+                self.anthropic_client = Anthropic(api_key=api_key)
+        elif self.provider == 'gemini':
+            api_key = os.environ.get('GEMINI_API_KEY') or getattr(settings, 'GEMINI_API_KEY', None)
+            if not api_key:
+                logger.warning("GEMINI_API_KEY não configurada. O serviço de IA não funcionará.")
+            else:
+                genai.configure(api_key=api_key)
+                # O cliente será criado dinamicamente em _generate_gemini_response
+                self.gemini_client = True  # Flag para indicar que está configurado
 
     def get_faq_context(self, language: str = 'pt') -> str:
         """Obtém contexto das FAQs públicas para incluir no prompt"""
@@ -116,7 +133,14 @@ Seja útil e objetivo. Priorize resolver a dúvida ao invés de direcionar para 
         Returns:
             Tuple[str, Dict]: (resposta_texto, metadados)
         """
-        if not self.client:
+        # Verificar se o cliente está disponível
+        if self.provider == 'anthropic' and not self.anthropic_client:
+            return (
+                "Desculpe, o serviço de IA não está disponível no momento. "
+                "Por favor, crie uma solicitação de suporte ou entre em contato com nossa equipe.",
+                {"error": "IA service not available", "suggest_create_solicitation": True}
+            )
+        elif self.provider == 'gemini' and not self.gemini_client:
             return (
                 "Desculpe, o serviço de IA não está disponível no momento. "
                 "Por favor, crie uma solicitação de suporte ou entre em contato com nossa equipe.",
@@ -124,66 +148,20 @@ Seja útil e objetivo. Priorize resolver a dúvida ao invés de direcionar para 
             )
 
         try:
-            # Preparar histórico de conversa
-            messages = []
-            if conversation_history:
-                # Converter histórico para formato Anthropic (últimas 20 mensagens)
-                recent_history = conversation_history[-20:]
-                for msg in recent_history:
-                    messages.append({
-                        "role": msg.get("role", "user"),
-                        "content": msg.get("content", "")
-                    })
-            
-            # Adicionar mensagem atual
-            messages.append({
-                "role": "user",
-                "content": user_message
-            })
-
             # Criar prompt do sistema
             system_prompt = self.create_system_prompt(language)
 
-            # Chamar API da Anthropic
-            try:
-                response = self.client.messages.create(
-                    model="claude-3-5-sonnet-20241022",  # ou claude-3-haiku-20240307 para versão mais rápida/barata
-                    max_tokens=1024,
-                    system=system_prompt,
-                    messages=messages
+            # Chamar o método apropriado baseado no provedor
+            if self.provider == 'anthropic':
+                return self._generate_anthropic_response(
+                    user_message, conversation_history, system_prompt
                 )
-            except Exception as api_error:
-                # Re-lançar como exceção mais específica para tratamento adequado
-                raise api_error
-
-            # Extrair resposta
-            assistant_message = response.content[0].text
-            tokens_used = response.usage.input_tokens + response.usage.output_tokens
-
-            # Verificar se há sugestão estruturada na resposta
-            suggestion_data = self._extract_suggestion_from_message(assistant_message)
-            
-            # Se não houver sugestão estruturada, verificar se a mensagem indica sugestão naturalmente
-            if not suggestion_data.get("suggest", False):
-                suggestion_data = {
-                    "suggest": self._should_suggest_solicitation(assistant_message),
-                    "category": self._extract_category_suggestion(assistant_message),
-                    "priority": self._extract_priority_suggestion(assistant_message),
-                    "reason": None
-                }
-            
-            # Remover tag de sugestão da mensagem final (se existir)
-            cleaned_message = self._remove_suggestion_tag(assistant_message)
-            
-            metadata = {
-                "tokens_used": tokens_used,
-                "suggest_create_solicitation": suggestion_data.get("suggest", False),
-                "category_suggestion": suggestion_data.get("category"),
-                "priority_suggestion": suggestion_data.get("priority"),
-                "suggestion_reason": suggestion_data.get("reason"),
-            }
-
-            return cleaned_message, metadata
+            elif self.provider == 'gemini':
+                return self._generate_gemini_response(
+                    user_message, conversation_history, system_prompt
+                )
+            else:
+                raise ValueError(f"Provedor desconhecido: {self.provider}")
 
         except Exception as e:
             # Log completo do erro para debug (não enviar ao usuário)
@@ -319,3 +297,212 @@ Seja útil e objetivo. Priorize resolver a dúvida ao invés de direcionar para 
                 return key
         
         return 'medium'  # Default
+
+    def _generate_anthropic_response(
+        self,
+        user_message: str,
+        conversation_history: List[Dict[str, str]],
+        system_prompt: str
+    ) -> Tuple[str, Dict]:
+        """Gera resposta usando Anthropic/Claude"""
+        try:
+            # Preparar histórico de conversa
+            messages = []
+            if conversation_history:
+                # Converter histórico para formato Anthropic (últimas 20 mensagens)
+                recent_history = conversation_history[-20:]
+                for msg in recent_history:
+                    messages.append({
+                        "role": msg.get("role", "user"),
+                        "content": msg.get("content", "")
+                    })
+            
+            # Adicionar mensagem atual
+            messages.append({
+                "role": "user",
+                "content": user_message
+            })
+
+            # Chamar API da Anthropic
+            response = self.anthropic_client.messages.create(
+                model="claude-3-5-sonnet-20241022",  # ou claude-3-haiku-20240307 para versão mais rápida/barata
+                max_tokens=1024,
+                system=system_prompt,
+                messages=messages
+            )
+
+            # Extrair resposta
+            assistant_message = response.content[0].text
+            tokens_used = response.usage.input_tokens + response.usage.output_tokens
+
+            # Processar sugestões e metadados
+            return self._process_response(assistant_message, tokens_used)
+
+        except Exception as api_error:
+            raise api_error
+
+    def _generate_gemini_response(
+        self,
+        user_message: str,
+        conversation_history: List[Dict[str, str]],
+        system_prompt: str
+    ) -> Tuple[str, Dict]:
+        """Gera resposta usando Google Gemini"""
+        try:
+            # Preparar histórico de conversa para Gemini
+            # Gemini usa um formato diferente: lista de mensagens alternadas
+            chat_history = []
+            if conversation_history:
+                recent_history = conversation_history[-20:]
+                for msg in recent_history:
+                    role = msg.get("role", "user")
+                    content = msg.get("content", "")
+                    # Gemini usa 'user' e 'model' ao invés de 'assistant'
+                    if role == 'assistant':
+                        role = 'model'
+                    chat_history.append({
+                        "role": role,
+                        "parts": [content]
+                    })
+            
+            # Criar modelo com system instruction (Gemini 1.5+ suporta)
+            generation_config = {
+                "temperature": 0.7,
+                "top_p": 0.95,
+                "top_k": 40,
+                "max_output_tokens": 1024,
+            }
+            
+            # Primeiro, listar modelos disponíveis para garantir que usamos um que funciona
+            model = None
+            available_model_name = None
+            
+            try:
+                # Listar todos os modelos disponíveis
+                all_models = genai.list_models()
+                # Filtrar modelos que suportam generateContent
+                available_models = [
+                    m for m in all_models 
+                    if 'generateContent' in m.supported_generation_methods
+                ]
+                
+                if not available_models:
+                    raise Exception("Nenhum modelo Gemini disponível para generateContent")
+                
+                # Priorizar modelos flash (mais rápidos e baratos)
+                preferred_models = ['flash', 'pro']
+                selected_model = None
+                
+                for preferred in preferred_models:
+                    for m in available_models:
+                        model_name = m.name.split('/')[-1]  # Extrair apenas o nome
+                        if preferred in model_name.lower():
+                            selected_model = m
+                            break
+                    if selected_model:
+                        break
+                
+                # Se não encontrou um preferido, usar o primeiro disponível
+                if not selected_model:
+                    selected_model = available_models[0]
+                
+                available_model_name = selected_model.name.split('/')[-1]
+                logger.info(f"Usando modelo Gemini: {available_model_name}")
+                
+            except Exception as list_error:
+                logger.warning(f"Erro ao listar modelos: {str(list_error)}. Tentando modelos padrão...")
+                # Fallback: tentar modelos padrão
+                model_names = [
+                    'gemini-1.5-flash-latest',
+                    'gemini-1.5-flash',
+                    'gemini-1.0-pro-latest',
+                    'gemini-pro',
+                ]
+                
+                for model_name in model_names:
+                    try:
+                        # Testar se o modelo funciona
+                        test_model = genai.GenerativeModel(model_name=model_name)
+                        test_model.generate_content("test")
+                        available_model_name = model_name
+                        logger.info(f"Usando modelo padrão: {available_model_name}")
+                        break
+                    except Exception as e:
+                        logger.warning(f"Modelo {model_name} não disponível: {str(e)}")
+                        continue
+                
+                if not available_model_name:
+                    raise Exception(f"Não foi possível encontrar um modelo Gemini disponível. Erro: {str(list_error)}")
+            
+            # Criar o modelo com o nome encontrado
+            # Tentar com system_instruction primeiro, se falhar, tentar sem
+            try:
+                model = genai.GenerativeModel(
+                    model_name=available_model_name,
+                    system_instruction=system_prompt,
+                    generation_config=generation_config
+                )
+            except Exception as e:
+                # Se system_instruction não for suportado, criar sem ele
+                logger.warning(f"Modelo não suporta system_instruction, usando prompt no início: {str(e)}")
+                model = genai.GenerativeModel(
+                    model_name=available_model_name,
+                    generation_config=generation_config
+                )
+                # Incluir system prompt no início da mensagem
+                user_message = f"{system_prompt}\n\n{user_message}"
+            
+            # Se há histórico, criar chat; senão, usar generate_content diretamente
+            if chat_history:
+                chat = model.start_chat(history=chat_history)
+                response = chat.send_message(user_message)
+            else:
+                response = model.generate_content(user_message)
+            
+            # Extrair resposta
+            assistant_message = response.text
+            
+            # Tentar obter informações de uso de tokens se disponível
+            if hasattr(response, 'usage_metadata'):
+                tokens_used = (
+                    response.usage_metadata.prompt_token_count + 
+                    response.usage_metadata.candidates_token_count
+                )
+            else:
+                # Estimativa: 1 token ≈ 4 caracteres
+                full_prompt = f"{system_prompt}\n\n{user_message}"
+                tokens_used = len(full_prompt) // 4 + len(assistant_message) // 4
+
+            # Processar sugestões e metadados
+            return self._process_response(assistant_message, tokens_used)
+
+        except Exception as api_error:
+            raise api_error
+
+    def _process_response(self, assistant_message: str, tokens_used: int) -> Tuple[str, Dict]:
+        """Processa a resposta de qualquer provedor e extrai metadados"""
+        # Verificar se há sugestão estruturada na resposta
+        suggestion_data = self._extract_suggestion_from_message(assistant_message)
+        
+        # Se não houver sugestão estruturada, verificar se a mensagem indica sugestão naturalmente
+        if not suggestion_data.get("suggest", False):
+            suggestion_data = {
+                "suggest": self._should_suggest_solicitation(assistant_message),
+                "category": self._extract_category_suggestion(assistant_message),
+                "priority": self._extract_priority_suggestion(assistant_message),
+                "reason": None
+            }
+        
+        # Remover tag de sugestão da mensagem final (se existir)
+        cleaned_message = self._remove_suggestion_tag(assistant_message)
+        
+        metadata = {
+            "tokens_used": tokens_used,
+            "provider": self.provider,
+            "suggest_create_solicitation": suggestion_data.get("suggest", False),
+            "category_suggestion": suggestion_data.get("category"),
+            "priority_suggestion": suggestion_data.get("priority"),
+            "suggestion_reason": suggestion_data.get("reason"),
+        }
+
+        return cleaned_message, metadata
