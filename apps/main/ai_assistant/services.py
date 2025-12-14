@@ -5,6 +5,7 @@ import re
 from typing import List, Dict, Optional, Tuple
 from anthropic import Anthropic
 import google.generativeai as genai
+import openai
 from django.conf import settings
 from django.utils.translation import get_language
 from apps.main.faq.models import FAQ, FAQTranslation
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class AIAssistantService:
-    """Serviço para interação com a IA (Anthropic/Claude ou Google Gemini)"""
+    """Serviço para interação com a IA (Anthropic/Claude, Google Gemini ou xAI Grok)"""
 
     def __init__(self):
         # Obter provedor ativo da configuração
@@ -25,6 +26,7 @@ class AIAssistantService:
         # Inicializar clientes baseado no provedor
         self.anthropic_client = None
         self.gemini_client = None
+        self.grok_client = None
         
         if self.provider == 'anthropic':
             api_key = os.environ.get('ANTHROPIC_API_KEY') or getattr(settings, 'ANTHROPIC_API_KEY', None)
@@ -40,6 +42,16 @@ class AIAssistantService:
                 genai.configure(api_key=api_key)
                 # O cliente será criado dinamicamente em _generate_gemini_response
                 self.gemini_client = True  # Flag para indicar que está configurado
+        elif self.provider == 'grok':
+            api_key = os.environ.get('XAI_API_KEY') or getattr(settings, 'XAI_API_KEY', None)
+            if not api_key:
+                logger.warning("XAI_API_KEY não configurada. O serviço de IA não funcionará.")
+            else:
+                # Grok usa o SDK da OpenAI com base_url customizado
+                self.grok_client = openai.OpenAI(
+                    api_key=api_key,
+                    base_url="https://api.x.ai/v1"
+                )
 
     def get_faq_context(self, language: str = 'pt') -> str:
         """Obtém contexto das FAQs públicas para incluir no prompt"""
@@ -146,6 +158,12 @@ Seja útil e objetivo. Priorize resolver a dúvida ao invés de direcionar para 
                 "Por favor, crie uma solicitação de suporte ou entre em contato com nossa equipe.",
                 {"error": "IA service not available", "suggest_create_solicitation": True}
             )
+        elif self.provider == 'grok' and not self.grok_client:
+            return (
+                "Desculpe, o serviço de IA não está disponível no momento. "
+                "Por favor, crie uma solicitação de suporte ou entre em contato com nossa equipe.",
+                {"error": "IA service not available", "suggest_create_solicitation": True}
+            )
 
         try:
             # Criar prompt do sistema
@@ -158,6 +176,10 @@ Seja útil e objetivo. Priorize resolver a dúvida ao invés de direcionar para 
                 )
             elif self.provider == 'gemini':
                 return self._generate_gemini_response(
+                    user_message, conversation_history, system_prompt
+                )
+            elif self.provider == 'grok':
+                return self._generate_grok_response(
                     user_message, conversation_history, system_prompt
                 )
             else:
@@ -180,7 +202,13 @@ Seja útil e objetivo. Priorize resolver a dúvida ao invés de direcionar para 
                     "Por favor, crie uma solicitação de suporte para que possamos atendê-lo diretamente."
                 )
                 should_suggest = True
-            elif "invalid_request_error" in error_message_lower or "400" in error_message_lower:
+            elif "api key" in error_message_lower or "incorrect api key" in error_message_lower:
+                user_friendly_message = (
+                    "Desculpe, há um problema de configuração com o serviço de IA. "
+                    "Nossa equipe foi notificada. Por favor, crie uma solicitação de suporte."
+                )
+                should_suggest = True
+            elif "invalid_request_error" in error_message_lower or ("400" in error_message_lower and "api key" not in error_message_lower):
                 user_friendly_message = (
                     "Desculpe, houve um problema ao processar sua solicitação. "
                     "Por favor, tente reformular sua pergunta ou crie uma solicitação de suporte."
@@ -504,6 +532,113 @@ Seja útil e objetivo. Priorize resolver a dúvida ao invés de direcionar para 
             else:
                 # Estimativa: 1 token ≈ 4 caracteres
                 full_prompt = f"{system_prompt}\n\n{user_message}"
+                tokens_used = len(full_prompt) // 4 + len(assistant_message) // 4
+
+            # Processar sugestões e metadados
+            return self._process_response(assistant_message, tokens_used)
+
+        except Exception as api_error:
+            raise api_error
+
+    def _generate_grok_response(
+        self,
+        user_message: str,
+        conversation_history: List[Dict[str, str]],
+        system_prompt: str
+    ) -> Tuple[str, Dict]:
+        """Gera resposta usando xAI Grok"""
+        try:
+            # Preparar mensagens para Grok (formato OpenAI-compatible)
+            messages = []
+            
+            # Adicionar system prompt
+            messages.append({
+                "role": "system",
+                "content": system_prompt
+            })
+            
+            # Adicionar histórico de conversa (últimas 20 mensagens)
+            if conversation_history:
+                recent_history = conversation_history[-20:]
+                for msg in recent_history:
+                    role = msg.get("role", "user")
+                    # Grok usa 'assistant' ao invés de 'model'
+                    if role == 'model':
+                        role = 'assistant'
+                    messages.append({
+                        "role": role,
+                        "content": msg.get("content", "")
+                    })
+            
+            # Adicionar mensagem atual
+            messages.append({
+                "role": "user",
+                "content": user_message
+            })
+            
+            # Lista de modelos Grok para tentar (do mais recente ao mais antigo)
+            model_names = [
+                'grok-2-1212',  # Mais recente
+                'grok-2-vision-1212',
+                'grok-beta',
+                'grok-2',
+            ]
+            
+            last_error = None
+            response = None
+            
+            # Tentar cada modelo até encontrar um que funcione
+            for model_name in model_names:
+                try:
+                    response = self.grok_client.chat.completions.create(
+                        model=model_name,
+                        messages=messages,
+                        max_tokens=1024,
+                        temperature=0.7
+                    )
+                    logger.info(f"Usando modelo Grok: {model_name}")
+                    break  # Sucesso, sair do loop
+                except Exception as e:
+                    last_error = e
+                    error_str = str(e).lower()
+                    # Se for erro 404 (modelo não encontrado), tentar próximo
+                    if '404' in error_str or 'not_found' in error_str or ('model' in error_str and 'not found' in error_str):
+                        logger.warning(f"Modelo {model_name} não disponível, tentando próximo...")
+                        continue
+                    elif 'api key' in error_str or 'incorrect api key' in error_str or ('401' in error_str and 'api' in error_str):
+                        # Erro de API key - não tentar outros modelos, retornar erro amigável
+                        logger.error(f"API key do Grok inválida: {str(e)}")
+                        return (
+                            "Desculpe, há um problema de configuração com o serviço de IA. "
+                            "Nossa equipe foi notificada. Por favor, crie uma solicitação de suporte.",
+                            {
+                                "error": True,
+                                "error_type": "api_key_error",
+                                "suggest_create_solicitation": True,
+                                "category_suggestion": "technical",
+                                "priority_suggestion": "high",
+                                "tokens_used": 0
+                            }
+                        )
+                    else:
+                        # Se for outro tipo de erro, re-lançar
+                        raise e
+            
+            if response is None:
+                raise Exception(f"Nenhum modelo Grok disponível. Último erro: {str(last_error)}")
+            
+            # Extrair resposta
+            assistant_message = response.choices[0].message.content
+            
+            # Obter informações de uso de tokens
+            if hasattr(response, 'usage'):
+                tokens_used = (
+                    response.usage.prompt_tokens + 
+                    response.usage.completion_tokens
+                )
+            else:
+                # Estimativa: 1 token ≈ 4 caracteres
+                full_prompt = system_prompt + "\n\n" + "\n".join([m["content"] for m in messages[1:]])
                 tokens_used = len(full_prompt) // 4 + len(assistant_message) // 4
 
             # Processar sugestões e metadados
