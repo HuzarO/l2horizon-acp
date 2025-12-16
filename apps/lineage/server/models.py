@@ -43,6 +43,7 @@ class ApiEndpointToggle(BaseModel):
     user_change_password = models.BooleanField(default=True, verbose_name=_("User Change Password"))
     user_dashboard = models.BooleanField(default=True, verbose_name=_("User Dashboard"))
     user_stats = models.BooleanField(default=True, verbose_name=_("User Stats"))
+    user_game_data = models.BooleanField(default=True, verbose_name=_("User Game Data"))
     
     # =========================== SEARCH ENDPOINTS ===========================
     search_character = models.BooleanField(default=True, verbose_name=_("Search Character"))
@@ -107,6 +108,7 @@ class ApiEndpointToggle(BaseModel):
                 'user_change_password': self.user_change_password,
                 'user_dashboard': self.user_dashboard,
                 'user_stats': self.user_stats,
+                'user_game_data': self.user_game_data,
             },
             'search': {
                 'search_character': self.search_character,
@@ -161,6 +163,7 @@ class ApiEndpointToggle(BaseModel):
             'user_change_password': self.user_change_password,
             'user_dashboard': self.user_dashboard,
             'user_stats': self.user_stats,
+            'user_game_data': self.user_game_data,
             'search_character': self.search_character,
             'search_item': self.search_item,
             'clan_detail': self.clan_detail,

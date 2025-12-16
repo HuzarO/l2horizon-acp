@@ -17,7 +17,7 @@ class ApiEndpointToggleAdmin(BaseModelAdmin):
         # Authentication endpoints
         'auth_login', 'auth_refresh', 'auth_logout',
         # User endpoints
-        'user_profile', 'user_change_password', 'user_dashboard', 'user_stats',
+        'user_profile', 'user_change_password', 'user_dashboard', 'user_stats', 'user_game_data',
         # Search endpoints
         'search_character', 'search_item',
         # Game data endpoints

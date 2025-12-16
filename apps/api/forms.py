@@ -18,7 +18,7 @@ class ApiEndpointToggleForm(forms.ModelForm):
             'auth_login', 'auth_refresh', 'auth_logout',
             
             # User endpoints
-            'user_profile', 'user_change_password', 'user_dashboard', 'user_stats',
+            'user_profile', 'user_change_password', 'user_dashboard', 'user_stats', 'user_game_data',
             
             # Search endpoints
             'search_character', 'search_item',
@@ -82,6 +82,7 @@ class ApiEndpointToggleForm(forms.ModelForm):
                 'user_change_password': 'User Change Password',
                 'user_dashboard': 'User Dashboard',
                 'user_stats': 'User Stats',
+                'user_game_data': 'User Game Data',
                 'search_character': 'Search Character',
                 'search_item': 'Search Item',
                 'clan_detail': 'Clan Detail',

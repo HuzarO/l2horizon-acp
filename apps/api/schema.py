@@ -9,7 +9,7 @@ from .serializers import (
     CustomTokenObtainPairSerializer, RefreshTokenSerializer, LoginSerializer,
     UserProfileSerializer, ChangePasswordSerializer, CharacterSerializer,
     ItemSerializer, ClanDetailSerializer, AuctionItemSerializer,
-    APIResponseSerializer, ServerStatusSerializer
+    APIResponseSerializer, ServerStatusSerializer, UserGameDataSerializer
 )
 
 
@@ -382,6 +382,28 @@ class UserAPISchema:
             },
             tags=["Usuário"],
             auth=[{'Bearer': []}]
+        )
+    
+    @staticmethod
+    def user_game_data_schema():
+        return extend_schema(
+            summary="Dados de XP e Conquistas do Usuário",
+            description="Retorna dados de level, XP, conquistas e jogos do usuário pelo nome de usuário. **Endpoint público** - não requer autenticação.",
+            parameters=[
+                OpenApiParameter(
+                    name='username',
+                    type=str,
+                    location=OpenApiParameter.QUERY,
+                    description='Nome de usuário no sistema',
+                    required=True
+                )
+            ],
+            responses={
+                status.HTTP_200_OK: UserGameDataSerializer,
+                status.HTTP_404_NOT_FOUND: APIResponseSerializer,
+            },
+            tags=["Usuário"],
+            auth=[]
         )
 
 

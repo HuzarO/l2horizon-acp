@@ -257,4 +257,18 @@ class DiscordServerSerializer(serializers.ModelSerializer):
         model = DiscordServer
         fields = ['uuid', 'discord_guild_id', 'site_domain', 'server_name', 
                   'is_active', 'notes', 'created_at', 'updated_at']
-        read_only_fields = ['uuid', 'created_at', 'updated_at'] 
+        read_only_fields = ['uuid', 'created_at', 'updated_at']
+
+
+class UserGameDataSerializer(serializers.Serializer):
+    """Serializer para dados de XP, conquistas e jogos do usuário"""
+    username = serializers.CharField()
+    level = serializers.IntegerField()
+    xp = serializers.IntegerField()
+    xp_for_next_level = serializers.IntegerField()
+    achievements_count = serializers.IntegerField()
+    total_achievements = serializers.IntegerField()
+    battle_pass_xp = serializers.IntegerField(required=False, allow_null=True)
+    battle_pass_level = serializers.IntegerField(required=False, allow_null=True)
+    games_played = serializers.IntegerField(required=False, default=0)
+    fichas = serializers.IntegerField(required=False, default=0) 
