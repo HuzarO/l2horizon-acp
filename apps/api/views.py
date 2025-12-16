@@ -22,7 +22,8 @@ from .serializers import (
     CustomTokenObtainPairSerializer, RefreshTokenSerializer, LoginSerializer,
     UserProfileSerializer, ChangePasswordSerializer, CharacterSerializer,
     ItemSerializer, ClanDetailSerializer, AuctionItemSerializer,
-    APIResponseSerializer, ServerStatusSerializer, DiscordServerSerializer
+    APIResponseSerializer, ServerStatusSerializer, DiscordServerSerializer,
+    UserGameDataSerializer
 )
 from .forms import ApiEndpointToggleForm
 from .permissions import IsSuperUser, IsAPIAdmin, IsMonitoringAdmin
@@ -2278,6 +2279,7 @@ class APIRedirectView(APIView):
                     '/api/v1/user/profile/',
                     '/api/v1/user/dashboard/',
                     '/api/v1/user/stats/',
+                    '/api/v1/user/game-data/',
                 ],
                 'admin_only': [
                     '/api/v1/metrics/hourly/',
@@ -2419,6 +2421,89 @@ class DiscordServerView(APIView):
                 {'error': 'Erro ao buscar servidor'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+@endpoint_enabled('user_game_data')
+class UserGameDataView(APIView):
+    """
+    Endpoint para obter dados de XP, conquistas e jogos do usuário
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [PublicAPIRateThrottle]
+    
+    @UserAPISchema.user_game_data_schema()
+    def get(self, request):
+        """Busca dados de XP e conquistas do usuário"""
+        from apps.main.home.models import PerfilGamer, Conquista, ConquistaUsuario, User
+        from apps.lineage.games.models import UserBattlePassProgress, BattlePassSeason
+        
+        username = request.query_params.get('username')
+        
+        if not username:
+            return Response(
+                {'error': 'username é obrigatório'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Usuário não encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Busca ou cria PerfilGamer
+        perfil_gamer, _ = PerfilGamer.objects.get_or_create(
+            user=user,
+            defaults={'xp': 0, 'level': 1}
+        )
+        
+        # Conta conquistas
+        total_achievements = Conquista.objects.count()
+        user_achievements = ConquistaUsuario.objects.filter(usuario=user).count()
+        
+        # Busca dados do Battle Pass (se houver temporada ativa)
+        battle_pass_xp = None
+        battle_pass_level = None
+        active_season = BattlePassSeason.objects.filter(is_active=True).first()
+        if active_season:
+            try:
+                progress = UserBattlePassProgress.objects.get(
+                    user=user,
+                    season=active_season
+                )
+                battle_pass_xp = progress.xp
+                current_level = progress.get_current_level()
+                battle_pass_level = current_level.level if current_level else 0
+            except UserBattlePassProgress.DoesNotExist:
+                pass
+        
+        # Conta jogos (pode ser expandido depois)
+        games_played = 0
+        # Exemplo: contar spins, boxes abertas, etc.
+        from apps.lineage.games.models import SpinHistory, Box
+        games_played = (
+            SpinHistory.objects.filter(user=user).count() +
+            Box.objects.filter(user=user, opened=True).count()
+        )
+        
+        # Prepara dados
+        data = {
+            'username': user.username,
+            'level': perfil_gamer.level,
+            'xp': perfil_gamer.xp,
+            'xp_for_next_level': perfil_gamer.xp_para_proximo_nivel(),
+            'achievements_count': user_achievements,
+            'total_achievements': total_achievements,
+            'battle_pass_xp': battle_pass_xp,
+            'battle_pass_level': battle_pass_level,
+            'games_played': games_played,
+            'fichas': user.fichas,
+        }
+        
+        serializer = UserGameDataSerializer(data)
+        return Response(serializer.data)
 
 
 class DiscordServerByDomainView(APIView):

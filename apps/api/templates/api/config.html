@@ -691,7 +691,7 @@
                             </h4>
                             <div class="endpoints-grid">
                                 {% for field in form %}
-                                    {% if field.name in 'user_profile,user_change_password,user_dashboard,user_stats' %}
+                                    {% if field.name in 'user_profile,user_change_password,user_dashboard,user_stats,user_game_data' %}
                                         <div class="endpoint-card{% if not field.value %} disabled{% endif %}" data-endpoint="{{ field.name }}">
                                             <div class="endpoint-header">
                                                 <div class="endpoint-info">

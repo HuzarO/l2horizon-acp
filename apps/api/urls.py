@@ -66,6 +66,7 @@ v1_patterns = [
     # =========================== DISCORD BOT ===========================
     path('discord/server/', views.DiscordServerView.as_view(), name='discord_server'),
     path('discord/server/by-domain/', views.DiscordServerByDomainView.as_view(), name='discord_server_by_domain'),
+    path('user/game-data/', views.UserGameDataView.as_view(), name='user_game_data'),
 ]
 
 # URLs principais com versionamento
