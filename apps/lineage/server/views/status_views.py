@@ -181,7 +181,12 @@ def boss_jewel_locations_view(request):
     db = LineageDB()
     if db.is_connected():
 
-        boss_jewel_ids = [6656, 6657, 6658, 6659, 6660, 6661, 8191]
+        # IDs de todas as joias de boss disponíveis
+        # B-grade: 6660, 22174
+        # A-grade: 6661, 8191, 6662
+        # S-grade: 6656, 6657, 6658, 6659, 22173
+        # S84-grade: 16025, 16026, 21712, 22175
+        boss_jewel_ids = [6656, 6657, 6658, 6659, 6660, 6661, 6662, 8191, 16025, 16026, 21712, 22173, 22174, 22175]
         jewel_locations = LineageStats.boss_jewel_locations(boss_jewel_ids)
 
         # Caminho para o itens.json

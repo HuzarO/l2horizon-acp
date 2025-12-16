@@ -271,4 +271,5 @@ class UserGameDataSerializer(serializers.Serializer):
     battle_pass_xp = serializers.IntegerField(required=False, allow_null=True)
     battle_pass_level = serializers.IntegerField(required=False, allow_null=True)
     games_played = serializers.IntegerField(required=False, default=0)
-    fichas = serializers.IntegerField(required=False, default=0) 
+    fichas = serializers.IntegerField(required=False, default=0)
+    xp_ranking_position = serializers.IntegerField(required=False, allow_null=True) 
