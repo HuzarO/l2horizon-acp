@@ -292,7 +292,7 @@ GET /api/server/boss-jewel-locations/?ids=6656,6657,6658
 **Parâmetros:**
 - `ids` (obrigatório): IDs dos jewels separados por vírgula
 
-**IDs Válidos:** 6656, 6657, 6658, 6659, 6660, 6661, 8191
+**IDs Válidos:** 6656, 6657, 6658, 6659, 6660, 6661, 6662, 8191, 16025, 16026, 21712, 22173, 22174, 22175
 
 **Resposta:**
 ```json

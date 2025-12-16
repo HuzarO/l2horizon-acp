@@ -11,6 +11,7 @@ from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.utils import timezone
+from django.db import models
 from datetime import datetime
 import logging
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -896,7 +897,12 @@ class BossJewelLocationsView(GenericAPIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            allowed_ids = [6656, 6657, 6658, 6659, 6660, 6661, 8191]
+            # IDs de todas as joias de boss disponíveis
+            # B-grade: 6660, 22174
+            # A-grade: 6661, 8191, 6662
+            # S-grade: 6656, 6657, 6658, 6659, 22173
+            # S84-grade: 16025, 16026, 21712, 22175
+            allowed_ids = [6656, 6657, 6658, 6659, 6660, 6661, 6662, 8191, 16025, 16026, 21712, 22173, 22174, 22175]
             if not all(id in allowed_ids for id in jewel_ids_list):
                 return Response(
                     {"error": "ID(s) de jewel inválido(s)"},
@@ -2488,6 +2494,18 @@ class UserGameDataView(APIView):
             Box.objects.filter(user=user, opened=True).count()
         )
         
+        # Calcula posição no ranking de XP do PDL
+        # Ordena por XP decrescente, depois por ID crescente (desempate)
+        # Conta quantos perfis estão à frente deste no ranking
+        xp_ranking_position = (
+            PerfilGamer.objects
+            .filter(
+                models.Q(xp__gt=perfil_gamer.xp) |
+                models.Q(xp=perfil_gamer.xp, user__id__lt=user.id)
+            )
+            .count() + 1
+        )
+        
         # Prepara dados
         data = {
             'username': user.username,
@@ -2500,6 +2518,7 @@ class UserGameDataView(APIView):
             'battle_pass_level': battle_pass_level,
             'games_played': games_played,
             'fichas': user.fichas,
+            'xp_ranking_position': xp_ranking_position,
         }
         
         serializer = UserGameDataSerializer(data)
