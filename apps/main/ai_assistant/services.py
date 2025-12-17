@@ -54,12 +54,17 @@ class AIAssistantService:
                 )
 
     def get_faq_context(self, language: str = 'pt') -> str:
-        """Obtém contexto das FAQs públicas para incluir no prompt"""
+        """Obtém contexto das FAQs (públicas e internas) para incluir no prompt da IA"""
         try:
-            faqs = FAQ.objects.filter(is_public=True)
+            # Incluir FAQs públicas E internas para melhor contexto da IA
+            # FAQs com show_in_internal=True são usadas para treinar a IA mesmo se não forem públicas
+            from django.db.models import Q
+            faqs = FAQ.objects.filter(
+                Q(is_public=True) | Q(show_in_internal=True)
+            ).distinct().order_by('order')
             context_parts = []
             
-            for faq in faqs[:20]:  # Limitar a 20 FAQs para não exceder o contexto
+            for faq in faqs[:80]:  # Aumentado para 80 FAQs para cobrir todo o conteúdo
                 translation = faq.translations.filter(language=language).first()
                 if translation:
                     context_parts.append(
