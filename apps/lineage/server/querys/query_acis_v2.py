@@ -921,67 +921,106 @@ class TransferFromWalletToChar:
             return None
 
         owner_id = char_result[0]["obj_Id"]
-        object_id = owner_id
 
-        if object_id != 0:
-            # Atualiza item existente
+        # Buscar itens existentes com o mesmo item_id e enchant no inventário
+        existing_items_query = """
+            SELECT * FROM items
+            WHERE owner_id = :owner_id 
+            AND item_id = :coin_id 
+            AND enchant_level = :enchant
+            AND loc = 'INVENTORY'
+        """
+        existing_items = db.select(existing_items_query, {
+            "owner_id": owner_id,
+            "coin_id": coin_id,
+            "enchant": enchant
+        })
+
+        # Detectar se o item é stackable (acumulável)
+        # Se existe apenas 1 item com count > 1, é stackable
+        # Se existem múltiplos itens com count = 1, não é stackable
+        is_stackable = False
+        if existing_items:
+            if len(existing_items) == 1 and existing_items[0]["count"] > 1:
+                is_stackable = True
+            elif len(existing_items) == 1 and existing_items[0]["count"] == 1:
+                # Se tem apenas 1 item com count = 1, pode ser stackable ou não
+                # Tentar atualizar primeiro, se falhar, inserir individualmente
+                is_stackable = True
+            else:
+                # Múltiplos itens = não stackable
+                is_stackable = False
+
+        # Se é stackable e existe item, atualizar count
+        if is_stackable and existing_items:
+            item = existing_items[0]
             update_query = """
                 UPDATE items SET count = count + :amount
                 WHERE object_id = :object_id AND owner_id = :owner_id
             """
-            db.update(update_query, {
+            result = db.update(update_query, {
                 "amount": amount,
-                "object_id": object_id,
+                "object_id": item["object_id"],
                 "owner_id": owner_id
             })
-            return True
+            if result:
+                return True
+            # Se falhou ao atualizar, pode ser que não seja stackable mesmo
+            # Continuar para inserir individualmente
 
-        # Gerar novo object_id (começando com 7)
-        last_object_query = """
-            SELECT object_id FROM items 
-            WHERE object_id LIKE '7%' 
-            ORDER BY object_id DESC LIMIT 1
-        """
-        last_object_result = db.select(last_object_query)
-        if not last_object_result:
-            new_object_id = 700000000
-        else:
-            last_object_id = int(last_object_result[0]["object_id"])
-            new_object_id = last_object_id + 1
+        # Se não é stackable ou não existe item, inserir individualmente
+        # Para itens não stackable, cada unidade precisa de um object_id único
+        success_count = 0
+        
+        for i in range(amount):
+            # Gerar novo object_id (começando com 7)
+            last_object_query = """
+                SELECT object_id FROM items 
+                WHERE object_id LIKE '7%' 
+                ORDER BY object_id DESC LIMIT 1
+            """
+            last_object_result = db.select(last_object_query)
+            if not last_object_result:
+                new_object_id = 700000000
+            else:
+                last_object_id = int(last_object_result[0]["object_id"])
+                new_object_id = last_object_id + 1 + i
 
-        # Pegar o último loc_data do player
-        last_loc_query = """
-            SELECT loc_data FROM items 
-            WHERE owner_id = :owner_id 
-            ORDER BY loc_data DESC LIMIT 1
-        """
-        last_loc_result = db.select(last_loc_query, {"owner_id": owner_id})
-        if not last_loc_result:
-            new_loc_data = 0
-        else:
-            last_loc_data = int(last_loc_result[0]["loc_data"])
-            new_loc_data = last_loc_data + 1
+            # Pegar o último loc_data do player
+            last_loc_query = """
+                SELECT loc_data FROM items 
+                WHERE owner_id = :owner_id 
+                ORDER BY loc_data DESC LIMIT 1
+            """
+            last_loc_result = db.select(last_loc_query, {"owner_id": owner_id})
+            if not last_loc_result:
+                new_loc_data = 0
+            else:
+                last_loc_data = int(last_loc_result[0]["loc_data"])
+                new_loc_data = last_loc_data + 1 + i
 
-        # Inserir novo item
-        insert_query = """
-            INSERT INTO items (
-                owner_id, object_id, item_id, count,
-                enchant_level, loc, loc_data
-            ) VALUES (
-                :owner_id, :object_id, :coin_id, :amount,
-                :enchant, 'INVENTORY', :loc_data
-            )
-        """
-        result = db.insert(insert_query, {
-            "owner_id": owner_id,
-            "object_id": new_object_id,
-            "coin_id": coin_id,
-            "amount": amount,
-            "enchant": enchant,
-            "loc_data": new_loc_data
-        })
+            # Inserir novo item (sempre com count = 1 para não stackable)
+            insert_query = """
+                INSERT INTO items (
+                    owner_id, object_id, item_id, count,
+                    enchant_level, loc, loc_data
+                ) VALUES (
+                    :owner_id, :object_id, :coin_id, 1,
+                    :enchant, 'INVENTORY', :loc_data
+                )
+            """
+            result = db.insert(insert_query, {
+                "owner_id": owner_id,
+                "object_id": new_object_id,
+                "coin_id": coin_id,
+                "enchant": enchant,
+                "loc_data": new_loc_data
+            })
+            
+            if result:
+                success_count += 1
 
-        return result is not None
+        return success_count == amount
 
 
 class TransferFromCharToWallet:

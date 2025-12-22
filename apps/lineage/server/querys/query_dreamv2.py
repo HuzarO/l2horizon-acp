@@ -942,22 +942,38 @@ class TransferFromWalletToChar:
 
         owner_id = char_result[0]["charId"]
 
-        # Check if item already exists in inventory
-        check_query = """
-            SELECT object_id FROM items 
+        # Buscar itens existentes com o mesmo item_id e enchant no inventário
+        existing_items_query = """
+            SELECT * FROM items
             WHERE owner_id = :owner_id 
             AND item_id = :coin_id 
-            AND loc = 'INVENTORY' 
-            LIMIT 1
+            AND enchant_level = :enchant
+            AND loc = 'INVENTORY'
         """
-        existing_item = db.select(check_query, {
+        existing_items = db.select(existing_items_query, {
             "owner_id": owner_id,
-            "coin_id": coin_id
+            "coin_id": coin_id,
+            "enchant": enchant
         })
 
-        if existing_item:
-            # Item exists, update count
-            object_id = existing_item[0]["object_id"]
+        # Detectar se o item é stackable (acumulável)
+        # Se existe apenas 1 item com count > 1, é stackable
+        # Se existem múltiplos itens com count = 1, não é stackable
+        is_stackable = False
+        if existing_items:
+            if len(existing_items) == 1 and existing_items[0]["count"] > 1:
+                is_stackable = True
+            elif len(existing_items) == 1 and existing_items[0]["count"] == 1:
+                # Se tem apenas 1 item com count = 1, pode ser stackable ou não
+                # Tentar atualizar primeiro, se falhar, inserir individualmente
+                is_stackable = True
+            else:
+                # Múltiplos itens = não stackable
+                is_stackable = False
+
+        # Se é stackable e existe item, atualizar count
+        if is_stackable and existing_items:
+            item = existing_items[0]
             update_query = """
                 UPDATE items 
                 SET count = count + :amount 
@@ -967,69 +983,69 @@ class TransferFromWalletToChar:
             """
             result = db.update(update_query, {
                 "amount": amount,
-                "object_id": object_id,
+                "object_id": item["object_id"],
                 "owner_id": owner_id
             })
-            if not result:
-                print(f"Erro ao atualizar item existente: {object_id}")
+            if result:
+                return True
+            # Se falhou ao atualizar, pode ser que não seja stackable mesmo
+            # Continuar para inserir individualmente
+
+        # Se não é stackable ou não existe item, inserir individualmente
+        # Para itens não stackable, cada unidade precisa de um object_id único
+        success_count = 0
+        
+        for i in range(amount):
+            # Get last object_id
+            last_object_query = "SELECT object_id FROM items ORDER BY object_id DESC LIMIT 1"
+            last_object_result = db.select(last_object_query)
+            if not last_object_result:
+                new_object_id = 700000000
             else:
-                print(f"Item existente atualizado com sucesso: {object_id}")
-            return result
+                last_object_id = int(last_object_result[0]["object_id"])
+                new_object_id = last_object_id + 1 + i
 
-        # Item doesn't exist, create new one
-        # Get last object_id
-        last_object_query = "SELECT object_id FROM items ORDER BY object_id DESC LIMIT 1"
-        last_object_result = db.select(last_object_query)
-        if not last_object_result:
-            new_object_id = 700000000
-        else:
-            last_object_id = int(last_object_result[0]["object_id"])
-            new_object_id = last_object_id + 1
+            # Get last loc_data for this owner
+            last_loc_query = """
+                SELECT loc_data FROM items 
+                WHERE owner_id = :owner_id 
+                ORDER BY loc_data DESC LIMIT 1
+            """
+            last_loc_result = db.select(last_loc_query, {"owner_id": owner_id})
+            if not last_loc_result:
+                new_loc_data = 0
+            else:
+                last_loc_data = int(last_loc_result[0]["loc_data"])
+                new_loc_data = last_loc_data + 1 + i
 
-        # Get last loc_data for this owner
-        last_loc_query = """
-            SELECT loc_data FROM items 
-            WHERE owner_id = :owner_id 
-            ORDER BY loc_data DESC LIMIT 1
-        """
-        last_loc_result = db.select(last_loc_query, {"owner_id": owner_id})
-        if not last_loc_result:
-            new_loc_data = 0
-        else:
-            last_loc_data = int(last_loc_result[0]["loc_data"])
-            new_loc_data = last_loc_data + 1
+            # Get current timestamp
+            creation_time = int(time.time())
 
-        # Get current timestamp
-        creation_time = int(time.time())
+            # Insert new item with all required fields (sempre com count = 1 para não stackable)
+            insert_query = """
+                INSERT INTO items (
+                    owner_id, object_id, item_id, count,
+                    enchant_level, loc, loc_data, process,
+                    creator_id, first_owner_id, creation_time
+                ) VALUES (
+                    :owner_id, :object_id, :coin_id, 1,
+                    :enchant, 'INVENTORY', :loc_data, 'admin_create',
+                    268501254, 268501254, :creation_time
+                )
+            """
+            result = db.insert(insert_query, {
+                "owner_id": owner_id,
+                "object_id": new_object_id,
+                "coin_id": coin_id,
+                "enchant": enchant,
+                "loc_data": new_loc_data,
+                "creation_time": creation_time
+            })
+            
+            if result:
+                success_count += 1
 
-        # Insert new item with all required fields
-        insert_query = """
-            INSERT INTO items (
-                owner_id, object_id, item_id, count,
-                enchant_level, loc, loc_data, process,
-                creator_id, first_owner_id, creation_time
-            ) VALUES (
-                :owner_id, :object_id, :coin_id, :amount,
-                :enchant, 'INVENTORY', :loc_data, 'admin_create',
-                268501254, 268501254, :creation_time
-            )
-        """
-        result = db.insert(insert_query, {
-            "owner_id": owner_id,
-            "object_id": new_object_id,
-            "coin_id": coin_id,
-            "amount": amount,
-            "enchant": enchant,
-            "loc_data": new_loc_data,
-            "creation_time": creation_time
-        })
-
-        if not result:
-            print(f"Erro ao criar novo item: {new_object_id}")
-        else:
-            print(f"Novo item criado com sucesso: {new_object_id}")
-
-        return result is not None
+        return success_count == amount
 
 
 class TransferFromCharToWallet:

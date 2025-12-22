@@ -281,9 +281,36 @@ def inserir_item_servidor(request, char_name, item_id):
         messages.success(request, f'{quantity}x {item.item_name} inserido no servidor com sucesso!')
         return redirect('inventory:inventario_dashboard')
 
+    # Verificar se o item é não acumulativo (não stackable) no inventário do personagem
+    # para mostrar aviso ao usuário
+    is_non_stackable = False
+    try:
+        if not TransferFromWalletToChar.items_delayed:
+            # Para queries que inserem direto na tabela items, verificar itens existentes
+            # Usar search_coin que já faz o join correto
+            existing_items = TransferFromWalletToChar.search_coin(personagem[0]['char_name'], item_id)
+            if existing_items:
+                # Filtrar por enchant e loc = 'INVENTORY'
+                filtered_items = [
+                    it for it in existing_items 
+                    if it.get('enchant_level', 0) == item.enchant 
+                    and it.get('loc', '').upper() == 'INVENTORY'
+                ]
+                
+                if filtered_items:
+                    # Se existem múltiplos itens com count = 1, é não stackable
+                    # Se existe apenas 1 item com count > 1, é stackable
+                    if len(filtered_items) > 1:
+                        # Múltiplos itens = não stackable
+                        is_non_stackable = True
+    except Exception:
+        # Se houver erro na verificação, não mostrar aviso (fail-safe)
+        pass
+
     context = {
         'personagem': personagem[0],
         'item': item,
+        'is_non_stackable': is_non_stackable,
     }
     context.update(get_lineage_template_context(request))
     return render(request, 'pages/inserir_item_direct.html', context)
