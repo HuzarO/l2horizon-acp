@@ -868,29 +868,81 @@ class TransferFromWalletToChar:
 
         owner_id = char_result[0]["obj_Id"]
 
-        # Inserir na tabela `items_delayed` como na lógica do PHP
-        insert_query = """
-            INSERT INTO items_delayed (
-                payment_id, owner_id, item_id, count,
-                enchant_level, variationId1, variationId2,
-                flags, payment_status, description
-            )
-            SELECT
-                COALESCE(MAX(payment_id), 0) + 1,
-                :owner_id, :coin_id, :amount,
-                :enchant, 0, 0,
-                0, 0, 'DONATE WEB'
-            FROM items_delayed
+        # Verificar na tabela items (itens já processados) se o item é stackable
+        existing_items_query = """
+            SELECT * FROM items
+            WHERE owner_id = :owner_id 
+            AND item_id = :coin_id 
+            AND enchant_level = :enchant
+            AND loc = 'INVENTORY'
         """
-
-        result = db.insert(insert_query, {
+        existing_items = db.select(existing_items_query, {
             "owner_id": owner_id,
             "coin_id": coin_id,
-            "amount": amount,
             "enchant": enchant
         })
 
-        return result is not None
+        # Detectar se o item é stackable (acumulável)
+        # Se existe apenas 1 item com count > 1, é stackable
+        # Se existem múltiplos itens com count = 1, não é stackable
+        is_stackable = False
+        if existing_items:
+            if len(existing_items) == 1 and existing_items[0]["count"] > 1:
+                is_stackable = True
+            elif len(existing_items) == 1 and existing_items[0]["count"] == 1:
+                # Se tem apenas 1 item com count = 1, pode ser stackable ou não
+                is_stackable = True
+            else:
+                # Múltiplos itens = não stackable
+                is_stackable = False
+
+        # Se é stackable, inserir um único registro com a quantidade total
+        if is_stackable:
+            insert_query = """
+                INSERT INTO items_delayed (
+                    payment_id, owner_id, item_id, count,
+                    enchant_level, variationId1, variationId2,
+                    flags, payment_status, description
+                )
+                SELECT
+                    COALESCE(MAX(payment_id), 0) + 1,
+                    :owner_id, :coin_id, :amount,
+                    :enchant, 0, 0,
+                    0, 0, 'DONATE WEB'
+                FROM items_delayed
+            """
+            result = db.insert(insert_query, {
+                "owner_id": owner_id,
+                "coin_id": coin_id,
+                "amount": amount,
+                "enchant": enchant
+            })
+            return result is not None
+        else:
+            # Não stackable: inserir múltiplos registros, um para cada unidade
+            success_count = 0
+            for i in range(amount):
+                insert_query = """
+                    INSERT INTO items_delayed (
+                        payment_id, owner_id, item_id, count,
+                        enchant_level, variationId1, variationId2,
+                        flags, payment_status, description
+                    )
+                    SELECT
+                        COALESCE(MAX(payment_id), 0) + 1,
+                        :owner_id, :coin_id, 1,
+                        :enchant, 0, 0,
+                        0, 0, 'DONATE WEB'
+                    FROM items_delayed
+                """
+                result = db.insert(insert_query, {
+                    "owner_id": owner_id,
+                    "coin_id": coin_id,
+                    "enchant": enchant
+                })
+                if result:
+                    success_count += 1
+            return success_count == amount
 
 
 class TransferFromCharToWallet:

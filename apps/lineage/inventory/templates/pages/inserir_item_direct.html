@@ -24,7 +24,29 @@
         <p class="mb-0">
           <strong>{{ item.item_name }}</strong> — {% trans "Disponível" %}: {{ item.quantity }}
         </p>
-      </div>     
+      </div>
+
+      {% if is_non_stackable %}
+      <div class="alert alert-warning d-flex align-items-start mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+        <div>
+          <strong>{% trans "Atenção!" %}</strong>
+          <p class="mb-0 mt-1">
+            {% trans "Este item não é acumulativo. Por precaução, recomendamos enviar 1 unidade por vez para evitar problemas." %}
+          </p>
+        </div>
+      </div>
+      {% else %}
+      <div class="alert alert-info d-flex align-items-start mb-4" role="alert">
+        <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+        <div>
+          <strong>{% trans "Dica:" %}</strong>
+          <p class="mb-0 mt-1">
+            {% trans "Se você não tiver certeza se o item é acumulativo, recomendamos enviar 1 unidade por vez por precaução." %}
+          </p>
+        </div>
+      </div>
+      {% endif %}     
 
       <form method="post">
         {% csrf_token %}

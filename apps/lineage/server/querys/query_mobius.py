@@ -834,6 +834,34 @@ class TransferFromWalletToChar:
 
         owner_id = char_result[0]["obj_Id"]
 
+        # Verificar na tabela items (itens já processados) se o item é stackable
+        existing_items_query = """
+            SELECT * FROM items
+            WHERE owner_id = :owner_id 
+            AND item_id = :coin_id 
+            AND enchant_level = :enchant
+            AND loc = 'INVENTORY'
+        """
+        existing_items = db.select(existing_items_query, {
+            "owner_id": owner_id,
+            "coin_id": coin_id,
+            "enchant": enchant
+        })
+
+        # Detectar se o item é stackable (acumulável)
+        # Se existe apenas 1 item com count > 1, é stackable
+        # Se existem múltiplos itens com count = 1, não é stackable
+        is_stackable = False
+        if existing_items:
+            if len(existing_items) == 1 and existing_items[0]["count"] > 1:
+                is_stackable = True
+            elif len(existing_items) == 1 and existing_items[0]["count"] == 1:
+                # Se tem apenas 1 item com count = 1, pode ser stackable ou não
+                is_stackable = True
+            else:
+                # Múltiplos itens = não stackable
+                is_stackable = False
+
         # Validar coin_id se for muito grande (SMALLINT tem limite de 32767)
         # Se a coluna item_id for SMALLINT e o valor > 32767, vai dar erro
         # Nesse caso, é necessário alterar o schema do banco:
@@ -848,7 +876,7 @@ class TransferFromWalletToChar:
         
         # Colunas obrigatórias
         cols_to_insert = ['payment_id', 'owner_id', 'item_id', 'count']
-        values_to_insert = ['COALESCE(MAX(payment_id), 0) + 1', ':owner_id', ':coin_id', ':amount']
+        values_to_insert = ['COALESCE(MAX(payment_id), 0) + 1', ':owner_id', ':coin_id', ':count_value']
         
         # Adicionar enchant se existir
         if 'enchant_level' in columns:
@@ -873,20 +901,38 @@ class TransferFromWalletToChar:
         cols_str = ', '.join(cols_to_insert)
         values_str = ', '.join(values_to_insert)
         
-        insert_query = f"""
-            INSERT INTO items_delayed ({cols_str})
-            SELECT {values_str}
-            FROM items_delayed
-        """
-
-        result = db.insert(insert_query, {
-            "owner_id": owner_id,
-            "coin_id": coin_id,
-            "amount": amount,
-            "enchant": enchant
-        })
-
-        return result is not None
+        # Se é stackable, inserir um único registro com a quantidade total
+        if is_stackable:
+            insert_query = f"""
+                INSERT INTO items_delayed ({cols_str})
+                SELECT {values_str}
+                FROM items_delayed
+            """
+            result = db.insert(insert_query, {
+                "owner_id": owner_id,
+                "coin_id": coin_id,
+                "count_value": amount,
+                "enchant": enchant
+            })
+            return result is not None
+        else:
+            # Não stackable: inserir múltiplos registros, um para cada unidade
+            success_count = 0
+            for i in range(amount):
+                insert_query = f"""
+                    INSERT INTO items_delayed ({cols_str})
+                    SELECT {values_str}
+                    FROM items_delayed
+                """
+                result = db.insert(insert_query, {
+                    "owner_id": owner_id,
+                    "coin_id": coin_id,
+                    "count_value": 1,
+                    "enchant": enchant
+                })
+                if result:
+                    success_count += 1
+            return success_count == amount
 
 
 

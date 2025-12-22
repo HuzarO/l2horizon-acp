@@ -928,24 +928,72 @@ class TransferFromWalletToChar:
 
         char_id = char_result[0]["charId"]
 
-        # Insere o pedido de entrega na tabela web_item_delivery
-        insert_query = """
-            INSERT INTO web_item_delivery (charId, item_id, count, loc)
-            VALUES (:char_id, :coin_id, :amount, :loc)
+        # Verificar na tabela items (itens já processados) se o item é stackable
+        existing_items_query = """
+            SELECT * FROM items
+            WHERE owner_id = :char_id 
+            AND item_id = :coin_id 
+            AND enchant_level = :enchant
+            AND loc = :loc
         """
-        result = db.insert(insert_query, {
+        existing_items = db.select(existing_items_query, {
             "char_id": char_id,
             "coin_id": coin_id,
-            "amount": amount,
+            "enchant": enchant,
             "loc": loc
         })
 
-        if not result:
-            print(f"Erro ao criar pedido de entrega para o personagem: {char_name}")
-        else:
-            print(f"Pedido de entrega criado com sucesso para o personagem: {char_name}")
+        # Detectar se o item é stackable (acumulável)
+        # Se existe apenas 1 item com count > 1, é stackable
+        # Se existem múltiplos itens com count = 1, não é stackable
+        is_stackable = False
+        if existing_items:
+            if len(existing_items) == 1 and existing_items[0]["count"] > 1:
+                is_stackable = True
+            elif len(existing_items) == 1 and existing_items[0]["count"] == 1:
+                # Se tem apenas 1 item com count = 1, pode ser stackable ou não
+                is_stackable = True
+            else:
+                # Múltiplos itens = não stackable
+                is_stackable = False
 
-        return result is not None
+        # Se é stackable, inserir um único registro com a quantidade total
+        if is_stackable:
+            insert_query = """
+                INSERT INTO web_item_delivery (charId, item_id, count, loc)
+                VALUES (:char_id, :coin_id, :amount, :loc)
+            """
+            result = db.insert(insert_query, {
+                "char_id": char_id,
+                "coin_id": coin_id,
+                "amount": amount,
+                "loc": loc
+            })
+            if not result:
+                print(f"Erro ao criar pedido de entrega para o personagem: {char_name}")
+            else:
+                print(f"Pedido de entrega criado com sucesso para o personagem: {char_name}")
+            return result is not None
+        else:
+            # Não stackable: inserir múltiplos registros, um para cada unidade
+            success_count = 0
+            for i in range(amount):
+                insert_query = """
+                    INSERT INTO web_item_delivery (charId, item_id, count, loc)
+                    VALUES (:char_id, :coin_id, 1, :loc)
+                """
+                result = db.insert(insert_query, {
+                    "char_id": char_id,
+                    "coin_id": coin_id,
+                    "loc": loc
+                })
+                if result:
+                    success_count += 1
+            if success_count == amount:
+                print(f"Pedidos de entrega criados com sucesso para o personagem: {char_name} ({amount} itens)")
+            else:
+                print(f"Erro ao criar alguns pedidos de entrega para o personagem: {char_name} ({success_count}/{amount})")
+            return success_count == amount
 
 
 class TransferFromCharToWallet:
