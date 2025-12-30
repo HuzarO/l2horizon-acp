@@ -922,46 +922,55 @@ class TransferFromWalletToChar:
         owner_id = char_result[0]["obj_Id"]
 
         # Buscar itens existentes com o mesmo item_id e enchant no inventário
-        # Verificar se a coluna enchant_level existe antes de usar
+        # Verificar se as colunas enchant_level e loc existem antes de usar
         existing_items = []
         columns = db.get_table_columns("items")
         has_enchant_level = 'enchant_level' in columns
+        has_loc = 'loc' in columns
+        
+        # Construir query dinamicamente baseado nas colunas disponíveis
+        where_conditions = ["owner_id = :owner_id", "item_id = :coin_id"]
+        query_params = {"owner_id": owner_id, "coin_id": coin_id}
         
         if has_enchant_level:
-            # Se a coluna existe, usar na query
+            where_conditions.append("enchant_level = :enchant")
+            query_params["enchant"] = enchant
+        
+        if has_loc:
+            where_conditions.append("loc = 'INVENTORY'")
+        
+        try:
+            existing_items_query = f"""
+                SELECT * FROM items
+                WHERE {' AND '.join(where_conditions)}
+            """
+            existing_items = db.select(existing_items_query, query_params)
+        except Exception:
+            # Se falhar, buscar todos e filtrar em Python
             try:
                 existing_items_query = """
                     SELECT * FROM items
                     WHERE owner_id = :owner_id 
-                    AND item_id = :coin_id 
-                    AND enchant_level = :enchant
-                    AND loc = 'INVENTORY'
-                """
-                existing_items = db.select(existing_items_query, {
-                    "owner_id": owner_id,
-                    "coin_id": coin_id,
-                    "enchant": enchant
-                })
-            except Exception:
-                existing_items = []
-        else:
-            # Se a coluna não existe, buscar todos e filtrar em Python
-            try:
-                existing_items_query = """
-                    SELECT * FROM items
-                    WHERE owner_id = :owner_id 
-                    AND item_id = :coin_id 
-                    AND loc = 'INVENTORY'
+                    AND item_id = :coin_id
                 """
                 all_items = db.select(existing_items_query, {
                     "owner_id": owner_id,
                     "coin_id": coin_id
                 })
-                # Filtrar por enchant em Python (tentar diferentes nomes de coluna)
+                # Filtrar por enchant e loc em Python
                 for item in all_items:
                     item_enchant = item.get('enchant_level') or item.get('enchant') or item.get('enchantLevel') or 0
-                    if item_enchant == enchant:
-                        existing_items.append(item)
+                    item_loc = item.get('loc') or item.get('location') or ''
+                    
+                    # Verificar enchant se necessário
+                    if has_enchant_level and item_enchant != enchant:
+                        continue
+                    
+                    # Verificar loc se necessário
+                    if has_loc and item_loc != 'INVENTORY':
+                        continue
+                    
+                    existing_items.append(item)
             except Exception:
                 # Se ainda falhar, continuar sem verificação (fail-safe)
                 existing_items = []
