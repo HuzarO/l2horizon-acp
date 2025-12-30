@@ -943,18 +943,42 @@ class TransferFromWalletToChar:
         owner_id = char_result[0]["charId"]
 
         # Buscar itens existentes com o mesmo item_id e enchant no inventário
-        existing_items_query = """
-            SELECT * FROM items
-            WHERE owner_id = :owner_id 
-            AND item_id = :coin_id 
-            AND enchant_level = :enchant
-            AND loc = 'INVENTORY'
-        """
-        existing_items = db.select(existing_items_query, {
-            "owner_id": owner_id,
-            "coin_id": coin_id,
-            "enchant": enchant
-        })
+        # Tentar com enchant_level primeiro, se falhar, buscar todos e filtrar em Python
+        existing_items = []
+        try:
+            existing_items_query = """
+                SELECT * FROM items
+                WHERE owner_id = :owner_id 
+                AND item_id = :coin_id 
+                AND enchant_level = :enchant
+                AND loc = 'INVENTORY'
+            """
+            existing_items = db.select(existing_items_query, {
+                "owner_id": owner_id,
+                "coin_id": coin_id,
+                "enchant": enchant
+            })
+        except Exception:
+            # Se falhar (coluna enchant_level não existe), buscar todos e filtrar em Python
+            try:
+                existing_items_query = """
+                    SELECT * FROM items
+                    WHERE owner_id = :owner_id 
+                    AND item_id = :coin_id 
+                    AND loc = 'INVENTORY'
+                """
+                all_items = db.select(existing_items_query, {
+                    "owner_id": owner_id,
+                    "coin_id": coin_id
+                })
+                # Filtrar por enchant em Python (tentar diferentes nomes de coluna)
+                for item in all_items:
+                    item_enchant = item.get('enchant_level') or item.get('enchant') or item.get('enchantLevel') or 0
+                    if item_enchant == enchant:
+                        existing_items.append(item)
+            except Exception:
+                # Se ainda falhar, continuar sem verificação (fail-safe)
+                existing_items = []
 
         # Detectar se o item é stackable (acumulável)
         # Se existe apenas 1 item com count > 1, é stackable

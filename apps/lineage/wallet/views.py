@@ -178,10 +178,15 @@ def transfer_to_server(request):
                         destino=nome_personagem
                     )
 
+                # Calcula a quantidade de moedas com arredondamento correto
+                # Usa Decimal para manter precisão e round() para arredondar corretamente
+                quantidade_moedas = Decimal(valor) * Decimal(multiplicador)
+                amount = int(round(quantidade_moedas))
+                
                 sucesso = TransferFromWalletToChar.insert_coin(
                     char_name=nome_personagem,
                     coin_id=COIN_ID,
-                    amount=int(valor * multiplicador)
+                    amount=amount
                 )
 
                 if not sucesso:
