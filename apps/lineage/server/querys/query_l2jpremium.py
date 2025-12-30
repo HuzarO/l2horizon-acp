@@ -929,19 +929,44 @@ class TransferFromWalletToChar:
         char_id = char_result[0]["charId"]
 
         # Verificar na tabela items (itens já processados) se o item é stackable
-        existing_items_query = """
-            SELECT * FROM items
-            WHERE owner_id = :char_id 
-            AND item_id = :coin_id 
-            AND enchant_level = :enchant
-            AND loc = :loc
-        """
-        existing_items = db.select(existing_items_query, {
-            "char_id": char_id,
-            "coin_id": coin_id,
-            "enchant": enchant,
-            "loc": loc
-        })
+        # Tentar com enchant_level primeiro, se falhar, buscar todos e filtrar em Python
+        existing_items = []
+        try:
+            existing_items_query = """
+                SELECT * FROM items
+                WHERE owner_id = :char_id 
+                AND item_id = :coin_id 
+                AND enchant_level = :enchant
+                AND loc = :loc
+            """
+            existing_items = db.select(existing_items_query, {
+                "char_id": char_id,
+                "coin_id": coin_id,
+                "enchant": enchant,
+                "loc": loc
+            })
+        except Exception:
+            # Se falhar (coluna enchant_level não existe), buscar todos e filtrar em Python
+            try:
+                existing_items_query = """
+                    SELECT * FROM items
+                    WHERE owner_id = :char_id 
+                    AND item_id = :coin_id 
+                    AND loc = :loc
+                """
+                all_items = db.select(existing_items_query, {
+                    "char_id": char_id,
+                    "coin_id": coin_id,
+                    "loc": loc
+                })
+                # Filtrar por enchant em Python (tentar diferentes nomes de coluna)
+                for item in all_items:
+                    item_enchant = item.get('enchant_level') or item.get('enchant') or item.get('enchantLevel') or 0
+                    if item_enchant == enchant:
+                        existing_items.append(item)
+            except Exception:
+                # Se ainda falhar, continuar sem verificação (fail-safe)
+                existing_items = []
 
         # Detectar se o item é stackable (acumulável)
         # Se existe apenas 1 item com count > 1, é stackable
