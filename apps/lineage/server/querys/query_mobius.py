@@ -835,23 +835,30 @@ class TransferFromWalletToChar:
         owner_id = char_result[0]["obj_Id"]
 
         # Verificar na tabela items (itens já processados) se o item é stackable
-        # Tentar com enchant_level primeiro, se falhar, buscar todos e filtrar em Python
+        # Verificar se a coluna enchant_level existe antes de usar
         existing_items = []
-        try:
-            existing_items_query = """
-                SELECT * FROM items
-                WHERE owner_id = :owner_id 
-                AND item_id = :coin_id 
-                AND enchant_level = :enchant
-                AND loc = 'INVENTORY'
-            """
-            existing_items = db.select(existing_items_query, {
-                "owner_id": owner_id,
-                "coin_id": coin_id,
-                "enchant": enchant
-            })
-        except Exception:
-            # Se falhar (coluna enchant_level não existe), buscar todos e filtrar em Python
+        columns = db.get_table_columns("items")
+        has_enchant_level = 'enchant_level' in columns
+        
+        if has_enchant_level:
+            # Se a coluna existe, usar na query
+            try:
+                existing_items_query = """
+                    SELECT * FROM items
+                    WHERE owner_id = :owner_id 
+                    AND item_id = :coin_id 
+                    AND enchant_level = :enchant
+                    AND loc = 'INVENTORY'
+                """
+                existing_items = db.select(existing_items_query, {
+                    "owner_id": owner_id,
+                    "coin_id": coin_id,
+                    "enchant": enchant
+                })
+            except Exception:
+                existing_items = []
+        else:
+            # Se a coluna não existe, buscar todos e filtrar em Python
             try:
                 existing_items_query = """
                     SELECT * FROM items
