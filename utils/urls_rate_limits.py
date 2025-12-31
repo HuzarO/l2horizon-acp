@@ -42,9 +42,11 @@ URL_RATE_LIMITS_DICT = {
     '/api/v1/metrics/':                               {'rate': '60/m', 'key': 'user', 'group': 'monitoring-api'},
     '/api/v1/cache/stats/':                           {'rate': '60/m', 'key': 'user', 'group': 'monitoring-api'},
 
-    # Outras APIs
-    '/app/wallet/transfer/servidor/': {'rate': '30/m', 'key': 'user_or_ip', 'group': 'wallet-transfers'},
-    '/app/wallet/transfer/jogador/':  {'rate': '30/m', 'key': 'user_or_ip', 'group': 'wallet-transfers'},
+    # =========================== WALLET / TRANSFERÊNCIAS ===========================
+    # Proteção contra spam e cliques múltiplos em transferências
+    '/app/wallet/transfer/server/':      {'rate': '1/m', 'key': 'user', 'group': 'wallet-transfers', 'method': 'POST'},
+    '/app/wallet/transfer/from-server/': {'rate': '1/m', 'key': 'user', 'group': 'wallet-transfers', 'method': 'POST'},
+    '/app/wallet/transfer/player/':      {'rate': '1/m', 'key': 'user', 'group': 'wallet-transfers', 'method': 'POST'},
         
     # =========================== AUTENTICAÇÃO WEB ===========================
     # Rotas críticas de autenticação - limites aumentados mas ainda seguros
