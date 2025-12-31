@@ -17,6 +17,9 @@ from apps.lineage.server.services.account_context import (
 )
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_http_methods
+from django.core.cache import cache
+import hashlib
+import time
 
 from apps.main.home.models import PerfilGamer
 
@@ -149,9 +152,28 @@ def transfer_to_server(request):
                 messages.error(request, 'O personagem precisa estar offline.')
                 return redirect('wallet:dashboard')
 
+        # Proteção contra requisições duplicadas usando cache
+        # Cria um hash único baseado nos dados da requisição (sem timestamp para bloquear requisições idênticas)
+        request_hash_data = f"{request.user.id}:{nome_personagem}:{valor}:{origem_saldo}"
+        request_hash = hashlib.md5(request_hash_data.encode()).hexdigest()
+        cache_key = f"wallet_transfer_{request.user.id}_{request_hash}"
+        
+        # Verifica se esta requisição idêntica já está sendo processada ou foi processada recentemente
+        if cache.get(cache_key):
+            messages.error(request, _('Esta transferência já está sendo processada ou foi processada recentemente. Aguarde alguns instantes antes de tentar novamente.'))
+            return redirect('wallet:dashboard')
+        
+        # Marca a requisição como em processamento (expira em 60 segundos para prevenir duplicatas)
+        cache.set(cache_key, True, timeout=60)
+
         try:
             with transaction.atomic():
                 # Bloqueia a carteira para prevenir race conditions
+                # Se o usuário clicar múltiplas vezes rapidamente:
+                # - A primeira requisição adquire o lock, deduz o saldo e insere as moedas
+                # - As outras requisições esperam pelo lock
+                # - Quando conseguirem o lock, o saldo já foi deduzido, então a validação falha
+                # Isso previne duplicação de moedas mesmo com cliques múltiplos
                 wallet = Wallet.objects.select_for_update().get(usuario=request.user)
                 
                 # Validação de saldo dentro da transação (com lock)
@@ -164,7 +186,8 @@ def transfer_to_server(request):
                         messages.error(request, _('Saldo insuficiente.'))
                         return redirect('wallet:dashboard')
 
-                # Registra a saída na carteira escolhida
+                # Registra a saída na carteira escolhida ANTES de inserir moedas
+                # Isso garante que se houver erro, a transação reverte tudo
                 if origem_saldo == 'bonus':
                     aplicar_transacao_bonus(
                         wallet=wallet,
@@ -189,6 +212,8 @@ def transfer_to_server(request):
                 quantidade_moedas = Decimal(valor) * Decimal(multiplicador)
                 amount = int(round(quantidade_moedas))
                 
+                # Insere as moedas no servidor
+                # Se falhar, a transação reverte automaticamente (incluindo a dedução da carteira)
                 sucesso = TransferFromWalletToChar.insert_coin(
                     char_name=nome_personagem,
                     coin_id=COIN_ID,
@@ -199,8 +224,14 @@ def transfer_to_server(request):
                     raise Exception(_("Erro ao adicionar a moeda ao personagem."))
 
         except Exception as e:
+            # Remove o cache em caso de erro para permitir nova tentativa
+            cache.delete(cache_key)
             messages.error(request, f"Ocorreu um erro durante a transferência: {str(e)}")
             return redirect('wallet:dashboard')
+        finally:
+            # Remove o cache após processamento bem-sucedido ou erro
+            # Usa um timeout menor para garantir que seja removido mesmo se houver problema
+            cache.delete(cache_key)
 
         perfil, created = PerfilGamer.objects.get_or_create(user=request.user)
         perfil.adicionar_xp(40)
