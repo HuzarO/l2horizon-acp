@@ -144,14 +144,21 @@ class LineageStats:
     @staticmethod
     @cache_lineage_result(timeout=300)
     def top_adena(limit=10, adn_billion_item=0, value_item=1000000):
-        item_bonus_sql = ""
+        # Otimização: usar LEFT JOIN ao invés de subqueries correlacionadas
+        # Isso é muito mais rápido pois permite uso de índices
+        bonus_join = ""
+        bonus_select = ""
         if adn_billion_item != 0:
-            item_bonus_sql = f"""
-                IFNULL((SELECT SUM(I2.count) * :value_item
-                        FROM items I2
-                        WHERE I2.owner_id = C.charId AND I2.item_id = :adn_billion_item
-                        GROUP BY I2.owner_id), 0) +
+            bonus_join = """
+            LEFT JOIN (
+                SELECT owner_id, SUM(count) * :value_item AS bonus_adenas
+                FROM items
+                WHERE item_id = :adn_billion_item
+                GROUP BY owner_id
+            ) I2 ON I2.owner_id = C.charId
             """
+            bonus_select = "IFNULL(I2.bonus_adenas, 0) +"
+        
         sql = f"""
             SELECT 
                 C.char_name, 
@@ -161,17 +168,18 @@ class LineageStats:
                 D.clan_name,
                 C.clanid AS clan_id,
                 D.ally_id,
-                (
-                    {item_bonus_sql}
-                    IFNULL((SELECT SUM(I1.count)
-                            FROM items I1
-                            WHERE I1.owner_id = C.charId AND I1.item_id = '57'
-                            GROUP BY I1.owner_id), 0)
-                ) AS adenas
+                ({bonus_select} IFNULL(I1.adenas, 0)) AS adenas
             FROM characters C
             LEFT JOIN clan_data D ON D.clan_id = C.clanid
+            LEFT JOIN (
+                SELECT owner_id, SUM(count) AS adenas
+                FROM items
+                WHERE item_id = '57'
+                GROUP BY owner_id
+            ) I1 ON I1.owner_id = C.charId
+            {bonus_join}
             WHERE C.accessLevel = '0'
-            ORDER BY adenas DESC, onlinetime DESC, char_name ASC
+            ORDER BY adenas DESC, C.onlinetime DESC, C.char_name ASC
             LIMIT :limit
         """
         return LineageStats._run_query(sql, {

@@ -180,14 +180,21 @@ class LineageStats:
     @staticmethod
     @cache_lineage_result(timeout=300)
     def top_adena(limit=10, adn_billion_item=0, value_item=1000000):
-        item_bonus_sql = ""
+        # Otimização: usar LEFT JOIN ao invés de subqueries correlacionadas
+        # Isso é muito mais rápido pois permite uso de índices
+        bonus_join = ""
+        bonus_select = ""
         if adn_billion_item != 0:
-            item_bonus_sql = f"""
-                IFNULL((SELECT SUM(I2.amount) * :value_item
-                        FROM items I2
-                        WHERE I2.owner_id = C.obj_Id AND I2.item_type = :adn_billion_item
-                        GROUP BY I2.owner_id), 0) +
+            bonus_join = """
+            LEFT JOIN (
+                SELECT owner_id, SUM(amount) * :value_item AS bonus_adenas
+                FROM items
+                WHERE item_type = :adn_billion_item
+                GROUP BY owner_id
+            ) I2 ON I2.owner_id = C.obj_Id
             """
+            bonus_select = "IFNULL(I2.bonus_adenas, 0) +"
+        
         sql = f"""
             SELECT 
                 C.char_name, 
@@ -197,19 +204,20 @@ class LineageStats:
                 D.name AS clan_name,
                 C.clanid AS clan_id,
                 CD.ally_id AS ally_id,
-                (
-                    {item_bonus_sql}
-                    IFNULL((SELECT SUM(I1.amount)
-                            FROM items I1
-                            WHERE I1.owner_id = C.obj_Id AND I1.item_type = '57'
-                            GROUP BY I1.owner_id), 0)
-                ) AS adenas
+                ({bonus_select} IFNULL(I1.adenas, 0)) AS adenas
             FROM characters C
             LEFT JOIN character_subclasses CS ON CS.char_obj_id = C.obj_Id AND CS.isBase = '1'
             LEFT JOIN clan_subpledges D ON D.clan_id = C.clanid AND D.type = '0'
             LEFT JOIN clan_data CD ON CD.clan_id = C.clanid
+            LEFT JOIN (
+                SELECT owner_id, SUM(amount) AS adenas
+                FROM items
+                WHERE item_type = '57'
+                GROUP BY owner_id
+            ) I1 ON I1.owner_id = C.obj_Id
+            {bonus_join}
             WHERE C.accesslevel = '0'
-            ORDER BY adenas DESC, onlinetime DESC, char_name ASC
+            ORDER BY adenas DESC, C.onlinetime DESC, C.char_name ASC
             LIMIT :limit
         """
         return LineageStats._run_query(sql, {
