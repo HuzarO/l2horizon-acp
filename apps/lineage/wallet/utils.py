@@ -71,9 +71,18 @@ def transferir_para_jogador(wallet_origem, wallet_destino, valor, descricao=""):
     Transfere valor da carteira normal de um jogador para outro
     """
     from .signals import aplicar_transacao
+    from .models import Wallet
     
     # Usa transação atômica para garantir que ambas operações ocorram ou nenhuma
     with transaction.atomic():
+        # Bloqueia ambas as carteiras para prevenir race conditions
+        wallet_origem = Wallet.objects.select_for_update().get(id=wallet_origem.id)
+        wallet_destino = Wallet.objects.select_for_update().get(id=wallet_destino.id)
+        
+        # Valida saldo dentro da transação (com lock)
+        if wallet_origem.saldo < valor:
+            raise ValueError("Saldo insuficiente.")
+        
         aplicar_transacao(
             wallet=wallet_origem,
             tipo="SAIDA",
@@ -98,9 +107,18 @@ def transferir_bonus_para_jogador(wallet_origem, wallet_destino, valor, descrica
     Transfere valor da carteira de bônus de um jogador para outro
     """
     from .signals import aplicar_transacao_bonus
+    from .models import Wallet
     
     # Usa transação atômica para garantir que ambas operações ocorram ou nenhuma
     with transaction.atomic():
+        # Bloqueia ambas as carteiras para prevenir race conditions
+        wallet_origem = Wallet.objects.select_for_update().get(id=wallet_origem.id)
+        wallet_destino = Wallet.objects.select_for_update().get(id=wallet_destino.id)
+        
+        # Valida saldo bônus dentro da transação (com lock)
+        if wallet_origem.saldo_bonus < valor:
+            raise ValueError("Saldo de bônus insuficiente.")
+        
         aplicar_transacao_bonus(
             wallet=wallet_origem,
             tipo="SAIDA",

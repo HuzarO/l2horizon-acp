@@ -132,17 +132,10 @@ def transfer_to_server(request):
             messages.error(request, 'Senha incorreta.')
             return redirect('wallet:dashboard')
 
-        # Validação de saldo conforme origem selecionada
+        # Validação de configuração de bônus (se aplicável)
         if origem_saldo == 'bonus':
             if not getattr(config, 'habilitar_transferencia_com_bonus', False):
                 messages.error(request, _('Transferência usando saldo bônus está desabilitada.'))
-                return redirect('wallet:dashboard')
-            if wallet.saldo_bonus < valor:
-                messages.error(request, _('Saldo bônus insuficiente.'))
-                return redirect('wallet:dashboard')
-        else:
-            if wallet.saldo < valor:
-                messages.error(request, _('Saldo insuficiente.'))
                 return redirect('wallet:dashboard')
 
         # Confirma se o personagem pertence à conta
@@ -158,6 +151,19 @@ def transfer_to_server(request):
 
         try:
             with transaction.atomic():
+                # Bloqueia a carteira para prevenir race conditions
+                wallet = Wallet.objects.select_for_update().get(usuario=request.user)
+                
+                # Validação de saldo dentro da transação (com lock)
+                if origem_saldo == 'bonus':
+                    if wallet.saldo_bonus < valor:
+                        messages.error(request, _('Saldo bônus insuficiente.'))
+                        return redirect('wallet:dashboard')
+                else:
+                    if wallet.saldo < valor:
+                        messages.error(request, _('Saldo insuficiente.'))
+                        return redirect('wallet:dashboard')
+
                 # Registra a saída na carteira escolhida
                 if origem_saldo == 'bonus':
                     aplicar_transacao_bonus(
@@ -249,6 +255,7 @@ def transfer_to_player(request):
             messages.error(request, 'Você não pode transferir para si mesmo.')
             return redirect('wallet:dashboard')
 
+        # Garante que as carteiras existam antes de transferir
         wallet_origem, created = Wallet.objects.get_or_create(usuario=request.user)
         wallet_destino, created = Wallet.objects.get_or_create(usuario=destinatario)
 
@@ -369,6 +376,9 @@ def transfer_from_server(request):
 
         try:
             with transaction.atomic():
+                # Bloqueia a carteira para prevenir race conditions
+                wallet = Wallet.objects.select_for_update().get(usuario=request.user)
+                
                 # Remove as moedas do personagem
                 sucesso = TransferFromCharToWallet.remove_ingame_coin(
                     coin_id=COIN_ID,
