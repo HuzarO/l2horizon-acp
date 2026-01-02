@@ -14,4 +14,5 @@ urlpatterns = [
     
     # API interna para processamento de transferências
     path('api/internal/transfer/server/', api.InternalTransferToServerAPI.as_view(), name='api_internal_transfer_server'),
+    path('api/internal/transfer/player/', api.InternalTransferToPlayerAPI.as_view(), name='api_internal_transfer_player'),
 ]

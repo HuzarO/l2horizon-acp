@@ -4,7 +4,6 @@ from .models import Wallet, TransacaoWallet, TransacaoBonus, CoinConfig
 from apps.lineage.games.models import TokenHistory
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from .utils import transferir_para_jogador
 from decimal import Decimal, InvalidOperation
 from django.contrib.auth import authenticate
 from apps.main.home.models import User
@@ -132,55 +131,9 @@ def transfer_to_server(request):
 
 @conditional_otp_required
 def transfer_to_player(request):
-    if request.method == 'POST':
-        nome_jogador = request.POST.get('jogador')
-        valor = request.POST.get('valor')
-        senha = request.POST.get('senha')
-
-        try:
-            valor = Decimal(valor)
-        except:
-            messages.error(request, 'Valor inválido.')
-            return redirect('wallet:dashboard')
-
-        # Verificação de limites
-        if valor < 1 or valor > 1000:
-            messages.error(request, 'Só é permitido transferir entre R$1,00 e R$1.000,00.')
-            return redirect('wallet:dashboard')
-
-        # Verificação de senha
-        user = authenticate(username=request.user.username, password=senha)
-        if not user:
-            messages.error(request, 'Senha incorreta.')
-            return redirect('wallet:dashboard')
-        
-        try:
-            destinatario = User.objects.get(username=nome_jogador)
-        except User.DoesNotExist:
-            messages.error(request, 'Jogador não encontrado.')
-            return redirect('wallet:dashboard')
-
-        if destinatario == request.user:
-            messages.error(request, 'Você não pode transferir para si mesmo.')
-            return redirect('wallet:dashboard')
-
-        # Garante que as carteiras existam antes de transferir
-        wallet_origem, created = Wallet.objects.get_or_create(usuario=request.user)
-        wallet_destino, created = Wallet.objects.get_or_create(usuario=destinatario)
-
-        try:
-            transferir_para_jogador(wallet_origem, wallet_destino, valor)
-            messages.success(request, f'Transferência de R${valor:.2f} para {destinatario} realizada com sucesso.')
-
-            perfil = PerfilGamer.objects.get(user=request.user)
-            perfil.adicionar_xp(40)
-        except ValueError as e:
-            messages.error(request, str(e))
-        except Exception:
-            messages.error(request, "Ocorreu um erro inesperado durante a transferência.")
-
-        return redirect('wallet:dashboard')
-
+    # A view apenas renderiza o formulário
+    # O processamento é feito via API chamada pelo frontend (AJAX)
+    
     wallet, created = Wallet.objects.get_or_create(usuario=request.user)
     return render(request, 'wallet/transfer_to_player.html', {
         'wallet': wallet,
