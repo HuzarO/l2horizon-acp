@@ -19,9 +19,12 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_http_methods
 from django.core.cache import cache
 from django.utils import timezone
+from django.urls import reverse
 import hashlib
 import time
 import logging
+import requests
+from django.conf import settings
 
 from apps.main.home.models import PerfilGamer
 
@@ -154,214 +157,82 @@ def transfer_to_server(request):
                 messages.error(request, _('Transferência usando saldo bônus está desabilitada.'))
                 return redirect('wallet:dashboard')
 
-        # ========== FASE 2: VALIDAÇÃO NO BANCO DO LINEAGE ==========
-        # Verifica conexão com banco do Lineage ANTES de processar
-        if not db.is_connected():
-            messages.error(request, 'O banco do jogo está indisponível no momento. Tente novamente mais tarde.')
-            logger.error(f"Banco do Lineage desconectado durante transferência (usuário: {request.user.username})")
-            return redirect('wallet:dashboard')
-
-        # Confirma se o personagem pertence à conta
-        personagem = TransferFromWalletToChar.find_char(active_login, nome_personagem)
-        if not personagem:
-            messages.error(request, 'Personagem inválido ou não pertence a essa conta.')
-            logger.warning(f"Tentativa de transferência para personagem inválido: {nome_personagem} (usuário: {request.user.username})")
-            return redirect('wallet:dashboard')
-
-        if not TransferFromWalletToChar.items_delayed:
-            if personagem[0].get('online', 0) != 0:
-                messages.error(request, 'O personagem precisa estar offline.')
-                return redirect('wallet:dashboard')
-
-        # ========== FASE 3: PROTEÇÃO CONTRA REQUISIÇÕES DUPLICADAS ==========
-        # Cria um hash único baseado nos dados da requisição
-        request_hash_data = f"{request.user.id}:{nome_personagem}:{valor}:{origem_saldo}"
-        request_hash = hashlib.md5(request_hash_data.encode()).hexdigest()
-        cache_key = f"wallet_transfer_{request.user.id}_{request_hash}"
-        cache_lock_key = f"wallet_transfer_lock_{request.user.id}_{request_hash}"
+        # ========== CHAMADA PARA API INTERNA ==========
+        # A API interna processa a transferência de forma assíncrona,
+        # evitando timeouts no worker do Gunicorn
         
-        # Verifica se esta requisição idêntica já está sendo processada
-        cache_data = cache.get(cache_key)
-        if cache_data:
-            # Se está em processamento há menos de 5 minutos, bloqueia
-            if isinstance(cache_data, dict) and cache_data.get('status') == 'processing':
-                elapsed = time.time() - cache_data.get('started_at', 0)
-                if elapsed < 300:  # 5 minutos
-                    messages.error(request, _('Esta transferência já está sendo processada. Aguarde alguns instantes antes de tentar novamente.'))
-                    logger.info(f"Transferência duplicada bloqueada: {cache_key} (usuário: {request.user.username})")
-                    return redirect('wallet:dashboard')
-        
-        # Tenta adquirir lock (prevenção de race condition no cache)
-        lock_acquired = cache.add(cache_lock_key, True, timeout=10)
-        if not lock_acquired:
-            messages.error(request, _('Outra transferência está sendo processada. Aguarde alguns instantes.'))
-            return redirect('wallet:dashboard')
-
         try:
-            # Marca como em processamento com timestamp
-            cache.set(cache_key, {
-                'status': 'processing',
-                'started_at': time.time(),
-                'user_id': request.user.id,
-                'valor': str(valor),
-                'personagem': nome_personagem
-            }, timeout=300)  # 5 minutos
-
-            # ========== FASE 4: PROCESSAMENTO DA TRANSFERÊNCIA ==========
-            # Calcula quantidade de moedas ANTES de fazer qualquer alteração
-            quantidade_moedas = Decimal(valor) * Decimal(multiplicador)
-            amount = int(round(quantidade_moedas))
+            # Monta a URL da API interna
+            api_url = request.build_absolute_uri(reverse('wallet:api_internal_transfer_server'))
             
-            logger.info(f"Iniciando transferência: usuário={request.user.username}, personagem={nome_personagem}, valor={valor}, moedas={amount}")
-
-            # Transação atômica para operações no banco Django
-            with transaction.atomic():
-                # Bloqueia a carteira para prevenir race conditions
-                wallet = Wallet.objects.select_for_update().get(usuario=request.user)
-                
-                # Validação de saldo dentro da transação (com lock)
-                if origem_saldo == 'bonus':
-                    if wallet.saldo_bonus < valor:
-                        raise ValueError(_('Saldo bônus insuficiente.'))
-                else:
-                    if wallet.saldo < valor:
-                        raise ValueError(_('Saldo insuficiente.'))
-
-                # Registra a saída na carteira ANTES de inserir moedas no Lineage
-                # Se a inserção no Lineage falhar, a transação reverte automaticamente
-                if origem_saldo == 'bonus':
-                    aplicar_transacao_bonus(
-                        wallet=wallet,
-                        tipo="SAIDA",
-                        valor=valor,
-                        descricao="Transferência para o servidor (bônus)",
-                        origem=active_login,
-                        destino=nome_personagem
-                    )
-                else:
-                    aplicar_transacao(
-                        wallet=wallet,
-                        tipo="SAIDA",
-                        valor=valor,
-                        descricao="Transferência para o servidor",
-                        origem=active_login,
-                        destino=nome_personagem
-                    )
-
-            # ========== FASE 5: INSERÇÃO NO BANCO DO LINEAGE ==========
-            # Esta operação está FORA da transação do Django porque é outro banco
-            # Se falhar, precisamos reverter manualmente a transação da carteira
-            try:
-                sucesso = TransferFromWalletToChar.insert_coin(
-                    char_name=nome_personagem,
-                    coin_id=COIN_ID,
-                    amount=amount
-                )
-
-                if not sucesso:
-                    # Se a inserção falhou, reverte a transação da carteira
-                    logger.error(f"Falha ao inserir moedas no Lineage: personagem={nome_personagem}, amount={amount}")
-                    with transaction.atomic():
-                        wallet = Wallet.objects.select_for_update().get(usuario=request.user)
-                        if origem_saldo == 'bonus':
-                            aplicar_transacao_bonus(
-                                wallet=wallet,
-                                tipo="ENTRADA",
-                                valor=valor,
-                                descricao="Reversão: Erro ao transferir para servidor (bônus)",
-                                origem=nome_personagem,
-                                destino=active_login
-                            )
-                        else:
-                            aplicar_transacao(
-                                wallet=wallet,
-                                tipo="ENTRADA",
-                                valor=valor,
-                                descricao="Reversão: Erro ao transferir para servidor",
-                                origem=nome_personagem,
-                                destino=active_login
-                            )
-                    raise Exception(_("Erro ao adicionar a moeda ao personagem. O valor foi revertido."))
-
-            except Exception as lineage_error:
-                # Se houver timeout ou erro no Lineage, reverte a carteira
-                logger.error(f"Erro ao inserir moedas no Lineage: {str(lineage_error)} (usuário: {request.user.username})")
-                try:
-                    with transaction.atomic():
-                        wallet = Wallet.objects.select_for_update().get(usuario=request.user)
-                        if origem_saldo == 'bonus':
-                            aplicar_transacao_bonus(
-                                wallet=wallet,
-                                tipo="ENTRADA",
-                                valor=valor,
-                                descricao="Reversão: Erro ao transferir para servidor (bônus)",
-                                origem=nome_personagem,
-                                destino=active_login
-                            )
-                        else:
-                            aplicar_transacao(
-                                wallet=wallet,
-                                tipo="ENTRADA",
-                                valor=valor,
-                                descricao="Reversão: Erro ao transferir para servidor",
-                                origem=nome_personagem,
-                                destino=active_login
-                            )
-                except Exception as revert_error:
-                    logger.critical(f"ERRO CRÍTICO: Falha ao reverter transação após erro no Lineage: {str(revert_error)} (usuário: {request.user.username}, valor: {valor})")
-                    # Marca no cache para investigação manual
-                    cache.set(f"wallet_revert_error_{request.user.id}_{int(time.time())}", {
-                        'user_id': request.user.id,
-                        'valor': str(valor),
-                        'personagem': nome_personagem,
-                        'origem_saldo': origem_saldo,
-                        'lineage_error': str(lineage_error),
-                        'revert_error': str(revert_error),
-                        'timestamp': timezone.now().isoformat()
-                    }, timeout=86400)  # 24 horas
-                
-                raise Exception(_("Erro ao adicionar a moeda ao personagem. O valor foi revertido automaticamente."))
-
-            # ========== FASE 6: SUCESSO ==========
-            # Atualiza cache com status de sucesso
-            cache.set(cache_key, {
-                'status': 'completed',
-                'completed_at': time.time(),
-                'user_id': request.user.id,
+            # Prepara os dados para a API
+            api_data = {
+                'personagem': nome_personagem,
                 'valor': str(valor),
-                'personagem': nome_personagem
-            }, timeout=300)  # Mantém por 5 minutos para auditoria
-
-            # Adiciona XP
-            perfil, created = PerfilGamer.objects.get_or_create(user=request.user)
-            perfil.adicionar_xp(40)
-
-            logger.info(f"Transferência concluída com sucesso: usuário={request.user.username}, personagem={nome_personagem}, valor={valor}")
-
-            if origem_saldo == 'bonus':
-                messages.success(request, _(f"R${valor:.2f} do bônus transferidos com sucesso para o personagem {nome_personagem}."))
+                'origem_saldo': origem_saldo
+            }
+            
+            # Faz a chamada para a API interna
+            # Usa timeout de 60 segundos (maior que o timeout do Gunicorn)
+            logger.info(f"Chamando API interna para transferência: usuário={request.user.username}, personagem={nome_personagem}, valor={valor}")
+            
+            # Prepara a sessão para manter cookies e autenticação
+            session = requests.Session()
+            
+            # Copia cookies da requisição atual
+            for cookie_name, cookie_value in request.COOKIES.items():
+                session.cookies.set(cookie_name, cookie_value)
+            
+            # Faz a chamada para a API interna usando a sessão
+            response = session.post(
+                api_url,
+                json=api_data,
+                headers={
+                    'X-CSRFToken': request.META.get('CSRF_COOKIE', ''),
+                    'Referer': request.build_absolute_uri(),
+                },
+                timeout=60  # Timeout de 60 segundos
+            )
+            
+            # Processa a resposta
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('success'):
+                    messages.success(request, result.get('message', 'Transferência realizada com sucesso.'))
+                    logger.info(f"Transferência concluída via API: usuário={request.user.username}, personagem={nome_personagem}")
+                    return redirect('wallet:dashboard')
+                else:
+                    messages.error(request, result.get('error', 'Erro desconhecido na transferência.'))
+                    return redirect('wallet:dashboard')
             else:
-                messages.success(request, _(f"R${valor:.2f} transferidos com sucesso para o personagem {nome_personagem}."))
+                # Tenta extrair mensagem de erro da resposta
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', f'Erro na transferência (código: {response.status_code})')
+                except:
+                    error_message = f'Erro na transferência (código: {response.status_code})'
+                
+                messages.error(request, error_message)
+                logger.error(f"Erro na API interna: status={response.status_code}, mensagem={error_message} (usuário: {request.user.username})")
+                return redirect('wallet:dashboard')
+                
+        except requests.Timeout:
+            # Timeout na chamada da API
+            messages.error(request, 'A transferência está sendo processada. Verifique o status em alguns instantes.')
+            logger.warning(f"Timeout na chamada da API interna (usuário: {request.user.username})")
+            return redirect('wallet:dashboard')
             
+        except requests.RequestException as e:
+            # Erro de conexão ou outro erro HTTP
+            messages.error(request, 'Erro ao processar a transferência. Tente novamente mais tarde.')
+            logger.error(f"Erro na chamada da API interna: {str(e)} (usuário: {request.user.username})", exc_info=True)
             return redirect('wallet:dashboard')
-
-        except ValueError as ve:
-            # Erro de validação (saldo insuficiente, etc)
-            logger.warning(f"Erro de validação na transferência: {str(ve)} (usuário: {request.user.username})")
-            messages.error(request, str(ve))
-            cache.delete(cache_key)
-            return redirect('wallet:dashboard')
-
+            
         except Exception as e:
             # Erro genérico
-            logger.error(f"Erro durante transferência: {str(e)} (usuário: {request.user.username}, personagem: {nome_personagem})", exc_info=True)
-            messages.error(request, f"Ocorreu um erro durante a transferência: {str(e)}")
-            cache.delete(cache_key)
+            messages.error(request, f'Ocorreu um erro inesperado: {str(e)}')
+            logger.error(f"Erro inesperado na transferência: {str(e)} (usuário: {request.user.username})", exc_info=True)
             return redirect('wallet:dashboard')
-
-        finally:
-            # Sempre libera o lock
-            cache.delete(cache_lock_key)
 
     context = {
         'wallet': wallet,

@@ -585,6 +585,12 @@ document.addEventListener('DOMContentLoaded', function() {
       return false;
     }
     
+    // Verifica se já está processando
+    if (form.dataset.processing === 'true') {
+      e.preventDefault();
+      return false;
+    }
+    
     const valor = parseFloat(valorInput.value);
     
     if (valor < 1.00) {
@@ -621,16 +627,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     {% endif %}
     
-    // Desabilita o botão imediatamente após validação para prevenir múltiplos cliques
+    // Marca como processando
+    form.dataset.processing = 'true';
+    
+    // Desabilita o botão e campos do formulário imediatamente
     if (btnTransfer) {
       btnTransfer.disabled = true;
-      btnTransfer.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> {% trans "Processando..." %}';
+      btnTransfer.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> {% trans "Processando transferência..." %}';
       btnTransfer.style.opacity = '0.6';
       btnTransfer.style.cursor = 'not-allowed';
     }
     
+    // Desabilita todos os campos do formulário para prevenir alterações
+    const formInputs = form.querySelectorAll('input, select, button');
+    formInputs.forEach(function(input) {
+      if (input !== btnTransfer) {
+        input.disabled = true;
+      }
+    });
+    
+    // Adiciona overlay de loading (opcional, mas melhora UX)
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'transfer-loading-overlay';
+    loadingOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;';
+    loadingOverlay.innerHTML = '<div style="background: white; padding: 2rem; border-radius: 12px; text-align: center;"><i class="fas fa-spinner fa-spin fa-3x mb-3" style="color: #667eea;"></i><p style="margin: 0; font-size: 1.1rem; color: #333;">{% trans "Processando transferência..." %}</p></div>';
+    document.body.appendChild(loadingOverlay);
+    
     // Previne que o formulário seja submetido novamente
     form.submitting = true;
+    
+    // O formulário será submetido normalmente e o Django fará o redirect
+    // Se houver erro de timeout, o overlay será removido pelo navegador
+    // Mas adicionamos um timeout de segurança para remover o overlay após 90 segundos
+    setTimeout(function() {
+      const overlay = document.getElementById('transfer-loading-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
+      form.dataset.processing = 'false';
+    }, 90000); // 90 segundos
   });
 
   valorInput.addEventListener('input', updateSubmitState);
