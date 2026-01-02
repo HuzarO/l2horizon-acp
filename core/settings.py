@@ -855,7 +855,8 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '30/minute',
-        'user': '100/minute'
+        'user': '100/minute',
+        'wallet_transfer': '1/minute',  # Rate limit para transferências de wallet
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'apps.api.pagination.StandardResultsSetPagination',

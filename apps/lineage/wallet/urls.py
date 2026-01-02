@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import api
 
 app_name = 'wallet'
 
@@ -10,4 +11,7 @@ urlpatterns = [
     path('transfer/player/', views.transfer_to_player, name='transfer_to_player'),
     path("config/coins/", views.coin_config_panel, name="coin_config_panel"),
     path('buy-tokens/', views.comprar_fichas_wallet, name='comprar_fichas_wallet'),
+    
+    # API interna para processamento de transferências
+    path('api/internal/transfer/server/', api.InternalTransferToServerAPI.as_view(), name='api_internal_transfer_server'),
 ]

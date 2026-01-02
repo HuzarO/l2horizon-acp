@@ -47,6 +47,9 @@ URL_RATE_LIMITS_DICT = {
     '/app/wallet/transfer/server/':      {'rate': '1/m', 'key': 'user', 'group': 'wallet-transfers', 'method': 'POST'},
     '/app/wallet/transfer/from-server/': {'rate': '1/m', 'key': 'user', 'group': 'wallet-transfers', 'method': 'POST'},
     '/app/wallet/transfer/player/':      {'rate': '1/m', 'key': 'user', 'group': 'wallet-transfers', 'method': 'POST'},
+    
+    # API interna para transferências (mesmo limite rigoroso)
+    '/app/wallet/api/internal/transfer/server/': {'rate': '1/m', 'key': 'user', 'group': 'wallet-transfers', 'method': 'POST'},
         
     # =========================== AUTENTICAÇÃO WEB ===========================
     # Rotas críticas de autenticação - limites aumentados mas ainda seguros
