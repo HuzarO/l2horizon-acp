@@ -536,6 +536,82 @@ function togglePassword(inputId) {
   }
 }
 
+function showSuccessMessage(message) {
+  // Remove overlay de loading se existir
+  const loadingOverlay = document.getElementById('transfer-loading-overlay');
+  if (loadingOverlay) loadingOverlay.remove();
+  
+  // Cria overlay de sucesso
+  const successOverlay = document.createElement('div');
+  successOverlay.id = 'transfer-success-overlay';
+  successOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease-in;';
+  
+  successOverlay.innerHTML = `
+    <div style="background: white; padding: 3rem; border-radius: 16px; text-align: center; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.4s ease-out;">
+      <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10B981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; animation: scaleIn 0.5s ease-out;">
+        <i class="fas fa-check" style="font-size: 2.5rem; color: white;"></i>
+      </div>
+      <h3 style="color: #10B981; font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; font-family: 'Orbitron', sans-serif;">
+        {% trans "Transferência Concluída!" %}
+      </h3>
+      <p style="color: #333; font-size: 1.1rem; margin-bottom: 2rem; line-height: 1.6;">
+        ${message}
+      </p>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: #6B7280; font-size: 0.9rem;">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>{% trans "Redirecionando..." %}</span>
+      </div>
+    </div>
+  `;
+  
+  // Adiciona animações CSS se não existirem
+  if (!document.getElementById('transfer-success-styles')) {
+    const style = document.createElement('style');
+    style.id = 'transfer-success-styles';
+    style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes scaleIn {
+        from {
+          opacity: 0;
+          transform: scale(0);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(successOverlay);
+  
+  // Remove após 2 segundos (antes do redirect)
+  setTimeout(function() {
+    if (successOverlay && successOverlay.parentNode) {
+      successOverlay.style.animation = 'fadeIn 0.3s ease-in reverse';
+      setTimeout(function() {
+        if (successOverlay && successOverlay.parentNode) {
+          successOverlay.remove();
+        }
+      }, 300);
+    }
+  }, 1700);
+}
+
 // Validação do formulário
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.querySelector('form');
@@ -697,11 +773,39 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       
       if (data.success) {
-        // Sucesso - redireciona para dashboard
-        window.location.href = '{% url "wallet:dashboard" %}';
+        // Sucesso - mostra notificação flutuante de sucesso
+        const successMessage = data.message || '{% trans "Transferência realizada com sucesso!" %}';
+        
+        // Usa o sistema de notificações flutuantes se disponível
+        if (window.floatingNotifications) {
+          window.floatingNotifications.success(successMessage, {
+            autoClose: true,
+            autoCloseDelay: 4000  // 4 segundos
+          });
+        } else {
+          // Fallback: mostra mensagem simples
+          alert(successMessage);
+        }
+        
+        // Redireciona após 2 segundos para dar tempo de ver a notificação
+        setTimeout(function() {
+          // Passa mensagem via query string para o dashboard mostrar também
+          const message = encodeURIComponent(successMessage);
+          window.location.href = '{% url "wallet:dashboard" %}?transfer_success=' + message;
+        }, 2000);
       } else {
-        // Erro - mostra mensagem
-        alert(data.error || '{% trans "Erro ao processar transferência" %}');
+        // Erro - mostra notificação de erro
+        const errorMessage = data.error || '{% trans "Erro ao processar transferência" %}';
+        
+        if (window.floatingNotifications) {
+          window.floatingNotifications.error(errorMessage, {
+            autoClose: true,
+            autoCloseDelay: 6000  // 6 segundos para erros
+          });
+        } else {
+          // Fallback: mostra alert
+          alert(errorMessage);
+        }
         if (btnTransfer) {
           btnTransfer.disabled = false;
           btnTransfer.innerHTML = '<i class="fas fa-check-circle me-2"></i> {% trans "Confirmar Transferência" %}';
@@ -722,7 +826,16 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       
       console.error('Erro:', error);
-      alert('{% trans "Erro ao processar transferência. Tente novamente." %}');
+      const errorMessage = '{% trans "Erro ao processar transferência. Tente novamente." %}';
+      
+      if (window.floatingNotifications) {
+        window.floatingNotifications.error(errorMessage, {
+          autoClose: true,
+          autoCloseDelay: 6000
+        });
+      } else {
+        alert(errorMessage);
+      }
       
       if (btnTransfer) {
         btnTransfer.disabled = false;

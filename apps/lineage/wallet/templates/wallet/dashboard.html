@@ -460,5 +460,28 @@
       alert('{% trans "Erro ao processar a compra. Tente novamente." %}');
     });
   }
+  
+  // Verifica se há mensagem de sucesso na query string (após transferência)
+  document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const transferSuccess = urlParams.get('transfer_success');
+    
+    if (transferSuccess) {
+      // Decodifica a mensagem
+      const message = decodeURIComponent(transferSuccess);
+      
+      // Mostra notificação de sucesso usando o sistema de notificações flutuantes
+      if (window.floatingNotifications) {
+        window.floatingNotifications.success(message, {
+          autoClose: true,
+          autoCloseDelay: 5000
+        });
+      }
+      
+      // Remove o parâmetro da URL para não mostrar novamente ao recarregar
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  });
 </script>
 {% endblock content %}
