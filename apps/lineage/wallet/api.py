@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 TransferFromWalletToChar = get_query_class("TransferFromWalletToChar")
 
 
-def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, active_login, senha=None):
+def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, active_login, senha=None, skip_duplicate_check=False):
     """
     Função helper para processar transferência de wallet para o servidor.
     Pode ser chamada tanto pela API quanto pela view diretamente.
@@ -41,6 +41,7 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
     - origem_saldo: 'normal' ou 'bonus'
     - active_login: login da conta do Lineage
     - senha: senha do usuário (opcional, se None não valida)
+    - skip_duplicate_check: se True, pula verificação de duplicatas (já feita na API)
     
     Retorna dict com 'success' (bool) e 'message' ou 'error' (str).
     """
@@ -88,25 +89,30 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
             if personagem[0].get('online', 0) != 0:
                 return {'success': False, 'error': 'O personagem precisa estar offline.'}
 
-        # Proteção contra requisições duplicadas
+        # Gera chaves de cache (sempre necessário para marcar como completo)
         request_hash_data = f"{user.id}:{nome_personagem}:{valor}:{origem_saldo}"
         request_hash = hashlib.md5(request_hash_data.encode()).hexdigest()
         cache_key = f"wallet_transfer_{user.id}_{request_hash}"
         cache_lock_key = f"wallet_transfer_lock_{user.id}_{request_hash}"
 
-        cache_data = cache.get(cache_key)
-        if cache_data:
-            if isinstance(cache_data, dict) and cache_data.get('status') == 'processing':
-                elapsed = time.time() - cache_data.get('started_at', 0)
-                if elapsed < 300:
-                    logger.info(f"Transferência duplicada bloqueada: {cache_key} (usuário: {user.username})")
-                    return {'success': False, 'error': 'Esta transferência já está sendo processada. Aguarde alguns instantes.'}
+        # Proteção contra requisições duplicadas (apenas se não foi verificado antes)
+        if not skip_duplicate_check:
+            cache_data = cache.get(cache_key)
+            if cache_data:
+                if isinstance(cache_data, dict) and cache_data.get('status') == 'processing':
+                    elapsed = time.time() - cache_data.get('started_at', 0)
+                    if elapsed < 300:
+                        logger.info(f"Transferência duplicada bloqueada: {cache_key} (usuário: {user.username})")
+                        return {'success': False, 'error': 'Esta transferência já está sendo processada. Aguarde alguns instantes.'}
 
-        lock_acquired = cache.add(cache_lock_key, True, timeout=10)
-        if not lock_acquired:
-            return {'success': False, 'error': 'Outra transferência está sendo processada. Aguarde alguns instantes.'}
-
-        try:
+            lock_acquired = cache.add(cache_lock_key, True, timeout=10)
+            if not lock_acquired:
+                return {'success': False, 'error': 'Outra transferência está sendo processada. Aguarde alguns instantes.'}
+        
+        # Se skip_duplicate_check=True, assume que lock já foi adquirido na API
+        # Apenas marca como processando se ainda não estiver marcado
+        if not skip_duplicate_check:
+            # Se não pulou verificação, marca como processando aqui
             cache.set(cache_key, {
                 'status': 'processing',
                 'started_at': time.time(),
@@ -114,6 +120,7 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
                 'valor': str(valor),
                 'personagem': nome_personagem
             }, timeout=300)
+        # Se skip_duplicate_check=True, o cache já foi marcado na API, não precisa fazer aqui
 
             # Processamento da transferência
             quantidade_moedas = Decimal(valor) * Decimal(multiplicador)
@@ -282,21 +289,28 @@ class InternalTransferToServerAPI(APIView):
         - personagem: nome do personagem
         - valor: valor em R$ (Decimal)
         - origem_saldo: 'normal' ou 'bonus'
+        - senha: senha do usuário
         """
         try:
             # ========== FASE 1: VALIDAÇÃO E SANITIZAÇÃO DOS DADOS ==========
-            # Suporta tanto request.data (DRF) quanto request.POST (Django view)
-            if hasattr(request, 'data'):
-                data_source = request.data
-            elif hasattr(request, '_full_data'):
-                data_source = request._full_data
-            else:
-                data_source = request.POST
+            # Tenta obter dados do request.data (DRF JSON) ou request.POST (form)
+            try:
+                if hasattr(request, 'data') and request.data:
+                    data_source = request.data
+                else:
+                    # Se não tem data, tenta POST (form data)
+                    data_source = request.POST if hasattr(request, 'POST') else {}
+            except Exception as parse_error:
+                logger.error(f"Erro ao parsear dados da requisição: {str(parse_error)}")
+                return Response(
+                    {'error': 'Erro ao processar dados da requisição.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             
-            nome_personagem = data_source.get('personagem', '').strip()
-            valor_str = data_source.get('valor', '').strip()
-            origem_saldo = data_source.get('origem_saldo', 'normal')
-            senha = data_source.get('senha', '')
+            nome_personagem = data_source.get('personagem', '').strip() if isinstance(data_source, dict) else ''
+            valor_str = data_source.get('valor', '').strip() if isinstance(data_source, dict) else ''
+            origem_saldo = data_source.get('origem_saldo', 'normal') if isinstance(data_source, dict) else 'normal'
+            senha = data_source.get('senha', '') if isinstance(data_source, dict) else ''
 
             if not nome_personagem:
                 return Response(
@@ -411,25 +425,31 @@ class InternalTransferToServerAPI(APIView):
                 }, timeout=300)
 
                 # ========== FASE 5: PROCESSAMENTO DA TRANSFERÊNCIA ==========
-                # Usa a função helper para processar
+                # Usa a função helper para processar (skip_duplicate_check=True porque já verificamos acima)
                 result = process_transfer_to_server(
                     user=request.user,
                     nome_personagem=nome_personagem,
                     valor=valor,
                     origem_saldo=origem_saldo,
                     active_login=active_login,
-                    senha=senha
+                    senha=senha,
+                    skip_duplicate_check=True  # Já verificamos duplicatas acima
                 )
 
                 if result.get('success'):
+                    # Libera o lock antes de retornar sucesso
+                    cache.delete(cache_lock_key)
                     return Response(result, status=status.HTTP_200_OK)
                 else:
+                    # Libera o lock antes de retornar erro
+                    cache.delete(cache_lock_key)
                     status_code = status.HTTP_400_BAD_REQUEST if 'insuficiente' in result.get('error', '').lower() or 'inválido' in result.get('error', '').lower() else status.HTTP_500_INTERNAL_SERVER_ERROR
                     return Response({'error': result.get('error')}, status=status_code)
 
             except ValueError as ve:
                 logger.warning(f"Erro de validação na transferência: {str(ve)} (usuário: {request.user.username})")
                 cache.delete(cache_key)
+                cache.delete(cache_lock_key)
                 return Response(
                     {'error': str(ve)},
                     status=status.HTTP_400_BAD_REQUEST
@@ -438,17 +458,24 @@ class InternalTransferToServerAPI(APIView):
             except Exception as e:
                 logger.error(f"Erro durante transferência: {str(e)} (usuário: {request.user.username}, personagem: {nome_personagem})", exc_info=True)
                 cache.delete(cache_key)
+                cache.delete(cache_lock_key)
                 return Response(
                     {'error': f'Ocorreu um erro durante a transferência: {str(e)}'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
-            finally:
-                # Sempre libera o lock
-                cache.delete(cache_lock_key)
-
+        except ValueError as ve:
+            # Erro de validação (ex: Decimal inválido)
+            logger.warning(f"Erro de validação na API: {str(ve)} (usuário: {request.user.username if hasattr(request, 'user') else 'unknown'})")
+            return Response(
+                {'error': f'Erro de validação: {str(ve)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         except Exception as e:
-            logger.error(f"Erro crítico na API de transferência: {str(e)}", exc_info=True)
+            # Log completo do erro para debug
+            import traceback
+            error_traceback = traceback.format_exc()
+            logger.error(f"Erro crítico na API de transferência: {str(e)}\n{error_traceback}")
             return Response(
                 {'error': 'Erro interno do servidor. Tente novamente mais tarde.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
