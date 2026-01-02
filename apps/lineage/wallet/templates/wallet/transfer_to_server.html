@@ -579,32 +579,39 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   form.addEventListener('submit', function(e) {
+    e.preventDefault(); // Previne submit tradicional
+    
     // Previne múltiplos submits
     if (btnTransfer && btnTransfer.disabled) {
-      e.preventDefault();
       return false;
     }
     
     // Verifica se já está processando
     if (form.dataset.processing === 'true') {
-      e.preventDefault();
       return false;
     }
     
     const valor = parseFloat(valorInput.value);
+    const personagem = form.querySelector('select[name="personagem"]').value;
+    const senha = form.querySelector('input[name="senha"]').value;
+    const origemSaldo = form.querySelector('input[name="origem_saldo"]:checked') ? form.querySelector('input[name="origem_saldo"]:checked').value : 'normal';
+    
+    // Validações básicas
+    if (!personagem) {
+      alert('{% trans "Selecione um personagem" %}');
+      return false;
+    }
     
     if (valor < 1.00) {
-      e.preventDefault();
       alert('{% trans "O valor mínimo para transferência é R$ 1,00" %}');
       valorInput.focus();
-      return;
+      return false;
     }
     
     if (valor > 1000.00) {
-      e.preventDefault();
       alert('{% trans "O valor máximo para transferência é R$ 1.000,00" %}');
       valorInput.focus();
-      return;
+      return false;
     }
     
     {% if show_bonus_option %}
@@ -613,24 +620,28 @@ document.addEventListener('DOMContentLoaded', function() {
       saldoDisponivel = SALDO_BONUS;
     }
     if (valor > saldoDisponivel) {
-      e.preventDefault();
       alert('{% trans "Saldo insuficiente para realizar esta transferência" %}');
       valorInput.focus();
-      return;
+      return false;
     }
     {% else %}
     if (valor > SALDO_NORMAL) {
-      e.preventDefault();
       alert('{% trans "Saldo insuficiente para realizar esta transferência" %}');
       valorInput.focus();
-      return;
+      return false;
     }
     {% endif %}
+    
+    if (!senha) {
+      alert('{% trans "Digite sua senha para confirmar" %}');
+      form.querySelector('input[name="senha"]').focus();
+      return false;
+    }
     
     // Marca como processando
     form.dataset.processing = 'true';
     
-    // Desabilita o botão e campos do formulário imediatamente
+    // Desabilita o botão e campos do formulário
     if (btnTransfer) {
       btnTransfer.disabled = true;
       btnTransfer.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> {% trans "Processando transferência..." %}';
@@ -638,7 +649,6 @@ document.addEventListener('DOMContentLoaded', function() {
       btnTransfer.style.cursor = 'not-allowed';
     }
     
-    // Desabilita todos os campos do formulário para prevenir alterações
     const formInputs = form.querySelectorAll('input, select, button');
     formInputs.forEach(function(input) {
       if (input !== btnTransfer) {
@@ -646,26 +656,81 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     
-    // Adiciona overlay de loading (opcional, mas melhora UX)
+    // Adiciona overlay de loading
     const loadingOverlay = document.createElement('div');
     loadingOverlay.id = 'transfer-loading-overlay';
     loadingOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;';
     loadingOverlay.innerHTML = '<div style="background: white; padding: 2rem; border-radius: 12px; text-align: center;"><i class="fas fa-spinner fa-spin fa-3x mb-3" style="color: #667eea;"></i><p style="margin: 0; font-size: 1.1rem; color: #333;">{% trans "Processando transferência..." %}</p></div>';
     document.body.appendChild(loadingOverlay);
     
-    // Previne que o formulário seja submetido novamente
-    form.submitting = true;
+    // Prepara dados para a API
+    const apiData = {
+      personagem: personagem,
+      valor: valor.toString(),
+      origem_saldo: origemSaldo,
+      senha: senha
+    };
     
-    // O formulário será submetido normalmente e o Django fará o redirect
-    // Se houver erro de timeout, o overlay será removido pelo navegador
-    // Mas adicionamos um timeout de segurança para remover o overlay após 90 segundos
-    setTimeout(function() {
+    // Obtém CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Faz chamada AJAX para a API
+    fetch('{% url "wallet:api_internal_transfer_server" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(apiData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      // Remove overlay
       const overlay = document.getElementById('transfer-loading-overlay');
-      if (overlay) {
-        overlay.remove();
-      }
+      if (overlay) overlay.remove();
+      
+      // Reabilita formulário
       form.dataset.processing = 'false';
-    }, 90000); // 90 segundos
+      formInputs.forEach(function(input) {
+        input.disabled = false;
+      });
+      
+      if (data.success) {
+        // Sucesso - redireciona para dashboard
+        window.location.href = '{% url "wallet:dashboard" %}';
+      } else {
+        // Erro - mostra mensagem
+        alert(data.error || '{% trans "Erro ao processar transferência" %}');
+        if (btnTransfer) {
+          btnTransfer.disabled = false;
+          btnTransfer.innerHTML = '<i class="fas fa-check-circle me-2"></i> {% trans "Confirmar Transferência" %}';
+          btnTransfer.style.opacity = '1';
+          btnTransfer.style.cursor = 'pointer';
+        }
+      }
+    })
+    .catch(error => {
+      // Remove overlay
+      const overlay = document.getElementById('transfer-loading-overlay');
+      if (overlay) overlay.remove();
+      
+      // Reabilita formulário
+      form.dataset.processing = 'false';
+      formInputs.forEach(function(input) {
+        input.disabled = false;
+      });
+      
+      console.error('Erro:', error);
+      alert('{% trans "Erro ao processar transferência. Tente novamente." %}');
+      
+      if (btnTransfer) {
+        btnTransfer.disabled = false;
+        btnTransfer.innerHTML = '<i class="fas fa-check-circle me-2"></i> {% trans "Confirmar Transferência" %}';
+        btnTransfer.style.opacity = '1';
+        btnTransfer.style.cursor = 'pointer';
+      }
+    });
   });
 
   valorInput.addEventListener('input', updateSubmitState);
