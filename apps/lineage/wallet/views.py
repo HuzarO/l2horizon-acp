@@ -23,7 +23,6 @@ from django.urls import reverse
 import hashlib
 import time
 import logging
-import requests
 from django.conf import settings
 
 from apps.main.home.models import PerfilGamer
@@ -118,121 +117,8 @@ def transfer_to_server(request):
     except:
         messages.warning(request, 'Não foi possível carregar seus personagens agora.')
 
-    if request.method == 'POST':
-        # ========== FASE 1: VALIDAÇÃO E SANITIZAÇÃO DOS DADOS ==========
-        nome_personagem = request.POST.get('personagem', '').strip()
-        valor_str = request.POST.get('valor', '').strip()
-        senha = request.POST.get('senha', '')
-        origem_saldo = request.POST.get('origem_saldo', 'normal')  # 'normal' | 'bonus'
-
-        # Validação básica dos dados de entrada
-        if not nome_personagem:
-            messages.error(request, 'Personagem não informado.')
-            return redirect('wallet:dashboard')
-
-        try:
-            valor = Decimal(valor_str)
-        except (ValueError, TypeError, InvalidOperation):
-            messages.error(request, 'Valor inválido.')
-            logger.warning(f"Tentativa de transferência com valor inválido: {valor_str} (usuário: {request.user.username})")
-            return redirect('wallet:dashboard')
-
-        if valor < 1 or valor > 1000:
-            messages.error(request, 'Só é permitido transferir entre R$1,00 e R$1.000,00.')
-            return redirect('wallet:dashboard')
-
-        # Validação de senha
-        user = authenticate(username=request.user.username, password=senha)
-        if not user:
-            messages.error(request, 'Senha incorreta.')
-            logger.warning(f"Tentativa de transferência com senha incorreta (usuário: {request.user.username})")
-            return redirect('wallet:dashboard')
-
-        # Validação de configuração
-        COIN_ID = config.coin_id
-        multiplicador = config.multiplicador
-
-        if origem_saldo == 'bonus':
-            if not getattr(config, 'habilitar_transferencia_com_bonus', False):
-                messages.error(request, _('Transferência usando saldo bônus está desabilitada.'))
-                return redirect('wallet:dashboard')
-
-        # ========== CHAMADA PARA API INTERNA ==========
-        # A API interna processa a transferência de forma assíncrona,
-        # evitando timeouts no worker do Gunicorn
-        
-        try:
-            # Monta a URL da API interna
-            api_url = request.build_absolute_uri(reverse('wallet:api_internal_transfer_server'))
-            
-            # Prepara os dados para a API
-            api_data = {
-                'personagem': nome_personagem,
-                'valor': str(valor),
-                'origem_saldo': origem_saldo
-            }
-            
-            # Faz a chamada para a API interna
-            # Usa timeout de 60 segundos (maior que o timeout do Gunicorn)
-            logger.info(f"Chamando API interna para transferência: usuário={request.user.username}, personagem={nome_personagem}, valor={valor}")
-            
-            # Prepara a sessão para manter cookies e autenticação
-            session = requests.Session()
-            
-            # Copia cookies da requisição atual
-            for cookie_name, cookie_value in request.COOKIES.items():
-                session.cookies.set(cookie_name, cookie_value)
-            
-            # Faz a chamada para a API interna usando a sessão
-            response = session.post(
-                api_url,
-                json=api_data,
-                headers={
-                    'X-CSRFToken': request.META.get('CSRF_COOKIE', ''),
-                    'Referer': request.build_absolute_uri(),
-                },
-                timeout=60  # Timeout de 60 segundos
-            )
-            
-            # Processa a resposta
-            if response.status_code == 200:
-                result = response.json()
-                if result.get('success'):
-                    messages.success(request, result.get('message', 'Transferência realizada com sucesso.'))
-                    logger.info(f"Transferência concluída via API: usuário={request.user.username}, personagem={nome_personagem}")
-                    return redirect('wallet:dashboard')
-                else:
-                    messages.error(request, result.get('error', 'Erro desconhecido na transferência.'))
-                    return redirect('wallet:dashboard')
-            else:
-                # Tenta extrair mensagem de erro da resposta
-                try:
-                    error_data = response.json()
-                    error_message = error_data.get('error', f'Erro na transferência (código: {response.status_code})')
-                except:
-                    error_message = f'Erro na transferência (código: {response.status_code})'
-                
-                messages.error(request, error_message)
-                logger.error(f"Erro na API interna: status={response.status_code}, mensagem={error_message} (usuário: {request.user.username})")
-                return redirect('wallet:dashboard')
-                
-        except requests.Timeout:
-            # Timeout na chamada da API
-            messages.error(request, 'A transferência está sendo processada. Verifique o status em alguns instantes.')
-            logger.warning(f"Timeout na chamada da API interna (usuário: {request.user.username})")
-            return redirect('wallet:dashboard')
-            
-        except requests.RequestException as e:
-            # Erro de conexão ou outro erro HTTP
-            messages.error(request, 'Erro ao processar a transferência. Tente novamente mais tarde.')
-            logger.error(f"Erro na chamada da API interna: {str(e)} (usuário: {request.user.username})", exc_info=True)
-            return redirect('wallet:dashboard')
-            
-        except Exception as e:
-            # Erro genérico
-            messages.error(request, f'Ocorreu um erro inesperado: {str(e)}')
-            logger.error(f"Erro inesperado na transferência: {str(e)} (usuário: {request.user.username})", exc_info=True)
-            return redirect('wallet:dashboard')
+    # A view apenas renderiza o formulário
+    # O processamento é feito via API chamada pelo frontend (AJAX)
 
     context = {
         'wallet': wallet,
