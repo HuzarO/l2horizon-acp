@@ -20,9 +20,10 @@ from .models import Wallet, CoinConfig
 from .signals import aplicar_transacao, aplicar_transacao_bonus
 from apps.lineage.server.database import LineageDB
 from apps.lineage.server.services.account_context import get_active_login
-from apps.main.home.models import PerfilGamer
+from apps.main.home.models import PerfilGamer, User
 from utils.dynamic_import import get_query_class
 from django.utils.translation import gettext as _
+from django.contrib.auth import authenticate
 
 logger = logging.getLogger(__name__)
 
@@ -476,6 +477,320 @@ class InternalTransferToServerAPI(APIView):
             import traceback
             error_traceback = traceback.format_exc()
             logger.error(f"Erro crítico na API de transferência: {str(e)}\n{error_traceback}")
+            return Response(
+                {'error': 'Erro interno do servidor. Tente novamente mais tarde.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+def process_transfer_to_player(user, nome_jogador, valor, senha=None, skip_duplicate_check=False):
+    """
+    Função helper para processar transferência de wallet entre jogadores.
+    Pode ser chamada tanto pela API quanto pela view diretamente.
+    
+    Parâmetros:
+    - user: usuário autenticado (remetente)
+    - nome_jogador: nome do jogador destinatário
+    - valor: valor em Decimal
+    - senha: senha do usuário (opcional, se None não valida)
+    - skip_duplicate_check: se True, pula verificação de duplicatas (já feita na API)
+    
+    Retorna dict com 'success' (bool) e 'message' ou 'error' (str).
+    """
+    try:
+        # Validação básica
+        if not nome_jogador:
+            return {'success': False, 'error': 'Jogador não informado.'}
+
+        if valor < 1 or valor > 1000:
+            return {'success': False, 'error': 'Só é permitido transferir entre R$1,00 e R$1.000,00.'}
+        
+        # Validação de senha (se fornecida)
+        if senha:
+            authenticated_user = authenticate(username=user.username, password=senha)
+            if not authenticated_user:
+                logger.warning(f"Tentativa de transferência com senha incorreta (usuário: {user.username})")
+                return {'success': False, 'error': 'Senha incorreta.'}
+
+        # Verifica se o destinatário existe
+        try:
+            destinatario = User.objects.get(username=nome_jogador)
+        except User.DoesNotExist:
+            logger.warning(f"Tentativa de transferência para jogador inexistente: {nome_jogador} (usuário: {user.username})")
+            return {'success': False, 'error': 'Jogador não encontrado.'}
+
+        if destinatario == user:
+            return {'success': False, 'error': 'Você não pode transferir para si mesmo.'}
+
+        # Gera chaves de cache
+        request_hash_data = f"{user.id}:{nome_jogador}:{valor}"
+        request_hash = hashlib.md5(request_hash_data.encode()).hexdigest()
+        cache_key = f"wallet_transfer_player_{user.id}_{request_hash}"
+        cache_lock_key = f"wallet_transfer_player_lock_{user.id}_{request_hash}"
+
+        # Proteção contra requisições duplicadas (apenas se não foi verificado antes)
+        if not skip_duplicate_check:
+            cache_data = cache.get(cache_key)
+            if cache_data:
+                if isinstance(cache_data, dict) and cache_data.get('status') == 'processing':
+                    elapsed = time.time() - cache_data.get('started_at', 0)
+                    if elapsed < 300:
+                        logger.info(f"Transferência duplicada bloqueada: {cache_key} (usuário: {user.username})")
+                        return {'success': False, 'error': 'Esta transferência já está sendo processada. Aguarde alguns instantes.'}
+
+            lock_acquired = cache.add(cache_lock_key, True, timeout=10)
+            if not lock_acquired:
+                return {'success': False, 'error': 'Outra transferência está sendo processada. Aguarde alguns instantes.'}
+            
+            # Marca como processando
+            cache.set(cache_key, {
+                'status': 'processing',
+                'started_at': time.time(),
+                'user_id': user.id,
+                'valor': str(valor),
+                'jogador': nome_jogador
+            }, timeout=300)
+        # Se skip_duplicate_check=True, assume que lock e cache já foram configurados na API
+
+        try:
+            logger.info(f"Iniciando transferência entre jogadores: remetente={user.username}, destinatário={nome_jogador}, valor={valor}")
+
+            # Garante que as carteiras existam
+            wallet_origem, created = Wallet.objects.get_or_create(usuario=user)
+            wallet_destino, created = Wallet.objects.get_or_create(usuario=destinatario)
+
+            # Transação atômica
+            with transaction.atomic():
+                # Bloqueia ambas as carteiras para prevenir race conditions
+                wallet_origem = Wallet.objects.select_for_update().get(id=wallet_origem.id)
+                wallet_destino = Wallet.objects.select_for_update().get(id=wallet_destino.id)
+                
+                # Valida saldo dentro da transação (com lock)
+                if wallet_origem.saldo < valor:
+                    raise ValueError(_('Saldo insuficiente.'))
+
+                # Aplica transações
+                aplicar_transacao(
+                    wallet=wallet_origem,
+                    tipo="SAIDA",
+                    valor=valor,
+                    descricao=f"Transferência para {destinatario.username}",
+                    origem=user.username,
+                    destino=destinatario.username
+                )
+
+                aplicar_transacao(
+                    wallet=wallet_destino,
+                    tipo="ENTRADA",
+                    valor=valor,
+                    descricao=f"Transferência de {user.username}",
+                    origem=user.username,
+                    destino=destinatario.username
+                )
+
+            # Sucesso
+            cache.set(cache_key, {
+                'status': 'completed',
+                'completed_at': time.time(),
+                'user_id': user.id,
+                'valor': str(valor),
+                'jogador': nome_jogador
+            }, timeout=300)
+
+            perfil, created = PerfilGamer.objects.get_or_create(user=user)
+            perfil.adicionar_xp(40)
+
+            logger.info(f"Transferência entre jogadores concluída com sucesso: remetente={user.username}, destinatário={nome_jogador}, valor={valor}")
+
+            message = f"Transferência de R${valor:.2f} para {destinatario.username} realizada com sucesso."
+            
+            return {
+                'success': True,
+                'message': message,
+                'valor': float(valor),
+                'jogador': nome_jogador
+            }
+
+        except ValueError as ve:
+            logger.warning(f"Erro de validação na transferência: {str(ve)} (usuário: {user.username})")
+            cache.delete(cache_key)
+            return {'success': False, 'error': str(ve)}
+
+        except Exception as e:
+            logger.error(f"Erro durante transferência: {str(e)} (usuário: {user.username}, jogador: {nome_jogador})", exc_info=True)
+            cache.delete(cache_key)
+            return {'success': False, 'error': f'Ocorreu um erro durante a transferência: {str(e)}'}
+
+        finally:
+            # Libera o lock apenas se foi adquirido nesta função
+            if not skip_duplicate_check:
+                cache.delete(cache_lock_key)
+
+    except Exception as e:
+        logger.error(f"Erro crítico na função de transferência entre jogadores: {str(e)}", exc_info=True)
+        return {'success': False, 'error': 'Erro interno do servidor. Tente novamente mais tarde.'}
+
+
+class InternalTransferToPlayerAPI(APIView):
+    """
+    API interna para processar transferências de wallet entre jogadores.
+    Esta API é chamada pelo frontend via AJAX para evitar timeouts no worker do Gunicorn.
+    """
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [SessionAuthentication]
+    throttle_classes = [WalletTransferThrottle]
+
+    def dispatch(self, request, *args, **kwargs):
+        """Garante que o usuário está autenticado antes de processar."""
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Usuário não autenticado.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request):
+        """
+        Processa uma transferência de wallet entre jogadores.
+        
+        Parâmetros esperados (JSON ou form-data):
+        - jogador: nome do jogador destinatário
+        - valor: valor da transferência (string ou número)
+        - senha: senha do usuário (opcional)
+        """
+        try:
+            # Parse dos dados (suporta JSON e form-data)
+            if hasattr(request, 'data') and request.data:
+                nome_jogador = request.data.get('jogador', '').strip()
+                valor_str = request.data.get('valor', '')
+                senha = request.data.get('senha', '').strip()
+            else:
+                nome_jogador = request.POST.get('jogador', '').strip()
+                valor_str = request.POST.get('valor', '')
+                senha = request.POST.get('senha', '').strip()
+
+            # Validação inicial
+            if not nome_jogador:
+                return Response(
+                    {'error': 'Jogador não informado.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not valor_str:
+                return Response(
+                    {'error': 'Valor não informado.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not senha:
+                return Response(
+                    {'error': 'Senha não informada.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Converte valor para Decimal
+            try:
+                valor = Decimal(str(valor_str))
+            except (ValueError, InvalidOperation):
+                return Response(
+                    {'error': 'Valor inválido.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Gera chaves de cache para verificação de duplicatas
+            request_hash_data = f"{request.user.id}:{nome_jogador}:{valor}"
+            request_hash = hashlib.md5(request_hash_data.encode()).hexdigest()
+            cache_key = f"wallet_transfer_player_{request.user.id}_{request_hash}"
+            cache_lock_key = f"wallet_transfer_player_lock_{request.user.id}_{request_hash}"
+
+            # Verifica se já está processando
+            cache_data = cache.get(cache_key)
+            if cache_data:
+                if isinstance(cache_data, dict) and cache_data.get('status') == 'processing':
+                    elapsed = time.time() - cache_data.get('started_at', 0)
+                    if elapsed < 300:
+                        logger.info(f"Transferência duplicada bloqueada na API: {cache_key} (usuário: {request.user.username})")
+                        return Response(
+                            {'error': 'Esta transferência já está sendo processada. Aguarde alguns instantes.'},
+                            status=status.HTTP_429_TOO_MANY_REQUESTS
+                        )
+
+            # Adquire lock
+            lock_acquired = cache.add(cache_lock_key, True, timeout=10)
+            if not lock_acquired:
+                return Response(
+                    {'error': 'Outra transferência está sendo processada. Aguarde alguns instantes.'},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+
+            # Marca como processando
+            cache.set(cache_key, {
+                'status': 'processing',
+                'started_at': time.time(),
+                'user_id': request.user.id,
+                'valor': str(valor),
+                'jogador': nome_jogador
+            }, timeout=300)
+
+            try:
+                # Chama a função helper
+                result = process_transfer_to_player(
+                    user=request.user,
+                    nome_jogador=nome_jogador,
+                    valor=valor,
+                    senha=senha,
+                    skip_duplicate_check=True  # Já verificamos duplicatas aqui
+                )
+
+                # Limpa o lock antes de retornar
+                cache.delete(cache_lock_key)
+
+                if result.get('success'):
+                    return Response(
+                        {
+                            'success': True,
+                            'message': result.get('message'),
+                            'valor': result.get('valor'),
+                            'jogador': result.get('jogador')
+                        },
+                        status=status.HTTP_200_OK
+                    )
+                else:
+                    return Response(
+                        {'error': result.get('error', 'Erro desconhecido')},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            except ValueError as ve:
+                logger.warning(f"Erro de validação na transferência: {str(ve)} (usuário: {request.user.username})")
+                cache.delete(cache_key)
+                cache.delete(cache_lock_key)
+                return Response(
+                    {'error': str(ve)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            except Exception as e:
+                logger.error(f"Erro durante transferência: {str(e)} (usuário: {request.user.username}, jogador: {nome_jogador})", exc_info=True)
+                cache.delete(cache_key)
+                cache.delete(cache_lock_key)
+                return Response(
+                    {'error': f'Ocorreu um erro durante a transferência: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except ValueError as ve:
+            # Erro de validação (ex: Decimal inválido)
+            logger.warning(f"Erro de validação na API: {str(ve)} (usuário: {request.user.username if hasattr(request, 'user') else 'unknown'})")
+            return Response(
+                {'error': f'Erro de validação: {str(ve)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            # Log completo do erro para debug
+            import traceback
+            error_traceback = traceback.format_exc()
+            logger.error(f"Erro crítico na API de transferência entre jogadores: {str(e)}\n{error_traceback}")
             return Response(
                 {'error': 'Erro interno do servidor. Tente novamente mais tarde.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
