@@ -108,11 +108,8 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
             lock_acquired = cache.add(cache_lock_key, True, timeout=10)
             if not lock_acquired:
                 return {'success': False, 'error': 'Outra transferência está sendo processada. Aguarde alguns instantes.'}
-        
-        # Se skip_duplicate_check=True, assume que lock já foi adquirido na API
-        # Apenas marca como processando se ainda não estiver marcado
-        if not skip_duplicate_check:
-            # Se não pulou verificação, marca como processando aqui
+            
+            # Marca como processando
             cache.set(cache_key, {
                 'status': 'processing',
                 'started_at': time.time(),
@@ -120,8 +117,9 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
                 'valor': str(valor),
                 'personagem': nome_personagem
             }, timeout=300)
-        # Se skip_duplicate_check=True, o cache já foi marcado na API, não precisa fazer aqui
+        # Se skip_duplicate_check=True, assume que lock e cache já foram configurados na API
 
+        try:
             # Processamento da transferência
             quantidade_moedas = Decimal(valor) * Decimal(multiplicador)
             amount = int(round(quantidade_moedas))
@@ -211,7 +209,9 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
             return {'success': False, 'error': f'Ocorreu um erro durante a transferência: {str(e)}'}
 
         finally:
-            cache.delete(cache_lock_key)
+            # Libera o lock apenas se foi adquirido nesta função
+            if not skip_duplicate_check:
+                cache.delete(cache_lock_key)
 
     except Exception as e:
         logger.error(f"Erro crítico na função de transferência: {str(e)}", exc_info=True)
