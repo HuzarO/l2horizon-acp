@@ -1063,27 +1063,24 @@ class TransferFromWalletToChar:
             # Se falhou ao atualizar, pode ser que não seja stackable mesmo
             # Continuar para inserir individualmente
 
-        # Se não é stackable ou não existe item, inserir individualmente
+        # Se não é stackable ou não existe item, inserir usando BATCH INSERT
         # Para itens não stackable, cada unidade precisa de um object_id único
-        # Limita a quantidade para evitar timeout em grandes quantidades
-        max_batch = 1000  # Limite de inserções por vez
-        if amount > max_batch:
-            print(f"⚠️ Quantidade muito grande ({amount}), limitando a {max_batch} inserções")
-            amount = max_batch
+        # Limita a quantidade para evitar timeout e abusos
+        MAX_NON_STACKABLE = 500  # Limite máximo de itens não-stackable por vez
+        if amount > MAX_NON_STACKABLE:
+            print(f"⚠️ Quantidade muito grande ({amount}) para item não-stackable, limitando a {MAX_NON_STACKABLE}")
+            amount = MAX_NON_STACKABLE
         
-        success_count = 0
-        
-        for i in range(amount):
-            # Get last object_id
+        try:
+            # Buscar o último object_id uma única vez
             last_object_query = "SELECT object_id FROM items ORDER BY object_id DESC LIMIT 1"
             last_object_result = db.select(last_object_query)
             if not last_object_result:
-                new_object_id = 700000000
+                base_object_id = 700000000
             else:
-                last_object_id = int(last_object_result[0]["object_id"])
-                new_object_id = last_object_id + 1 + i
+                base_object_id = int(last_object_result[0]["object_id"]) + 1
 
-            # Get last loc_data for this owner
+            # Pegar o último loc_data do player uma única vez
             last_loc_query = """
                 SELECT loc_data FROM items 
                 WHERE owner_id = :owner_id 
@@ -1091,47 +1088,43 @@ class TransferFromWalletToChar:
             """
             last_loc_result = db.select(last_loc_query, {"owner_id": owner_id})
             if not last_loc_result:
-                new_loc_data = 0
+                base_loc_data = 0
             else:
-                last_loc_data = int(last_loc_result[0]["loc_data"])
-                new_loc_data = last_loc_data + 1 + i
+                base_loc_data = int(last_loc_result[0]["loc_data"]) + 1
 
-            # Get current timestamp
+            # Get current timestamp (mesmo para todos os itens)
             creation_time = int(time.time())
 
-            # Insert new item with all required fields (sempre com count = 1 para não stackable)
-            try:
-                insert_query = """
-                    INSERT INTO items (
-                        owner_id, object_id, item_id, count,
-                        enchant_level, loc, loc_data, process,
-                        creator_id, first_owner_id, creation_time
-                    ) VALUES (
-                        :owner_id, :object_id, :coin_id, 1,
-                        :enchant, 'INVENTORY', :loc_data, 'admin_create',
-                        268501254, 268501254, :creation_time
-                    )
-                """
-                result = db.insert(insert_query, {
-                    "owner_id": owner_id,
-                    "object_id": new_object_id,
-                    "coin_id": coin_id,
-                    "enchant": enchant,
-                    "loc_data": new_loc_data,
-                    "creation_time": creation_time
-                })
-                if result:
-                    success_count += 1
-                else:
-                    # Se falhar, para o loop para evitar mais erros
-                    print(f"⚠️ Falha ao inserir moeda {i+1}/{amount}, parando inserção")
-                    break
-            except Exception as e:
-                print(f"❌ Erro ao inserir moeda {i+1}/{amount}: {e}")
-                # Continua tentando, mas registra o erro
-                continue
-
-        return success_count == amount
+            # Construir query de batch INSERT usando UNION ALL
+            union_parts = []
+            for i in range(amount):
+                new_object_id = base_object_id + i
+                new_loc_data = base_loc_data + i
+                union_parts.append(
+                    f"SELECT {owner_id}, {new_object_id}, {coin_id}, 1, {enchant}, 'INVENTORY', {new_loc_data}, 'admin_create', 268501254, 268501254, {creation_time}"
+                )
+            
+            union_query = " UNION ALL ".join(union_parts)
+            batch_insert_query = f"""
+                INSERT INTO items (
+                    owner_id, object_id, item_id, count,
+                    enchant_level, loc, loc_data, process,
+                    creator_id, first_owner_id, creation_time
+                )
+                {union_query}
+            """
+            
+            # Executar batch insert em uma única transação
+            result = db.insert(batch_insert_query, {})
+            if result is not None:
+                return True
+            else:
+                print(f"❌ Erro ao executar batch insert de {amount} itens não-stackable")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Erro ao inserir {amount} itens não-stackable em batch: {e}")
+            return False
 
 
 class TransferFromCharToWallet:

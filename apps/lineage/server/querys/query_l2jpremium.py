@@ -1049,40 +1049,40 @@ class TransferFromWalletToChar:
                 print(f"❌ Erro ao inserir moedas (stackable): {e}")
                 return None
         else:
-            # Não stackable: inserir múltiplos registros, um para cada unidade
-            # Limita a quantidade para evitar timeout em grandes quantidades
-            max_batch = 1000  # Limite de inserções por vez
-            if amount > max_batch:
-                print(f"⚠️ Quantidade muito grande ({amount}), limitando a {max_batch} inserções")
-                amount = max_batch
+            # Não stackable: inserir múltiplos registros usando BATCH INSERT
+            # Limita a quantidade para evitar timeout e abusos
+            MAX_NON_STACKABLE = 500  # Limite máximo de itens não-stackable por vez
+            if amount > MAX_NON_STACKABLE:
+                print(f"⚠️ Quantidade muito grande ({amount}) para item não-stackable, limitando a {MAX_NON_STACKABLE}")
+                amount = MAX_NON_STACKABLE
             
-            success_count = 0
-            for i in range(amount):
-                try:
-                    insert_query = """
-                        INSERT INTO web_item_delivery (charId, item_id, count, loc)
-                        VALUES (:char_id, :coin_id, 1, :loc)
-                    """
-                    result = db.insert(insert_query, {
-                        "char_id": char_id,
-                        "coin_id": coin_id,
-                        "loc": loc
-                    })
-                    if result:
-                        success_count += 1
-                    else:
-                        # Se falhar, para o loop para evitar mais erros
-                        print(f"⚠️ Falha ao inserir moeda {i+1}/{amount}, parando inserção")
-                        break
-                except Exception as e:
-                    print(f"❌ Erro ao inserir moeda {i+1}/{amount}: {e}")
-                    # Continua tentando, mas registra o erro
-                    continue
-            if success_count == amount:
-                print(f"Pedidos de entrega criados com sucesso para o personagem: {char_name} ({amount} itens)")
-            else:
-                print(f"Erro ao criar alguns pedidos de entrega para o personagem: {char_name} ({success_count}/{amount})")
-            return success_count == amount
+            try:
+                # Construir query de batch INSERT usando UNION ALL
+                # Isso insere todos os registros em uma única transação (muito mais eficiente)
+                union_parts = []
+                for i in range(amount):
+                    union_parts.append(
+                        f"SELECT {char_id}, {coin_id}, 1, '{loc}'"
+                    )
+                
+                union_query = " UNION ALL ".join(union_parts)
+                batch_insert_query = f"""
+                    INSERT INTO web_item_delivery (charId, item_id, count, loc)
+                    {union_query}
+                """
+                
+                # Executar batch insert em uma única transação
+                result = db.insert(batch_insert_query, {})
+                if result is not None:
+                    print(f"Pedidos de entrega criados com sucesso para o personagem: {char_name} ({amount} itens)")
+                    return True
+                else:
+                    print(f"❌ Erro ao executar batch insert de {amount} itens não-stackable")
+                    return False
+                    
+            except Exception as e:
+                print(f"❌ Erro ao inserir {amount} itens não-stackable em batch: {e}")
+                return False
 
 
 class TransferFromCharToWallet:
