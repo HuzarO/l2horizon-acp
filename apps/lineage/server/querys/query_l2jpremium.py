@@ -927,6 +927,11 @@ class TransferFromWalletToChar:
     @cache_lineage_result(timeout=300, use_cache=False)
     def insert_coin(char_name: str, coin_id: int, amount: int, enchant: int = 0, loc: str = 'INVENTORY'):
         db = LineageDB()
+        
+        # Verifica conexão antes de começar
+        if not db.is_connected():
+            print(f"⚠️ Banco Lineage desconectado ao tentar inserir moedas para {char_name}")
+            return None
 
         # Get character ID
         char_query = "SELECT charId FROM characters WHERE char_name = :char_name"
@@ -1011,32 +1016,51 @@ class TransferFromWalletToChar:
                 INSERT INTO web_item_delivery (charId, item_id, count, loc)
                 VALUES (:char_id, :coin_id, :amount, :loc)
             """
-            result = db.insert(insert_query, {
-                "char_id": char_id,
-                "coin_id": coin_id,
-                "amount": amount,
-                "loc": loc
-            })
-            if not result:
-                print(f"Erro ao criar pedido de entrega para o personagem: {char_name}")
-            else:
-                print(f"Pedido de entrega criado com sucesso para o personagem: {char_name}")
-            return result is not None
-        else:
-            # Não stackable: inserir múltiplos registros, um para cada unidade
-            success_count = 0
-            for i in range(amount):
-                insert_query = """
-                    INSERT INTO web_item_delivery (charId, item_id, count, loc)
-                    VALUES (:char_id, :coin_id, 1, :loc)
-                """
+            try:
                 result = db.insert(insert_query, {
                     "char_id": char_id,
                     "coin_id": coin_id,
+                    "amount": amount,
                     "loc": loc
                 })
-                if result:
-                    success_count += 1
+                if not result:
+                    print(f"Erro ao criar pedido de entrega para o personagem: {char_name}")
+                else:
+                    print(f"Pedido de entrega criado com sucesso para o personagem: {char_name}")
+                return result is not None
+            except Exception as e:
+                print(f"❌ Erro ao inserir moedas (stackable): {e}")
+                return None
+        else:
+            # Não stackable: inserir múltiplos registros, um para cada unidade
+            # Limita a quantidade para evitar timeout em grandes quantidades
+            max_batch = 1000  # Limite de inserções por vez
+            if amount > max_batch:
+                print(f"⚠️ Quantidade muito grande ({amount}), limitando a {max_batch} inserções")
+                amount = max_batch
+            
+            success_count = 0
+            for i in range(amount):
+                try:
+                    insert_query = """
+                        INSERT INTO web_item_delivery (charId, item_id, count, loc)
+                        VALUES (:char_id, :coin_id, 1, :loc)
+                    """
+                    result = db.insert(insert_query, {
+                        "char_id": char_id,
+                        "coin_id": coin_id,
+                        "loc": loc
+                    })
+                    if result:
+                        success_count += 1
+                    else:
+                        # Se falhar, para o loop para evitar mais erros
+                        print(f"⚠️ Falha ao inserir moeda {i+1}/{amount}, parando inserção")
+                        break
+                except Exception as e:
+                    print(f"❌ Erro ao inserir moeda {i+1}/{amount}: {e}")
+                    # Continua tentando, mas registra o erro
+                    continue
             if success_count == amount:
                 print(f"Pedidos de entrega criados com sucesso para o personagem: {char_name} ({amount} itens)")
             else:

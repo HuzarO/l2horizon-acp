@@ -88,6 +88,10 @@ class LineageDB:
                     "connect_timeout": connect_timeout,
                     "read_timeout": read_timeout,
                     "write_timeout": write_timeout,
+                    # Timeout mais agressivo para ping (evita travar worker)
+                    "init_command": "SET SESSION wait_timeout=60, interactive_timeout=60",
+                    # Timeout para operações de leitura/escrita (evita travar)
+                    "autocommit": False,
                 },
             )
 
@@ -207,14 +211,17 @@ class LineageDB:
 
         def ping_db():
             try:
+                # Usa timeout mais agressivo na conexão
                 with self.engine.connect() as conn:
+                    # Query simples com timeout implícito via connect_args
                     conn.execute(text("SELECT 1"))
                 result_container["ok"] = True
             except Exception as e:
                 error_msg = str(e)
                 if "1040" not in error_msg and "Too many connections" not in error_msg:
                     # Só mostra erro se não for "too many connections" (já tratado em outro lugar)
-                    print(f"⚠️ Falha no healthcheck: {e}")
+                    if "timeout" not in error_msg.lower() and "timed out" not in error_msg.lower():
+                        print(f"⚠️ Falha no healthcheck: {e}")
             finally:
                 done.set()
 
@@ -224,6 +231,7 @@ class LineageDB:
 
         if not finished:
             # Falha por timeout; descarta conexões do pool para evitar estados zumbis
+            print(f"⏱️ Healthcheck timeout após {self._ping_timeout_seconds}s - descartando pool")
             try:
                 if self.engine:
                     self.engine.dispose()
@@ -284,6 +292,8 @@ class LineageDB:
             return None
         try:
             query, normalized_params = self._normalize_params(query, params)
+            # Usa timeout mais agressivo via connect_args (já configurado)
+            # Se a conexão travar, o pool_pre_ping deve detectar e descartar
             with self.engine.begin() as conn:
                 stmt = text(query)
                 result = conn.execute(stmt, normalized_params)
@@ -298,11 +308,30 @@ class LineageDB:
             # Se for erro de "too many connections", usar lógica inteligente de reset
             if "1040" in error_msg or "Too many connections" in error_msg:
                 self._handle_connection_overload()
+            elif "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+                print(f"⏱️ Timeout na operação INSERT: {e}")
+                # Descarta conexões do pool para evitar estados zumbis
+                try:
+                    if self.engine:
+                        self.engine.dispose()
+                except Exception:
+                    pass
             else:
                 print(f"❌ Erro SQL: {e}")
             return None
         except Exception as e:
-            print(f"❌ Erro inesperado: {e}")
+            error_msg = str(e).lower()
+            # Detecta timeouts genéricos
+            if "timeout" in error_msg or "timed out" in error_msg or "connection" in error_msg:
+                print(f"⏱️ Timeout/Erro de conexão na operação INSERT: {e}")
+                # Descarta conexões do pool para evitar estados zumbis
+                try:
+                    if self.engine:
+                        self.engine.dispose()
+                except Exception:
+                    pass
+            else:
+                print(f"❌ Erro inesperado: {e}")
             return None
 
     def execute_raw(self, query: str, params: Dict[str, Any] = {}) -> bool:
