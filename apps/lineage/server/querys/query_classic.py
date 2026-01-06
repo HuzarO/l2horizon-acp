@@ -864,7 +864,18 @@ class TransferFromWalletToChar:
 
     @staticmethod
     @cache_lineage_result(timeout=300, use_cache=False)
-    def insert_coin(char_name: str, coin_id: int, amount: int, enchant: int = 0):
+    def insert_coin(char_name: str, coin_id: int, amount: int, enchant: int = 0, force_stackable: bool = False):
+        """
+        Insere moedas/itens para um personagem.
+        
+        Parâmetros:
+        - char_name: Nome do personagem
+        - coin_id: ID do item/moeda
+        - amount: Quantidade
+        - enchant: Nível de encantamento (padrão: 0)
+        - force_stackable: Se True, força o item como acumulável (stackable), 
+                           ignorando a detecção automática. Útil para itens de donate.
+        """
         db = LineageDB()
         
         # Verifica conexão antes de começar
@@ -935,18 +946,23 @@ class TransferFromWalletToChar:
                 existing_items = []
 
         # Detectar se o item é stackable (acumulável)
-        # Se existe apenas 1 item com count > 1, é stackable
-        # Se existem múltiplos itens com count = 1, não é stackable
-        is_stackable = False
-        if existing_items:
-            if len(existing_items) == 1 and existing_items[0]["count"] > 1:
-                is_stackable = True
-            elif len(existing_items) == 1 and existing_items[0]["count"] == 1:
-                # Se tem apenas 1 item com count = 1, pode ser stackable ou não
-                is_stackable = True
-            else:
-                # Múltiplos itens = não stackable
-                is_stackable = False
+        # Se force_stackable=True, sempre trata como stackable (útil para itens de donate)
+        if force_stackable:
+            is_stackable = True
+        else:
+            # Lógica de detecção automática baseada nos itens existentes
+            # Se existe apenas 1 item com count > 1, é stackable
+            # Se existem múltiplos itens com count = 1, não é stackable
+            is_stackable = False
+            if existing_items:
+                if len(existing_items) == 1 and existing_items[0]["count"] > 1:
+                    is_stackable = True
+                elif len(existing_items) == 1 and existing_items[0]["count"] == 1:
+                    # Se tem apenas 1 item com count = 1, pode ser stackable ou não
+                    is_stackable = True
+                else:
+                    # Múltiplos itens = não stackable
+                    is_stackable = False
 
         # Se é stackable, inserir um único registro com a quantidade total
         if is_stackable:
