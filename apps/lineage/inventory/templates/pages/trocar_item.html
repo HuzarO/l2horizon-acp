@@ -30,9 +30,12 @@
               alt="{{ item_name }}"
               class="me-3 rounded border border-secondary"
               style="width: 32px; height: 32px;">
-            <strong class="mb-0">{{ item_name }}</strong>
+            <strong class="mb-0">{{ item_name }}{% if enchant %} +{{ enchant }}{% endif %}</strong>
           </div>
           <input type="hidden" name="item_id" value="{{ item_id }}">
+          {% if enchant %}
+          <input type="hidden" name="enchant" value="{{ enchant }}">
+          {% endif %}
         </div>
 
         <div class="mb-4">

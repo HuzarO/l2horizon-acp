@@ -157,7 +157,7 @@
                    title="{% trans 'Enviar item para o personagem no jogo' %}">
                   <i class="fas fa-gamepad"></i>{% trans "Enviar para Personagem" %}
                 </a>
-                <a href="{% url 'inventory:trocar_item' %}?character_name_origem={{ data.inventory.character_name }}&item_id={{ item.item_id|unlocalize }}" 
+                <a href="{% url 'inventory:trocar_item' %}?character_name_origem={{ data.inventory.character_name }}&item_id={{ item.item_id|unlocalize }}&enchant={{ item.enchant }}" 
                    class="item-action-btn warning"
                    title="{% trans 'Enviar item para outro personagem' %}">
                   <i class="fas fa-exchange-alt"></i>{% trans "Enviar para Outro Personagem" %}
