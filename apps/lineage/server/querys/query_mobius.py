@@ -989,38 +989,49 @@ class TransferFromWalletToChar:
                 print(f"❌ Erro ao inserir moedas (stackable): {e}")
                 return None
         else:
-            # Não stackable: inserir múltiplos registros, um para cada unidade
-            # Limita a quantidade para evitar timeout em grandes quantidades
-            max_batch = 1000  # Limite de inserções por vez
-            if amount > max_batch:
-                print(f"⚠️ Quantidade muito grande ({amount}), limitando a {max_batch} inserções")
-                amount = max_batch
+            # Não stackable: inserir múltiplos registros usando BATCH INSERT
+            # Limita a quantidade para evitar timeout e abusos
+            MAX_NON_STACKABLE = 500  # Limite máximo de itens não-stackable por vez
+            if amount > MAX_NON_STACKABLE:
+                print(f"⚠️ Quantidade muito grande ({amount}) para item não-stackable, limitando a {MAX_NON_STACKABLE}")
+                amount = MAX_NON_STACKABLE
             
-            success_count = 0
-            for i in range(amount):
-                try:
-                    insert_query = f"""
-                        INSERT INTO items_delayed ({cols_str})
-                        SELECT {values_str}
-                        FROM items_delayed
-                    """
-                    result = db.insert(insert_query, {
-                        "owner_id": owner_id,
-                        "coin_id": coin_id,
-                        "count_value": 1,
-                        "enchant": enchant
-                    })
-                    if result:
-                        success_count += 1
-                    else:
-                        # Se falhar, para o loop para evitar mais erros
-                        print(f"⚠️ Falha ao inserir moeda {i+1}/{amount}, parando inserção")
-                        break
-                except Exception as e:
-                    print(f"❌ Erro ao inserir moeda {i+1}/{amount}: {e}")
-                    # Continua tentando, mas registra o erro
-                    continue
-            return success_count == amount
+            try:
+                # Buscar o próximo payment_id uma única vez
+                max_id_query = "SELECT COALESCE(MAX(payment_id), 0) as max_id FROM items_delayed"
+                max_result = db.select(max_id_query)
+                next_payment_id = (max_result[0]["max_id"] if max_result else 0) + 1
+                
+                # Construir valores para cada registro
+                # Precisamos substituir os placeholders dinâmicos pelos valores reais
+                union_parts = []
+                for i in range(amount):
+                    payment_id = next_payment_id + i
+                    # Substituir placeholders pelos valores reais
+                    values_row = values_str.replace(':owner_id', str(owner_id))
+                    values_row = values_row.replace(':coin_id', str(coin_id))
+                    values_row = values_row.replace(':count_value', '1')
+                    values_row = values_row.replace(':enchant', str(enchant))
+                    values_row = values_row.replace('COALESCE(MAX(payment_id), 0) + 1', str(payment_id))
+                    union_parts.append(f"SELECT {values_row}")
+                
+                union_query = " UNION ALL ".join(union_parts)
+                batch_insert_query = f"""
+                    INSERT INTO items_delayed ({cols_str})
+                    {union_query}
+                """
+                
+                # Executar batch insert em uma única transação
+                result = db.insert(batch_insert_query, {})
+                if result is not None:
+                    return True
+                else:
+                    print(f"❌ Erro ao executar batch insert de {amount} itens não-stackable")
+                    return False
+                    
+            except Exception as e:
+                print(f"❌ Erro ao inserir {amount} itens não-stackable em batch: {e}")
+                return False
 
 
 
