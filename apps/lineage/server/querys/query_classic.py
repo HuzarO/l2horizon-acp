@@ -864,8 +864,24 @@ class TransferFromWalletToChar:
 
     @staticmethod
     @cache_lineage_result(timeout=300, use_cache=False)
-    def insert_coin(char_name: str, coin_id: int, amount: int, enchant: int = 0):
+    def insert_coin(char_name: str, coin_id: int, amount: int, enchant: int = 0, force_stackable: bool = False):
+        """
+        Insere moedas/itens para um personagem.
+        
+        Parâmetros:
+        - char_name: Nome do personagem
+        - coin_id: ID do item/moeda
+        - amount: Quantidade
+        - enchant: Nível de encantamento (padrão: 0)
+        - force_stackable: Se True, força o item como acumulável (stackable), 
+                           ignorando a detecção automática. Útil para itens de donate.
+        """
         db = LineageDB()
+        
+        # Verifica conexão antes de começar
+        if not db.is_connected():
+            print(f"⚠️ Banco Lineage desconectado ao tentar inserir moedas para {char_name}")
+            return None
 
         # Buscar owner_id do personagem
         char_query = "SELECT obj_Id FROM characters WHERE char_name = :char_name"
@@ -930,18 +946,23 @@ class TransferFromWalletToChar:
                 existing_items = []
 
         # Detectar se o item é stackable (acumulável)
-        # Se existe apenas 1 item com count > 1, é stackable
-        # Se existem múltiplos itens com count = 1, não é stackable
-        is_stackable = False
-        if existing_items:
-            if len(existing_items) == 1 and existing_items[0]["count"] > 1:
-                is_stackable = True
-            elif len(existing_items) == 1 and existing_items[0]["count"] == 1:
-                # Se tem apenas 1 item com count = 1, pode ser stackable ou não
-                is_stackable = True
-            else:
-                # Múltiplos itens = não stackable
-                is_stackable = False
+        # Se force_stackable=True, sempre trata como stackable (útil para itens de donate)
+        if force_stackable:
+            is_stackable = True
+        else:
+            # Lógica de detecção automática baseada nos itens existentes
+            # Se existe apenas 1 item com count > 1, é stackable
+            # Se existem múltiplos itens com count = 1, não é stackable
+            is_stackable = False
+            if existing_items:
+                if len(existing_items) == 1 and existing_items[0]["count"] > 1:
+                    is_stackable = True
+                elif len(existing_items) == 1 and existing_items[0]["count"] == 1:
+                    # Se tem apenas 1 item com count = 1, pode ser stackable ou não
+                    is_stackable = True
+                else:
+                    # Múltiplos itens = não stackable
+                    is_stackable = False
 
         # Se é stackable, inserir um único registro com a quantidade total
         if is_stackable:
@@ -958,37 +979,56 @@ class TransferFromWalletToChar:
                     0, 0, 'DONATE WEB'
                 FROM items_delayed
             """
-            result = db.insert(insert_query, {
-                "owner_id": owner_id,
-                "coin_id": coin_id,
-                "amount": amount,
-                "enchant": enchant
-            })
-            return result is not None
-        else:
-            # Não stackable: inserir múltiplos registros, um para cada unidade
-            success_count = 0
-            for i in range(amount):
-                insert_query = """
-                    INSERT INTO items_delayed (
-                        payment_id, owner_id, item_id, count,
-                        enchant_level, variationId1, variationId2,
-                        flags, payment_status, description
-                    )
-                    SELECT
-                        COALESCE(MAX(payment_id), 0) + 1,
-                        :owner_id, :coin_id, 1,
-                        :enchant, 0, 0,
-                        0, 0, 'DONATE WEB'
-                    FROM items_delayed
-                """
+            try:
                 result = db.insert(insert_query, {
                     "owner_id": owner_id,
                     "coin_id": coin_id,
+                    "amount": amount,
                     "enchant": enchant
                 })
-                if result:
-                    success_count += 1
+                return result is not None
+            except Exception as e:
+                print(f"❌ Erro ao inserir moedas (stackable): {e}")
+                return None
+        else:
+            # Não stackable: inserir múltiplos registros, um para cada unidade
+            # Limita a quantidade para evitar timeout em grandes quantidades
+            max_batch = 1000  # Limite de inserções por vez
+            if amount > max_batch:
+                print(f"⚠️ Quantidade muito grande ({amount}), limitando a {max_batch} inserções")
+                amount = max_batch
+            
+            success_count = 0
+            for i in range(amount):
+                try:
+                    insert_query = """
+                        INSERT INTO items_delayed (
+                            payment_id, owner_id, item_id, count,
+                            enchant_level, variationId1, variationId2,
+                            flags, payment_status, description
+                        )
+                        SELECT
+                            COALESCE(MAX(payment_id), 0) + 1,
+                            :owner_id, :coin_id, 1,
+                            :enchant, 0, 0,
+                            0, 0, 'DONATE WEB'
+                        FROM items_delayed
+                    """
+                    result = db.insert(insert_query, {
+                        "owner_id": owner_id,
+                        "coin_id": coin_id,
+                        "enchant": enchant
+                    })
+                    if result:
+                        success_count += 1
+                    else:
+                        # Se falhar, para o loop para evitar mais erros
+                        print(f"⚠️ Falha ao inserir moeda {i+1}/{amount}, parando inserção")
+                        break
+                except Exception as e:
+                    print(f"❌ Erro ao inserir moeda {i+1}/{amount}: {e}")
+                    # Continua tentando, mas registra o erro
+                    continue
             return success_count == amount
 
 

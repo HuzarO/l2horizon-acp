@@ -32,7 +32,9 @@ loglevel = 'info'
 capture_output = True
 
 # Graceful timeout for worker processes (in seconds)
-timeout = 30
+# Aumentado para 60s para operações de wallet que podem demorar mais
+# (transferências para servidor do jogo podem levar tempo devido a queries no banco L2)
+timeout = int(os.getenv('GUNICORN_TIMEOUT', 60))
 
 # Max requests a worker will process before restarting (helps manage memory leaks)
 max_requests = 1000

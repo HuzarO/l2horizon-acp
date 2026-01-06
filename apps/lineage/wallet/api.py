@@ -120,6 +120,9 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
             }, timeout=300)
         # Se skip_duplicate_check=True, assume que lock e cache já foram configurados na API
 
+        # Flag para controlar se a transação foi commitada e precisa reversão em caso de erro
+        transacao_commitada = False
+        
         try:
             # Processamento da transferência
             quantidade_moedas = Decimal(valor) * Decimal(multiplicador)
@@ -156,26 +159,43 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
                         origem=active_login,
                         destino=nome_personagem
                     )
+            
+            # Marca que a transação foi commitada (saiu do with transaction.atomic())
+            transacao_commitada = True
 
             # Inserção no banco do Lineage
+            # force_stackable=True porque itens de donate sempre devem ser acumuláveis
             try:
                 sucesso = TransferFromWalletToChar.insert_coin(
                     char_name=nome_personagem,
                     coin_id=COIN_ID,
-                    amount=amount
+                    amount=amount,
+                    force_stackable=True  # Itens de donate sempre são acumuláveis
                 )
 
                 if not sucesso:
                     logger.error(f"Falha ao inserir moedas no Lineage: personagem={nome_personagem}, amount={amount}")
-                    _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem)
-                    return {'success': False, 'error': 'Erro ao adicionar a moeda ao personagem. O valor foi revertido.'}
+                    # Verifica se o item foi entregue antes de reverter
+                    revertido = _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem, coin_id=COIN_ID, amount=amount)
+                    if revertido:
+                        transacao_commitada = False  # Já revertida
+                        return {'success': False, 'error': 'Erro ao adicionar a moeda ao personagem. O valor foi revertido.'}
+                    else:
+                        # Item foi entregue, não reverteu
+                        return {'success': False, 'error': 'Erro ao confirmar inserção, mas o item pode ter sido entregue. Verifique no jogo.'}
 
             except Exception as lineage_error:
                 logger.error(f"Erro ao inserir moedas no Lineage: {str(lineage_error)} (usuário: {user.username})")
-                _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem)
-                return {'success': False, 'error': 'Erro ao adicionar a moeda ao personagem. O valor foi revertido automaticamente.'}
+                # Verifica se o item foi entregue antes de reverter
+                revertido = _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem, coin_id=COIN_ID, amount=amount)
+                if revertido:
+                    transacao_commitada = False  # Já revertida
+                    return {'success': False, 'error': 'Erro ao adicionar a moeda ao personagem. O valor foi revertido automaticamente.'}
+                else:
+                    # Item foi entregue, não reverteu
+                    return {'success': False, 'error': 'Erro ao confirmar inserção, mas o item pode ter sido entregue. Verifique no jogo.'}
 
-            # Sucesso
+            # Sucesso - marca como completo ANTES de qualquer outra operação
             cache.set(cache_key, {
                 'status': 'completed',
                 'completed_at': time.time(),
@@ -183,6 +203,9 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
                 'valor': str(valor),
                 'personagem': nome_personagem
             }, timeout=300)
+            
+            # Marca que completou com sucesso (para o finally não tentar reverter)
+            transacao_commitada = False  # Reset para indicar que foi completada
 
             perfil, created = PerfilGamer.objects.get_or_create(user=user)
             perfil.adicionar_xp(40)
@@ -202,14 +225,73 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
         except ValueError as ve:
             logger.warning(f"Erro de validação na transferência: {str(ve)} (usuário: {user.username})")
             cache.delete(cache_key)
+            # Não precisa reverter se a transação não foi commitada (erro de validação)
             return {'success': False, 'error': str(ve)}
 
         except Exception as e:
             logger.error(f"Erro durante transferência: {str(e)} (usuário: {user.username}, personagem: {nome_personagem})", exc_info=True)
             cache.delete(cache_key)
+            
+            # Se a transação foi commitada mas deu erro depois, precisa verificar e possivelmente reverter
+            if transacao_commitada:
+                logger.warning(f"Transação commitada mas erro posterior detectado, verificando entrega antes de reverter... (usuário: {user.username})")
+                try:
+                    # Pega COIN_ID e amount do contexto (precisa estar disponível)
+                    config = CoinConfig.objects.filter(ativa=True).first()
+                    if config:
+                        quantidade_moedas = Decimal(valor) * Decimal(config.multiplicador)
+                        amount = int(round(quantidade_moedas))
+                        revertido = _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem, coin_id=config.coin_id, amount=amount)
+                        if revertido:
+                            logger.info(f"Reversão executada com sucesso após erro (usuário: {user.username})")
+                        else:
+                            logger.warning(f"Reversão cancelada: item foi entregue (usuário: {user.username})")
+                    else:
+                        # Se não conseguir pegar config, reverte sem verificação (fallback)
+                        logger.warning(f"Config não encontrada, revertendo sem verificação (usuário: {user.username})")
+                        _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem)
+                except Exception as revert_error:
+                    logger.critical(f"ERRO CRÍTICO: Falha ao reverter transação após erro: {str(revert_error)} (usuário: {user.username})")
+                    # Marca no cache para reversão manual posterior
+                    cache.set(f"wallet_revert_pending_{user.id}_{int(time.time())}", {
+                        'user_id': user.id,
+                        'valor': str(valor),
+                        'personagem': nome_personagem,
+                        'origem_saldo': origem_saldo,
+                        'error': str(e),
+                        'revert_error': str(revert_error),
+                        'timestamp': timezone.now().isoformat()
+                    }, timeout=86400)  # 24 horas
+            
             return {'success': False, 'error': f'Ocorreu um erro durante a transferência: {str(e)}'}
 
         finally:
+            # Se a transação foi commitada mas não completou com sucesso, tenta reverter
+            # Isso garante reversão mesmo se o worker for morto antes do except
+            if transacao_commitada:
+                # Verifica se o cache ainda está como "processing" (não foi marcado como "completed")
+                cache_data = cache.get(cache_key)
+                if cache_data and isinstance(cache_data, dict):
+                    if cache_data.get('status') != 'completed':
+                        logger.warning(f"Transferência não completada, verificando entrega antes de reverter no finally (usuário: {user.username})")
+                        try:
+                            # Tenta pegar COIN_ID e amount do contexto
+                            config = CoinConfig.objects.filter(ativa=True).first()
+                            if config:
+                                quantidade_moedas = Decimal(valor) * Decimal(config.multiplicador)
+                                amount = int(round(quantidade_moedas))
+                                revertido = _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem, coin_id=config.coin_id, amount=amount)
+                                if revertido:
+                                    logger.info(f"Reversão executada no finally com sucesso (usuário: {user.username})")
+                                else:
+                                    logger.warning(f"Reversão cancelada no finally: item foi entregue (usuário: {user.username})")
+                            else:
+                                # Fallback: reverte sem verificação
+                                _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem)
+                                logger.info(f"Reversão executada no finally (fallback, sem verificação) (usuário: {user.username})")
+                        except Exception as revert_error:
+                            logger.critical(f"ERRO CRÍTICO: Falha ao reverter no finally: {str(revert_error)} (usuário: {user.username})")
+            
             # Libera o lock apenas se foi adquirido nesta função
             if not skip_duplicate_check:
                 cache.delete(cache_lock_key)
@@ -219,9 +301,238 @@ def process_transfer_to_server(user, nome_personagem, valor, origem_saldo, activ
         return {'success': False, 'error': 'Erro interno do servidor. Tente novamente mais tarde.'}
 
 
-def _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem):
-    """Reverte uma transação em caso de erro no Lineage."""
+def _verificar_item_entregue(nome_personagem, coin_id, amount):
+    """
+    Verifica se o item foi realmente entregue no banco do Lineage.
+    Retorna True se o item foi entregue, False caso contrário.
+    """
     try:
+        db = LineageDB()
+        if not db.is_connected():
+            logger.warning(f"Não foi possível verificar entrega: banco Lineage desconectado")
+            # Se não conseguir verificar, assume que NÃO foi entregue (mais seguro)
+            return False
+        
+        # Busca o char_id do personagem usando search_coin (que busca por nome)
+        # Alternativamente, podemos buscar diretamente na tabela characters
+        char_result = TransferFromWalletToChar.search_coin(nome_personagem, coin_id)
+        if not char_result:
+            # Se não encontrou na tabela items, tenta buscar o personagem diretamente
+            # para pegar o char_id
+            try:
+                # Busca personagem na tabela characters (find_char precisa de account, mas podemos usar select direto)
+                char_query = "SELECT obj_Id, charId, char_id FROM characters WHERE char_name = :char_name LIMIT 1"
+                char_result = db.select(char_query, {"char_name": nome_personagem})
+                if not char_result:
+                    logger.warning(f"Personagem {nome_personagem} não encontrado para verificação")
+                    return False
+            except Exception as e:
+                logger.error(f"Erro ao buscar personagem para verificação: {str(e)}")
+                return False
+        
+        # Se encontrou na search_coin, já tem o owner_id
+        if char_result and len(char_result) > 0:
+            char_id = char_result[0].get('owner_id') or char_result[0].get('obj_Id') or char_result[0].get('charId') or char_result[0].get('char_id')
+        else:
+            # Se não encontrou na search_coin, usa o resultado da query direta
+            char_id = char_result[0].get('obj_Id') or char_result[0].get('charId') or char_result[0].get('char_id')
+        
+        if not char_id:
+            logger.warning(f"Não foi possível obter char_id do personagem {nome_personagem}")
+            return False
+        
+        # Flag para indicar se item foi processado em items_delayed
+        item_processado_items_delayed = False
+        
+        # Verifica se usa items_delayed
+        if TransferFromWalletToChar.items_delayed:
+            # Verifica na tabela items_delayed se há item recente
+            # O servidor processa items_delayed e atualiza payment_status quando entrega
+            try:
+                # Detecta as colunas da tabela items_delayed
+                columns = db.get_table_columns("items_delayed")
+                
+                # Identifica as colunas (podem variar entre schemas)
+                owner_id_col = None
+                item_id_col = None
+                payment_status_col = None
+                payment_id_col = None
+                description_col = None
+                
+                for col in columns:
+                    col_lower = col.lower()
+                    if col_lower in ['owner_id', 'ownerid', 'char_id', 'charid']:
+                        owner_id_col = col
+                    elif col_lower in ['item_id', 'itemid', 'item_type']:
+                        item_id_col = col
+                    elif col_lower in ['payment_status', 'paymentstatus', 'status']:
+                        payment_status_col = col
+                    elif col_lower in ['payment_id', 'paymentid', 'id']:
+                        payment_id_col = col
+                    elif col_lower in ['description', 'desc']:
+                        description_col = col
+                
+                if owner_id_col and item_id_col:
+                    # Busca itens recentes na items_delayed para este personagem e moeda
+                    # Verifica itens inseridos nos últimos 10 minutos (janela de segurança)
+                    query_params = {
+                        "owner_id": char_id,
+                        "coin_id": coin_id
+                    }
+                    
+                    # Monta query baseada nas colunas disponíveis
+                    where_conditions = [f"{owner_id_col} = :owner_id", f"{item_id_col} = :coin_id"]
+                    
+                    # Se tem description, filtra por 'DONATE WEB' para garantir que é nossa inserção
+                    if description_col:
+                        where_conditions.append(f"{description_col} = 'DONATE WEB'")
+                    
+                    query = f"""
+                        SELECT {payment_id_col or '*'} as payment_id, 
+                               {payment_status_col or 'NULL'} as payment_status,
+                               {item_id_col} as item_id,
+                               count
+                        FROM items_delayed
+                        WHERE {' AND '.join(where_conditions)}
+                        ORDER BY {payment_id_col or 'payment_id'} DESC
+                        LIMIT 10
+                    """
+                    
+                    items_delayed_result = db.select(query, query_params)
+                    
+                    if items_delayed_result:
+                        # Verifica se algum item foi processado (payment_status != 0)
+                        # Normalmente: 0 = pendente, 1 = processado/entregue
+                        for item in items_delayed_result:
+                            payment_status = item.get('payment_status') or item.get('paymentStatus') or 0
+                            item_count = item.get('count', 0)
+                            
+                            # Se payment_status indica que foi processado (normalmente 1 ou > 0)
+                            if payment_status != 0 and payment_status is not None:
+                                logger.info(
+                                    f"✅ Item encontrado em items_delayed com payment_status={payment_status} "
+                                    f"(processado/entregue) para personagem {nome_personagem}, count={item_count}"
+                                )
+                                # Marca que foi processado, mas ainda verifica no inventário para confirmar
+                                item_processado_items_delayed = True
+                                break  # Encontrou um processado, não precisa verificar mais
+                            elif payment_status == 0:
+                                # Item ainda pendente na items_delayed
+                                logger.info(
+                                    f"⏳ Item encontrado em items_delayed mas ainda pendente "
+                                    f"(payment_status=0) para personagem {nome_personagem}, count={item_count}"
+                                )
+                                # Continua verificando no inventário também (pode ter sido processado mas ainda não atualizado o status)
+                    
+                    if not items_delayed_result:
+                        logger.info(f"Nenhum item encontrado em items_delayed para personagem {nome_personagem}, coin_id={coin_id}")
+                    
+                    # Se encontrou item processado em items_delayed, ainda verifica no inventário
+                    # para ter certeza absoluta antes de retornar True
+                    if item_processado_items_delayed:
+                        logger.info(f"Item processado em items_delayed detectado, verificando inventário para confirmar...")
+                    
+            except Exception as e:
+                logger.warning(f"Erro ao verificar items_delayed: {str(e)}. Continuando verificação no inventário...")
+                # Continua para verificar no inventário mesmo se der erro
+        
+        # Verifica se o item já está no inventário/warehouse do personagem
+        # Esta é a verificação final e mais confiável
+        from utils.dynamic_import import get_query_class
+        TransferFromCharToWallet = get_query_class("TransferFromCharToWallet")
+        coin_info = TransferFromCharToWallet.check_ingame_coin(coin_id, char_id)
+        
+        if coin_info:
+            total_coins = coin_info.get('total', 0)
+            logger.info(f"Verificação de entrega (inventário): personagem {nome_personagem} tem {total_coins} moedas (coin_id: {coin_id}, esperado: {amount})")
+            
+            # IMPORTANTE: Esta verificação considera:
+            # 1. Se usa items_delayed: o item pode estar pendente (payment_status=0) mas já processado e no inventário
+            # 2. O personagem pode já ter moedas pré-existentes
+            # 
+            # Por segurança, vamos usar uma abordagem conservadora:
+            # - Se encontrou moedas E a quantidade é >= ao que tentamos inserir, assume que foi entregue
+            # - Caso contrário, assume que NÃO foi entregue (mais seguro)
+            
+            if total_coins >= amount:
+                # Quantidade encontrada é maior ou igual ao esperado
+                # Se também foi processado em items_delayed, é certeza absoluta
+                if item_processado_items_delayed:
+                    logger.info(
+                        f"✅✅ Entrega CONFIRMADA (items_delayed + inventário): personagem tem {total_coins} moedas "
+                        f"(>= {amount} esperadas). Item foi entregue com certeza."
+                    )
+                else:
+                    logger.warning(
+                        f"✅ Entrega confirmada no inventário: personagem tem {total_coins} moedas "
+                        f"(>= {amount} esperadas). Item foi entregue."
+                    )
+                return True
+            elif total_coins > 0:
+                # Tem algumas moedas, mas menos que o esperado
+                # Pode ser moedas pré-existentes ou entrega parcial
+                # Por segurança, assume que NÃO foi totalmente entregue
+                logger.info(
+                    f"⚠️ Moedas encontradas ({total_coins}) mas menos que esperado ({amount}). "
+                    f"Pode ser moedas pré-existentes. Assumindo que NÃO foi entregue completamente."
+                )
+                return False
+            else:
+                # Não encontrou moedas no inventário
+                logger.info(f"❌ Nenhuma moeda encontrada no inventário para personagem {nome_personagem}")
+                return False
+        
+        # Se não encontrou moedas, provavelmente não foi entregue
+        logger.info(f"❌ Verificação de entrega: personagem {nome_personagem} NÃO tem moedas no inventário (coin_id: {coin_id})")
+        return False
+        
+    except Exception as e:
+        logger.error(f"Erro ao verificar se item foi entregue: {str(e)}")
+        # Em caso de erro na verificação, assume que NÃO foi entregue (mais seguro)
+        return False
+
+
+def _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem, coin_id=None, amount=None):
+    """
+    Reverte uma transação em caso de erro no Lineage.
+    
+    IMPORTANTE: Antes de reverter, verifica se o item foi realmente entregue no banco do Lineage.
+    Se foi entregue, NÃO reverte o saldo (para evitar duplicação).
+    Se NÃO foi entregue, reverte o saldo.
+    
+    Parâmetros:
+    - coin_id: ID da moeda (opcional, usado para verificação)
+    - amount: Quantidade de moedas (opcional, usado para verificação)
+    """
+    # Se temos informações da moeda, verifica se foi entregue ANTES de reverter
+    if coin_id is not None and amount is not None:
+        logger.info(f"Verificando se item foi entregue antes de reverter (usuário: {user.username}, personagem: {nome_personagem})")
+        item_entregue = _verificar_item_entregue(nome_personagem, coin_id, amount)
+        
+        if item_entregue:
+            logger.warning(
+                f"⚠️ REVERSÃO CANCELADA: Item foi entregue no Lineage! "
+                f"Usuário: {user.username}, Personagem: {nome_personagem}, "
+                f"Coin ID: {coin_id}, Amount: {amount}. "
+                f"Não revertendo saldo para evitar duplicação."
+            )
+            # Marca no cache para análise manual
+            cache.set(f"wallet_no_revert_item_delivered_{user.id}_{int(time.time())}", {
+                'user_id': user.id,
+                'valor': str(valor),
+                'personagem': nome_personagem,
+                'origem_saldo': origem_saldo,
+                'coin_id': coin_id,
+                'amount': amount,
+                'reason': 'Item foi entregue no Lineage, reversão cancelada para evitar duplicação',
+                'timestamp': timezone.now().isoformat()
+            }, timeout=86400)  # 24 horas
+            return False  # Não reverteu
+    
+    # Se chegou aqui, o item NÃO foi entregue (ou não foi possível verificar)
+    # Pode reverter o saldo com segurança
+    try:
+        logger.info(f"Revertendo transação (usuário: {user.username}, valor: {valor})")
         with transaction.atomic():
             wallet = Wallet.objects.select_for_update().get(usuario=user)
             if origem_saldo == 'bonus':
@@ -242,6 +553,8 @@ def _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem
                     origem=nome_personagem,
                     destino=active_login
                 )
+        logger.info(f"Reversão executada com sucesso (usuário: {user.username})")
+        return True
     except Exception as revert_error:
         logger.critical(f"ERRO CRÍTICO: Falha ao reverter transação após erro no Lineage: {str(revert_error)} (usuário: {user.username}, valor: {valor})")
         cache.set(f"wallet_revert_error_{user.id}_{int(time.time())}", {
@@ -252,6 +565,7 @@ def _reverter_transacao(user, valor, origem_saldo, active_login, nome_personagem
             'revert_error': str(revert_error),
             'timestamp': timezone.now().isoformat()
         }, timeout=86400)
+        return False
 
 
 class WalletTransferThrottle(UserRateThrottle):
