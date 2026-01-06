@@ -343,6 +343,7 @@ def trocar_item_com_jogador(request):
             item_destino, created = InventoryItem.objects.get_or_create(
                 inventory=inventario_destino,
                 item_id=item_id,
+                enchant=item_origem.enchant,
                 defaults={'item_name': item_origem.item_name, 'quantity': quantity}
             )
             if not created:
