@@ -111,6 +111,17 @@ def retirar_item_servidor(request):
             messages.error(request, 'Senha incorreta.')
             return redirect(f"{request.path}?char_id={char_id}")
 
+        # --- Validação: Personagem com loja offline ou atividade ativa? ---
+        try:
+            has_offline_var = TransferFromCharToWallet.check_offline_variable(char_id)
+            if has_offline_var:
+                messages.error(request, 'Não é possível retirar itens enquanto o personagem estiver com loja offline ou atividade ativa no jogo. Feche a loja offline ou finalize a atividade antes de tentar novamente.')
+                return redirect(f"{request.path}?char_id={char_id}")
+        except Exception as e:
+            # Se houver erro na consulta, logar mas não bloquear a operação
+            print(f"⚠️ Erro ao verificar variável offline: {e}")
+        # -------------------------------------------------------------------
+
         # --- Validação: Item Bloqueado? ---
         blocked_item = BlockedServerItem.objects.filter(item_id=item_id).first()
         if blocked_item:

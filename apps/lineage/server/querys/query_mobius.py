@@ -1154,7 +1154,36 @@ class TransferFromCharToWallet:
             print(f"Erro ao remover coin do inventário/warehouse: {e}")
             return False
 
-
+    @staticmethod
+    @cache_lineage_result(timeout=300, use_cache=False)
+    def check_offline_variable(char_id):
+        """
+        Verifica se o personagem tem a variável 'offline' ativa (loja offline ou atividade ativa).
+        Retorna True se encontrar a variável, False caso contrário.
+        """
+        try:
+            db = LineageDB()
+            # Tenta com obj_id primeiro (minúsculo), depois obj_Id (maiúsculo)
+            query = """
+                SELECT * FROM character_variables 
+                WHERE obj_id = :char_id AND type = 'user-var' AND name = 'offline'
+                LIMIT 1
+            """
+            result = db.select(query, {"char_id": char_id})
+            if result:
+                return True
+            
+            # Se não encontrou, tenta com obj_Id (maiúsculo) para compatibilidade
+            query_alt = """
+                SELECT * FROM character_variables 
+                WHERE obj_Id = :char_id AND type = 'user-var' AND name = 'offline'
+                LIMIT 1
+            """
+            result_alt = db.select(query_alt, {"char_id": char_id})
+            return bool(result_alt)
+        except Exception as e:
+            print(f"⚠️ Erro ao verificar variável offline: {e}")
+            return False
 
 
 class LineageMarketplace:
