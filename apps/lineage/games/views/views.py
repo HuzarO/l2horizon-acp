@@ -1085,18 +1085,64 @@ def daily_bonus_claim(request):
         bag_item.save(update_fields=['quantity'])
 
     # Registra a reivindicação com IP e user agent
+    # Usa get_or_create para evitar race conditions de forma atômica
     from python_ipware import IpWare
+    from django.db import IntegrityError
     ipw = IpWare(precedence=("X_FORWARDED_FOR", "HTTP_X_FORWARDED_FOR"))
     ip_address, is_routable = ipw.get_client_ip(meta=request.META) if request else (None, False)
     user_agent = request.META.get('HTTP_USER_AGENT', '')[:500] if request else ''
     
-    DailyBonusClaim.objects.create(
-        user=request.user, 
-        season=season, 
-        day_of_month=target_day,
-        ip_address=str(ip_address) if ip_address else None,
-        user_agent=user_agent or None
-    )
+    try:
+        claim, created = DailyBonusClaim.objects.get_or_create(
+            user=request.user, 
+            season=season, 
+            day_of_month=target_day,
+            defaults={
+                'ip_address': str(ip_address) if ip_address else None,
+                'user_agent': user_agent or None
+            }
+        )
+        
+        # Se o registro já existia (não foi criado), significa que já foi reclamado
+        # A constraint unique (user, season, day_of_month) garante que cada dia só pode ser reclamado uma vez por temporada
+        if not created:
+            # Verifica se o claim existente é do mês atual (para mensagem apropriada)
+            claim_month_start = claim.created_at.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            current_month_start = first_day_of_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            is_current_month = (claim_month_start.year == current_month_start.year and 
+                              claim_month_start.month == current_month_start.month)
+            
+            # Race condition capturada: o registro já existe
+            # Retorna antes de dar o prêmio novamente
+            if target_day == today_day:
+                if is_current_month:
+                    messages.info(request, _('Você já resgatou o prêmio de hoje.'))
+                else:
+                    messages.info(request, _('Você já resgatou este prêmio anteriormente.'))
+            else:
+                if is_current_month:
+                    messages.info(request, _('Você já resgatou o prêmio deste dia.'))
+                else:
+                    messages.info(request, _('Você já resgatou este prêmio anteriormente.'))
+            return redirect('games:daily_bonus_dashboard')
+    except IntegrityError:
+        # Fallback para race condition extrema (não deveria acontecer com get_or_create, mas por segurança)
+        # Verifica novamente se existe um claim do mês atual
+        claim_exists = DailyBonusClaim.objects.filter(
+            user=request.user, 
+            season=season, 
+            day_of_month=target_day,
+            created_at__gte=first_day_of_month,
+            created_at__lt=last_day_of_month
+        ).exists()
+        if claim_exists:
+            if target_day == today_day:
+                messages.info(request, _('Você já resgatou o prêmio de hoje.'))
+            else:
+                messages.info(request, _('Você já resgatou o prêmio deste dia.'))
+            return redirect('games:daily_bonus_dashboard')
+        # Se não existe claim do mês atual, houve erro inesperado - re-raise
+        raise
 
     if target_day == today_day:
         messages.success(request, _('Prêmio diário resgatado com sucesso!'))
