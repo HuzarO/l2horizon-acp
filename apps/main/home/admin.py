@@ -401,7 +401,7 @@ class BannerAdmin(BaseModelAdmin):
                 'popup_show_once_per_session'
             ),
             'classes': ('collapse',),
-            'description': _('Configurações específicas para banners tipo Pop-up')
+            'description': _('Configurações específicas para banners tipo Pop-up. IMPORTANTE: "Mostrar Apenas Uma Vez por Sessão" - Se marcado, o pop-up aparece apenas 1 vez até o usuário fechar o navegador. Se desmarcado, o pop-up aparece a cada carregamento da página.')
         }),
         (_('Controle de Exibição'), {
             'fields': ('is_active', 'display_order', 'start_date', 'end_date'),

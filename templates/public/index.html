@@ -973,11 +973,16 @@
             
             if (popupBanners && Array.isArray(popupBanners) && popupBanners.length > 0) {
             popupBanners.forEach(function(banner, index) {
-                // Verificar se deve mostrar (apenas uma vez por sessão)
                 const storageKey = 'banner_popup_' + banner.id;
-                if (banner.popup_show_once_per_session && sessionStorage.getItem(storageKey)) {
-                    return; // Já foi mostrado nesta sessão
+                
+                // Verificar se deve mostrar (apenas uma vez por sessão)
+                if (banner.popup_show_once_per_session) {
+                    // Modo: Apenas 1x por sessão
+                    if (sessionStorage.getItem(storageKey)) {
+                        return; // Já foi mostrado nesta sessão
+                    }
                 }
+                // Se popup_show_once_per_session for false, sempre mostra (a cada carregamento)
                 
                 // Criar overlay do pop-up
                 const overlay = document.createElement('div');
@@ -1047,9 +1052,12 @@
                     overlay.classList.add('active');
                     // Forçar display flex quando ativo
                     overlay.style.display = 'flex';
+                    
+                    // Salvar no sessionStorage apenas se for "1x por sessão"
                     if (banner.popup_show_once_per_session) {
                         sessionStorage.setItem(storageKey, 'shown');
                     }
+                    // Se for "a cada carregamento", não salva no sessionStorage, então sempre aparecerá
                 }, index * 500); // Delay entre múltiplos pop-ups
                 
                 // Fechar automaticamente se configurado

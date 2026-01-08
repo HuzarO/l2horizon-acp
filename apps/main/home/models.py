@@ -455,7 +455,7 @@ class Banner(BaseModel):
     popup_show_once_per_session = models.BooleanField(
         default=True,
         verbose_name=_("Mostrar Apenas Uma Vez por Sessão"),
-        help_text=_("Se marcado, o pop-up só aparece uma vez por sessão do usuário")
+        help_text=_("✓ Marcado: Pop-up aparece apenas 1 vez por sessão (até fechar o navegador). Desmarcado: Pop-up aparece a cada carregamento da página.")
     )
     
     # Datas opcionais
