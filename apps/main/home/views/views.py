@@ -1,6 +1,7 @@
 import json, base64, logging, pyotp, os, re
 import requests
 from datetime import datetime
+from django.db.models import Q
 
 from ..models import *
 from ..forms import *
@@ -224,6 +225,41 @@ def index(request):
     # Verificar se deve mostrar jogadores online
     show_players_online = getattr(settings, 'SHOW_PLAYERS_ONLINE', True)
 
+    # Buscar banners ativos e visíveis
+    banners = []
+    popup_banners = []
+    try:
+        from django.utils import timezone
+        now = timezone.now()
+        banners_queryset = Banner.objects.filter(is_active=True)
+        
+        # Filtrar por datas se necessário
+        banners_queryset = banners_queryset.filter(
+            Q(start_date__isnull=True) | Q(start_date__lte=now),
+            Q(end_date__isnull=True) | Q(end_date__gte=now)
+        )
+        
+        # Agrupar por posição (apenas banners normais)
+        banners_by_position = {
+            'top': [],
+            'middle': [],
+            'bottom': []
+        }
+        
+        # Separar banners normais de pop-ups
+        for banner in banners_queryset.order_by('display_order', '-created_at'):
+            if banner.is_visible():
+                if banner.display_type == 'popup':
+                    popup_banners.append(banner)
+                else:
+                    banners_by_position[banner.position].append(banner)
+        
+        banners = banners_by_position
+    except Exception as e:
+        logger.error(f"Erro ao buscar banners: {e}")
+        banners = {'top': [], 'middle': [], 'bottom': []}
+        popup_banners = []
+
     context = {
         'clanes': clanes,
         'classes_info': classes_info,
@@ -237,6 +273,8 @@ def index(request):
         'latest_news_list': latest_news_list,
         'content_items': content_items,
         'server_status': server_status,
+        'banners': banners,
+        'popup_banners': popup_banners,
     }
 
     return render_theme_page(request, 'public', 'index.html', context)

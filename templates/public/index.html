@@ -374,6 +374,151 @@
             grid-template-columns: 1fr;
         }
     }
+
+    /* Banner Styles */
+    .banners-container {
+        width: 100%;
+        padding: 20px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        align-items: center;
+    }
+
+    .banners-top {
+        background: rgba(0, 0, 0, 0.3);
+        margin-bottom: 0;
+    }
+
+    .banners-middle {
+        background: rgba(0, 0, 0, 0.2);
+        margin: 40px 0;
+    }
+
+    .banners-bottom {
+        background: rgba(0, 0, 0, 0.3);
+        margin-top: 40px;
+    }
+
+    .banner-item {
+        display: block;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .banner-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(230, 199, 125, 0.3);
+    }
+
+    .banner-item img {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    .banner-item a {
+        display: block;
+        text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+        .banners-container {
+            padding: 15px 10px;
+        }
+        
+        .banner-item {
+            max-width: 100% !important;
+        }
+    }
+
+    /* Pop-up Styles */
+    .banner-popup-overlay {
+        display: none !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: rgba(0, 0, 0, 0.8) !important;
+        z-index: 99999 !important;
+        align-items: center !important;
+        justify-content: center !important;
+        backdrop-filter: blur(5px);
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .banner-popup-overlay.active {
+        display: flex !important;
+    }
+
+    .banner-popup-container {
+        position: relative !important;
+        background: #fff !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+        animation: popupFadeIn 0.3s ease-out;
+        z-index: 100000 !important;
+        margin: auto !important;
+    }
+
+    @keyframes popupFadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .banner-popup-close {
+        position: absolute !important;
+        top: 10px !important;
+        right: 10px !important;
+        width: 35px !important;
+        height: 35px !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+        border: none !important;
+        border-radius: 50% !important;
+        color: #fff !important;
+        font-size: 20px !important;
+        cursor: pointer !important;
+        z-index: 100001 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: all 0.3s ease;
+    }
+
+    .banner-popup-close:hover {
+        background: rgba(0, 0, 0, 0.8);
+        transform: rotate(90deg);
+    }
+
+    .banner-popup-content {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+
+    .banner-popup-content img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+
+    .banner-popup-content a {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
 </style>
 {% endblock %}
 
@@ -385,6 +530,23 @@
 {% endblock %}
 
 {% block content %}
+<!-- Banners Topo -->
+{% if banners.top %}
+<div class="banners-container banners-top">
+    {% for banner in banners.top %}
+    <div class="banner-item" style="{{ banner.get_size_style }} {{ banner.get_position_style }}">
+        {% if banner.link %}
+        <a href="{{ banner.link }}" target="_blank" rel="noopener noreferrer">
+            <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        </a>
+        {% else %}
+        <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- Hero Section -->
 <section class="h">
     <div class="h-logo" data-aos="fade-up" data-aos-duration="2000">
@@ -546,6 +708,23 @@
     </div>
 </section>
 
+<!-- Banners Meio -->
+{% if banners.middle %}
+<div class="banners-container banners-middle">
+    {% for banner in banners.middle %}
+    <div class="banner-item" style="{{ banner.get_size_style }} {{ banner.get_position_style }}">
+        {% if banner.link %}
+        <a href="{{ banner.link }}" target="_blank" rel="noopener noreferrer">
+            <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        </a>
+        {% else %}
+        <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- Tops Section -->
 <section class="tops-section">
     <div class="tops-title title container" data-aos="fade-up" data-aos-duration="2000">
@@ -697,6 +876,23 @@
         <a href="{% if configuracao %}{{ configuracao.link_discord }}{% else %}{{ PROJECT_DISCORD_URL }}{% endif %}" target="_blank"><i class="fa-brands fa-discord"></i></a>
     </div>
 </section>
+
+<!-- Banners Rodapé -->
+{% if banners.bottom %}
+<div class="banners-container banners-bottom">
+    {% for banner in banners.bottom %}
+    <div class="banner-item" style="{{ banner.get_size_style }} {{ banner.get_position_style }}">
+        {% if banner.link %}
+        <a href="{{ banner.link }}" target="_blank" rel="noopener noreferrer">
+            <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        </a>
+        {% else %}
+        <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extrascripts %}
@@ -753,5 +949,142 @@
   });
     // Initialize AOS
     AOS.init();
+
+    // Banner Pop-ups
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if popup_banners %}
+        try {
+            const popupBanners = [
+                {% for banner in popup_banners %}
+                {
+                    id: {{ banner.pk|default:"0" }},
+                    image: '{{ banner.image.url|escapejs }}',
+                    title: {% if banner.title %}'{{ banner.title|escapejs }}'{% else %}''{% endif %},
+                    link: {% if banner.link %}'{{ banner.link|escapejs }}'{% else %}null{% endif %},
+                    popup_width: {{ banner.popup_width|default:"600" }},
+                    popup_height: {{ banner.popup_height|default:"400" }},
+                    popup_close_button: {{ banner.popup_close_button|yesno:"true,false" }},
+                    popup_auto_close: {{ banner.popup_auto_close|yesno:"true,false" }},
+                    popup_auto_close_delay: {{ banner.popup_auto_close_delay|default:"5" }},
+                    popup_show_once_per_session: {{ banner.popup_show_once_per_session|yesno:"true,false" }}
+                }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ];
+            
+            if (popupBanners && Array.isArray(popupBanners) && popupBanners.length > 0) {
+            popupBanners.forEach(function(banner, index) {
+                const storageKey = 'banner_popup_' + banner.id;
+                
+                // Verificar se deve mostrar (apenas uma vez por sessão)
+                if (banner.popup_show_once_per_session) {
+                    // Modo: Apenas 1x por sessão
+                    if (sessionStorage.getItem(storageKey)) {
+                        return; // Já foi mostrado nesta sessão
+                    }
+                }
+                // Se popup_show_once_per_session for false, sempre mostra (a cada carregamento)
+                
+                // Criar overlay do pop-up
+                const overlay = document.createElement('div');
+                overlay.className = 'banner-popup-overlay';
+                overlay.id = 'banner-popup-' + banner.id;
+                
+                // Criar container do pop-up
+                const container = document.createElement('div');
+                container.className = 'banner-popup-container';
+                container.style.width = banner.popup_width + 'px';
+                container.style.height = banner.popup_height + 'px';
+                container.style.maxWidth = '90vw';
+                container.style.maxHeight = '90vh';
+                
+                // Criar conteúdo
+                const content = document.createElement('div');
+                content.className = 'banner-popup-content';
+                
+                if (banner.link) {
+                    const link = document.createElement('a');
+                    link.href = banner.link;
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    const img = document.createElement('img');
+                    img.src = banner.image;
+                    img.alt = banner.title || 'Banner';
+                    link.appendChild(img);
+                    content.appendChild(link);
+                } else {
+                    const img = document.createElement('img');
+                    img.src = banner.image;
+                    img.alt = banner.title || 'Banner';
+                    content.appendChild(img);
+                }
+                
+                container.appendChild(content);
+                
+                // Criar botão de fechar
+                if (banner.popup_close_button) {
+                    const closeBtn = document.createElement('button');
+                    closeBtn.className = 'banner-popup-close';
+                    closeBtn.innerHTML = '×';
+                    closeBtn.setAttribute('aria-label', 'Fechar');
+                    closeBtn.onclick = function() {
+                        closePopup(overlay, storageKey);
+                    };
+                    container.appendChild(closeBtn);
+                }
+                
+                // Fechar ao clicar no overlay (fora do pop-up)
+                overlay.onclick = function(e) {
+                    if (e.target === overlay) {
+                        closePopup(overlay, storageKey);
+                    }
+                };
+                
+                overlay.appendChild(container);
+                // Garantir que o overlay seja inserido no final do body para ficar acima de tudo
+                if (document.body) {
+                    document.body.appendChild(overlay);
+                    // Forçar estilos inline para garantir posicionamento
+                    overlay.style.cssText = 'position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; z-index: 99999 !important; display: none !important; align-items: center !important; justify-content: center !important; background: rgba(0, 0, 0, 0.8) !important; margin: 0 !important; padding: 0 !important;';
+                }
+                
+                // Mostrar pop-up com delay baseado no índice
+                setTimeout(function() {
+                    overlay.classList.add('active');
+                    // Forçar display flex quando ativo
+                    overlay.style.display = 'flex';
+                    
+                    // Salvar no sessionStorage apenas se for "1x por sessão"
+                    if (banner.popup_show_once_per_session) {
+                        sessionStorage.setItem(storageKey, 'shown');
+                    }
+                    // Se for "a cada carregamento", não salva no sessionStorage, então sempre aparecerá
+                }, index * 500); // Delay entre múltiplos pop-ups
+                
+                // Fechar automaticamente se configurado
+                if (banner.popup_auto_close && banner.popup_auto_close_delay) {
+                    setTimeout(function() {
+                        closePopup(overlay, storageKey);
+                    }, banner.popup_auto_close_delay * 1000);
+                }
+            });
+            }
+        } catch (e) {
+            console.error('Erro ao carregar pop-ups de banner:', e);
+        }
+        {% else %}
+        // Nenhum banner pop-up configurado
+        {% endif %}
+        
+        function closePopup(overlay, storageKey) {
+            if (!overlay) return;
+            overlay.classList.remove('active');
+            overlay.style.display = 'none';
+            setTimeout(function() {
+                if (overlay && overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        }
+    });
 </script>
 {% endblock %}
