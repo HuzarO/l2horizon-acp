@@ -8,6 +8,139 @@
 .pool-item-row { transition: all 0.3s ease; }
 .pool-item-row:hover { background: rgba(111, 66, 193, 0.1) !important; }
 .pool-item-row.editing { background: rgba(13, 202, 240, 0.15) !important; }
+
+/* Fix para modal-backdrop não ficar por cima de tudo */
+body .modal-backdrop,
+body .modal-backdrop.show,
+body .modal-backdrop.fade.show {
+  z-index: 1040 !important;
+  position: fixed !important;
+}
+
+body .modal,
+body .modal.show,
+body .modal.fade.show {
+  z-index: 1050 !important;
+  position: fixed !important;
+}
+
+body .modal-dialog {
+  z-index: 1051 !important;
+  position: relative !important;
+}
+
+body .modal-content {
+  z-index: 1052 !important;
+  position: relative !important;
+}
+
+/* Estilos do Modal Nova Temporada */
+#createSeasonModal .modal-content {
+  background: linear-gradient(to bottom right, #1a1a2e, #121220) !important;
+  border: 2px solid #6f42c1 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 15px rgba(111,66,193,.5), 0 0 25px rgba(13,202,240,.3) !important;
+  color: #e2e8f0 !important;
+}
+
+#createSeasonModal .modal-header {
+  background: linear-gradient(135deg, #6f42c1 0%, #0dcaf0 100%) !important;
+  border-bottom: 2px solid rgba(13, 202, 240, 0.3) !important;
+  border-radius: 12px 12px 0 0 !important;
+  padding: 1.25rem 1.5rem !important;
+}
+
+#createSeasonModal .modal-title {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 1.25rem !important;
+}
+
+#createSeasonModal .btn-close {
+  filter: invert(1) !important;
+  opacity: 0.9 !important;
+}
+
+#createSeasonModal .btn-close:hover {
+  opacity: 1 !important;
+}
+
+#createSeasonModal .modal-body {
+  background: transparent !important;
+  padding: 1.5rem !important;
+  color: #e2e8f0 !important;
+}
+
+#createSeasonModal .modal-body label {
+  color: #cbd5e0 !important;
+  font-weight: 500 !important;
+  margin-bottom: 0.5rem !important;
+  display: block !important;
+}
+
+#createSeasonModal .modal-body input[type="text"],
+#createSeasonModal .modal-body input[type="date"],
+#createSeasonModal .modal-body input[type="number"],
+#createSeasonModal .modal-body select {
+  background: #2d3748 !important;
+  border: 1px solid #4a5568 !important;
+  color: #ffffff !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 8px !important;
+  font-size: 0.95rem !important;
+}
+
+#createSeasonModal .modal-body input:focus,
+#createSeasonModal .modal-body select:focus {
+  border-color: #0dcaf0 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(13, 202, 240, 0.2) !important;
+  background: #2d3748 !important;
+}
+
+#createSeasonModal .modal-body input[type="checkbox"] {
+  width: 18px !important;
+  height: 18px !important;
+  cursor: pointer !important;
+  accent-color: #0dcaf0 !important;
+}
+
+#createSeasonModal .form-check label {
+  color: #e2e8f0 !important;
+  font-weight: 500 !important;
+  margin-left: 0.5rem !important;
+  cursor: pointer !important;
+}
+
+#createSeasonModal .modal-footer {
+  background: transparent !important;
+  border-top: 1px solid rgba(13, 202, 240, 0.2) !important;
+  padding: 1.25rem 1.5rem !important;
+  border-radius: 0 0 12px 12px !important;
+}
+
+#createSeasonModal .modal-footer .btn-secondary {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+#createSeasonModal .modal-footer .btn-secondary:hover {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%) !important;
+}
+
+#createSeasonModal .modal-footer .btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+#createSeasonModal .modal-footer .btn-success:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+}
+
 .legend-box {
   background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
   border-radius: 12px;
