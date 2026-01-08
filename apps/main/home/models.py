@@ -340,3 +340,143 @@ class PageView(BaseModel):
         if self.user:
             return f"{self.user.username} - {self.url_path}"
         return f"Anônimo - {self.url_path}"
+
+
+class Banner(BaseModel):
+    """Modelo para gerenciar banners no index do site"""
+    
+    POSITION_CHOICES = [
+        ('top', _('Topo')),
+        ('middle', _('Meio')),
+        ('bottom', _('Rodapé')),
+    ]
+    
+    HORIZONTAL_ALIGN_CHOICES = [
+        ('left', _('Esquerda')),
+        ('center', _('Centro')),
+        ('right', _('Direita')),
+    ]
+    
+    SIZE_CHOICES = [
+        ('small', _('Pequeno (300x100)')),
+        ('medium', _('Médio (600x200)')),
+        ('large', _('Grande (1200x400)')),
+        ('full-width', _('Largura Total (100%)')),
+        ('custom', _('Personalizado')),
+    ]
+    
+    title = models.CharField(max_length=200, blank=True, null=True, verbose_name=_("Título"))
+    image = models.ImageField(upload_to='banners/', verbose_name=_("Imagem"))
+    link = models.URLField(blank=True, null=True, verbose_name=_("Link (opcional)"), help_text=_("URL para onde o banner redireciona ao ser clicado"))
+    
+    # Posicionamento
+    position = models.CharField(
+        max_length=20,
+        choices=POSITION_CHOICES,
+        default='middle',
+        verbose_name=_("Posição Vertical"),
+        help_text=_("Onde o banner será exibido na página")
+    )
+    horizontal_align = models.CharField(
+        max_length=20,
+        choices=HORIZONTAL_ALIGN_CHOICES,
+        default='center',
+        verbose_name=_("Alinhamento Horizontal")
+    )
+    
+    # Tamanho
+    size = models.CharField(
+        max_length=20,
+        choices=SIZE_CHOICES,
+        default='medium',
+        verbose_name=_("Tamanho")
+    )
+    custom_width = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name=_("Largura Personalizada (px)"),
+        help_text=_("Apenas se tamanho for 'Personalizado'")
+    )
+    custom_height = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name=_("Altura Personalizada (px)"),
+        help_text=_("Apenas se tamanho for 'Personalizado'")
+    )
+    
+    # Controle de exibição
+    is_active = models.BooleanField(default=True, verbose_name=_("Ativo"))
+    display_order = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("Ordem de Exibição"),
+        help_text=_("Banners com menor número aparecem primeiro")
+    )
+    
+    # Datas opcionais
+    start_date = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Data de Início"),
+        help_text=_("Data a partir da qual o banner será exibido (opcional)")
+    )
+    end_date = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Data de Término"),
+        help_text=_("Data até quando o banner será exibido (opcional)")
+    )
+    
+    class Meta:
+        verbose_name = _('Banner')
+        verbose_name_plural = _('Banners')
+        ordering = ['display_order', '-created_at']
+        indexes = [
+            models.Index(fields=['is_active', 'position', 'display_order']),
+            models.Index(fields=['start_date', 'end_date']),
+        ]
+    
+    def __str__(self):
+        return self.title or f"Banner #{self.pk}"
+    
+    def is_visible(self):
+        """Verifica se o banner deve ser exibido baseado em datas e status ativo"""
+        if not self.is_active:
+            return False
+        
+        from django.utils import timezone
+        now = timezone.now()
+        
+        if self.start_date and now < self.start_date:
+            return False
+        
+        if self.end_date and now > self.end_date:
+            return False
+        
+        return True
+    
+    def get_size_style(self):
+        """Retorna o estilo CSS para o tamanho do banner"""
+        if self.size == 'custom' and self.custom_width and self.custom_height:
+            return f"width: {self.custom_width}px; height: {self.custom_height}px;"
+        
+        size_map = {
+            'small': 'width: 300px; height: 100px;',
+            'medium': 'width: 600px; height: 200px;',
+            'large': 'width: 1200px; height: 400px;',
+            'full-width': 'width: 100%; height: auto;',
+        }
+        return size_map.get(self.size, size_map['medium'])
+    
+    def get_position_style(self):
+        """Retorna o estilo CSS para posicionamento"""
+        styles = []
+        
+        # Alinhamento horizontal
+        if self.horizontal_align == 'left':
+            styles.append('margin-left: 0; margin-right: auto;')
+        elif self.horizontal_align == 'right':
+            styles.append('margin-left: auto; margin-right: 0;')
+        else:  # center
+            styles.append('margin-left: auto; margin-right: auto;')
+        
+        return ' '.join(styles)

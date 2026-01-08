@@ -374,6 +374,64 @@
             grid-template-columns: 1fr;
         }
     }
+
+    /* Banner Styles */
+    .banners-container {
+        width: 100%;
+        padding: 20px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        align-items: center;
+    }
+
+    .banners-top {
+        background: rgba(0, 0, 0, 0.3);
+        margin-bottom: 0;
+    }
+
+    .banners-middle {
+        background: rgba(0, 0, 0, 0.2);
+        margin: 40px 0;
+    }
+
+    .banners-bottom {
+        background: rgba(0, 0, 0, 0.3);
+        margin-top: 40px;
+    }
+
+    .banner-item {
+        display: block;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .banner-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(230, 199, 125, 0.3);
+    }
+
+    .banner-item img {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    .banner-item a {
+        display: block;
+        text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+        .banners-container {
+            padding: 15px 10px;
+        }
+        
+        .banner-item {
+            max-width: 100% !important;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -385,6 +443,23 @@
 {% endblock %}
 
 {% block content %}
+<!-- Banners Topo -->
+{% if banners.top %}
+<div class="banners-container banners-top">
+    {% for banner in banners.top %}
+    <div class="banner-item" style="{{ banner.get_size_style }} {{ banner.get_position_style }}">
+        {% if banner.link %}
+        <a href="{{ banner.link }}" target="_blank" rel="noopener noreferrer">
+            <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        </a>
+        {% else %}
+        <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- Hero Section -->
 <section class="h">
     <div class="h-logo" data-aos="fade-up" data-aos-duration="2000">
@@ -546,6 +621,23 @@
     </div>
 </section>
 
+<!-- Banners Meio -->
+{% if banners.middle %}
+<div class="banners-container banners-middle">
+    {% for banner in banners.middle %}
+    <div class="banner-item" style="{{ banner.get_size_style }} {{ banner.get_position_style }}">
+        {% if banner.link %}
+        <a href="{{ banner.link }}" target="_blank" rel="noopener noreferrer">
+            <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        </a>
+        {% else %}
+        <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- Tops Section -->
 <section class="tops-section">
     <div class="tops-title title container" data-aos="fade-up" data-aos-duration="2000">
@@ -697,6 +789,23 @@
         <a href="{% if configuracao %}{{ configuracao.link_discord }}{% else %}{{ PROJECT_DISCORD_URL }}{% endif %}" target="_blank"><i class="fa-brands fa-discord"></i></a>
     </div>
 </section>
+
+<!-- Banners Rodapé -->
+{% if banners.bottom %}
+<div class="banners-container banners-bottom">
+    {% for banner in banners.bottom %}
+    <div class="banner-item" style="{{ banner.get_size_style }} {{ banner.get_position_style }}">
+        {% if banner.link %}
+        <a href="{{ banner.link }}" target="_blank" rel="noopener noreferrer">
+            <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        </a>
+        {% else %}
+        <img src="{{ banner.image.url }}" alt="{{ banner.title|default:'Banner' }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extrascripts %}

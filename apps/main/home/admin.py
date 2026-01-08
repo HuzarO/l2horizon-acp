@@ -365,3 +365,59 @@ class PageViewAdmin(BaseModelAdmin):
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         return queryset.select_related('user')
+
+
+@admin.register(Banner)
+class BannerAdmin(BaseModelAdmin):
+    list_display = ('title', 'image_preview', 'position', 'size', 'is_active', 'display_order', 'is_visible_status', 'created_at')
+    list_filter = ('is_active', 'position', 'size', 'horizontal_align', 'created_at', 'start_date', 'end_date')
+    search_fields = ('title',)
+    list_editable = ('is_active', 'display_order')
+    ordering = ('display_order', '-created_at')
+    readonly_fields = ('image_preview', 'created_at', 'updated_at')
+    
+    fieldsets = (
+        (_('Informações Básicas'), {
+            'fields': ('title', 'image', 'image_preview', 'link')
+        }),
+        (_('Posicionamento'), {
+            'fields': ('position', 'horizontal_align')
+        }),
+        (_('Tamanho'), {
+            'fields': ('size', 'custom_width', 'custom_height'),
+            'description': _('Escolha um tamanho predefinido ou defina um tamanho personalizado')
+        }),
+        (_('Controle de Exibição'), {
+            'fields': ('is_active', 'display_order', 'start_date', 'end_date'),
+            'description': _('Configure quando e como o banner será exibido')
+        }),
+    )
+    
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="max-width: 300px; max-height: 150px; object-fit: contain; border-radius: 8px; border: 1px solid #ddd;" />',
+                obj.image.url
+            )
+        return _("(Sem imagem)")
+    image_preview.short_description = _("Preview")
+    image_preview.allow_tags = True
+    
+    def is_visible_status(self, obj):
+        if obj.is_visible():
+            return format_html('<span style="color: green;">✓ Visível</span>')
+        return format_html('<span style="color: red;">✗ Oculto</span>')
+    is_visible_status.short_description = _("Status")
+    is_visible_status.allow_tags = True
+    
+    actions = ['activate_banners', 'deactivate_banners']
+    
+    def activate_banners(self, request, queryset):
+        updated = queryset.update(is_active=True)
+        self.message_user(request, _('{} banners foram ativados.').format(updated))
+    activate_banners.short_description = _('Ativar banners selecionados')
+    
+    def deactivate_banners(self, request, queryset):
+        updated = queryset.update(is_active=False)
+        self.message_user(request, _('{} banners foram desativados.').format(updated))
+    deactivate_banners.short_description = _('Desativar banners selecionados')
