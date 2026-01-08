@@ -435,30 +435,35 @@
 
     /* Pop-up Styles */
     .banner-popup-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 10000;
-        align-items: center;
-        justify-content: center;
+        display: none !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: rgba(0, 0, 0, 0.8) !important;
+        z-index: 99999 !important;
+        align-items: center !important;
+        justify-content: center !important;
         backdrop-filter: blur(5px);
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
     }
 
     .banner-popup-overlay.active {
-        display: flex;
+        display: flex !important;
     }
 
     .banner-popup-container {
-        position: relative;
-        background: #fff;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        position: relative !important;
+        background: #fff !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
         animation: popupFadeIn 0.3s ease-out;
+        z-index: 100000 !important;
+        margin: auto !important;
     }
 
     @keyframes popupFadeIn {
@@ -473,21 +478,21 @@
     }
 
     .banner-popup-close {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 35px;
-        height: 35px;
-        background: rgba(0, 0, 0, 0.6);
-        border: none;
-        border-radius: 50%;
-        color: #fff;
-        font-size: 20px;
-        cursor: pointer;
-        z-index: 10001;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        position: absolute !important;
+        top: 10px !important;
+        right: 10px !important;
+        width: 35px !important;
+        height: 35px !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+        border: none !important;
+        border-radius: 50% !important;
+        color: #fff !important;
+        font-size: 20px !important;
+        cursor: pointer !important;
+        z-index: 100001 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         transition: all 0.3s ease;
     }
 
@@ -948,24 +953,25 @@
     // Banner Pop-ups
     document.addEventListener('DOMContentLoaded', function() {
         {% if popup_banners %}
-        const popupBanners = [
-            {% for banner in popup_banners %}
-            {
-                id: {{ banner.pk }},
-                image: '{{ banner.image.url }}',
-                title: {{ banner.title|default:"''"|escapejs }},
-                link: {{ banner.link|default:"null"|escapejs }},
-                popup_width: {{ banner.popup_width }},
-                popup_height: {{ banner.popup_height }},
-                popup_close_button: {{ banner.popup_close_button|yesno:"true,false" }},
-                popup_auto_close: {{ banner.popup_auto_close|yesno:"true,false" }},
-                popup_auto_close_delay: {{ banner.popup_auto_close_delay }},
-                popup_show_once_per_session: {{ banner.popup_show_once_per_session|yesno:"true,false" }}
-            }{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ];
-        
-        if (popupBanners && popupBanners.length > 0) {
+        try {
+            const popupBanners = [
+                {% for banner in popup_banners %}
+                {
+                    id: {{ banner.pk|default:"0" }},
+                    image: '{{ banner.image.url|escapejs }}',
+                    title: {% if banner.title %}'{{ banner.title|escapejs }}'{% else %}''{% endif %},
+                    link: {% if banner.link %}'{{ banner.link|escapejs }}'{% else %}null{% endif %},
+                    popup_width: {{ banner.popup_width|default:"600" }},
+                    popup_height: {{ banner.popup_height|default:"400" }},
+                    popup_close_button: {{ banner.popup_close_button|yesno:"true,false" }},
+                    popup_auto_close: {{ banner.popup_auto_close|yesno:"true,false" }},
+                    popup_auto_close_delay: {{ banner.popup_auto_close_delay|default:"5" }},
+                    popup_show_once_per_session: {{ banner.popup_show_once_per_session|yesno:"true,false" }}
+                }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ];
+            
+            if (popupBanners && Array.isArray(popupBanners) && popupBanners.length > 0) {
             popupBanners.forEach(function(banner, index) {
                 // Verificar se deve mostrar (apenas uma vez por sessão)
                 const storageKey = 'banner_popup_' + banner.id;
@@ -1029,11 +1035,18 @@
                 };
                 
                 overlay.appendChild(container);
-                document.body.appendChild(overlay);
+                // Garantir que o overlay seja inserido no final do body para ficar acima de tudo
+                if (document.body) {
+                    document.body.appendChild(overlay);
+                    // Forçar estilos inline para garantir posicionamento
+                    overlay.style.cssText = 'position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; z-index: 99999 !important; display: none !important; align-items: center !important; justify-content: center !important; background: rgba(0, 0, 0, 0.8) !important; margin: 0 !important; padding: 0 !important;';
+                }
                 
                 // Mostrar pop-up com delay baseado no índice
                 setTimeout(function() {
                     overlay.classList.add('active');
+                    // Forçar display flex quando ativo
+                    overlay.style.display = 'flex';
                     if (banner.popup_show_once_per_session) {
                         sessionStorage.setItem(storageKey, 'shown');
                     }
@@ -1046,17 +1059,24 @@
                     }, banner.popup_auto_close_delay * 1000);
                 }
             });
+            }
+        } catch (e) {
+            console.error('Erro ao carregar pop-ups de banner:', e);
         }
+        {% else %}
+        // Nenhum banner pop-up configurado
+        {% endif %}
         
         function closePopup(overlay, storageKey) {
+            if (!overlay) return;
             overlay.classList.remove('active');
+            overlay.style.display = 'none';
             setTimeout(function() {
-                if (overlay.parentNode) {
+                if (overlay && overlay.parentNode) {
                     overlay.parentNode.removeChild(overlay);
                 }
             }, 300);
         }
-        {% endif %}
     });
 </script>
 {% endblock %}
