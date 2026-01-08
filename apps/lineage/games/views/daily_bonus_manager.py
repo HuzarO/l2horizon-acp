@@ -70,7 +70,7 @@ def manager_dashboard(request):
                     messages.error(request, _('Crie/salve uma temporada antes de configurar os dias.'))
                 else:
                     day = int(request.POST.get('day_of_month'))
-                    db_day, _ = DailyBonusDay.objects.get_or_create(season=season, day_of_month=day)
+                    db_day, created = DailyBonusDay.objects.get_or_create(season=season, day_of_month=day)
                     day_form = DailyBonusDayForm(request.POST, instance=db_day)
                     if day_form.is_valid():
                         day_form.save()
