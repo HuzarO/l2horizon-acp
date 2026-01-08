@@ -222,30 +222,161 @@
       </a>
     </div>
 
+    <!-- Lista de Temporadas -->
+    <div class="row g-3 mb-3">
+      <div class="col-12">
+        <div class="card card-glow">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-list me-2"></i>{% trans "Temporadas" %}</span>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#createSeasonModal">
+              <i class="fas fa-plus me-1"></i>{% trans "Nova Temporada" %}
+            </button>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-dark table-striped mb-0">
+                <thead>
+                  <tr>
+                    <th>{% trans "Nome" %}</th>
+                    <th>{% trans "Período" %}</th>
+                    <th>{% trans "Status" %}</th>
+                    <th>{% trans "Reset (UTC)" %}</th>
+                    <th class="text-end">{% trans "Ações" %}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for s in all_seasons %}
+                    <tr {% if season.id == s.id %}class="table-info"{% endif %}>
+                      <td>
+                        <strong>{{ s.name }}</strong>
+                        {% if season.id == s.id %}<span class="badge bg-info ms-2">{% trans "Editando" %}</span>{% endif %}
+                      </td>
+                      <td>{{ s.start_date|date:"d/m/Y" }} - {{ s.end_date|date:"d/m/Y" }}</td>
+                      <td>
+                        {% if s.is_active %}
+                          <span class="badge bg-success">{% trans "Ativa" %}</span>
+                        {% else %}
+                          <span class="badge bg-secondary">{% trans "Inativa" %}</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ s.reset_hour_utc }}h</td>
+                      <td class="text-end">
+                        <a href="?season_id={{ s.id }}" class="btn btn-sm btn-info rounded-pill me-1">
+                          <i class="fas fa-edit"></i> {% trans "Editar" %}
+                        </a>
+                        {% if not s.is_active %}
+                          <form method="post" class="d-inline" onsubmit="return confirm('{% trans 'Tem certeza que deseja ativar esta temporada? Isso desativará outras temporadas ativas.' %}');">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="activate_season" />
+                            <input type="hidden" name="season_id" value="{{ s.id }}" />
+                            <button type="submit" class="btn btn-sm btn-success rounded-pill me-1">
+                              <i class="fas fa-check"></i> {% trans "Ativar" %}
+                            </button>
+                          </form>
+                        {% endif %}
+                        <form method="post" class="d-inline" onsubmit="return confirm('{% trans 'Tem certeza que deseja deletar esta temporada? Esta ação não pode ser desfeita.' %}');">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="delete_season" />
+                          <input type="hidden" name="season_id" value="{{ s.id }}" />
+                          <button type="submit" class="btn btn-sm btn-danger rounded-pill">
+                            <i class="fas fa-trash"></i> {% trans "Deletar" %}
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% empty %}
+                    <tr>
+                      <td colspan="5" class="text-center text-muted">{% trans "Nenhuma temporada criada ainda." %}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para Criar Nova Temporada -->
+    <div class="modal fade" id="createSeasonModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white">
+          <div class="modal-header">
+            <h5 class="modal-title">{% trans "Nova Temporada" %}</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_season" />
+            <div class="modal-body">
+              {{ season_form.non_field_errors }}
+              <div class="mb-3">
+                {{ season_form.name.label_tag }}
+                {{ season_form.name }}
+              </div>
+              <div class="row">
+                <div class="col-6 mb-3">
+                  {{ season_form.start_date.label_tag }}
+                  {{ season_form.start_date }}
+                </div>
+                <div class="col-6 mb-3">
+                  {{ season_form.end_date.label_tag }}
+                  {{ season_form.end_date }}
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-6 mb-3">
+                  {{ season_form.reset_hour_utc.label_tag }}
+                  {{ season_form.reset_hour_utc }}
+                </div>
+                <div class="col-6 mb-3">
+                  <div class="form-check mt-4">
+                    {{ season_form.is_active }}
+                    {{ season_form.is_active.label_tag }}
+                  </div>
+                  <div class="form-check mt-2">
+                    {{ season_form.allow_retroactive_claim }}
+                    {{ season_form.allow_retroactive_claim.label_tag }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Cancelar" %}</button>
+              <button type="submit" class="btn btn-success">{% trans "Criar Temporada" %}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {% if season %}
     <div class="row g-3">
       <div class="col-12 col-lg-5">
         <div class="card card-glow">
           <div class="card-header">
-            <i class="fas fa-clock me-2"></i>{% trans "Temporada Ativa" %}
+            <i class="fas fa-clock me-2"></i>{% trans "Editar Temporada" %}: <strong>{{ season.name }}</strong>
           </div>
           <div class="card-body">
             <form method="post" class="row g-2">
               {% csrf_token %}
               <input type="hidden" name="action" value="save_season" />
+              <input type="hidden" name="season_id" value="{{ season.id }}" />
               {{ season_form.non_field_errors }}
               <div class="col-12">{{ season_form.name.label_tag }} {{ season_form.name }}</div>
               <div class="col-6">{{ season_form.start_date.label_tag }} {{ season_form.start_date }}</div>
               <div class="col-6">{{ season_form.end_date.label_tag }} {{ season_form.end_date }}</div>
               <div class="col-6">{{ season_form.reset_hour_utc.label_tag }} {{ season_form.reset_hour_utc }}</div>
               <div class="col-6 form-check mt-4">{{ season_form.is_active }} {{ season_form.is_active.label_tag }}</div>
+              <div class="col-12 form-check">{{ season_form.allow_retroactive_claim }} {{ season_form.allow_retroactive_claim.label_tag }}</div>
               <div class="col-12 text-end mt-2">
-                <button class="btn btn-warning rounded-pill" type="submit">{% trans "Salvar Temporada" %}</button>
+                <button class="btn btn-warning rounded-pill" type="submit">{% trans "Salvar Alterações" %}</button>
               </div>
             </form>
           </div>
         </div>
       </div>
-
+      {% if season %}
       <div class="col-12 col-lg-7">
         <div class="card card-glow h-100">
           <div class="card-header d-flex justify-content-between align-items-center">
@@ -393,7 +524,14 @@
           </div>
         </div>
       </div>
-
+      {% else %}
+      <div class="col-12">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          {% trans "Selecione uma temporada da lista acima para editar, ou crie uma nova temporada para começar a configurar." %}
+        </div>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>

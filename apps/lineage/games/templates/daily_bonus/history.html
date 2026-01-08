@@ -70,97 +70,145 @@
       </div>
     </div>
 
-    {% if not season %}
-      <div class="alert alert-warning" role="alert">
-        {% trans "Nenhuma temporada ativa de bônus diário." %}
+    {% if user_seasons %}
+      <!-- Seletor de Temporadas -->
+      <div class="card bonus-card mb-4">
+        <div class="card-body">
+          <h5 class="text-white mb-3"><i class="bi bi-filter me-2"></i>{% trans "Filtrar por Temporada" %}</h5>
+          <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'games:daily_bonus_history' %}" class="btn btn-{% if not selected_season %}primary{% else %}outline-primary{% endif %} rounded-pill">
+              {% trans "Todas as Temporadas" %}
+            </a>
+            {% for s in user_seasons %}
+              <a href="?season_id={{ s.id }}" class="btn btn-{% if selected_season and selected_season.id == s.id %}primary{% else %}outline-info{% endif %} rounded-pill">
+                {{ s.name }}
+                {% if s.is_active %}
+                  <span class="badge bg-success ms-1">{% trans "Ativa" %}</span>
+                {% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        </div>
       </div>
-    {% elif not history_by_month %}
+    {% endif %}
+
+    {% if not history_by_season %}
       <div class="alert alert-info" role="alert">
         <i class="bi bi-info-circle me-2"></i>
-        {% trans "Você ainda não coletou nenhum prêmio diário." %}
+        {% if selected_season %}
+          {% trans "Você ainda não coletou nenhum prêmio diário nesta temporada." %}
+        {% else %}
+          {% trans "Você ainda não coletou nenhum prêmio diário." %}
+        {% endif %}
       </div>
     {% else %}
       <div class="mb-4 text-white-50">
         <strong>{% trans "Total de coletas" %}:</strong> {{ total_claims }}
+        {% if selected_season %}
+          • <strong>{% trans "Temporada" %}:</strong> {{ selected_season.name }}
+        {% endif %}
       </div>
 
-      {% for month_key, month_data in history_by_month.items %}
-        <div class="card bonus-card text-white">
-          <div class="card-header month-header">
-            <div class="d-flex justify-content-between align-items-center">
-              <h5 class="m-0">
-                <i class="bi bi-calendar3 me-2"></i>
-                {{ month_data.month_name }} {{ month_data.year }}
-              </h5>
-              <div class="d-flex gap-2">
-                <span class="stats-badge">
-                  <i class="bi bi-check-circle me-1"></i>
-                  {{ month_data.days_claimed|length }} / {{ month_data.total_days }} {% trans "dias" %}
-                </span>
-                <span class="stats-badge">
-                  {% widthratio month_data.days_claimed|length month_data.total_days 100 %}%
-                </span>
-              </div>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="row g-2">
-              {% for day_num in month_data.days_list %}
-                {% if day_num in month_data.days_claimed %}
-                  <div class="col-auto">
-                    <div class="card bonus-day-claimed text-center p-2" style="min-width: 50px;">
-                      <small class="fw-bold">{{ day_num }}</small>
-                      <div class="mt-1">
-                        <i class="bi bi-check-circle-fill text-white"></i>
-                      </div>
-                    </div>
-                  </div>
-                {% else %}
-                  <div class="col-auto">
-                    <div class="card bonus-day-missing text-center p-2" style="min-width: 50px;">
-                      <small>{{ day_num }}</small>
-                      <div class="mt-1">
-                        <i class="bi bi-x-circle text-white"></i>
-                      </div>
-                    </div>
-                  </div>
+      {% for season_key, season_data in history_by_season.items %}
+        {% with season_info=season_data.season month_data=season_data.history_by_month %}
+          <div class="card bonus-card mb-4">
+            <div class="card-header" style="background: linear-gradient(135deg, #6f42c1 0%, #0dcaf0 100%);">
+              <h5 class="m-0 text-white">
+                <i class="bi bi-trophy me-2"></i>{{ season_info.name }}
+                {% if season_info.is_active %}
+                  <span class="badge bg-success ms-2">{% trans "Ativa" %}</span>
                 {% endif %}
-              {% endfor %}
+                <small class="text-white-50 ms-3">
+                  ({{ season_info.start_date|date:"d/m/Y" }} - {{ season_info.end_date|date:"d/m/Y" }})
+                </small>
+              </h5>
             </div>
-
-            {% if month_data.claims %}
-              <div class="mt-3 pt-3 border-top border-secondary">
-                <h6 class="text-white-50 mb-2">
-                  <i class="bi bi-list-ul me-2"></i>{% trans "Detalhes das coletas" %}
-                </h6>
-                <div class="table-responsive">
-                  <table class="table table-dark table-sm">
-                    <thead>
-                      <tr>
-                        <th>{% trans "Dia" %}</th>
-                        <th>{% trans "Data/Hora" %}</th>
-                        <th>{% trans "IP" %}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {% for claim in month_data.claims %}
-                        <tr>
-                          <td>
-                            <span class="badge bg-info">{% trans "Dia" %} {{ claim.day_of_month }}</span>
-                          </td>
-                          <td>{{ claim.created_at|date:"d/m/Y H:i" }}</td>
-                          <td>
-                            <small class="text-muted">{{ claim.ip_address|default:"-" }}</small>
-                          </td>
-                        </tr>
+            <div class="card-body">
+              {% if month_data %}
+                {% for month_key, month_info in month_data.items %}
+                  <div class="mb-4">
+                    <div class="card-header month-header mb-3">
+                      <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="m-0">
+                          <i class="bi bi-calendar3 me-2"></i>
+                          {{ month_info.month_name }} {{ month_info.year }}
+                        </h5>
+                        <div class="d-flex gap-2">
+                          <span class="stats-badge">
+                            <i class="bi bi-check-circle me-1"></i>
+                            {{ month_info.days_claimed|length }} / {{ month_info.total_days }} {% trans "dias" %}
+                          </span>
+                          <span class="stats-badge">
+                            {% widthratio month_info.days_claimed|length month_info.total_days 100 %}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                      {% for day_num in month_info.days_list %}
+                        {% if day_num in month_info.days_claimed %}
+                          <div class="col-auto">
+                            <div class="card bonus-day-claimed text-center p-2" style="min-width: 50px;">
+                              <small class="fw-bold">{{ day_num }}</small>
+                              <div class="mt-1">
+                                <i class="bi bi-check-circle-fill text-white"></i>
+                              </div>
+                            </div>
+                          </div>
+                        {% else %}
+                          <div class="col-auto">
+                            <div class="card bonus-day-missing text-center p-2" style="min-width: 50px;">
+                              <small>{{ day_num }}</small>
+                              <div class="mt-1">
+                                <i class="bi bi-x-circle text-white"></i>
+                              </div>
+                            </div>
+                          </div>
+                        {% endif %}
                       {% endfor %}
-                    </tbody>
-                  </table>
+                    </div>
+
+                    {% if month_info.claims %}
+                      <div class="mt-3 pt-3 border-top border-secondary">
+                        <h6 class="text-white-50 mb-2">
+                          <i class="bi bi-list-ul me-2"></i>{% trans "Detalhes das coletas" %}
+                        </h6>
+                        <div class="table-responsive">
+                          <table class="table table-dark table-sm">
+                            <thead>
+                              <tr>
+                                <th>{% trans "Dia" %}</th>
+                                <th>{% trans "Data/Hora" %}</th>
+                                <th>{% trans "IP" %}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {% for claim in month_info.claims %}
+                                <tr>
+                                  <td>
+                                    <span class="badge bg-info">{% trans "Dia" %} {{ claim.day_of_month }}</span>
+                                  </td>
+                                  <td>{{ claim.created_at|date:"d/m/Y H:i" }}</td>
+                                  <td>
+                                    <small class="text-muted">{{ claim.ip_address|default:"-" }}</small>
+                                  </td>
+                                </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+              {% else %}
+                <div class="alert alert-secondary mb-0">
+                  {% trans "Nenhuma coleta registrada para esta temporada." %}
                 </div>
-              </div>
-            {% endif %}
+              {% endif %}
+            </div>
           </div>
-        </div>
+        {% endwith %}
       {% endfor %}
     {% endif %}
   </div>
