@@ -246,10 +246,10 @@
                 </thead>
                 <tbody>
                   {% for s in all_seasons %}
-                    <tr {% if season.id == s.id %}class="table-info"{% endif %}>
+                    <tr {% if season and season.id == s.id %}class="table-info"{% endif %}>
                       <td>
                         <strong>{{ s.name }}</strong>
-                        {% if season.id == s.id %}<span class="badge bg-info ms-2">{% trans "Editando" %}</span>{% endif %}
+                        {% if season and season.id == s.id %}<span class="badge bg-info ms-2">{% trans "Editando" %}</span>{% endif %}
                       </td>
                       <td>{{ s.start_date|date:"d/m/Y" }} - {{ s.end_date|date:"d/m/Y" }}</td>
                       <td>
@@ -376,7 +376,6 @@
           </div>
         </div>
       </div>
-      {% if season %}
       <div class="col-12 col-lg-7">
         <div class="card card-glow h-100">
           <div class="card-header d-flex justify-content-between align-items-center">
@@ -524,15 +523,17 @@
           </div>
         </div>
       </div>
-      {% else %}
+    </div>
+    {% else %}
+    <div class="row g-3">
       <div class="col-12">
         <div class="alert alert-info">
           <i class="fas fa-info-circle me-2"></i>
           {% trans "Selecione uma temporada da lista acima para editar, ou crie uma nova temporada para começar a configurar." %}
         </div>
       </div>
-      {% endif %}
     </div>
+    {% endif %}
   </div>
 </div>
 
