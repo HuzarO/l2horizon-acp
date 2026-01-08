@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
+from django.urls import reverse
 
 from ..models import DailyBonusSeason, DailyBonusPoolEntry, DailyBonusDay
 from ..forms import DailyBonusSeasonForm, DailyBonusPoolEntryForm, DailyBonusDayForm
@@ -41,7 +42,8 @@ def manager_dashboard(request):
                 if season_form.is_valid():
                     season = season_form.save()
                     messages.success(request, _('Nova temporada criada com sucesso.'))
-                    return redirect(f'?season_id={season.id}')
+                    url = reverse('games:daily_bonus_manager')
+                    return redirect(f'{url}?season_id={season.id}')
                 else:
                     messages.error(request, _('Corrija os erros no formulário da temporada.'))
 
@@ -57,7 +59,8 @@ def manager_dashboard(request):
                 if season_form.is_valid():
                     season = season_form.save()
                     messages.success(request, _('Temporada salva com sucesso.'))
-                    return redirect(f'?season_id={season.id}')
+                    url = reverse('games:daily_bonus_manager')
+                    return redirect(f'{url}?season_id={season.id}')
                 else:
                     messages.error(request, _('Corrija os erros no formulário da temporada.'))
 
@@ -77,7 +80,8 @@ def manager_dashboard(request):
                 instance.is_active = True
                 instance.save()  # O save() do modelo já desativa as outras
                 messages.success(request, _('Temporada "{}" ativada com sucesso.').format(instance.name))
-                return redirect(f'?season_id={instance.id}')
+                url = reverse('games:daily_bonus_manager')
+                return redirect(f'{url}?season_id={instance.id}')
 
             elif action == 'add_pool':
                 if not season:
@@ -89,8 +93,11 @@ def manager_dashboard(request):
                         entry.season = season
                         entry.save()
                         messages.success(request, _('Item adicionado ao pool.'))
-                        redirect_url = f'?season_id={season.id}' if season else 'games:daily_bonus_manager'
-                        return redirect(redirect_url)
+                        if season:
+                            url = reverse('games:daily_bonus_manager')
+                            return redirect(f'{url}?season_id={season.id}')
+                        else:
+                            return redirect('games:daily_bonus_manager')
                     else:
                         messages.error(request, _('Corrija os erros no formulário do pool.'))
 
@@ -101,8 +108,11 @@ def manager_dashboard(request):
                 if pool_form.is_valid():
                     pool_form.save()
                     messages.success(request, _('Item atualizado com sucesso.'))
-                    redirect_url = f'?season_id={entry.season.id}' if entry.season else 'games:daily_bonus_manager'
-                    return redirect(redirect_url)
+                    if entry.season:
+                        url = reverse('games:daily_bonus_manager')
+                        return redirect(f'{url}?season_id={entry.season.id}')
+                    else:
+                        return redirect('games:daily_bonus_manager')
                 else:
                     messages.error(request, _('Corrija os erros no formulário do pool.'))
 
@@ -112,8 +122,11 @@ def manager_dashboard(request):
                 season_id = entry.season.id if entry.season else None
                 entry.delete()
                 messages.success(request, _('Item removido do pool.'))
-                redirect_url = f'?season_id={season_id}' if season_id else 'games:daily_bonus_manager'
-                return redirect(redirect_url)
+                if season_id:
+                    url = reverse('games:daily_bonus_manager')
+                    return redirect(f'{url}?season_id={season_id}')
+                else:
+                    return redirect('games:daily_bonus_manager')
 
             elif action == 'save_day':
                 if not season:
@@ -125,8 +138,11 @@ def manager_dashboard(request):
                     if day_form.is_valid():
                         day_form.save()
                         messages.success(request, _('Dia atualizado.'))
-                        redirect_url = f'?season_id={season.id}' if season else 'games:daily_bonus_manager'
-                        return redirect(redirect_url)
+                        if season:
+                            url = reverse('games:daily_bonus_manager')
+                            return redirect(f'{url}?season_id={season.id}')
+                        else:
+                            return redirect('games:daily_bonus_manager')
                     else:
                         messages.error(request, _('Corrija os erros no formulário do dia.'))
 
