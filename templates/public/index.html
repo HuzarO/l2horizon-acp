@@ -432,6 +432,88 @@
             max-width: 100% !important;
         }
     }
+
+    /* Pop-up Styles */
+    .banner-popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(5px);
+    }
+
+    .banner-popup-overlay.active {
+        display: flex;
+    }
+
+    .banner-popup-container {
+        position: relative;
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        animation: popupFadeIn 0.3s ease-out;
+    }
+
+    @keyframes popupFadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .banner-popup-close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 35px;
+        height: 35px;
+        background: rgba(0, 0, 0, 0.6);
+        border: none;
+        border-radius: 50%;
+        color: #fff;
+        font-size: 20px;
+        cursor: pointer;
+        z-index: 10001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+
+    .banner-popup-close:hover {
+        background: rgba(0, 0, 0, 0.8);
+        transform: rotate(90deg);
+    }
+
+    .banner-popup-content {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+
+    .banner-popup-content img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+
+    .banner-popup-content a {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
 </style>
 {% endblock %}
 
@@ -862,5 +944,119 @@
   });
     // Initialize AOS
     AOS.init();
+
+    // Banner Pop-ups
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if popup_banners %}
+        const popupBanners = [
+            {% for banner in popup_banners %}
+            {
+                id: {{ banner.pk }},
+                image: '{{ banner.image.url }}',
+                title: {{ banner.title|default:"''"|escapejs }},
+                link: {{ banner.link|default:"null"|escapejs }},
+                popup_width: {{ banner.popup_width }},
+                popup_height: {{ banner.popup_height }},
+                popup_close_button: {{ banner.popup_close_button|yesno:"true,false" }},
+                popup_auto_close: {{ banner.popup_auto_close|yesno:"true,false" }},
+                popup_auto_close_delay: {{ banner.popup_auto_close_delay }},
+                popup_show_once_per_session: {{ banner.popup_show_once_per_session|yesno:"true,false" }}
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        if (popupBanners && popupBanners.length > 0) {
+            popupBanners.forEach(function(banner, index) {
+                // Verificar se deve mostrar (apenas uma vez por sessão)
+                const storageKey = 'banner_popup_' + banner.id;
+                if (banner.popup_show_once_per_session && sessionStorage.getItem(storageKey)) {
+                    return; // Já foi mostrado nesta sessão
+                }
+                
+                // Criar overlay do pop-up
+                const overlay = document.createElement('div');
+                overlay.className = 'banner-popup-overlay';
+                overlay.id = 'banner-popup-' + banner.id;
+                
+                // Criar container do pop-up
+                const container = document.createElement('div');
+                container.className = 'banner-popup-container';
+                container.style.width = banner.popup_width + 'px';
+                container.style.height = banner.popup_height + 'px';
+                container.style.maxWidth = '90vw';
+                container.style.maxHeight = '90vh';
+                
+                // Criar conteúdo
+                const content = document.createElement('div');
+                content.className = 'banner-popup-content';
+                
+                if (banner.link) {
+                    const link = document.createElement('a');
+                    link.href = banner.link;
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    const img = document.createElement('img');
+                    img.src = banner.image;
+                    img.alt = banner.title || 'Banner';
+                    link.appendChild(img);
+                    content.appendChild(link);
+                } else {
+                    const img = document.createElement('img');
+                    img.src = banner.image;
+                    img.alt = banner.title || 'Banner';
+                    content.appendChild(img);
+                }
+                
+                container.appendChild(content);
+                
+                // Criar botão de fechar
+                if (banner.popup_close_button) {
+                    const closeBtn = document.createElement('button');
+                    closeBtn.className = 'banner-popup-close';
+                    closeBtn.innerHTML = '×';
+                    closeBtn.setAttribute('aria-label', 'Fechar');
+                    closeBtn.onclick = function() {
+                        closePopup(overlay, storageKey);
+                    };
+                    container.appendChild(closeBtn);
+                }
+                
+                // Fechar ao clicar no overlay (fora do pop-up)
+                overlay.onclick = function(e) {
+                    if (e.target === overlay) {
+                        closePopup(overlay, storageKey);
+                    }
+                };
+                
+                overlay.appendChild(container);
+                document.body.appendChild(overlay);
+                
+                // Mostrar pop-up com delay baseado no índice
+                setTimeout(function() {
+                    overlay.classList.add('active');
+                    if (banner.popup_show_once_per_session) {
+                        sessionStorage.setItem(storageKey, 'shown');
+                    }
+                }, index * 500); // Delay entre múltiplos pop-ups
+                
+                // Fechar automaticamente se configurado
+                if (banner.popup_auto_close && banner.popup_auto_close_delay) {
+                    setTimeout(function() {
+                        closePopup(overlay, storageKey);
+                    }, banner.popup_auto_close_delay * 1000);
+                }
+            });
+        }
+        
+        function closePopup(overlay, storageKey) {
+            overlay.classList.remove('active');
+            setTimeout(function() {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
+        }
+        {% endif %}
+    });
 </script>
 {% endblock %}

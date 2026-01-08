@@ -365,9 +365,23 @@ class Banner(BaseModel):
         ('custom', _('Personalizado')),
     ]
     
+    DISPLAY_TYPE_CHOICES = [
+        ('normal', _('Normal (na página)')),
+        ('popup', _('Pop-up (modal)')),
+    ]
+    
     title = models.CharField(max_length=200, blank=True, null=True, verbose_name=_("Título"))
     image = models.ImageField(upload_to='banners/', verbose_name=_("Imagem"))
     link = models.URLField(blank=True, null=True, verbose_name=_("Link (opcional)"), help_text=_("URL para onde o banner redireciona ao ser clicado"))
+    
+    # Tipo de exibição
+    display_type = models.CharField(
+        max_length=20,
+        choices=DISPLAY_TYPE_CHOICES,
+        default='normal',
+        verbose_name=_("Tipo de Exibição"),
+        help_text=_("Escolha se o banner aparece na página ou como pop-up")
+    )
     
     # Posicionamento
     position = models.CharField(
@@ -410,6 +424,38 @@ class Banner(BaseModel):
         default=0,
         verbose_name=_("Ordem de Exibição"),
         help_text=_("Banners com menor número aparecem primeiro")
+    )
+    
+    # Configurações de Pop-up
+    popup_width = models.PositiveIntegerField(
+        default=600,
+        verbose_name=_("Largura do Pop-up (px)"),
+        help_text=_("Apenas para banners tipo Pop-up")
+    )
+    popup_height = models.PositiveIntegerField(
+        default=400,
+        verbose_name=_("Altura do Pop-up (px)"),
+        help_text=_("Apenas para banners tipo Pop-up")
+    )
+    popup_close_button = models.BooleanField(
+        default=True,
+        verbose_name=_("Mostrar Botão de Fechar"),
+        help_text=_("Exibe um botão X para fechar o pop-up")
+    )
+    popup_auto_close = models.BooleanField(
+        default=False,
+        verbose_name=_("Fechar Automaticamente"),
+        help_text=_("Fecha o pop-up automaticamente após um tempo")
+    )
+    popup_auto_close_delay = models.PositiveIntegerField(
+        default=5,
+        verbose_name=_("Tempo para Fechar (segundos)"),
+        help_text=_("Tempo em segundos antes de fechar automaticamente")
+    )
+    popup_show_once_per_session = models.BooleanField(
+        default=True,
+        verbose_name=_("Mostrar Apenas Uma Vez por Sessão"),
+        help_text=_("Se marcado, o pop-up só aparece uma vez por sessão do usuário")
     )
     
     # Datas opcionais
@@ -480,3 +526,7 @@ class Banner(BaseModel):
             styles.append('margin-left: auto; margin-right: auto;')
         
         return ' '.join(styles)
+    
+    def get_popup_size_style(self):
+        """Retorna o estilo CSS para o tamanho do pop-up"""
+        return f"width: {self.popup_width}px; height: {self.popup_height}px; max-width: 90vw; max-height: 90vh;"

@@ -227,6 +227,7 @@ def index(request):
 
     # Buscar banners ativos e visíveis
     banners = []
+    popup_banners = []
     try:
         from django.utils import timezone
         now = timezone.now()
@@ -238,21 +239,26 @@ def index(request):
             Q(end_date__isnull=True) | Q(end_date__gte=now)
         )
         
-        # Agrupar por posição
+        # Agrupar por posição (apenas banners normais)
         banners_by_position = {
             'top': [],
             'middle': [],
             'bottom': []
         }
         
+        # Separar banners normais de pop-ups
         for banner in banners_queryset.order_by('display_order', '-created_at'):
             if banner.is_visible():
-                banners_by_position[banner.position].append(banner)
+                if banner.display_type == 'popup':
+                    popup_banners.append(banner)
+                else:
+                    banners_by_position[banner.position].append(banner)
         
         banners = banners_by_position
     except Exception as e:
         logger.error(f"Erro ao buscar banners: {e}")
         banners = {'top': [], 'middle': [], 'bottom': []}
+        popup_banners = []
 
     context = {
         'clanes': clanes,
@@ -268,6 +274,7 @@ def index(request):
         'content_items': content_items,
         'server_status': server_status,
         'banners': banners,
+        'popup_banners': popup_banners,
     }
 
     return render_theme_page(request, 'public', 'index.html', context)

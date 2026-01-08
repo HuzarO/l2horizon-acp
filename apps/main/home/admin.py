@@ -369,8 +369,8 @@ class PageViewAdmin(BaseModelAdmin):
 
 @admin.register(Banner)
 class BannerAdmin(BaseModelAdmin):
-    list_display = ('title', 'image_preview', 'position', 'size', 'is_active', 'display_order', 'is_visible_status', 'created_at')
-    list_filter = ('is_active', 'position', 'size', 'horizontal_align', 'created_at', 'start_date', 'end_date')
+    list_display = ('title', 'image_preview', 'display_type', 'position', 'size', 'is_active', 'display_order', 'is_visible_status', 'created_at')
+    list_filter = ('is_active', 'display_type', 'position', 'size', 'horizontal_align', 'created_at', 'start_date', 'end_date')
     search_fields = ('title',)
     list_editable = ('is_active', 'display_order')
     ordering = ('display_order', '-created_at')
@@ -380,12 +380,28 @@ class BannerAdmin(BaseModelAdmin):
         (_('Informações Básicas'), {
             'fields': ('title', 'image', 'image_preview', 'link')
         }),
-        (_('Posicionamento'), {
-            'fields': ('position', 'horizontal_align')
+        (_('Tipo de Exibição'), {
+            'fields': ('display_type',),
+            'description': _('Escolha se o banner aparece na página ou como pop-up')
         }),
-        (_('Tamanho'), {
+        (_('Posicionamento (Apenas para exibição Normal)'), {
+            'fields': ('position', 'horizontal_align'),
+            'classes': ('collapse',),
+            'description': _('Configurações de posicionamento apenas para banners normais')
+        }),
+        (_('Tamanho (Apenas para exibição Normal)'), {
             'fields': ('size', 'custom_width', 'custom_height'),
+            'classes': ('collapse',),
             'description': _('Escolha um tamanho predefinido ou defina um tamanho personalizado')
+        }),
+        (_('Configurações de Pop-up'), {
+            'fields': (
+                'popup_width', 'popup_height', 'popup_close_button', 
+                'popup_auto_close', 'popup_auto_close_delay', 
+                'popup_show_once_per_session'
+            ),
+            'classes': ('collapse',),
+            'description': _('Configurações específicas para banners tipo Pop-up')
         }),
         (_('Controle de Exibição'), {
             'fields': ('is_active', 'display_order', 'start_date', 'end_date'),
