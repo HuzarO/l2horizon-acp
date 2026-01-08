@@ -843,6 +843,52 @@ def _get_month_bounds(dt):
     return first_day, last_day
 
 
+def _is_season_valid(season, check_date=None):
+    """
+    Verifica se uma season está válida (dentro do período de datas).
+    
+    Args:
+        season: Instância de DailyBonusSeason
+        check_date: Data para verificar (default: data atual em UTC)
+    
+    Returns:
+        tuple: (is_valid, reason)
+            - is_valid: True se a season está válida
+            - reason: Motivo se não estiver válida ('not_active', 'not_started', 'ended', None)
+    """
+    from datetime import date
+    if check_date is None:
+        check_date = _now_utc().date()
+    
+    if not season.is_active:
+        return False, 'not_active'
+    
+    if check_date < season.start_date:
+        return False, 'not_started'
+    
+    if check_date > season.end_date:
+        return False, 'ended'
+    
+    return True, None
+
+
+def _get_current_valid_season():
+    """
+    Retorna a season válida para a data atual (dentro do período e ativa).
+    """
+    from ..models import DailyBonusSeason
+    today = _now_utc().date()
+    
+    # Busca seasons ativas que estão dentro do período
+    valid_seasons = DailyBonusSeason.objects.filter(
+        is_active=True,
+        start_date__lte=today,
+        end_date__gte=today
+    ).order_by('-created_at')
+    
+    return valid_seasons.first()
+
+
 def validate_daily_bonus_claim_security(user, season, day_of_month, request=None):
     """
     Valida se um usuário pode reclamar o prêmio diário.
@@ -932,10 +978,36 @@ def validate_daily_bonus_claim_security(user, season, day_of_month, request=None
 def daily_bonus_dashboard(request):
     from ..models import DailyBonusSeason, DailyBonusDay, DailyBonusClaim
 
-    season = DailyBonusSeason.objects.filter(is_active=True).first()
+    # Busca season válida (dentro do período e ativa)
+    season = _get_current_valid_season()
+    
+    # Se não há season válida, verifica se há alguma marcada como ativa (para mostrar mensagem)
+    season_status = None
     if not season:
+        inactive_season = DailyBonusSeason.objects.filter(is_active=True).first()
+        if inactive_season:
+            is_valid, reason = _is_season_valid(inactive_season)
+            season_status = {
+                'season': inactive_season,
+                'is_valid': is_valid,
+                'reason': reason,
+            }
+    
+    if not season and not season_status:
         return render(request, 'daily_bonus/dashboard.html', {
             'season': None,
+            'season_status': None,
+            'days': [],
+            'today': None,
+            'can_claim': False,
+            'allow_retroactive': False,
+        })
+    
+    # Se há season_status mas não season válida, mostra mensagem apropriada
+    if season_status and not season:
+        return render(request, 'daily_bonus/dashboard.html', {
+            'season': None,
+            'season_status': season_status,
             'days': [],
             'today': None,
             'can_claim': False,
@@ -983,6 +1055,7 @@ def daily_bonus_dashboard(request):
 
     return render(request, 'daily_bonus/dashboard.html', {
         'season': season,
+        'season_status': None,
         'days': context_days,
         'today': today_day,
         'can_claim': can_claim,
@@ -995,9 +1068,32 @@ def daily_bonus_dashboard(request):
 def daily_bonus_claim(request):
     from ..models import DailyBonusSeason, DailyBonusDay, DailyBonusClaim, DailyBonusPoolEntry, Item
 
-    season = DailyBonusSeason.objects.filter(is_active=True).select_for_update().first()
+    # Busca season válida (dentro do período e ativa)
+    season = _get_current_valid_season()
+    
     if not season:
-        messages.error(request, _('Nenhuma temporada de bônus diária ativa.'))
+        # Verifica se há season ativa mas fora do período
+        inactive_season = DailyBonusSeason.objects.filter(is_active=True).first()
+        if inactive_season:
+            is_valid, reason = _is_season_valid(inactive_season)
+            if reason == 'ended':
+                messages.error(request, _('A temporada "{}" já finalizou em {}. Não há temporada ativa no momento.').format(
+                    inactive_season.name, inactive_season.end_date.strftime('%d/%m/%Y')
+                ))
+            elif reason == 'not_started':
+                messages.error(request, _('A temporada "{}" ainda não começou. Ela inicia em {}.').format(
+                    inactive_season.name, inactive_season.start_date.strftime('%d/%m/%Y')
+                ))
+            else:
+                messages.error(request, _('A temporada não está ativa no momento.'))
+        else:
+            messages.error(request, _('Nenhuma temporada de bônus diária ativa.'))
+        return redirect('games:daily_bonus_dashboard')
+    
+    # Valida novamente dentro da transação (para garantir)
+    is_valid, reason = _is_season_valid(season)
+    if not is_valid:
+        messages.error(request, _('A temporada não está mais válida.'))
         return redirect('games:daily_bonus_dashboard')
 
     today_day = _current_bonus_day(season.reset_hour_utc)
@@ -1028,13 +1124,13 @@ def daily_bonus_claim(request):
         messages.error(request, _('Fora da janela de dias válidos.'))
         return redirect('games:daily_bonus_dashboard')
 
-    # Verifica se já reclamou (com lock para evitar race conditions)
-    # Filtra apenas claims do mês/ano atual para permitir reset mensal
+    # Verifica se já reclamou nesta season (com lock para evitar race conditions)
+    # Filtra apenas claims do mês/ano atual E da season correta
     first_day_of_month, last_day_of_month = _get_month_bounds(now)
     
     claim_exists = DailyBonusClaim.objects.select_for_update().filter(
         user=request.user, 
-        season=season, 
+        season=season,  # IMPORTANTE: Filtra pela season correta
         day_of_month=target_day,
         created_at__gte=first_day_of_month,
         created_at__lt=last_day_of_month
@@ -1153,38 +1249,53 @@ def daily_bonus_claim(request):
 
 @conditional_otp_required
 def daily_bonus_history(request):
-    """Visualizar histórico de coletas do bônus diário"""
+    """Visualizar histórico de coletas do bônus diário - agrupado por season"""
     from ..models import DailyBonusSeason, DailyBonusClaim
     from django.db.models import Count
     from collections import defaultdict
     
-    season = DailyBonusSeason.objects.filter(is_active=True).first()
-    if not season:
-        return render(request, 'daily_bonus/history.html', {
-            'season': None,
-            'history_by_month': {},
-            'total_claims': 0,
-        })
+    # Permite filtrar por season específica via query parameter
+    season_id = request.GET.get('season_id')
+    if season_id:
+        try:
+            selected_season = get_object_or_404(DailyBonusSeason, id=season_id)
+        except (ValueError, DailyBonusSeason.DoesNotExist):
+            selected_season = None
+    else:
+        selected_season = None
     
-    # Busca todos os claims do usuário para esta season, ordenados por data
+    # Busca todos os claims do usuário, ordenados por data
     all_claims = DailyBonusClaim.objects.filter(
-        user=request.user,
-        season=season
-    ).order_by('-created_at')
+        user=request.user
+    ).order_by('-created_at').select_related('season')
     
-    # Agrupa por mês/ano
-    history_by_month = defaultdict(lambda: {
-        'year': None,
-        'month': None,
-        'month_name': None,
-        'days_claimed': set(),
-        'total_days': 0,
-        'claims': []
+    # Se uma season foi selecionada, filtra por ela
+    if selected_season:
+        all_claims = all_claims.filter(season=selected_season)
+    
+    # Agrupa por season primeiro, depois por mês/ano
+    history_by_season = defaultdict(lambda: {
+        'season': None,
+        'history_by_month': defaultdict(lambda: {
+            'year': None,
+            'month': None,
+            'month_name': None,
+            'days_claimed': set(),
+            'total_days': 0,
+            'claims': []
+        })
     })
     
     for claim in all_claims:
+        season = claim.season
+        season_key = f"season_{season.id}"
+        
+        if history_by_season[season_key]['season'] is None:
+            history_by_season[season_key]['season'] = season
+        
         claim_date = claim.created_at
         month_key = f"{claim_date.year}-{claim_date.month:02d}"
+        history_by_month = history_by_season[season_key]['history_by_month']
         
         if month_key not in history_by_month:
             month_names = [
@@ -1207,28 +1318,44 @@ def daily_bonus_history(request):
         history_by_month[month_key]['days_claimed'].add(claim.day_of_month)
         history_by_month[month_key]['claims'].append(claim)
     
-    # Converte sets para sorted lists e ordena por mês/ano (mais recente primeiro)
-    for month_key in history_by_month:
-        history_by_month[month_key]['days_claimed'] = sorted(history_by_month[month_key]['days_claimed'])
-        history_by_month[month_key]['claims'] = sorted(
-            history_by_month[month_key]['claims'],
-            key=lambda x: x.created_at,
-            reverse=True
-        )
-    
-    # Ordena os meses (mais recente primeiro)
-    sorted_months = sorted(
-        history_by_month.items(),
-        key=lambda x: (x[1]['year'], x[1]['month']),
-        reverse=True
-    )
-    history_by_month = dict(sorted_months)
-    
+    # Calcula totais
     total_claims = all_claims.count()
     
+    # Busca todas as seasons que o usuário já coletou algo
+    user_seasons = DailyBonusSeason.objects.filter(
+        claims__user=request.user
+    ).distinct().order_by('-created_at')
+    
+    # Converte defaultdict para dict normal para o template e processa os dados
+    history_by_season_dict = {}
+    for season_key, season_data in history_by_season.items():
+        history_by_month_dict = {}
+        for month_key, month_data in season_data['history_by_month'].items():
+            # Converte set para list sorted para o template
+            month_data['days_claimed'] = sorted(list(month_data['days_claimed']))
+            month_data['claims'] = sorted(
+                month_data['claims'],
+                key=lambda x: x.created_at,
+                reverse=True
+            )
+            history_by_month_dict[month_key] = month_data
+        
+        # Ordena os meses da season (mais recente primeiro)
+        sorted_months = sorted(
+            history_by_month_dict.items(),
+            key=lambda x: (x[1]['year'], x[1]['month']),
+            reverse=True
+        )
+        
+        history_by_season_dict[season_key] = {
+            'season': season_data['season'],
+            'history_by_month': dict(sorted_months)
+        }
+    
     return render(request, 'daily_bonus/history.html', {
-        'season': season,
-        'history_by_month': history_by_month,
+        'selected_season': selected_season,
+        'user_seasons': user_seasons,
+        'history_by_season': history_by_season_dict,
         'total_claims': total_claims,
     })
 

@@ -60,7 +60,35 @@
     </div>
 
     {% if not season %}
-      <div class="alert alert-warning" role="alert">{% trans "Nenhuma temporada ativa de bônus diário." %}</div>
+      {% if season_status %}
+        {% if season_status.reason == 'ended' %}
+          <div class="alert alert-danger" role="alert">
+            <h5><i class="bi bi-calendar-x me-2"></i>{% trans "Temporada Finalizada" %}</h5>
+            <p class="mb-0">
+              {% trans "A temporada" %} <strong>"{{ season_status.season.name }}"</strong> {% trans "finalizou em" %} 
+              <strong>{{ season_status.season.end_date|date:"d/m/Y" }}</strong>.
+              <br>
+              {% trans "Não há temporada ativa no momento. Aguarde o início de uma nova temporada." %}
+            </p>
+          </div>
+        {% elif season_status.reason == 'not_started' %}
+          <div class="alert alert-info" role="alert">
+            <h5><i class="bi bi-calendar-event me-2"></i>{% trans "Temporada em Breve" %}</h5>
+            <p class="mb-0">
+              {% trans "A temporada" %} <strong>"{{ season_status.season.name }}"</strong> {% trans "ainda não começou." %}
+              <br>
+              {% trans "Ela iniciará em" %} <strong>{{ season_status.season.start_date|date:"d/m/Y" }}</strong>.
+            </p>
+          </div>
+        {% else %}
+          <div class="alert alert-warning" role="alert">{% trans "Nenhuma temporada ativa de bônus diário." %}</div>
+        {% endif %}
+      {% else %}
+        <div class="alert alert-warning" role="alert">
+          <h5><i class="bi bi-exclamation-triangle me-2"></i>{% trans "Nenhuma Temporada Ativa" %}</h5>
+          <p class="mb-0">{% trans "Não há temporada de bônus diário ativa no momento. Aguarde o início de uma nova temporada." %}</p>
+        </div>
+      {% endif %}
     {% else %}
       <div class="mb-3 small text-white-50">
         {% trans "Temporada" %}: <strong>{{ season.name }}</strong> • {% trans "Reset" %}: {{ season.reset_hour_utc }}:00 UTC

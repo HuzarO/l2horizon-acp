@@ -14,24 +14,70 @@ def staff_required(view):
 
 @staff_required
 def manager_dashboard(request):
-    season = DailyBonusSeason.objects.filter(is_active=True).first() or DailyBonusSeason.objects.order_by('-created_at').first()
+    # Permite selecionar uma temporada específica via query parameter
+    season_id = request.GET.get('season_id')
+    if season_id:
+        try:
+            season = get_object_or_404(DailyBonusSeason, id=season_id)
+        except (ValueError, DailyBonusSeason.DoesNotExist):
+            season = None
+    else:
+        # Por padrão, mostra a temporada ativa ou a mais recente
+        season = DailyBonusSeason.objects.filter(is_active=True).first() or DailyBonusSeason.objects.order_by('-created_at').first()
 
     season_form = DailyBonusSeasonForm(instance=season)
     pool_form = DailyBonusPoolEntryForm()
     day_form = DailyBonusDayForm()
 
+    # Lista todas as temporadas para o seletor
+    all_seasons = DailyBonusSeason.objects.all().order_by('-is_active', '-created_at')
+
     if request.method == 'POST':
         action = request.POST.get('action')
         try:
-            if action == 'save_season':
-                instance = season if season else None
+            if action == 'create_season':
+                # Criar nova temporada
+                season_form = DailyBonusSeasonForm(request.POST)
+                if season_form.is_valid():
+                    season = season_form.save()
+                    messages.success(request, _('Nova temporada criada com sucesso.'))
+                    return redirect(f'?season_id={season.id}')
+                else:
+                    messages.error(request, _('Corrija os erros no formulário da temporada.'))
+
+            elif action == 'save_season':
+                # Salvar/editar temporada existente
+                instance_id = request.POST.get('season_id')
+                if instance_id:
+                    instance = get_object_or_404(DailyBonusSeason, id=instance_id)
+                else:
+                    instance = season if season else None
+                
                 season_form = DailyBonusSeasonForm(request.POST, instance=instance)
                 if season_form.is_valid():
                     season = season_form.save()
                     messages.success(request, _('Temporada salva com sucesso.'))
-                    return redirect('games:daily_bonus_manager')
+                    return redirect(f'?season_id={season.id}')
                 else:
                     messages.error(request, _('Corrija os erros no formulário da temporada.'))
+
+            elif action == 'delete_season':
+                # Deletar temporada
+                instance_id = request.POST.get('season_id')
+                instance = get_object_or_404(DailyBonusSeason, id=instance_id)
+                season_name = instance.name
+                instance.delete()
+                messages.success(request, _('Temporada "{}" deletada com sucesso.').format(season_name))
+                return redirect('games:daily_bonus_manager')
+
+            elif action == 'activate_season':
+                # Ativar uma temporada (desativa as outras automaticamente)
+                instance_id = request.POST.get('season_id')
+                instance = get_object_or_404(DailyBonusSeason, id=instance_id)
+                instance.is_active = True
+                instance.save()  # O save() do modelo já desativa as outras
+                messages.success(request, _('Temporada "{}" ativada com sucesso.').format(instance.name))
+                return redirect(f'?season_id={instance.id}')
 
             elif action == 'add_pool':
                 if not season:
@@ -43,7 +89,8 @@ def manager_dashboard(request):
                         entry.season = season
                         entry.save()
                         messages.success(request, _('Item adicionado ao pool.'))
-                        return redirect('games:daily_bonus_manager')
+                        redirect_url = f'?season_id={season.id}' if season else 'games:daily_bonus_manager'
+                        return redirect(redirect_url)
                     else:
                         messages.error(request, _('Corrija os erros no formulário do pool.'))
 
@@ -54,16 +101,19 @@ def manager_dashboard(request):
                 if pool_form.is_valid():
                     pool_form.save()
                     messages.success(request, _('Item atualizado com sucesso.'))
-                    return redirect('games:daily_bonus_manager')
+                    redirect_url = f'?season_id={entry.season.id}' if entry.season else 'games:daily_bonus_manager'
+                    return redirect(redirect_url)
                 else:
                     messages.error(request, _('Corrija os erros no formulário do pool.'))
 
             elif action == 'delete_pool':
                 entry_id = request.POST.get('entry_id')
                 entry = get_object_or_404(DailyBonusPoolEntry, id=entry_id)
+                season_id = entry.season.id if entry.season else None
                 entry.delete()
                 messages.success(request, _('Item removido do pool.'))
-                return redirect('games:daily_bonus_manager')
+                redirect_url = f'?season_id={season_id}' if season_id else 'games:daily_bonus_manager'
+                return redirect(redirect_url)
 
             elif action == 'save_day':
                 if not season:
@@ -75,7 +125,8 @@ def manager_dashboard(request):
                     if day_form.is_valid():
                         day_form.save()
                         messages.success(request, _('Dia atualizado.'))
-                        return redirect('games:daily_bonus_manager')
+                        redirect_url = f'?season_id={season.id}' if season else 'games:daily_bonus_manager'
+                        return redirect(redirect_url)
                     else:
                         messages.error(request, _('Corrija os erros no formulário do dia.'))
 
@@ -94,6 +145,7 @@ def manager_dashboard(request):
         'day_form': day_form,
         'day_map': day_map,
         'days_range': list(range(1, 32)),
+        'all_seasons': all_seasons,
     }
     return render(request, 'daily_bonus/manager/dashboard.html', context)
 
