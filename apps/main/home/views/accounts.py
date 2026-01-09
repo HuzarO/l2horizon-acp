@@ -327,11 +327,31 @@ class UserPasswordResetView(PasswordResetView):
         return render_theme_page(request, 'accounts_custom', 'forgot-password.html', context)
 
     def form_valid(self, form):
-        print(_("Password reset email sent! (async)"))
-        return super().form_valid(form)
+        try:
+            result = super().form_valid(form)
+            logger.info("Password reset email sent successfully")
+            return result
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Failed to send password reset email: {error_msg}", exc_info=True)
+            
+            # Verifica se é erro de autenticação SMTP (Sender Address Blocked)
+            if 'SMTPAuthenticationError' in str(type(e).__name__) or '554' in error_msg or 'Sender Address Blocked' in error_msg:
+                messages.error(
+                    self.request,
+                    _("Erro de configuração de email: O endereço do remetente está bloqueado pelo servidor SMTP.")
+                )
+            else:
+                messages.error(
+                    self.request,
+                    _("Erro ao enviar email de reset de senha. Tente novamente mais tarde ou entre em contato com o suporte.")
+                )
+            
+            # Retorna para o formulário com erro
+            return self.form_invalid(form)
 
     def form_invalid(self, form):
-        print(_("Failed to send password reset email!"))
+        logger.warning("Password reset form validation failed")
         return super().form_invalid(form)
     
 
