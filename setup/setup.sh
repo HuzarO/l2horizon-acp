@@ -843,6 +843,12 @@ if [ ! -f "$INSTALL_DIR/htpasswd_created" ]; then
   echo
   mkdir -p nginx
   
+  # Remove .htpasswd if it's a directory (to avoid write errors)
+  if [ -d "nginx/.htpasswd" ]; then
+    log_warning "nginx/.htpasswd is a directory. Removing it..."
+    rm -rf nginx/.htpasswd
+  fi
+  
   # Generate password hash
   if [ "$PYTHON_CMD" = "htpasswd" ]; then
     # Use system htpasswd
