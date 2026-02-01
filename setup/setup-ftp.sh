@@ -1,10 +1,10 @@
 #!/bin/bash
 
 ################################################################################
-# Script de Configuração do Servidor FTP para Launcher
+# FTP Server Setup Script for Launcher
 # 
-# Este script configura um servidor FTP (vsftpd) para permitir que o admin
-# do host possa hospedar os arquivos do launcher do servidor.
+# This script sets up an FTP server (vsftpd) to allow the host admin
+# to host the server launcher files.
 ################################################################################
 
 set -euo pipefail
@@ -16,7 +16,7 @@ readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
 readonly NC='\033[0m' # No Color
 
-# Função para log
+# Function for logging
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -33,185 +33,185 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
-# Verifica se está rodando como root
+# Check if running as root
 if [ "$EUID" -ne 0 ]; then 
-    log_error "Por favor, execute este script como root (sudo)"
+    log_error "Please run this script as root (sudo)"
     exit 1
 fi
 
-# Diretório padrão para FTP
+# Default directory for FTP
 DEFAULT_FTP_DIR="/var/www/launcher"
 FTP_DIR=""
 FTP_USER="launcher"
 FTP_PASSWORD=""
 
 echo "========================================================="
-echo "  📁 Configuração do Servidor FTP para Launcher"
+echo "  📁 FTP Server Setup for Launcher"
 echo "========================================================="
 echo
 
-# Solicitar diretório FTP
+# Request FTP directory
 while [ -z "$FTP_DIR" ]; do
-    read -p "Digite o diretório para os arquivos do launcher (padrão: ${DEFAULT_FTP_DIR}): " FTP_DIR
+    read -p "Enter the directory for launcher files (default: ${DEFAULT_FTP_DIR}): " FTP_DIR
     FTP_DIR=$(echo "$FTP_DIR" | xargs)
     
     if [ -z "$FTP_DIR" ]; then
         FTP_DIR="$DEFAULT_FTP_DIR"
     fi
     
-    # Validar diretório (não pode ser vazio e deve ser caminho absoluto)
+    # Validate directory (cannot be empty and must be absolute path)
     if [[ ! "$FTP_DIR" =~ ^/ ]]; then
-        log_error "O diretório deve ser um caminho absoluto (começando com /)"
+        log_error "Directory must be an absolute path (starting with /)"
         FTP_DIR=""
         continue
     fi
 done
 
-log_success "Diretório configurado: $FTP_DIR"
+log_success "Directory configured: $FTP_DIR"
 
-# Solicitar usuário FTP
+# Request FTP user
 echo
-read -p "Digite o nome do usuário FTP (padrão: ${FTP_USER}): " INPUT_USER
+read -p "Enter the FTP username (default: ${FTP_USER}): " INPUT_USER
 INPUT_USER=$(echo "$INPUT_USER" | xargs)
 if [ -n "$INPUT_USER" ]; then
     FTP_USER="$INPUT_USER"
 fi
 
-# Validar nome de usuário
+# Validate username
 if [[ ! "$FTP_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
-    log_error "Nome de usuário inválido. Use apenas letras minúsculas, números, hífens e underscores."
+    log_error "Invalid username. Use only lowercase letters, numbers, hyphens and underscores."
     exit 1
 fi
 
-log_success "Usuário configurado: $FTP_USER"
+log_success "User configured: $FTP_USER"
 
-# Solicitar senha FTP
+# Request FTP password
 echo
 while [ -z "$FTP_PASSWORD" ]; do
-    read -sp "Digite a senha para o usuário FTP: " FTP_PASSWORD
+    read -sp "Enter the password for the FTP user: " FTP_PASSWORD
     echo
     if [ -z "$FTP_PASSWORD" ]; then
-        log_error "Senha não pode estar vazia."
+        log_error "Password cannot be empty."
         continue
     fi
     
     if [ ${#FTP_PASSWORD} -lt 6 ]; then
-        log_error "Senha deve ter pelo menos 6 caracteres."
+        log_error "Password must have at least 6 characters."
         FTP_PASSWORD=""
         continue
     fi
     
-    read -sp "Confirme a senha: " FTP_PASSWORD_CONFIRM
+    read -sp "Confirm password: " FTP_PASSWORD_CONFIRM
     echo
     
     if [ "$FTP_PASSWORD" != "$FTP_PASSWORD_CONFIRM" ]; then
-        log_error "As senhas não coincidem."
+        log_error "Passwords do not match."
         FTP_PASSWORD=""
         continue
     fi
 done
 
-log_success "Senha configurada."
+log_success "Password configured."
 
-# Instalar vsftpd se não estiver instalado
-log_info "Verificando instalação do vsftpd..."
+# Install vsftpd if not installed
+log_info "Checking vsftpd installation..."
 if ! command -v vsftpd &> /dev/null; then
-    log_info "Instalando vsftpd..."
+    log_info "Installing vsftpd..."
     apt-get update -qq
     apt-get install -y vsftpd
-    log_success "vsftpd instalado."
+    log_success "vsftpd installed."
 else
-    log_info "vsftpd já está instalado."
+    log_info "vsftpd is already installed."
 fi
 
-# Criar diretório FTP se não existir
-log_info "Criando diretório FTP..."
+# Create FTP directory if it doesn't exist
+log_info "Creating FTP directory..."
 mkdir -p "$FTP_DIR"
 chmod 755 "$FTP_DIR"
-log_success "Diretório criado: $FTP_DIR"
+log_success "Directory created: $FTP_DIR"
 
-# Criar usuário FTP se não existir
-log_info "Configurando usuário FTP..."
+# Create FTP user if it doesn't exist
+log_info "Configuring FTP user..."
 if id "$FTP_USER" &>/dev/null; then
-    log_warning "Usuário $FTP_USER já existe. Atualizando senha..."
+    log_warning "User $FTP_USER already exists. Updating password..."
     echo "$FTP_USER:$FTP_PASSWORD" | chpasswd
 else
-    # Criar usuário sem shell de login e com diretório home
+    # Create user without login shell and with home directory
     useradd -d "$FTP_DIR" -s /bin/bash -m "$FTP_USER" 2>/dev/null || {
-        log_warning "Usuário pode já existir. Configurando senha..."
+        log_warning "User may already exist. Configuring password..."
     }
     echo "$FTP_USER:$FTP_PASSWORD" | chpasswd
-    log_success "Usuário $FTP_USER criado."
+    log_success "User $FTP_USER created."
 fi
 
-# Configurar permissões do diretório
+# Configure directory permissions
 chown -R "$FTP_USER:$FTP_USER" "$FTP_DIR"
 chmod 755 "$FTP_DIR"
-log_success "Permissões configuradas."
+log_success "Permissions configured."
 
-# Fazer backup da configuração do vsftpd
+# Backup vsftpd configuration
 VSFTPD_CONF="/etc/vsftpd.conf"
 if [ ! -f "${VSFTPD_CONF}.bak" ]; then
     cp "$VSFTPD_CONF" "${VSFTPD_CONF}.bak"
-    log_info "Backup da configuração do vsftpd criado."
+    log_info "vsftpd configuration backup created."
 fi
 
-# Configurar vsftpd
-log_info "Configurando vsftpd..."
+# Configure vsftpd
+log_info "Configuring vsftpd..."
 
-# Criar configuração do vsftpd
+# Create vsftpd configuration
 cat > "$VSFTPD_CONF" << EOF
-# Configuração do vsftpd para Launcher
-# Backup original salvo em: ${VSFTPD_CONF}.bak
+# vsftpd configuration for Launcher
+# Original backup saved at: ${VSFTPD_CONF}.bak
 
-# Permitir acesso anônimo (desabilitado)
+# Allow anonymous access (disabled)
 anonymous_enable=NO
 
-# Permitir acesso local
+# Allow local access
 local_enable=YES
 
-# Permitir escrita
+# Allow writing
 write_enable=YES
 
-# Máscara de permissões locais
+# Local permissions mask
 local_umask=022
 
-# Permitir upload anônimo (desabilitado)
+# Allow anonymous upload (disabled)
 anon_upload_enable=NO
 
-# Permitir criação de diretórios
+# Allow directory creation
 anon_mkdir_write_enable=NO
 
-# Mostrar mensagem de boas-vindas
+# Show welcome message
 dirmessage_enable=YES
 
-# Log de transferências
+# Transfer log
 xferlog_enable=YES
 
-# Porta de dados (passiva)
+# Data port (passive)
 connect_from_port_20=YES
 
-# Modo passivo
+# Passive mode
 pasv_enable=YES
 pasv_min_port=40000
 pasv_max_port=50000
 
-# Permitir chroot para usuários locais
+# Allow chroot for local users
 chroot_local_user=YES
 
-# Permitir que usuários locais façam upload
+# Allow local users to upload
 allow_writeable_chroot=YES
 
-# Habilitar SSL/TLS (opcional, desabilitado por padrão)
+# Enable SSL/TLS (optional, disabled by default)
 ssl_enable=NO
 
-# Configurações de segurança
+# Security settings
 secure_chroot_dir=/var/run/vsftpd/empty
 pam_service_name=vsftpd
 rsa_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
 rsa_private_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
 
-# Habilitar IPv4
+# Enable IPv4
 listen=YES
 listen_ipv6=NO
 
@@ -219,59 +219,59 @@ listen_ipv6=NO
 idle_session_timeout=600
 data_connection_timeout=120
 
-# Máximo de conexões
+# Maximum connections
 max_clients=50
 max_per_ip=5
 
 # Banner
 ftpd_banner=Welcome to Launcher FTP Server
 
-# Habilitar ASCII
+# Enable ASCII
 ascii_upload_enable=YES
 ascii_download_enable=YES
 EOF
 
-log_success "Configuração do vsftpd criada."
+log_success "vsftpd configuration created."
 
-# Criar diretório para chroot se não existir
+# Create directory for chroot if it doesn't exist
 mkdir -p /var/run/vsftpd/empty
 chmod 755 /var/run/vsftpd/empty
 
-# Habilitar e iniciar serviço
-log_info "Habilitando serviço vsftpd..."
+# Enable and start service
+log_info "Enabling vsftpd service..."
 systemctl enable vsftpd
 systemctl restart vsftpd
 
-# Verificar se o serviço está rodando
+# Check if service is running
 if systemctl is-active --quiet vsftpd; then
-    log_success "Serviço vsftpd está rodando."
+    log_success "vsftpd service is running."
 else
-    log_error "Falha ao iniciar serviço vsftpd."
-    log_info "Verifique os logs com: journalctl -u vsftpd -n 50"
+    log_error "Failed to start vsftpd service."
+    log_info "Check logs with: journalctl -u vsftpd -n 50"
     exit 1
 fi
 
-# Configurar firewall (se ufw estiver ativo)
+# Configure firewall (if ufw is active)
 if command -v ufw &> /dev/null && ufw status | grep -q "Status: active"; then
-    log_info "Configurando firewall (ufw)..."
+    log_info "Configuring firewall (ufw)..."
     ufw allow 21/tcp comment "FTP"
     ufw allow 40000:50000/tcp comment "FTP Passive"
-    log_success "Regras do firewall configuradas."
+    log_success "Firewall rules configured."
 fi
 
 echo
-log_success "Configuração do FTP concluída!"
+log_success "FTP configuration completed!"
 echo
-log_info "Resumo da configuração:"
-echo "  - Diretório FTP: ${FTP_DIR}"
-echo "  - Usuário: ${FTP_USER}"
-echo "  - Porta: 21"
-echo "  - Portas passivas: 40000-50000"
+log_info "Configuration summary:"
+echo "  - FTP Directory: ${FTP_DIR}"
+echo "  - User: ${FTP_USER}"
+echo "  - Port: 21"
+echo "  - Passive ports: 40000-50000"
 echo
-log_info "Para testar a conexão FTP:"
+log_info "To test the FTP connection:"
 echo "  ftp://${FTP_USER}@$(hostname -I | awk '{print $1}')"
 echo
-log_info "Próximo passo:"
-echo "  Execute o script setup-nginx-launcher.sh para configurar o Nginx com index of"
+log_info "Next step:"
+echo "  Run the setup-nginx-launcher.sh script to configure Nginx with directory listing"
 echo
 

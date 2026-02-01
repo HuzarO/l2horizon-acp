@@ -1,10 +1,10 @@
 #!/bin/bash
 
 ################################################################################
-# Script de Configuração do Nginx para Launcher (Index of)
+# Nginx Setup Script for Launcher (Directory Listing)
 # 
-# Este script configura o Nginx para servir os arquivos do launcher
-# com index of habilitado, permitindo listagem de diretórios.
+# This script configures Nginx to serve launcher files
+# with directory listing enabled.
 ################################################################################
 
 set -euo pipefail
@@ -16,7 +16,7 @@ readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
 readonly NC='\033[0m' # No Color
 
-# Função para log
+# Function for logging
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -33,35 +33,35 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
-# Verifica se está rodando como root
+# Check if running as root
 if [ "$EUID" -ne 0 ]; then 
-    log_error "Por favor, execute este script como root (sudo)"
+    log_error "Please run this script as root (sudo)"
     exit 1
 fi
 
-# Função para validar domínio
+# Function to validate domain
 validate_domain() {
     local domain="$1"
-    # Validação básica de domínio
+    # Basic domain validation
     if [[ ! "$domain" =~ ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$ ]]; then
         return 1
     fi
     return 0
 }
 
-# Função para garantir que a linha de include esteja presente no nginx.conf
+# Function to ensure include line is present in nginx.conf
 configure_nginx_conf() {
     local NGINX_CONF="/etc/nginx/nginx.conf"
     local INCLUDE_LINE="    include /etc/nginx/sites-enabled/*;"
 
-    # Cria backup se não existir
+    # Create backup if it doesn't exist
     if [ ! -f "${NGINX_CONF}.bak" ]; then
         cp "$NGINX_CONF" "${NGINX_CONF}.bak"
-        log_info "Backup do nginx.conf criado."
+        log_info "nginx.conf backup created."
     fi
 
     if ! grep -qF "$INCLUDE_LINE" "$NGINX_CONF"; then
-        # Insere o include dentro do bloco http
+        # Insert include inside http block
         sed -i "/http {/{
             :a
             n
@@ -69,126 +69,126 @@ configure_nginx_conf() {
             i\\
 $INCLUDE_LINE
         }" "$NGINX_CONF"
-        log_success "Linha para incluir sites-enabled adicionada no nginx.conf"
+        log_success "Line to include sites-enabled added to nginx.conf"
     else
-        log_info "Linha para incluir sites-enabled já presente no nginx.conf"
+        log_info "Line to include sites-enabled already present in nginx.conf"
     fi
 }
 
-# Solicitar informações
+# Request information
 echo "========================================================="
-echo "  🌐 Configuração do Nginx para Launcher (Index of)"
+echo "  🌐 Nginx Setup for Launcher (Directory Listing)"
 echo "========================================================="
 echo
 
-# Solicitar domínio
+# Request domain
 DOMAIN=""
 while [ -z "$DOMAIN" ]; do
-    read -p "Digite o domínio para o launcher (ex: launcher.exemplo.com): " DOMAIN
+    read -p "Enter the domain for the launcher (e.g., launcher.example.com): " DOMAIN
     DOMAIN=$(echo "$DOMAIN" | tr '[:upper:]' '[:lower:]' | xargs)
     
     if [ -z "$DOMAIN" ]; then
-        log_error "Domínio não pode estar vazio."
+        log_error "Domain cannot be empty."
         continue
     fi
     
     if ! validate_domain "$DOMAIN"; then
-        log_error "Domínio inválido. Por favor, digite um domínio válido."
+        log_error "Invalid domain. Please enter a valid domain."
         DOMAIN=""
         continue
     fi
 done
 
-log_success "Domínio configurado: $DOMAIN"
+log_success "Domain configured: $DOMAIN"
 
-# Solicitar diretório FTP
+# Request FTP directory
 echo
 DEFAULT_FTP_DIR="/var/www/launcher"
 FTP_DIR=""
 while [ -z "$FTP_DIR" ]; do
-    read -p "Digite o diretório dos arquivos do launcher (padrão: ${DEFAULT_FTP_DIR}): " FTP_DIR
+    read -p "Enter the launcher files directory (default: ${DEFAULT_FTP_DIR}): " FTP_DIR
     FTP_DIR=$(echo "$FTP_DIR" | xargs)
     
     if [ -z "$FTP_DIR" ]; then
         FTP_DIR="$DEFAULT_FTP_DIR"
     fi
     
-    # Validar se o diretório existe
+    # Validate if directory exists
     if [ ! -d "$FTP_DIR" ]; then
-        log_warning "Diretório não existe: $FTP_DIR"
-        read -p "Deseja criar este diretório? (s/n): " CREATE_DIR
-        if [[ "$CREATE_DIR" =~ ^[sS]$ ]]; then
+        log_warning "Directory does not exist: $FTP_DIR"
+        read -p "Do you want to create this directory? (y/n): " CREATE_DIR
+        if [[ "$CREATE_DIR" =~ ^[yY]$ ]]; then
             mkdir -p "$FTP_DIR"
             chmod 755 "$FTP_DIR"
-            log_success "Diretório criado: $FTP_DIR"
+            log_success "Directory created: $FTP_DIR"
         else
-            log_error "Diretório não existe. Abortando."
+            log_error "Directory does not exist. Aborting."
             exit 1
         fi
     fi
     
-    # Validar se é caminho absoluto
+    # Validate if it's an absolute path
     if [[ ! "$FTP_DIR" =~ ^/ ]]; then
-        log_error "O diretório deve ser um caminho absoluto (começando com /)"
+        log_error "Directory must be an absolute path (starting with /)"
         FTP_DIR=""
         continue
     fi
 done
 
-log_success "Diretório configurado: $FTP_DIR"
+log_success "Directory configured: $FTP_DIR"
 
-# Verificar se o Nginx está instalado
+# Check if Nginx is installed
 if ! command -v nginx &> /dev/null; then
-    log_error "Nginx não está instalado."
-    log_info "Execute primeiro: sudo bash setup/install-nginx.sh"
+    log_error "Nginx is not installed."
+    log_info "Run first: sudo bash setup/install-nginx.sh"
     exit 1
 fi
 
-log_info "Nginx está instalado."
+log_info "Nginx is installed."
 
-# Garante que os diretórios existam
+# Ensure directories exist
 mkdir -p /etc/nginx/sites-available
 mkdir -p /etc/nginx/sites-enabled
 
-# Configura o nginx.conf para incluir sites-enabled
+# Configure nginx.conf to include sites-enabled
 configure_nginx_conf
 
-# Perguntar sobre SSL
+# Ask about SSL
 echo
-read -p "Deseja configurar SSL com Let's Encrypt? (s/n): " SETUP_SSL
+read -p "Do you want to configure SSL with Let's Encrypt? (y/n): " SETUP_SSL
 SETUP_SSL=$(echo "$SETUP_SSL" | tr '[:upper:]' '[:lower:]')
 
-# Instala o Certbot e plugin Nginx para SSL se necessário
-if [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
+# Install Certbot and Nginx plugin for SSL if necessary
+if [[ "$SETUP_SSL" =~ ^[yY]$ ]]; then
     NEED_INSTALL=false
     
-    # Verifica se certbot está instalado
+    # Check if certbot is installed
     if ! command -v certbot &> /dev/null; then
         NEED_INSTALL=true
-        log_info "Certbot não encontrado. Será instalado."
+        log_info "Certbot not found. Will be installed."
     fi
     
-    # Verifica se o plugin nginx do certbot está instalado
+    # Check if certbot nginx plugin is installed
     if ! dpkg -l | grep -q "^ii.*python3-certbot-nginx"; then
         NEED_INSTALL=true
-        log_info "Plugin Nginx do Certbot não encontrado. Será instalado."
+        log_info "Certbot Nginx plugin not found. Will be installed."
     fi
     
     if [ "$NEED_INSTALL" = true ]; then
-        log_info "Instalando Certbot e plugin Nginx..."
+        log_info "Installing Certbot and Nginx plugin..."
         apt-get update -qq
         apt-get install -y certbot python3-certbot-nginx
-        log_success "Certbot e plugin Nginx instalados."
+        log_success "Certbot and Nginx plugin installed."
     else
-        log_info "Certbot e plugin Nginx já estão instalados."
+        log_info "Certbot and Nginx plugin are already installed."
     fi
 fi
 
-# Criar a configuração do Nginx com index of
-log_info "Criando configuração do Nginx..."
+# Create Nginx configuration with directory listing
+log_info "Creating Nginx configuration..."
 
-if [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
-    # Configuração inicial apenas HTTP (SSL será adicionado pelo Certbot)
+if [[ "$SETUP_SSL" =~ ^[yY]$ ]]; then
+    # Initial HTTP-only configuration (SSL will be added by Certbot)
     cat > /etc/nginx/sites-available/launcher << EOF
 # HTTP - Initial configuration (SSL will be added by Certbot)
 server {
@@ -200,13 +200,13 @@ server {
     root ${FTP_DIR};
     index index.html index.htm;
 
-    # Habilitar index of (listagem de diretórios)
+    # Enable directory listing
     autoindex on;
     autoindex_exact_size off;
     autoindex_localtime on;
     autoindex_format html;
 
-    # Limite o tamanho de upload para 100 MB (para arquivos grandes do launcher)
+    # Limit upload size to 100 MB (for large launcher files)
     client_max_body_size 100M;
 
     # Allow Let's Encrypt verification
@@ -214,17 +214,17 @@ server {
         root /var/www/html;
     }
 
-    # Configuração principal com index of
+    # Main configuration with directory listing
     location / {
         try_files \$uri \$uri/ =404;
         
-        # Headers de segurança
+        # Security headers
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-XSS-Protection "1; mode=block" always;
     }
 
-    # Desabilitar index of em subdiretórios específicos (opcional)
+    # Disable directory listing in specific subdirectories (optional)
     # location /private/ {
     #     autoindex off;
     # }
@@ -235,7 +235,7 @@ server {
 }
 EOF
 else
-    # Configuração sem SSL (apenas HTTP)
+    # Configuration without SSL (HTTP only)
     cat > /etc/nginx/sites-available/launcher << EOF
 server {
     listen 80;
@@ -246,26 +246,26 @@ server {
     root ${FTP_DIR};
     index index.html index.htm;
 
-    # Habilitar index of (listagem de diretórios)
+    # Enable directory listing
     autoindex on;
     autoindex_exact_size off;
     autoindex_localtime on;
     autoindex_format html;
 
-    # Limite o tamanho de upload para 100 MB (para arquivos grandes do launcher)
+    # Limit upload size to 100 MB (for large launcher files)
     client_max_body_size 100M;
 
-    # Configuração principal com index of
+    # Main configuration with directory listing
     location / {
         try_files \$uri \$uri/ =404;
         
-        # Headers de segurança
+        # Security headers
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-XSS-Protection "1; mode=block" always;
     }
 
-    # Desabilitar index of em subdiretórios específicos (opcional)
+    # Disable directory listing in specific subdirectories (optional)
     # location /private/ {
     #     autoindex off;
     # }
@@ -277,133 +277,133 @@ server {
 EOF
 fi
 
-# Cria link simbólico para habilitar o site
+# Create symbolic link to enable the site
 ln -sf /etc/nginx/sites-available/launcher /etc/nginx/sites-enabled/launcher
-log_success "Configuração do site habilitada."
+log_success "Site configuration enabled."
 
-# Testa a configuração do Nginx
-log_info "Testando configuração do Nginx..."
+# Test Nginx configuration
+log_info "Testing Nginx configuration..."
 if nginx -t; then
-    log_success "✓ Configuração do Nginx está válida."
+    log_success "✓ Nginx configuration is valid."
 else
-    log_error "✗ Configuração do Nginx inválida. Abortando."
-    log_info "Verifique os erros acima e corrija a configuração."
+    log_error "✗ Invalid Nginx configuration. Aborting."
+    log_info "Check the errors above and fix the configuration."
     exit 1
 fi
 
-# Reinicia o Nginx
-log_info "Reiniciando Nginx..."
+# Restart Nginx
+log_info "Restarting Nginx..."
 if systemctl restart nginx; then
-    log_success "✓ Nginx reiniciado com sucesso."
+    log_success "✓ Nginx restarted successfully."
 else
-    log_error "✗ Falha ao reiniciar Nginx."
+    log_error "✗ Failed to restart Nginx."
     exit 1
 fi
 
-# Verificar se o Nginx está rodando
+# Check if Nginx is running
 if systemctl is-active --quiet nginx; then
-    log_success "✓ Serviço Nginx está rodando."
+    log_success "✓ Nginx service is running."
 else
-    log_error "✗ Serviço Nginx não está rodando."
-    log_info "Verifique os logs com: journalctl -u nginx -n 50"
+    log_error "✗ Nginx service is not running."
+    log_info "Check logs with: journalctl -u nginx -n 50"
     exit 1
 fi
 
-# Configurar SSL se solicitado
-if [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
+# Configure SSL if requested
+if [[ "$SETUP_SSL" =~ ^[yY]$ ]]; then
     echo
-    log_info "Configurando SSL com Let's Encrypt..."
-    log_warning "Certifique-se de que o domínio ${DOMAIN} aponta para este servidor."
-    read -p "Pressione Enter para continuar com a configuração SSL..."
+    log_info "Configuring SSL with Let's Encrypt..."
+    log_warning "Make sure domain ${DOMAIN} points to this server."
+    read -p "Press Enter to continue with SSL configuration..."
     
     if certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos --register-unsafely-without-email; then
-        log_success "SSL configurado com sucesso!"
+        log_success "SSL successfully configured!"
         systemctl reload nginx
         
-        # Verificar novamente após SSL
+        # Check again after SSL
         if nginx -t; then
-            log_success "✓ Configuração do Nginx validada após SSL."
+            log_success "✓ Nginx configuration validated after SSL."
         else
-            log_error "✗ Erro na configuração após SSL."
+            log_error "✗ Configuration error after SSL."
             exit 1
         fi
     else
-        log_warning "Falha ao configurar SSL automaticamente."
-        log_info "Você pode configurar manualmente executando:"
+        log_warning "Failed to configure SSL automatically."
+        log_info "You can configure it manually by running:"
         echo "  sudo certbot --nginx -d ${DOMAIN}"
     fi
 fi
 
-# Validação final
+# Final validation
 echo
-log_info "Realizando validação final da configuração..."
+log_info "Performing final configuration validation..."
 
-# Verificar se o arquivo de configuração existe
+# Check if configuration file exists
 if [ ! -f /etc/nginx/sites-available/launcher ]; then
-    log_error "✗ Arquivo de configuração não encontrado."
+    log_error "✗ Configuration file not found."
     exit 1
 fi
-log_success "✓ Arquivo de configuração existe."
+log_success "✓ Configuration file exists."
 
-# Verificar se o link simbólico existe
+# Check if symbolic link exists
 if [ ! -L /etc/nginx/sites-enabled/launcher ]; then
-    log_error "✗ Link simbólico não encontrado."
+    log_error "✗ Symbolic link not found."
     exit 1
 fi
-log_success "✓ Link simbólico existe."
+log_success "✓ Symbolic link exists."
 
-# Verificar se o diretório existe e tem permissões corretas
+# Check if directory exists and has correct permissions
 if [ ! -d "$FTP_DIR" ]; then
-    log_error "✗ Diretório FTP não existe: $FTP_DIR"
+    log_error "✗ FTP directory does not exist: $FTP_DIR"
     exit 1
 fi
-log_success "✓ Diretório FTP existe: $FTP_DIR"
+log_success "✓ FTP directory exists: $FTP_DIR"
 
-# Verificar permissões do diretório
+# Check directory permissions
 if [ ! -r "$FTP_DIR" ]; then
-    log_warning "⚠ Diretório não tem permissão de leitura. Ajustando..."
+    log_warning "⚠ Directory does not have read permission. Adjusting..."
     chmod 755 "$FTP_DIR"
 fi
-log_success "✓ Permissões do diretório verificadas."
+log_success "✓ Directory permissions verified."
 
-# Testar configuração do Nginx novamente
+# Test Nginx configuration again
 if nginx -t 2>&1 | grep -q "test is successful"; then
-    log_success "✓ Configuração do Nginx validada com sucesso."
+    log_success "✓ Nginx configuration validated successfully."
 else
-    log_error "✗ Falha na validação final do Nginx."
+    log_error "✗ Final Nginx validation failed."
     nginx -t
     exit 1
 fi
 
-# Verificar se o serviço está respondendo
+# Check if service is responding
 if systemctl is-active --quiet nginx; then
-    log_success "✓ Serviço Nginx está ativo e rodando."
+    log_success "✓ Nginx service is active and running."
 else
-    log_error "✗ Serviço Nginx não está ativo."
+    log_error "✗ Nginx service is not active."
     exit 1
 fi
 
 echo
-log_success "Configuração do Nginx para Launcher concluída!"
+log_success "Nginx configuration for Launcher completed!"
 echo
-log_info "Resumo da configuração:"
-echo "  - Domínio: ${DOMAIN}"
-echo "  - Diretório: ${FTP_DIR}"
-echo "  - Index of: Habilitado"
-echo "  - Upload máximo: 100MB"
-if [[ "$SETUP_SSL" =~ ^[sS]$ ]]; then
-    echo "  - SSL: Configurado (se bem-sucedido)"
-    echo "  - Acesso: https://${DOMAIN}"
+log_info "Configuration summary:"
+echo "  - Domain: ${DOMAIN}"
+echo "  - Directory: ${FTP_DIR}"
+echo "  - Directory listing: Enabled"
+echo "  - Maximum upload: 100MB"
+if [[ "$SETUP_SSL" =~ ^[yY]$ ]]; then
+    echo "  - SSL: Configured (if successful)"
+    echo "  - Access: https://${DOMAIN}"
 else
-    echo "  - SSL: Não configurado"
-    echo "  - Acesso: http://${DOMAIN}"
+    echo "  - SSL: Not configured"
+    echo "  - Access: http://${DOMAIN}"
     echo
-    log_info "Para configurar SSL posteriormente, execute:"
+    log_info "To configure SSL later, run:"
     echo "  sudo certbot --nginx -d ${DOMAIN}"
 fi
 echo
-log_info "Para testar:"
+log_info "To test:"
 echo "  curl -I http://${DOMAIN}"
-echo "  ou acesse no navegador: http://${DOMAIN}"
+echo "  or access in browser: http://${DOMAIN}"
 echo
 

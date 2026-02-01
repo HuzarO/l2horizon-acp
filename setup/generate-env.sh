@@ -1,18 +1,18 @@
 #!/bin/bash
 
 ################################################################################
-# Script de Geração do Arquivo .env - Painel Definitivo Lineage (PDL)
+# .env File Generation Script - Painel Definitivo Lineage (PDL)
 # 
-# Este script gera o arquivo .env de forma interativa, permitindo escolher
-# quais categorias opcionais incluir.
+# This script generates the .env file interactively, allowing you to choose
+# which optional categories to include.
 #
-# Uso:
+# Usage:
 #   bash setup/generate-env.sh
 ################################################################################
 
 set -euo pipefail
 
-# Cores para output
+# Colors for output
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
@@ -20,7 +20,7 @@ readonly BLUE='\033[0;34m'
 readonly CYAN='\033[0;36m'
 readonly NC='\033[0m' # No Color
 
-# Função para log
+# Function for logging
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -37,15 +37,15 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
-# Função para criar backup do .env antes de modificações (com numeração incremental)
+# Function to create backup of .env before modifications (with incremental numbering)
 backup_env_file() {
     local env_file="${1:-$ENV_FILE}"
     
     if [ ! -f "$env_file" ]; then
-        return 0  # Se o arquivo não existe, não precisa fazer backup
+        return 0  # If the file doesn't exist, no need to backup
     fi
     
-    # Encontrar o próximo número de backup disponível
+    # Find the next available backup number
     local backup_num=1
     local backup_file="${env_file}.bkp"
     
@@ -54,28 +54,28 @@ backup_env_file() {
         backup_file="${env_file}.bkp${backup_num}"
     done
     
-    # Criar o backup
+    # Create the backup
     cp "$env_file" "$backup_file" 2>/dev/null || {
-        log_error "Falha ao criar backup do .env em $backup_file"
+        log_error "Failed to create backup of .env at $backup_file"
         return 1
     }
     
-    log_success "Backup do .env criado: $backup_file"
+    log_success "Backup of .env created: $backup_file"
     return 0
 }
 
-# Diretórios
+# Directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Se estamos dentro de um diretório lineage, ajustar
+# If we're inside a lineage directory, adjust
 if [ -d "${PROJECT_DIR}/lineage" ] && [ -f "${PROJECT_DIR}/lineage/manage.py" ]; then
     PROJECT_DIR="${PROJECT_DIR}/lineage"
 fi
 
 ENV_FILE="${PROJECT_DIR}/.env"
 
-# Função para gerar chave Fernet
+# Function to generate Fernet key
 generate_fernet_key() {
     python3 - <<EOF
 from cryptography.fernet import Fernet
@@ -83,7 +83,7 @@ print(Fernet.generate_key().decode())
 EOF
 }
 
-# Função para gerar SECRET_KEY
+# Function to generate SECRET_KEY
 generate_secret_key() {
     python3 - <<EOF
 from django.core.management.utils import get_random_secret_key
@@ -91,7 +91,7 @@ print(get_random_secret_key())
 EOF
 }
 
-# Função para perguntar sim/não
+# Function to ask yes/no
 ask_yes_no() {
     local prompt="$1"
     local default="${2:-n}"
@@ -117,7 +117,7 @@ ask_yes_no() {
     fi
 }
 
-# Função para perguntar valor
+# Function to ask for value
 ask_value() {
     local prompt="$1"
     local default="$2"
@@ -132,7 +132,7 @@ ask_value() {
     fi
 }
 
-# Função para ler valor existente do .env
+# Function to read existing value from .env
 get_existing_value() {
     local key="$1"
     local env_file="${2:-$ENV_FILE}"
@@ -141,7 +141,7 @@ get_existing_value() {
         return 1
     fi
     
-    # Busca a variável no arquivo, removendo aspas e espaços (aceita espaços opcionais ao redor do =)
+    # Search for the variable in the file, removing quotes and spaces (accepts optional spaces around =)
     local value=$(grep -E "^${key}\s*=" "$env_file" 2>/dev/null | head -1 | cut -d'=' -f2- | sed "s/^[[:space:]]*//;s/[[:space:]]*$//" | sed "s/^['\"]//;s/['\"]$//")
     
     if [ -n "$value" ]; then
@@ -152,7 +152,7 @@ get_existing_value() {
     return 1
 }
 
-# Função para verificar se variável existe no .env
+# Function to check if variable exists in .env
 var_exists() {
     local key="$1"
     local env_file="${2:-$ENV_FILE}"
@@ -164,19 +164,19 @@ var_exists() {
     grep -qE "^${key}\s*=" "$env_file" 2>/dev/null
 }
 
-# Função para adicionar seção ao .env
+# Function to add section to .env
 add_section() {
     local section_name="$1"
     echo "" >> "$ENV_FILE"
     echo "# =========================== $section_name ===========================" >> "$ENV_FILE"
 }
 
-# Função para adicionar variável ao .env
+# Function to add variable to .env
 add_var() {
     local key="$1"
     local value="$2"
     
-    # Criar backup antes de adicionar (apenas uma vez por sessão)
+    # Create backup before adding (only once per session)
     if [ -z "${_BACKUP_CREATED:-}" ]; then
         backup_env_file "$ENV_FILE"
         _BACKUP_CREATED=1
@@ -185,36 +185,36 @@ add_var() {
     echo "${key}=${value}" >> "$ENV_FILE"
 }
 
-# Função para atualizar ou adicionar variável no .env
+# Function to update or add variable in .env
 update_var() {
     local key="$1"
     local value="$2"
     local env_file="${3:-$ENV_FILE}"
     
-    # Criar backup antes de atualizar (apenas uma vez por sessão)
+    # Create backup before updating (only once per session)
     if [ -z "${_BACKUP_CREATED:-}" ]; then
         backup_env_file "$env_file"
         _BACKUP_CREATED=1
     fi
     
     if var_exists "$key" "$env_file"; then
-        # Atualiza variável existente (preserva a linha original se possível, aceita espaços opcionais)
+        # Update existing variable (preserves original line if possible, accepts optional spaces)
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS usa versão diferente do sed
+            # macOS uses a different version of sed
             sed -i '' "s|^${key}\s*=.*|${key}=${value}|" "$env_file"
         else
             sed -i "s|^${key}\s*=.*|${key}=${value}|" "$env_file"
         fi
     else
-        # Adiciona nova variável
+        # Add new variable
         echo "${key}=${value}" >> "$env_file"
     fi
 }
 
-# Função para gerar variáveis obrigatórias
+# Function to generate required variables
 generate_required() {
     local edit_mode="${1:-false}"
-    log_info "Gerando variáveis obrigatórias..."
+    log_info "Generating required variables..."
     
     if [ "$edit_mode" = "false" ]; then
         add_section "REQUIRED CONFIGURATION"
@@ -224,13 +224,13 @@ generate_required() {
     local existing_debug=$(get_existing_value "DEBUG" 2>/dev/null || echo "")
     local debug_default="${existing_debug:-False}"
     if [ "$edit_mode" = "true" ] && [ -n "$existing_debug" ]; then
-        if ask_yes_no "Habilitar modo DEBUG? (atual: $existing_debug)" "$(echo "$existing_debug" | tr '[:upper:]' '[:lower:]')"; then
+        if ask_yes_no "Enable DEBUG mode? (current: $existing_debug)" "$(echo "$existing_debug" | tr '[:upper:]' '[:lower:]')"; then
             update_var "DEBUG" "True"
         else
             update_var "DEBUG" "False"
         fi
     else
-        if ask_yes_no "Habilitar modo DEBUG?" "$(echo "$debug_default" | tr '[:upper:]' '[:lower:]')"; then
+        if ask_yes_no "Enable DEBUG mode?" "$(echo "$debug_default" | tr '[:upper:]' '[:lower:]')"; then
             if [ "$edit_mode" = "true" ]; then
                 update_var "DEBUG" "True"
             else
@@ -248,7 +248,7 @@ generate_required() {
     # SECRET_KEY
     local existing_secret=$(get_existing_value "SECRET_KEY" 2>/dev/null || echo "")
     if [ -z "$existing_secret" ] || [ "$edit_mode" = "false" ]; then
-        log_info "Gerando SECRET_KEY..."
+        log_info "Generating SECRET_KEY..."
         SECRET_KEY=$(generate_secret_key 2>/dev/null || echo "41&l85x\$t8g5!wgvzxw9_v%jbph2msibr3x7jww5%1u8w*3ax")
         if [ "$edit_mode" = "true" ]; then
             update_var "SECRET_KEY" "$SECRET_KEY"
@@ -256,9 +256,9 @@ generate_required() {
             add_var "SECRET_KEY" "$SECRET_KEY"
         fi
     else
-        log_info "SECRET_KEY já existe, mantendo valor atual."
+        log_info "SECRET_KEY already exists, keeping current value."
         if [ "$edit_mode" = "true" ]; then
-            # Não atualiza, mantém o existente
+            # Don't update, keep existing
             :
         fi
     fi
@@ -282,11 +282,11 @@ generate_required() {
         local existing_db_pass=$(get_existing_value "DB_PASS" 2>/dev/null || echo "db_pass")
         local existing_db_port=$(get_existing_value "DB_PORT" 2>/dev/null || echo "5432")
         
-        DB_HOST=$(ask_value "Host do banco de dados" "$existing_db_host")
-        DB_NAME=$(ask_value "Nome do banco de dados" "$existing_db_name")
-        DB_USERNAME=$(ask_value "Usuário do banco de dados" "$existing_db_user")
-        DB_PASS=$(ask_value "Senha do banco de dados" "$existing_db_pass")
-        DB_PORT=$(ask_value "Porta do banco de dados" "$existing_db_port")
+        DB_HOST=$(ask_value "Database host" "$existing_db_host")
+        DB_NAME=$(ask_value "Database name" "$existing_db_name")
+        DB_USERNAME=$(ask_value "Database user" "$existing_db_user")
+        DB_PASS=$(ask_value "Database password" "$existing_db_pass")
+        DB_PORT=$(ask_value "Database port" "$existing_db_port")
         
         if [ "$edit_mode" = "true" ]; then
             update_var "DB_HOST" "$DB_HOST"
@@ -328,13 +328,13 @@ generate_required() {
     local existing_auditor=$(get_existing_value "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" 2>/dev/null || echo "True")
     local auditor_default=$(echo "$existing_auditor" | tr '[:upper:]' '[:lower:]')
     if [ "$edit_mode" = "true" ] && [ -n "$existing_auditor" ]; then
-        if ask_yes_no "Habilitar auditor middleware? (atual: $existing_auditor)" "$auditor_default"; then
+        if ask_yes_no "Enable auditor middleware? (current: $existing_auditor)" "$auditor_default"; then
             update_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "True"
         else
             update_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "False"
         fi
     else
-        if ask_yes_no "Habilitar auditor middleware?" "$auditor_default"; then
+        if ask_yes_no "Enable auditor middleware?" "$auditor_default"; then
             if [ "$edit_mode" = "true" ]; then
                 update_var "CONFIG_AUDITOR_MIDDLEWARE_ENABLE" "True"
             else
@@ -355,8 +355,8 @@ generate_required() {
     fi
     local existing_hostname=$(get_existing_value "RENDER_EXTERNAL_HOSTNAME" 2>/dev/null || echo "pdl.denky.dev.br")
     local existing_frontend=$(get_existing_value "RENDER_EXTERNAL_FRONTEND" 2>/dev/null || echo "$existing_hostname")
-    RENDER_EXTERNAL_HOSTNAME=$(ask_value "Hostname externo" "$existing_hostname")
-    RENDER_EXTERNAL_FRONTEND=$(ask_value "Frontend externo" "$existing_frontend")
+    RENDER_EXTERNAL_HOSTNAME=$(ask_value "External hostname" "$existing_hostname")
+    RENDER_EXTERNAL_FRONTEND=$(ask_value "External frontend" "$existing_frontend")
     if [ "$edit_mode" = "true" ]; then
         update_var "RENDER_EXTERNAL_HOSTNAME" "$RENDER_EXTERNAL_HOSTNAME"
         update_var "RENDER_EXTERNAL_FRONTEND" "$RENDER_EXTERNAL_FRONTEND"
@@ -366,13 +366,13 @@ generate_required() {
     fi
     
     # Encryption
-    # IMPORTANTE: NÃO sobrescreve chaves existentes para evitar quebrar dados criptografados
+    # IMPORTANT: DO NOT overwrite existing keys to avoid breaking encrypted data
     local existing_encryption=$(get_existing_value "ENCRYPTION_KEY" 2>/dev/null || echo "")
     local default_key="iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac="
     
     if [ -z "$existing_encryption" ]; then
-        # Se não existe, gera uma nova
-        log_info "Gerando ENCRYPTION_KEY..."
+        # If it doesn't exist, generate a new one
+        log_info "Generating ENCRYPTION_KEY..."
         ENCRYPTION_KEY=$(generate_fernet_key 2>/dev/null || echo "$default_key")
         if [ "$edit_mode" = "true" ]; then
             update_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
@@ -380,18 +380,18 @@ generate_required() {
             add_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
         fi
     elif [ "$existing_encryption" = "$default_key" ]; then
-        # Se for a chave padrão/placeholder, substitui (apenas primeira instalação)
-        log_warning "ENCRYPTION_KEY é a chave padrão/placeholder. Gerando nova chave..."
+        # If it's the default/placeholder key, replace it (first installation only)
+        log_warning "ENCRYPTION_KEY is the default/placeholder key. Generating new key..."
         ENCRYPTION_KEY=$(generate_fernet_key 2>/dev/null || echo "$default_key")
         if [ "$edit_mode" = "true" ]; then
             update_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
-            log_warning "ATENÇÃO: Se houver dados criptografados com a chave antiga, eles não poderão ser descriptografados!"
+            log_warning "WARNING: If there is encrypted data with the old key, it cannot be decrypted!"
         else
             add_var "ENCRYPTION_KEY" "'$ENCRYPTION_KEY'"
         fi
     else
-        # Se já existe e não é a chave padrão, mantém (CRÍTICO: não sobrescrever!)
-        log_info "ENCRYPTION_KEY já existe, mantendo valor atual (não será alterado para preservar dados criptografados)."
+        # If it already exists and is not the default key, keep it (CRITICAL: do not overwrite!)
+        log_info "ENCRYPTION_KEY already exists, keeping current value (will not be changed to preserve encrypted data)."
     fi
     local existing_upload_size=$(get_existing_value "DATA_UPLOAD_MAX_MEMORY_SIZE" 2>/dev/null || echo "31457280")
     if [ "$edit_mode" = "true" ]; then
@@ -411,7 +411,7 @@ generate_required() {
     
     CONFIG_HCAPTCHA_SITE_KEY=$(ask_value "hCaptcha Site Key" "$existing_hcaptcha_site")
     CONFIG_HCAPTCHA_SECRET_KEY=$(ask_value "hCaptcha Secret Key" "$existing_hcaptcha_secret")
-    CONFIG_LOGIN_MAX_ATTEMPTS=$(ask_value "Número máximo de tentativas de login" "$existing_max_attempts")
+    CONFIG_LOGIN_MAX_ATTEMPTS=$(ask_value "Maximum number of login attempts" "$existing_max_attempts")
     CONFIG_HCAPTCHA_FAIL_OPEN=$(ask_value "hCaptcha Fail Open (True/False)" "$existing_fail_open")
     
     if [ "$edit_mode" = "true" ]; then
@@ -431,7 +431,7 @@ generate_required() {
         add_section "LINEAGE QUERY MODULE"
     fi
     local existing_query_module=$(get_existing_value "LINEAGE_QUERY_MODULE" 2>/dev/null || echo "dreamv3")
-    LINEAGE_QUERY_MODULE=$(ask_value "Módulo de query do Lineage" "$existing_query_module")
+    LINEAGE_QUERY_MODULE=$(ask_value "Lineage query module" "$existing_query_module")
     if [ "$edit_mode" = "true" ]; then
         update_var "LINEAGE_QUERY_MODULE" "$LINEAGE_QUERY_MODULE"
     else
@@ -451,14 +451,14 @@ generate_required() {
     local existing_time=$(get_existing_value "CONFIG_TIME_FORMAT" 2>/dev/null | sed "s/'//g" || echo "H:i:s")
     local existing_gmt=$(get_existing_value "CONFIG_GMT_OFFSET" 2>/dev/null || echo "-3")
     
-    CONFIG_LANGUAGE_CODE=$(ask_value "Código do idioma (pt/en/es)" "$existing_lang")
-    CONFIG_TIME_ZONE=$(ask_value "Fuso horário" "$existing_tz")
-    CONFIG_DECIMAL_SEPARATOR=$(ask_value "Separador decimal" "$existing_decimal")
-    CONFIG_USE_THOUSAND_SEPARATOR=$(ask_value "Usar separador de milhar? (True/False)" "$existing_thousand")
-    CONFIG_DATETIME_FORMAT=$(ask_value "Formato de data/hora" "$existing_datetime")
-    CONFIG_DATE_FORMAT=$(ask_value "Formato de data" "$existing_date")
-    CONFIG_TIME_FORMAT=$(ask_value "Formato de hora" "$existing_time")
-    CONFIG_GMT_OFFSET=$(ask_value "Offset GMT" "$existing_gmt")
+    CONFIG_LANGUAGE_CODE=$(ask_value "Language code (pt/en/es)" "$existing_lang")
+    CONFIG_TIME_ZONE=$(ask_value "Time zone" "$existing_tz")
+    CONFIG_DECIMAL_SEPARATOR=$(ask_value "Decimal separator" "$existing_decimal")
+    CONFIG_USE_THOUSAND_SEPARATOR=$(ask_value "Use thousand separator? (True/False)" "$existing_thousand")
+    CONFIG_DATETIME_FORMAT=$(ask_value "Date/time format" "$existing_datetime")
+    CONFIG_DATE_FORMAT=$(ask_value "Date format" "$existing_date")
+    CONFIG_TIME_FORMAT=$(ask_value "Time format" "$existing_time")
+    CONFIG_GMT_OFFSET=$(ask_value "GMT offset" "$existing_gmt")
     
     if [ "$edit_mode" = "true" ]; then
         update_var "CONFIG_LANGUAGE_CODE" "\"$CONFIG_LANGUAGE_CODE\""
@@ -486,23 +486,23 @@ generate_required() {
     fi
     local existing_title=$(get_existing_value "PROJECT_TITLE" 2>/dev/null || echo "Lineage 2 PDL")
     local existing_author=$(get_existing_value "PROJECT_AUTHOR" 2>/dev/null || echo "Lineage 2 PDL")
-    local existing_desc=$(get_existing_value "PROJECT_DESCRIPTION" 2>/dev/null || echo "O PDL é um painel que nasceu com a missão de oferecer ferramentas poderosas para administradores de servidores privados de Lineage 2.")
-    local existing_keywords=$(get_existing_value "PROJECT_KEYWORDS" 2>/dev/null || echo "lineage l2 painel servidor")
+    local existing_desc=$(get_existing_value "PROJECT_DESCRIPTION" 2>/dev/null || echo "PDL is a panel born with the mission of offering powerful tools for Lineage 2 private server administrators.")
+    local existing_keywords=$(get_existing_value "PROJECT_KEYWORDS" 2>/dev/null || echo "lineage l2 panel server")
     local existing_url=$(get_existing_value "PROJECT_URL" 2>/dev/null || echo "https://pdl.denky.dev.br")
     local existing_logo=$(get_existing_value "PROJECT_LOGO_URL" 2>/dev/null || echo "/static/assets/img/logo_painel.png")
     local existing_favicon=$(get_existing_value "PROJECT_FAVICON_ICO" 2>/dev/null || echo "/static/assets/img/ico.jpg")
     local existing_manifest=$(get_existing_value "PROJECT_FAVICON_MANIFEST" 2>/dev/null || echo "/static/assets/img/favicon/site.webmanifest")
     local existing_theme=$(get_existing_value "PROJECT_THEME_COLOR" 2>/dev/null || echo "#ffffff")
     
-    PROJECT_TITLE=$(ask_value "Título do projeto" "$existing_title")
-    PROJECT_AUTHOR=$(ask_value "Autor do projeto" "$existing_author")
-    PROJECT_DESCRIPTION=$(ask_value "Descrição do projeto" "$existing_desc")
-    PROJECT_KEYWORDS=$(ask_value "Palavras-chave" "$existing_keywords")
-    PROJECT_URL=$(ask_value "URL do projeto" "$existing_url")
-    PROJECT_LOGO_URL=$(ask_value "URL do logo" "$existing_logo")
-    PROJECT_FAVICON_ICO=$(ask_value "URL do favicon .ico" "$existing_favicon")
-    PROJECT_FAVICON_MANIFEST=$(ask_value "URL do manifest" "$existing_manifest")
-    PROJECT_THEME_COLOR=$(ask_value "Cor do tema" "$existing_theme")
+    PROJECT_TITLE=$(ask_value "Project title" "$existing_title")
+    PROJECT_AUTHOR=$(ask_value "Project author" "$existing_author")
+    PROJECT_DESCRIPTION=$(ask_value "Project description" "$existing_desc")
+    PROJECT_KEYWORDS=$(ask_value "Keywords" "$existing_keywords")
+    PROJECT_URL=$(ask_value "Project URL" "$existing_url")
+    PROJECT_LOGO_URL=$(ask_value "Logo URL" "$existing_logo")
+    PROJECT_FAVICON_ICO=$(ask_value "Favicon .ico URL" "$existing_favicon")
+    PROJECT_FAVICON_MANIFEST=$(ask_value "Manifest URL" "$existing_manifest")
+    PROJECT_THEME_COLOR=$(ask_value "Theme color" "$existing_theme")
     
     if [ "$edit_mode" = "true" ]; then
         update_var "PROJECT_TITLE" "$PROJECT_TITLE"
@@ -530,10 +530,10 @@ generate_required() {
     if [ "$edit_mode" = "false" ]; then
         add_section "SOCIAL MEDIA LINKS"
     fi
-    local existing_discord=$(get_existing_value "PROJECT_DISCORD_URL" 2>/dev/null | sed "s/'//g" || echo "https://discord.gg/seu-link-aqui")
-    local existing_youtube=$(get_existing_value "PROJECT_YOUTUBE_URL" 2>/dev/null | sed "s/'//g" || echo "https://www.youtube.com/@seu-canal")
-    local existing_facebook=$(get_existing_value "PROJECT_FACEBOOK_URL" 2>/dev/null | sed "s/'//g" || echo "https://www.facebook.com/sua-pagina")
-    local existing_instagram=$(get_existing_value "PROJECT_INSTAGRAM_URL" 2>/dev/null | sed "s/'//g" || echo "https://www.instagram.com/seu-perfil")
+    local existing_discord=$(get_existing_value "PROJECT_DISCORD_URL" 2>/dev/null | sed "s/'//g" || echo "https://discord.gg/your-link-here")
+    local existing_youtube=$(get_existing_value "PROJECT_YOUTUBE_URL" 2>/dev/null | sed "s/'//g" || echo "https://www.youtube.com/@your-channel")
+    local existing_facebook=$(get_existing_value "PROJECT_FACEBOOK_URL" 2>/dev/null | sed "s/'//g" || echo "https://www.facebook.com/your-page")
+    local existing_instagram=$(get_existing_value "PROJECT_INSTAGRAM_URL" 2>/dev/null | sed "s/'//g" || echo "https://www.instagram.com/your-profile")
     
     PROJECT_DISCORD_URL=$(ask_value "URL do Discord" "$existing_discord")
     PROJECT_YOUTUBE_URL=$(ask_value "URL do YouTube" "$existing_youtube")
@@ -574,7 +574,7 @@ generate_required() {
     fi
 }
 
-# Função para gerar configuração de Email
+# Function to generate Email configuration
 generate_email_config() {
     local edit_mode="${1:-false}"
     if [ "$edit_mode" = "false" ]; then
@@ -584,7 +584,7 @@ generate_email_config() {
     local existing_email_enable=$(get_existing_value "CONFIG_EMAIL_ENABLE" 2>/dev/null || echo "False")
     local email_enable_default=$(echo "$existing_email_enable" | tr '[:upper:]' '[:lower:]')
     
-    if ask_yes_no "Habilitar envio de emails?" "$email_enable_default"; then
+    if ask_yes_no "Enable email sending?" "$email_enable_default"; then
         add_var "CONFIG_EMAIL_ENABLE" "True"
         local existing_tls=$(get_existing_value "CONFIG_EMAIL_USE_TLS" 2>/dev/null || echo "True")
         local existing_smtp=$(get_existing_value "CONFIG_EMAIL_HOST" 2>/dev/null || echo "smtp.domain.com")
@@ -593,12 +593,12 @@ generate_email_config() {
         local existing_pass=$(get_existing_value "CONFIG_EMAIL_HOST_PASSWORD" 2>/dev/null || echo "password")
         local existing_from=$(get_existing_value "CONFIG_DEFAULT_FROM_EMAIL" 2>/dev/null || echo "$existing_user")
         
-        CONFIG_EMAIL_USE_TLS=$(ask_yes_no "Usar TLS?" "$(echo "$existing_tls" | tr '[:upper:]' '[:lower:]')" && echo "True" || echo "False")
-        CONFIG_EMAIL_HOST=$(ask_value "Servidor SMTP" "$existing_smtp")
-        CONFIG_EMAIL_PORT=$(ask_value "Porta SMTP" "$existing_port")
-        CONFIG_EMAIL_HOST_USER=$(ask_value "Usuário do email" "$existing_user")
-        CONFIG_EMAIL_HOST_PASSWORD=$(ask_value "Senha do email" "$existing_pass")
-        CONFIG_DEFAULT_FROM_EMAIL=$(ask_value "Email remetente padrão" "$existing_from")
+        CONFIG_EMAIL_USE_TLS=$(ask_yes_no "Use TLS?" "$(echo "$existing_tls" | tr '[:upper:]' '[:lower:]')" && echo "True" || echo "False")
+        CONFIG_EMAIL_HOST=$(ask_value "SMTP server" "$existing_smtp")
+        CONFIG_EMAIL_PORT=$(ask_value "SMTP port" "$existing_port")
+        CONFIG_EMAIL_HOST_USER=$(ask_value "Email user" "$existing_user")
+        CONFIG_EMAIL_HOST_PASSWORD=$(ask_value "Email password" "$existing_pass")
+        CONFIG_DEFAULT_FROM_EMAIL=$(ask_value "Default sender email" "$existing_from")
         
         if [ "$edit_mode" = "true" ]; then
             update_var "CONFIG_EMAIL_USE_TLS" "$CONFIG_EMAIL_USE_TLS"
@@ -636,7 +636,7 @@ generate_email_config() {
     fi
 }
 
-# Função para gerar configuração do Lineage DB
+# Function to generate Lineage DB configuration
 generate_lineage_db_config() {
     local edit_mode="${1:-false}"
     if [ "$edit_mode" = "false" ]; then
@@ -645,15 +645,15 @@ generate_lineage_db_config() {
     
     local existing_db_name=$(get_existing_value "LINEAGE_DB_NAME" 2>/dev/null || echo "l2jdb")
     local existing_db_user=$(get_existing_value "LINEAGE_DB_USER" 2>/dev/null || echo "l2user")
-    local existing_db_pass=$(get_existing_value "LINEAGE_DB_PASSWORD" 2>/dev/null || echo "suaSenhaAqui")
+    local existing_db_pass=$(get_existing_value "LINEAGE_DB_PASSWORD" 2>/dev/null || echo "yourPasswordHere")
     local existing_db_host=$(get_existing_value "LINEAGE_DB_HOST" 2>/dev/null || echo "192.168.1.100")
     local existing_db_port=$(get_existing_value "LINEAGE_DB_PORT" 2>/dev/null || echo "3306")
     
-    LINEAGE_DB_NAME=$(ask_value "Nome do banco Lineage" "$existing_db_name")
-    LINEAGE_DB_USER=$(ask_value "Usuário do banco Lineage" "$existing_db_user")
-    LINEAGE_DB_PASSWORD=$(ask_value "Senha do banco Lineage" "$existing_db_pass")
-    LINEAGE_DB_HOST=$(ask_value "Host do banco Lineage" "$existing_db_host")
-    LINEAGE_DB_PORT=$(ask_value "Porta do banco Lineage" "$existing_db_port")
+    LINEAGE_DB_NAME=$(ask_value "Lineage database name" "$existing_db_name")
+    LINEAGE_DB_USER=$(ask_value "Lineage database user" "$existing_db_user")
+    LINEAGE_DB_PASSWORD=$(ask_value "Lineage database password" "$existing_db_pass")
+    LINEAGE_DB_HOST=$(ask_value "Lineage database host" "$existing_db_host")
+    LINEAGE_DB_PORT=$(ask_value "Lineage database port" "$existing_db_port")
     
     if [ "$edit_mode" = "true" ]; then
         update_var "LINEAGE_DB_NAME" "$LINEAGE_DB_NAME"
@@ -670,7 +670,7 @@ generate_lineage_db_config() {
     fi
 }
 
-# Função para gerar configuração do AWS S3
+# Function to generate AWS S3 configuration
 generate_s3_config() {
     local edit_mode="${1:-false}"
     if [ "$edit_mode" = "false" ]; then
@@ -680,13 +680,13 @@ generate_s3_config() {
     local existing_use_s3=$(get_existing_value "USE_S3" 2>/dev/null || echo "False")
     local s3_default=$(echo "$existing_use_s3" | tr '[:upper:]' '[:lower:]')
     
-    if ask_yes_no "Usar AWS S3 para armazenamento?" "$s3_default"; then
+    if ask_yes_no "Use AWS S3 for storage?" "$s3_default"; then
         add_var "USE_S3" "True"
         AWS_ACCESS_KEY_ID=$(ask_value "AWS Access Key ID" "your_aws_access_key_id")
         AWS_SECRET_ACCESS_KEY=$(ask_value "AWS Secret Access Key" "your_aws_secret_access_key")
-        AWS_STORAGE_BUCKET_NAME=$(ask_value "Nome do bucket S3" "your-bucket-name")
-        AWS_S3_REGION_NAME=$(ask_value "Região do S3" "us-east-1")
-        AWS_S3_CUSTOM_DOMAIN=$(ask_value "Domínio customizado do S3" "${AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com")
+        AWS_STORAGE_BUCKET_NAME=$(ask_value "S3 bucket name" "your-bucket-name")
+        AWS_S3_REGION_NAME=$(ask_value "S3 region" "us-east-1")
+        AWS_S3_CUSTOM_DOMAIN=$(ask_value "S3 custom domain" "${AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com")
         
         add_var "AWS_ACCESS_KEY_ID" "$AWS_ACCESS_KEY_ID"
         add_var "AWS_SECRET_ACCESS_KEY" "$AWS_SECRET_ACCESS_KEY"
@@ -703,7 +703,7 @@ generate_s3_config() {
     fi
 }
 
-# Função para gerar configuração de Pagamentos
+# Function to generate Payment configuration
 generate_payments_config() {
     local edit_mode="${1:-false}"
     if [ "$edit_mode" = "false" ]; then
@@ -712,7 +712,7 @@ generate_payments_config() {
     
     # Mercado Pago
     echo
-    log_info "Configuração do Mercado Pago:"
+    log_info "Mercado Pago configuration:"
     local existing_mp_activate=$(get_existing_value "CONFIG_MERCADO_PAGO_ACTIVATE_PAYMENTS" 2>/dev/null || echo "False")
     local existing_mp_token=$(get_existing_value "CONFIG_MERCADO_PAGO_ACCESS_TOKEN" 2>/dev/null | sed 's/"//g' || echo "APP_USR-0000000000000000-000000-00000000000000000000000000000000-000000000")
     local existing_mp_public=$(get_existing_value "CONFIG_MERCADO_PAGO_PUBLIC_KEY" 2>/dev/null | sed 's/"//g' || echo "APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
@@ -721,7 +721,7 @@ generate_payments_config() {
     local existing_mp_signature=$(get_existing_value "CONFIG_MERCADO_PAGO_SIGNATURE" 2>/dev/null | sed 's/"//g' || echo "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
     
     local mp_activate_default=$(echo "$existing_mp_activate" | tr '[:upper:]' '[:lower:]')
-    if ask_yes_no "Habilitar pagamentos via Mercado Pago?" "$mp_activate_default"; then
+    if ask_yes_no "Enable payments via Mercado Pago?" "$mp_activate_default"; then
         CONFIG_MERCADO_PAGO_ACCESS_TOKEN=$(ask_value "Mercado Pago Access Token" "$existing_mp_token")
         CONFIG_MERCADO_PAGO_PUBLIC_KEY=$(ask_value "Mercado Pago Public Key" "$existing_mp_public")
         CONFIG_MERCADO_PAGO_CLIENT_ID=$(ask_value "Mercado Pago Client ID" "$existing_mp_client")
@@ -763,13 +763,13 @@ generate_payments_config() {
     
     # Stripe
     echo
-    log_info "Configuração do Stripe:"
+    log_info "Stripe configuration:"
     local existing_stripe_activate=$(get_existing_value "CONFIG_STRIPE_ACTIVATE_PAYMENTS" 2>/dev/null || echo "False")
     local existing_stripe_secret=$(get_existing_value "CONFIG_STRIPE_SECRET_KEY" 2>/dev/null | sed "s/'//g" || echo "sk_test_51RK0cORmyaPSbmPDEMjN0DaasdasdadadasdafgagdhhfasdfsfnbgRrtdKRwHRakfrQub9SQ5jQEUNvTfrcFxbw00gsqFR09W")
     local existing_stripe_webhook=$(get_existing_value "CONFIG_STRIPE_WEBHOOK_SECRET" 2>/dev/null | sed "s/'//g" || echo "whsec_5dzjceF7LgeYzasdasdasdZpSuPq")
     
     local stripe_activate_default=$(echo "$existing_stripe_activate" | tr '[:upper:]' '[:lower:]')
-    if ask_yes_no "Habilitar pagamentos via Stripe?" "$stripe_activate_default"; then
+    if ask_yes_no "Enable payments via Stripe?" "$stripe_activate_default"; then
         CONFIG_STRIPE_SECRET_KEY=$(ask_value "Stripe Secret Key" "$existing_stripe_secret")
         CONFIG_STRIPE_WEBHOOK_SECRET=$(ask_value "Stripe Webhook Secret" "$existing_stripe_webhook")
         
@@ -795,15 +795,15 @@ generate_payments_config() {
     fi
 }
 
-# Função para gerar configuração de Social Login
+# Function to generate Social Login configuration
 generate_social_login_config() {
     add_section "SOCIAL LOGIN CONFIGURATION"
     
-    if ask_yes_no "Habilitar login social?" "n"; then
+    if ask_yes_no "Enable social login?" "n"; then
         add_var "SOCIAL_LOGIN_ENABLED" "True"
         
         # Google
-        if ask_yes_no "Habilitar login com Google?" "n"; then
+        if ask_yes_no "Enable Google login?" "n"; then
             add_var "SOCIAL_LOGIN_GOOGLE_ENABLED" "True"
             GOOGLE_CLIENT_ID=$(ask_value "Google Client ID" "3029asdasd17179-i4lfm6078nrov5lhv9628bch2o8vlqs8.apps.googleusercontent.com")
             GOOGLE_SECRET_KEY=$(ask_value "Google Secret Key" "GOCSPX-bWw9hU6Mb3pasdasdasd")
@@ -816,7 +816,7 @@ generate_social_login_config() {
         fi
         
         # GitHub
-        if ask_yes_no "Habilitar login com GitHub?" "n"; then
+        if ask_yes_no "Enable GitHub login?" "n"; then
             add_var "SOCIAL_LOGIN_GITHUB_ENABLED" "True"
             GITHUB_CLIENT_ID=$(ask_value "GitHub Client ID" "Ov23liadadadwcXpjog38V")
             GITHUB_SECRET_KEY=$(ask_value "GitHub Secret Key" "ea0d1c77b910eadadadada65a7cbddee1bd07deb")
@@ -829,7 +829,7 @@ generate_social_login_config() {
         fi
         
         # Discord
-        if ask_yes_no "Habilitar login com Discord?" "n"; then
+        if ask_yes_no "Enable Discord login?" "n"; then
             add_var "SOCIAL_LOGIN_DISCORD_ENABLED" "True"
             DISCORD_CLIENT_ID=$(ask_value "Discord Client ID" "13836455adada77550336")
             DISCORD_SECRET_KEY=$(ask_value "Discord Secret Key" "Gs9db5OmQ9dadadadadad8CtOQuLKx42fdf")
@@ -841,7 +841,7 @@ generate_social_login_config() {
             add_var "DISCORD_SECRET_KEY" "Gs9db5OmQ9dadadadadad8CtOQuLKx42fdf"
         fi
         
-        if ask_yes_no "Mostrar seção de login social na interface?" "n"; then
+        if ask_yes_no "Show social login section in interface?" "n"; then
             add_var "SOCIAL_LOGIN_SHOW_SECTION" "True"
         else
             add_var "SOCIAL_LOGIN_SHOW_SECTION" "False"
@@ -861,7 +861,7 @@ generate_social_login_config() {
     fi
 }
 
-# Função para gerar configuração de Server Status
+# Function to generate Server Status configuration
 generate_server_status_config() {
     local edit_mode="${1:-false}"
     if [ "$edit_mode" = "false" ]; then
@@ -875,12 +875,12 @@ generate_server_status_config() {
     local existing_force_game=$(get_existing_value "FORCE_GAME_SERVER_STATUS" 2>/dev/null || echo "auto")
     local existing_force_login=$(get_existing_value "FORCE_LOGIN_SERVER_STATUS" 2>/dev/null || echo "auto")
     
-    GAME_SERVER_IP=$(ask_value "IP do servidor de jogo" "$existing_game_ip")
-    GAME_SERVER_PORT=$(ask_value "Porta do servidor de jogo" "$existing_game_port")
-    LOGIN_SERVER_PORT=$(ask_value "Porta do servidor de login" "$existing_login_port")
-    SERVER_STATUS_TIMEOUT=$(ask_value "Timeout para verificação (segundos)" "$existing_timeout")
-    FORCE_GAME_SERVER_STATUS=$(ask_value "Forçar status do servidor (auto/on/off)" "$existing_force_game")
-    FORCE_LOGIN_SERVER_STATUS=$(ask_value "Forçar status do login (auto/on/off)" "$existing_force_login")
+    GAME_SERVER_IP=$(ask_value "Game server IP" "$existing_game_ip")
+    GAME_SERVER_PORT=$(ask_value "Game server port" "$existing_game_port")
+    LOGIN_SERVER_PORT=$(ask_value "Login server port" "$existing_login_port")
+    SERVER_STATUS_TIMEOUT=$(ask_value "Check timeout (seconds)" "$existing_timeout")
+    FORCE_GAME_SERVER_STATUS=$(ask_value "Force server status (auto/on/off)" "$existing_force_game")
+    FORCE_LOGIN_SERVER_STATUS=$(ask_value "Force login status (auto/on/off)" "$existing_force_login")
     
     if [ "$edit_mode" = "true" ]; then
         update_var "GAME_SERVER_IP" "$GAME_SERVER_IP"
@@ -899,7 +899,7 @@ generate_server_status_config() {
     fi
 }
 
-# Função para gerar configuração de Fake Players
+# Function to generate Fake Players configuration
 generate_fake_players_config() {
     local edit_mode="${1:-false}"
     if [ "$edit_mode" = "false" ]; then
@@ -910,9 +910,9 @@ generate_fake_players_config() {
     local existing_min=$(get_existing_value "FAKE_PLAYERS_MIN" 2>/dev/null || echo "0")
     local existing_max=$(get_existing_value "FAKE_PLAYERS_MAX" 2>/dev/null || echo "0")
     
-    FAKE_PLAYERS_FACTOR=$(ask_value "Multiplicador de jogadores (ex: 1.2 = +20%)" "$existing_factor")
-    FAKE_PLAYERS_MIN=$(ask_value "Valor mínimo de jogadores (0 para ignorar)" "$existing_min")
-    FAKE_PLAYERS_MAX=$(ask_value "Valor máximo de jogadores (0 para ignorar)" "$existing_max")
+    FAKE_PLAYERS_FACTOR=$(ask_value "Player multiplier (e.g.: 1.2 = +20%)" "$existing_factor")
+    FAKE_PLAYERS_MIN=$(ask_value "Minimum player value (0 to ignore)" "$existing_min")
+    FAKE_PLAYERS_MAX=$(ask_value "Maximum player value (0 to ignore)" "$existing_max")
     
     if [ "$edit_mode" = "true" ]; then
         update_var "FAKE_PLAYERS_FACTOR" "$FAKE_PLAYERS_FACTOR"
@@ -925,13 +925,13 @@ generate_fake_players_config() {
     fi
 }
 
-# Função para gerar configuração de VAPID (Web Push)
+# Function to generate VAPID configuration (Web Push)
 generate_vapid_config() {
     add_section "VAPID CONFIGURATION (WEB PUSH)"
     
-    if ask_yes_no "Configurar VAPID para Web Push?" "n"; then
-        log_info "Gerando chaves VAPID..."
-        # Nota: Em produção, você deve gerar chaves VAPID reais
+    if ask_yes_no "Configure VAPID for Web Push?" "n"; then
+        log_info "Generating VAPID keys..."
+        # Note: In production, you should generate real VAPID keys
         VAPID_PRIVATE_KEY=$(ask_value "VAPID Private Key" "7FDbpSlMB1UrNLWWgtTg5QGs9wC3-d1I6z7PdgplWP4")
         VAPID_PUBLIC_KEY=$(ask_value "VAPID Public Key" "BBQIgwfHEkr1LOgtUFwxm_bbb-h6tRMjxa7GCpVYKBsLdBQ-dkKPmkTidKKedNyWfaPgqQl1tV36yo7AyAhQ0J8")
         add_var "VAPID_PRIVATE_KEY" "$VAPID_PRIVATE_KEY"
@@ -942,7 +942,7 @@ generate_vapid_config() {
     fi
 }
 
-# Função principal
+# Main function
 main() {
     clear
     
@@ -951,51 +951,51 @@ main() {
     echo "========================================================="
     echo
     
-    # Verificar se estamos no diretório correto
+    # Check if we are in the correct directory
     if [ ! -f "${PROJECT_DIR}/manage.py" ] && [ ! -f "${PROJECT_DIR}/../manage.py" ]; then
-        log_error "Não foi possível encontrar o diretório do projeto Django."
-        log_info "Execute este script da raiz do projeto ou de dentro do diretório 'lineage'."
+        log_error "Unable to find Django project directory."
+        log_info "Run this script from the project root or from within the 'lineage' directory."
         exit 1
     fi
     
-    # Ajustar PROJECT_DIR se necessário
+    # Adjust PROJECT_DIR if necessary
     if [ ! -f "${PROJECT_DIR}/manage.py" ] && [ -f "${PROJECT_DIR}/../manage.py" ]; then
         PROJECT_DIR="${PROJECT_DIR}/.."
         ENV_FILE="${PROJECT_DIR}/.env"
     fi
     
-    # Verificar se .env já existe
+    # Check if .env already exists
     local edit_mode=false
     if [ -f "$ENV_FILE" ]; then
-        log_warning "Arquivo .env já existe: $ENV_FILE"
+        log_warning ".env file already exists: $ENV_FILE"
         echo
-        echo "Escolha uma opção:"
-        echo "  1) Editar o arquivo existente (preserva valores atuais)"
-        echo "  2) Sobrescrever completamente (cria novo arquivo)"
-        echo "  3) Cancelar"
+        echo "Choose an option:"
+        echo "  1) Edit existing file (preserves current values)"
+        echo "  2) Overwrite completely (creates new file)"
+        echo "  3) Cancel"
         echo
-        read -p "Opção (1/2/3): " OPCAO
+        read -p "Option (1/2/3): " OPCAO
         
         case "$OPCAO" in
             1)
                 edit_mode=true
-                log_info "Fazendo backup do .env existente..."
+                log_info "Backing up existing .env..."
                 cp "$ENV_FILE" "${ENV_FILE}.bak.$(date +%Y%m%d_%H%M%S)"
-                log_success "Modo de edição ativado. Valores existentes serão preservados como padrão."
+                log_success "Edit mode activated. Existing values will be preserved as default."
                 ;;
             2)
                 edit_mode=false
-                log_info "Fazendo backup do .env existente..."
+                log_info "Backing up existing .env..."
                 cp "$ENV_FILE" "${ENV_FILE}.bak.$(date +%Y%m%d_%H%M%S)"
-                # Criar arquivo .env vazio
+                # Create empty .env file
                 > "$ENV_FILE"
                 ;;
             3)
-                log_info "Operação cancelada."
+                log_info "Operation cancelled."
                 exit 0
                 ;;
             *)
-                log_error "Opção inválida."
+                log_error "Invalid option."
                 exit 1
                 ;;
         esac
@@ -1004,65 +1004,65 @@ main() {
         > "$ENV_FILE"
     fi
     
-    log_info "Gerando variáveis obrigatórias..."
+    log_info "Generating required variables..."
     generate_required "$edit_mode"
     
     echo
-    log_info "Agora vamos configurar as categorias opcionais:"
+    log_info "Now let's configure the optional categories:"
     echo
     
     # Email
-    if ask_yes_no "Incluir configuração de Email?" "n"; then
+    if ask_yes_no "Include Email configuration?" "n"; then
         generate_email_config "$edit_mode"
     fi
     
     # Lineage DB
-    if ask_yes_no "Incluir configuração do Banco de Dados Lineage?" "n"; then
+    if ask_yes_no "Include Lineage Database configuration?" "n"; then
         generate_lineage_db_config "$edit_mode"
     fi
     
     # AWS S3
-    if ask_yes_no "Incluir configuração do AWS S3?" "n"; then
+    if ask_yes_no "Include AWS S3 configuration?" "n"; then
         generate_s3_config "$edit_mode"
     fi
     
     # Pagamentos
-    if ask_yes_no "Incluir configuração de Pagamentos (Mercado Pago/Stripe)?" "n"; then
+    if ask_yes_no "Include Payment configuration (Mercado Pago/Stripe)?" "n"; then
         generate_payments_config "$edit_mode"
     fi
     
     # Social Login
-    if ask_yes_no "Incluir configuração de Login Social?" "n"; then
+    if ask_yes_no "Include Social Login configuration?" "n"; then
         generate_social_login_config "$edit_mode"
     fi
     
     # Server Status
-    if ask_yes_no "Incluir configuração de Status do Servidor?" "n"; then
+    if ask_yes_no "Include Server Status configuration?" "n"; then
         generate_server_status_config "$edit_mode"
     fi
     
     # Fake Players
-    if ask_yes_no "Incluir configuração de Jogadores Falsos?" "n"; then
+    if ask_yes_no "Include Fake Players configuration?" "n"; then
         generate_fake_players_config "$edit_mode"
     fi
     
     # VAPID
-    if ask_yes_no "Incluir configuração de VAPID (Web Push)?" "n"; then
+    if ask_yes_no "Include VAPID configuration (Web Push)?" "n"; then
         generate_vapid_config "$edit_mode"
     fi
     
     echo
     if [ "$edit_mode" = "true" ]; then
-        log_success "Arquivo .env atualizado com sucesso!"
+        log_success ".env file updated successfully!"
     else
-        log_success "Arquivo .env gerado com sucesso!"
+        log_success ".env file generated successfully!"
     fi
-    log_info "Localização: $ENV_FILE"
+    log_info "Location: $ENV_FILE"
     echo
-    log_warning "IMPORTANTE: Revise o arquivo .env e ajuste os valores conforme necessário!"
+    log_warning "IMPORTANT: Review the .env file and adjust values as needed!"
     echo
 }
 
-# Executar função principal
+# Execute main function
 main "$@"
 

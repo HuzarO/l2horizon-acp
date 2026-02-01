@@ -1,12 +1,12 @@
 #!/bin/bash
 
 ################################################################################
-# Script de Instalação do Nginx - Painel Definitivo Lineage (PDL)
+# Nginx Installation Script - Painel Definitivo Lineage (PDL)
 # 
-# Este script instala e configura o Nginx do repositório oficial.
-# Suporta instalação de versão stable ou mainline.
+# This script installs and configures Nginx from the official repository.
+# Supports stable or mainline version installation.
 #
-# Uso:
+# Usage:
 #   sudo bash setup/install-nginx.sh [stable|mainline]
 ################################################################################
 
@@ -20,7 +20,7 @@ readonly BLUE='\033[0;34m'
 readonly CYAN='\033[0;36m'
 readonly NC='\033[0m' # No Color
 
-# Função para log
+# Function for logging
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -41,20 +41,20 @@ log_debug() {
     echo -e "${CYAN}[DEBUG]${NC} $1"
 }
 
-# Verifica se está rodando como root
+# Check if running as root
 if [ "$EUID" -ne 0 ]; then 
-    log_error "Por favor, execute este script como root (sudo)"
+    log_error "Please run this script as root (sudo)"
     exit 1
 fi
 
-# Função para detectar versão do Ubuntu
+# Function to detect Ubuntu version
 detect_ubuntu_version() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         if [ "$ID" = "ubuntu" ]; then
             echo "$VERSION_CODENAME"
         else
-            log_warning "Sistema não é Ubuntu. Tentando continuar..."
+            log_warning "System is not Ubuntu. Trying to continue..."
             if command -v lsb_release &> /dev/null; then
                 lsb_release -cs 2>/dev/null || echo "unknown"
             else
@@ -62,22 +62,22 @@ detect_ubuntu_version() {
             fi
         fi
     else
-        log_warning "Não foi possível detectar a versão do sistema."
+        log_warning "Unable to detect system version."
         echo "unknown"
     fi
 }
 
-# Função para verificar se comando existe
+# Function to check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Função para verificar se Nginx está instalado
+# Function to check if Nginx is installed
 nginx_installed() {
     command_exists nginx && nginx -v &>/dev/null
 }
 
-# Função para obter versão atual do Nginx
+# Function to get current Nginx version
 get_nginx_version() {
     if nginx_installed; then
         nginx -v 2>&1 | grep -oP 'nginx/\K[0-9.]+' || echo "unknown"
@@ -86,9 +86,9 @@ get_nginx_version() {
     fi
 }
 
-# Função para instalar dependências
+# Function to install dependencies
 install_dependencies() {
-    log_info "Instalando dependências necessárias..."
+    log_info "Installing required dependencies..."
     
     apt-get update -qq
     apt-get install -y \
@@ -101,129 +101,129 @@ install_dependencies() {
         software-properties-common \
         >/dev/null 2>&1
     
-    log_success "Dependências instaladas."
+    log_success "Dependencies installed."
 }
 
-# Função para configurar repositório do Nginx
+# Function to configure Nginx repository
 setup_nginx_repo() {
     local nginx_version="${1:-mainline}"
     local ubuntu_codename="$2"
     
-    log_info "Configurando repositório do Nginx ($nginx_version)..."
+    log_info "Configuring Nginx repository ($nginx_version)..."
     
-    # Verificar se a chave já existe
+    # Check if key already exists
     if [ ! -f /usr/share/keyrings/nginx-archive-keyring.gpg ]; then
-        log_info "Importando chave GPG do Nginx..."
+        log_info "Importing Nginx GPG key..."
         curl -fsSL https://nginx.org/keys/nginx_signing.key | \
             gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg 2>/dev/null || {
-            log_error "Falha ao importar chave GPG do Nginx."
+            log_error "Failed to import Nginx GPG key."
             exit 1
         }
-        log_success "Chave GPG importada."
+        log_success "GPG key imported."
     else
-        log_debug "Chave GPG já existe."
+        log_debug "GPG key already exists."
     fi
     
-    # Determinar branch do repositório
+    # Determine repository branch
     local repo_branch="mainline"
     if [ "$nginx_version" = "stable" ]; then
         repo_branch="nginx"
     fi
     
-    # Adicionar repositório
+    # Add repository
     local repo_file="/etc/apt/sources.list.d/nginx.list"
     local repo_line="deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] https://nginx.org/packages/${repo_branch}/ubuntu ${ubuntu_codename} nginx"
     
     if [ ! -f "$repo_file" ] || ! grep -qF "$repo_line" "$repo_file" 2>/dev/null; then
         echo "$repo_line" | tee "$repo_file" >/dev/null
-        log_success "Repositório do Nginx configurado ($nginx_version)."
+        log_success "Nginx repository configured ($nginx_version)."
     else
-        log_debug "Repositório já está configurado."
+        log_debug "Repository already configured."
     fi
     
-    # Atualizar lista de pacotes
-    log_info "Atualizando lista de pacotes..."
+    # Update package list
+    log_info "Updating package list..."
     apt-get update -qq
 }
 
-# Função para instalar Nginx
+# Function to install Nginx
 install_nginx() {
     local current_version
     current_version=$(get_nginx_version)
     
     if [ "$current_version" != "not installed" ]; then
-        log_warning "Nginx já está instalado (versão: $current_version)"
-        read -p "Deseja reinstalar? (s/n): " reinstall
+        log_warning "Nginx is already installed (version: $current_version)"
+        read -p "Do you want to reinstall? (y/n): " reinstall
         
-        if [[ ! "$reinstall" =~ ^[sS]$ ]]; then
-            log_info "Instalação cancelada."
+        if [[ ! "$reinstall" =~ ^[yY]$ ]]; then
+            log_info "Installation cancelled."
             return 0
         fi
         
-        log_info "Removendo versão antiga do Nginx..."
+        log_info "Removing old Nginx version..."
         apt-get remove -y nginx nginx-common nginx-full nginx-core 2>/dev/null || true
-        log_success "Versão antiga removida."
+        log_success "Old version removed."
     fi
     
-    log_info "Instalando Nginx..."
+    log_info "Installing Nginx..."
     apt-get install -y nginx >/dev/null 2>&1 || {
-        log_error "Falha ao instalar Nginx."
+        log_error "Failed to install Nginx."
         exit 1
     }
     
     local new_version
     new_version=$(get_nginx_version)
-    log_success "Nginx instalado com sucesso (versão: $new_version)."
+    log_success "Nginx successfully installed (version: $new_version)."
 }
 
-# Função para configurar diretórios
+# Function to configure directories
 setup_directories() {
-    log_info "Configurando diretórios do Nginx..."
+    log_info "Configuring Nginx directories..."
     
-    # Criar diretórios necessários
+    # Create necessary directories
     mkdir -p /etc/nginx/sites-available
     mkdir -p /etc/nginx/sites-enabled
     mkdir -p /var/www/html/.well-known/acme-challenge
     
-    # Configurar permissões
+    # Configure permissions
     chown -R www-data:www-data /var/www/html/.well-known 2>/dev/null || true
     chmod -R 755 /var/www/html/.well-known
     
-    log_success "Diretórios configurados."
+    log_success "Directories configured."
 }
 
-# Função para configurar nginx.conf
+# Function to configure nginx.conf
 configure_nginx_conf() {
     local NGINX_CONF="/etc/nginx/nginx.conf"
     local INCLUDE_LINE="    include /etc/nginx/sites-enabled/*;"
     local CLIENT_MAX_BODY_SIZE="    client_max_body_size 50M;"
     
     if [ ! -f "$NGINX_CONF" ]; then
-        log_error "Arquivo nginx.conf não encontrado: $NGINX_CONF"
+        log_error "nginx.conf file not found: $NGINX_CONF"
         return 1
     fi
     
-    log_info "Configurando nginx.conf..."
+    log_info "Configuring nginx.conf..."
     
-    # Criar backup se não existir
+    # Create backup if it doesn't exist
     if [ ! -f "${NGINX_CONF}.bak" ]; then
         cp "$NGINX_CONF" "${NGINX_CONF}.bak"
-        log_debug "Backup do nginx.conf criado."
+        log_debug "nginx.conf backup created."
     fi
     
-    # Adicionar client_max_body_size se não existir
+    # Add client_max_body_size if it doesn't exist
     if ! grep -qF "client_max_body_size" "$NGINX_CONF"; then
-        # Insere client_max_body_size dentro do bloco http
+        # Insert client_max_body_size inside http block
         sed -i "/http {/a\\
 $CLIENT_MAX_BODY_SIZE
 " "$NGINX_CONF"
-        log_success "client_max_body_size 50M adicionado no nginx.conf"
+        log_success "client_max_body_size 50M added to nginx.conf"
     else
-        log_debug "client_max_body_size já presente no nginx.conf"
+        log_debug "client_max_body_size already present in nginx.conf"
     fi
     
     if ! grep -qF "$INCLUDE_LINE" "$NGINX_CONF"; then
-        # Insere o include dentro do bloco http
+        # Insert the include inside http block
         sed -i "/http {/{
             :a
             n
@@ -231,177 +231,177 @@ $CLIENT_MAX_BODY_SIZE
             i\\
 $INCLUDE_LINE
         }" "$NGINX_CONF"
-        log_success "Linha para incluir sites-enabled adicionada no nginx.conf"
+        log_success "Line to include sites-enabled added to nginx.conf"
     else
-        log_debug "Linha para incluir sites-enabled já presente no nginx.conf"
+        log_debug "Line to include sites-enabled already present in nginx.conf"
     fi
 }
 
-# Função para configurar default-deny
+# Function to configure default-deny
 setup_default_deny() {
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local deny_conf="${script_dir}/nginx-default-deny.conf"
     
     if [ ! -f "$deny_conf" ]; then
-        log_warning "Arquivo nginx-default-deny.conf não encontrado em: $deny_conf"
-        log_info "Pulando configuração de default-deny."
+        log_warning "nginx-default-deny.conf file not found at: $deny_conf"
+        log_info "Skipping default-deny configuration."
         return 0
     fi
     
-    log_info "Configurando default-deny..."
+    log_info "Configuring default-deny..."
     
     cp "$deny_conf" /etc/nginx/sites-available/default-deny
     ln -sf /etc/nginx/sites-available/default-deny /etc/nginx/sites-enabled/default-deny
     
-    log_success "Configuração default-deny habilitada."
+    log_success "default-deny configuration enabled."
 }
 
-# Função para testar configuração
+# Function to test configuration
 test_nginx_config() {
-    log_info "Testando configuração do Nginx..."
+    log_info "Testing Nginx configuration..."
     
     if nginx -t >/dev/null 2>&1; then
-        log_success "Configuração do Nginx está válida."
+        log_success "Nginx configuration is valid."
         return 0
     else
-        log_error "Configuração do Nginx inválida!"
-        log_info "Detalhes do erro:"
+        log_error "Invalid Nginx configuration!"
+        log_info "Error details:"
         nginx -t
         return 1
     fi
 }
 
-# Função para iniciar e habilitar serviço
+# Function to start and enable service
 start_nginx_service() {
-    log_info "Iniciando serviço do Nginx..."
+    log_info "Starting Nginx service..."
     
-    # Habilitar serviço
+    # Enable service
     systemctl enable nginx >/dev/null 2>&1 || {
-        log_warning "Falha ao habilitar serviço (pode já estar habilitado)."
+        log_warning "Failed to enable service (may already be enabled)."
     }
     
-    # Reiniciar serviço
+    # Restart service
     systemctl restart nginx >/dev/null 2>&1 || {
-        log_error "Falha ao reiniciar serviço do Nginx."
+        log_error "Failed to restart Nginx service."
         return 1
     }
     
-    # Verificar status
+    # Check status
     if systemctl is-active --quiet nginx; then
-        log_success "Serviço do Nginx está rodando."
+        log_success "Nginx service is running."
     else
-        log_error "Serviço do Nginx não está rodando!"
+        log_error "Nginx service is not running!"
         systemctl status nginx --no-pager
         return 1
     fi
 }
 
-# Função principal
+# Main function
 main() {
     local nginx_version="${1:-mainline}"
     
-    # Validar versão
+    # Validate version
     if [[ ! "$nginx_version" =~ ^(stable|mainline)$ ]]; then
-        log_error "Versão inválida: $nginx_version"
-        log_info "Use: stable ou mainline"
+        log_error "Invalid version: $nginx_version"
+        log_info "Use: stable or mainline"
         exit 1
     fi
     
     clear
     echo "========================================================="
-    echo "  🔧 Instalação do Nginx para PDL"
+    echo "  🔧 Nginx Installation for PDL"
     echo "========================================================="
     echo
     
-    # Detectar versão do Ubuntu
+    # Detect Ubuntu version
     local ubuntu_codename
     ubuntu_codename=$(detect_ubuntu_version)
     
     if [ "$ubuntu_codename" = "unknown" ]; then
-        log_warning "Não foi possível detectar a versão do Ubuntu."
-        read -p "Digite o codename do Ubuntu (ex: jammy, focal): " ubuntu_codename
+        log_warning "Unable to detect Ubuntu version."
+        read -p "Enter Ubuntu codename (e.g., jammy, focal): " ubuntu_codename
         if [ -z "$ubuntu_codename" ]; then
-            log_error "Codename do Ubuntu é obrigatório."
+            log_error "Ubuntu codename is required."
             exit 1
         fi
     else
-        log_info "Versão do Ubuntu detectada: $ubuntu_codename"
+        log_info "Ubuntu version detected: $ubuntu_codename"
     fi
     
-    # Verificar versão atual
+    # Check current version
     local current_version
     current_version=$(get_nginx_version)
     if [ "$current_version" != "not installed" ]; then
-        log_info "Versão atual do Nginx: $current_version"
+        log_info "Current Nginx version: $current_version"
     fi
     
     echo
-    log_info "Versão do Nginx a instalar: $nginx_version"
-    read -p "Deseja continuar? (s/n): " continue_install
+    log_info "Nginx version to install: $nginx_version"
+    read -p "Do you want to continue? (y/n): " continue_install
     
-    if [[ ! "$continue_install" =~ ^[sS]$ ]]; then
-        log_info "Instalação cancelada."
+    if [[ ! "$continue_install" =~ ^[yY]$ ]]; then
+        log_info "Installation cancelled."
         exit 0
     fi
     
     echo
     
-    # Instalar dependências
+    # Install dependencies
     install_dependencies
     
-    # Configurar repositório
+    # Configure repository
     setup_nginx_repo "$nginx_version" "$ubuntu_codename"
     
-    # Instalar Nginx
+    # Install Nginx
     install_nginx
     
-    # Configurar diretórios
+    # Configure directories
     setup_directories
     
-    # Configurar nginx.conf
+    # Configure nginx.conf
     configure_nginx_conf
     
-    # Configurar default-deny
+    # Configure default-deny
     setup_default_deny
     
-    # Testar configuração
+    # Test configuration
     if ! test_nginx_config; then
-        log_error "Falha na configuração. Corrija os erros antes de continuar."
+        log_error "Configuration failed. Fix errors before continuing."
         exit 1
     fi
     
-    # Iniciar serviço
+    # Start service
     if ! start_nginx_service; then
-        log_error "Falha ao iniciar serviço do Nginx."
+        log_error "Failed to start Nginx service."
         exit 1
     fi
     
-    # Mostrar informações finais
+    # Show final information
     echo
-    log_success "Nginx instalado e configurado com sucesso!"
+    log_success "Nginx successfully installed and configured!"
     echo
-    log_info "Informações:"
-    echo "  - Versão: $(get_nginx_version)"
+    log_info "Information:"
+    echo "  - Version: $(get_nginx_version)"
     echo "  - Status: $(systemctl is-active nginx)"
-    echo "  - Configuração: /etc/nginx/nginx.conf"
-    echo "  - Sites disponíveis: /etc/nginx/sites-available/"
-    echo "  - Sites habilitados: /etc/nginx/sites-enabled/"
+    echo "  - Configuration: /etc/nginx/nginx.conf"
+    echo "  - Sites available: /etc/nginx/sites-available/"
+    echo "  - Sites enabled: /etc/nginx/sites-enabled/"
     echo
-    log_info "Comandos úteis:"
-    echo "  - Verificar versão: nginx -v"
-    echo "  - Testar configuração: nginx -t"
-    echo "  - Iniciar: systemctl start nginx"
-    echo "  - Parar: systemctl stop nginx"
-    echo "  - Reiniciar: systemctl restart nginx"
-    echo "  - Recarregar (sem downtime): systemctl reload nginx"
-    echo "  - Ver status: systemctl status nginx"
+    log_info "Useful commands:"
+    echo "  - Check version: nginx -v"
+    echo "  - Test configuration: nginx -t"
+    echo "  - Start: systemctl start nginx"
+    echo "  - Stop: systemctl stop nginx"
+    echo "  - Restart: systemctl restart nginx"
+    echo "  - Reload (no downtime): systemctl reload nginx"
+    echo "  - View status: systemctl status nginx"
     echo
-    log_info "Próximos passos:"
-    echo "  - Configure o proxy reverso: sudo bash setup/nginx-proxy.sh"
-    echo "  - Instale o Certbot para SSL: sudo apt install certbot python3-certbot-nginx"
+    log_info "Next steps:"
+    echo "  - Configure reverse proxy: sudo bash setup/nginx-proxy.sh"
+    echo "  - Install Certbot for SSL: sudo apt install certbot python3-certbot-nginx"
     echo
 }
 
-# Executar função principal
+# Execute main function
 main "$@"
