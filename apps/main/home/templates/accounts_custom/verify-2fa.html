@@ -1,127 +1,137 @@
 {% extends 'layouts/base-auth.html' %}
 {% load static i18n %}
 
-{% block content %}
+{% block extrastyle %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          'cinzel': ['Cinzel', 'serif'],
+          'montserrat': ['Montserrat', 'sans-serif'],
+        },
+        colors: {
+          primary: '#963e3a',
+          'primary-dark': '#7d3232',
+        }
+      }
+    }
+  }
+</script>
 <style>
   body {
-    background: url("{{ background_url }}") no-repeat center center fixed;
+    font-family: 'Montserrat', sans-serif;
+    background-color: #eee9e0;
+    background-image: url("{{ background_url }}");
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-attachment: fixed;
     background-size: cover;
   }
 
-  .unlock-panel {
-    background-color: rgba(20, 20, 20, 0.95);
-    color: #f0e6d2;
-    border-radius: 1rem;
-    border: 1px solid #e0c36b;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.85);
+  h1, h2, h3, h4, h5, h6 {
     font-family: 'Cinzel', serif;
   }
 
-  .unlock-panel h1 {
-    font-size: 1.5rem;
-    color: #e0c36b;
-    text-shadow: 0 0 8px rgba(255, 215, 100, 0.4);
+  .auth-panel {
+    background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(245,240,230,0.98) 100%);
+    border: 1px solid #c5b8a5;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.5);
   }
 
-  .form-control {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    border: 1px solid #e0c36b;
+  .btn-medieval {
+    position: relative;
+    background: linear-gradient(180deg, #8b3a3a 0%, #6b2a2a 50%, #5b1a1a 100%);
+    border: 2px solid #4a1515;
+    color: #f0e6d2;
+    font-family: 'Cinzel', serif;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 12px 32px;
+    clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.3);
+    transition: all 0.2s ease;
   }
 
-  .form-control:focus {
-    background-color: rgba(255, 255, 255, 0.15);
-    border-color: #f0e68c;
-    box-shadow: 0 0 10px rgba(255, 255, 160, 0.5);
-  }
-
-  .btn-golden {
-    background: linear-gradient(to right, #b89b56, #d5c170);
-    color: #000;
-    font-weight: bold;
-    text-shadow: 0 0 5px #fff8dc;
-    border: none;
-  }
-
-  .btn-golden:hover {
-    background: linear-gradient(to right, #d5c170, #b89b56);
-    color: #000;
-  }
-
-  .link-home {
-    color: #e0c36b;
-    font-weight: bold;
-    text-decoration: none;
-    transition: color 0.3s ease;
-  }
-
-  .link-home:hover {
-    color: #fff2aa;
+  .btn-medieval:hover {
+    background: linear-gradient(180deg, #9b4a4a 0%, #7b3a3a 50%, #6b2a2a 100%);
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.4);
   }
 </style>
+{% endblock extrastyle %}
 
-<section class="vh-100 d-flex align-items-center justify-content-center">
-  <div class="container">
-    <a href="{% url 'dashboard' %}" class="d-flex align-items-center justify-content-center mb-4 link-home">
-      <svg class="icon icon-xs me-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-        <path fill-rule="evenodd"
-              d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z"
-              clip-rule="evenodd"></path>
-      </svg>
-      {% trans "Voltar para o painel" %}
-    </a>
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full">
+    <div class="mb-6 text-center">
+      <a href="{% url 'dashboard' %}" class="inline-flex items-center text-sm text-primary hover:text-primary-dark transition-colors">
+        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+        </svg>
+        {% trans "Voltar para o painel" %}
+      </a>
+    </div>
 
-    <div class="row justify-content-center">
-      <div class="col-md-6 col-lg-5">
-        <div class="p-5 unlock-panel">
-          <div class="text-center mb-4">
-            <div class="avatar avatar-lg mx-auto mb-3">
-              <div class="avatar-container" style="width: 4.5rem; height: 4.5rem; border-radius: 50%; overflow: hidden; border: 3px solid rgba(255, 255, 255, 0.3); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); position: relative;">
-                {% if user.avatar %}
-                  <img src="{% url 'serve_files:serve_decrypted_file_with_timestamp' 'home' 'user' 'avatar' user.uuid timestamp %}" 
-                       alt="User-Profile-Image" 
-                       style="width: 100%; height: 100%; object-fit: cover; background-color: #cbd5e1;" />
-                {% else %}
-                  <img alt="Image placeholder" 
-                       src="{% static 'assets/img/team/generic_user.png' %}"
-                       style="width: 100%; height: 100%; object-fit: cover; background-color: #cbd5e1;" />
-                {% endif %}
-              </div>
-            </div>
-            <h1>{% trans "Verificação em 2 Etapas" %}</h1>
-            <p class="text-gray">{% trans "Insira o código do Google Authenticator para continuar." %}</p>
-          </div>
-
-          {% if error %}
-            <div class="alert alert-danger">
-              {{ error }}
-            </div>
+    <div class="auth-panel p-8">
+      <div class="text-center mb-8">
+        <div class="mx-auto mb-4 w-20 h-20 rounded-full overflow-hidden border-4 border-gray-200 shadow-md">
+          {% if user.avatar %}
+            <img src="{% url 'serve_files:serve_decrypted_file_with_timestamp' 'home' 'user' 'avatar' user.uuid timestamp %}" 
+                 alt="User-Profile-Image" 
+                 class="w-full h-full object-cover" />
+          {% else %}
+            <img alt="Image placeholder" 
+                 src="{% static 'assets/img/team/generic_user.png' %}"
+                 class="w-full h-full object-cover" />
           {% endif %}
-
-          <form method="post" class="mt-4">
-            {% csrf_token %}
-            <div class="form-group mb-4">
-              <label for="token">{% trans "Código de Verificação" %}</label>
-              <div class="input-group">
-                <span class="input-group-text" id="basic-addon2">
-                  <svg class="icon icon-xs text-gray-300" fill="currentColor" viewBox="0 0 20 20"
-                       xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd"
-                          d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 9V5a1 1 0 10-2 0v6a1 1 0 001 1h4a1 1 0 100-2h-3z"
-                          clip-rule="evenodd"></path>
-                  </svg>
-                </span>
-                <input type="text" name="token" placeholder="{% trans 'Insira o código de 6 dígitos' %}" class="form-control text-white" id="token" required>
-              </div>
-            </div>
-
-            <div class="d-grid mt-4">
-              <button type="submit" class="btn btn-golden">{% trans "Verificar Código" %}</button>
-            </div>
-          </form>
         </div>
+        <h1 class="text-3xl font-bold text-gray-800">{% trans "Verificação em 2 Etapas" %}</h1>
+        <p class="mt-2 text-sm text-gray-600">{% trans "Insira o código do Google Authenticator para continuar." %}</p>
       </div>
+
+      {% if error %}
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-red-700">{{ error }}</p>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <form method="post" class="space-y-6">
+        {% csrf_token %}
+        <div>
+          <label for="token" class="block text-sm font-medium text-gray-700 mb-2">{% trans "Código de Verificação" %}</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 9V5a1 1 0 10-2 0v6a1 1 0 001 1h4a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+              </svg>
+            </div>
+            <input type="text" name="token" id="token" required 
+              placeholder="{% trans 'Insira o código de 6 dígitos' %}"
+              class="pl-10 w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-center text-xl tracking-widest font-mono">
+          </div>
+        </div>
+
+        <div>
+          <button type="submit" class="w-full btn-medieval">{% trans "Verificar Código" %}</button>
+        </div>
+      </form>
     </div>
   </div>
-</section>
+</div>
 {% endblock %}

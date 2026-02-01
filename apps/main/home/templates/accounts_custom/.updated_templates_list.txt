@@ -1,0 +1,9 @@
+Templates to update with Tailwind CSS:
+1. password-change.html
+2. ativar-2fa.html  
+3. verify-2fa.html
+4. lock.html
+5. password-reset-done.html
+6. password-reset-complete.html
+7. password-change-done.html
+8. registration_success.html
