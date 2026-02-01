@@ -12,8 +12,8 @@ from .views.level_rewards import level_rewards_view
 
 
 urlpatterns = [
-    # main index
-    path('', index, name='index'),
+    # main index - redirect to dashboard
+    path('', lambda request: redirect('dashboard'), name='index'),
     path('pages/dashboard/', dashboard, name="dashboard"),
     path('pages/achievement-rewards/', achievement_rewards_view, name="achievement_rewards"),
     path('pages/level-rewards/', level_rewards_view, name="level_rewards_view"),
@@ -26,13 +26,13 @@ urlpatterns = [
     path('app/logs/info/', log_info_dashboard, name='log_info_dashboard'),
     path('app/logs/error/', log_error_dashboard, name='log_error_dashboard'),
 
-    # public views
-    path('public/news/', public_news_list, name='public_news_list'),
-    path('public/news/<slug:slug>/', public_news_detail, name='public_news_detail'),
-    path('public/faq/', public_faq_list, name='public_faq_list'),
-    path("public/terms/", terms_view, name="terms"),
-    path("public/user-agreement/", user_agreement_view, name="user_agreement"),
-    path("public/privacy-policy/", privacy_policy_view, name="privacy_policy"),
+    # public views - DISABLED (only maintenance and license-expired enabled)
+    # path('public/news/', public_news_list, name='public_news_list'),
+    # path('public/news/<slug:slug>/', public_news_detail, name='public_news_detail'),
+    # path('public/faq/', public_faq_list, name='public_faq_list'),
+    # path("public/terms/", terms_view, name="terms"),
+    # path("public/user-agreement/", user_agreement_view, name="user_agreement"),
+    # path("public/privacy-policy/", privacy_policy_view, name="privacy_policy"),
     # Config Hub
     path('config/hub/', config_hub_view, name='config_hub'),
     path("public/maintenance/", maintenance_view, name="maintenance"),
