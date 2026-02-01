@@ -79,7 +79,7 @@ if DEBUG:
 else:
     CORS_ALLOWED_ORIGINS = ['http://127.0.0.1', 'http://localhost', 'http://127.0.0.1:6085', 'http://localhost:6085',]
 
-CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1', 'http://localhost', 'http://127.0.0.1:6085', 'http://localhost:6085',]
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1', 'http://localhost', 'http://127.0.0.1:6085', 'http://localhost:6085',] if not DEBUG else ['https://acp.l2horizon.com',]
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
 def env_to_list(value):

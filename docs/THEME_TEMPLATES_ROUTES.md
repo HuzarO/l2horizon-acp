@@ -22,15 +22,15 @@ Este documento lista todas as rotas que podem ser substituídas por arquivos de 
 - **Template Padrão**: `public/index.html`
 
 ### Páginas Legais
-- **Rota**: `/public/terms/`
+- **Rota**: `/terms/`
 - **Template do Tema**: `terms.html`
 - **Template Padrão**: `public/terms.html`
 
-- **Rota**: `/public/user-agreement/`
+- **Rota**: `/user-agreement/`
 - **Template do Tema**: `user_agreement.html`
 - **Template Padrão**: `public/user_agreement.html`
 
-- **Rota**: `/public/privacy-policy/`
+- **Rota**: `/privacy/`
 - **Template do Tema**: `privacy_policy.html`
 - **Template Padrão**: `public/privacy_policy.html`
 

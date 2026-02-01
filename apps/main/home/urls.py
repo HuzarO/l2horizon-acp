@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from django.shortcuts import redirect
+from django.views.generic import RedirectView
 
 from .views.views import *
 from .views.public import *
@@ -30,9 +31,9 @@ urlpatterns = [
     # path('public/news/', public_news_list, name='public_news_list'),
     # path('public/news/<slug:slug>/', public_news_detail, name='public_news_detail'),
     # path('public/faq/', public_faq_list, name='public_faq_list'),
-    # path("public/terms/", terms_view, name="terms"),
-    # path("public/user-agreement/", user_agreement_view, name="user_agreement"),
-    # path("public/privacy-policy/", privacy_policy_view, name="privacy_policy"),
+    path("terms/", RedirectView.as_view(url='https://l2horizon.com/terms', permanent=False), name="terms"),
+    path("user-agreement/", RedirectView.as_view(url='https://l2horizon.com/terms', permanent=False), name="user_agreement"),
+    path("privacy/", RedirectView.as_view(url='https://l2horizon.com/privacy', permanent=False), name="privacy_policy"),
     # Config Hub
     path('config/hub/', config_hub_view, name='config_hub'),
     path("public/maintenance/", maintenance_view, name="maintenance"),

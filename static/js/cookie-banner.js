@@ -39,7 +39,7 @@
     const acceptText = window.djangoCookieAcceptText || document.querySelector('meta[name="cookie-accept-text"]')?.content || 'Aceitar';
     const messageText = window.djangoCookieMessageText || document.querySelector('meta[name="cookie-message-text"]')?.content || 'Este site utiliza cookies para melhorar sua experiência de navegação. Ao continuar navegando, você concorda com nossa política de cookies.';
     const learnMoreText = window.djangoCookieLearnMoreText || document.querySelector('meta[name="cookie-learn-more-text"]')?.content || 'Saiba mais';
-    const privacyUrl = window.djangoCookiePrivacyUrl || document.querySelector('meta[name="cookie-privacy-url"]')?.content || '/public/privacy-policy/';
+    const privacyUrl = window.djangoCookiePrivacyUrl || document.querySelector('meta[name="cookie-privacy-url"]')?.content || '/privacy/';
 
     return `
       <div id="cookie-banner" class="cookie-banner" style="display: none;">
