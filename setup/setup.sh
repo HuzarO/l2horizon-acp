@@ -1,25 +1,25 @@
 #!/bin/bash
 
 ################################################################################
-# Script de Setup do Painel Definitivo Lineage (PDL)
+# Setup Script for Painel Definitivo Lineage (PDL)
 # 
-# Este script prepara o ambiente completo para o PDL, incluindo:
-# - Instalação de dependências do sistema
-# - Instalação do Docker e Docker Compose
-# - Configuração do ambiente Python
-# - Criação de arquivos de configuração
+# This script prepares the complete environment for PDL, including:
+# - System dependencies installation
+# - Docker and Docker Compose installation
+# - Python environment configuration
+# - Configuration files creation
 ################################################################################
 
 set -euo pipefail
 
-# Cores para output
+# Colors for output
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
 readonly NC='\033[0m' # No Color
 
-# Função para log
+# Function for logging
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -36,15 +36,15 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
-# Função para criar backup do .env antes de modificações
+# Function to create backup of .env before modifications
 backup_env_file() {
     local env_file="${1:-.env}"
     
     if [ ! -f "$env_file" ]; then
-        return 0  # Se o arquivo não existe, não precisa fazer backup
+        return 0  # If the file doesn't exist, no need to backup
     fi
     
-    # Encontrar o próximo número de backup disponível
+    # Find the next available backup number
     local backup_num=1
     local backup_file="${env_file}.bkp"
     
@@ -53,17 +53,17 @@ backup_env_file() {
         backup_file="${env_file}.bkp${backup_num}"
     done
     
-    # Criar o backup
+    # Create the backup
     cp "$env_file" "$backup_file" 2>/dev/null || {
-        log_error "Falha ao criar backup do .env em $backup_file"
+        log_error "Failed to create backup of .env at $backup_file"
         return 1
     }
     
-    log_success "Backup do .env criado: $backup_file"
+    log_success "Backup of .env created: $backup_file"
     return 0
 }
 
-# Função para verificar se .env está completo
+# Function to check if .env is complete
 check_env_complete() {
     local env_file="$1"
     local required_vars=(
@@ -85,10 +85,10 @@ check_env_complete() {
     done
     
     if [ ${#missing_vars[@]} -gt 0 ]; then
-        return 1  # Incompleto
+        return 1  # Incomplete
     fi
     
-    return 0  # Completo
+    return 0  # Complete
 }
 
 INSTALL_DIR="$(pwd)/.install_status"
@@ -97,13 +97,13 @@ mkdir -p "$INSTALL_DIR"
 clear
 
 echo "========================================================="
-echo "  🚀 Bem-vindo ao Instalador do Projeto Lineage 2 PDL!   "
+echo "  🚀 Welcome to Lineage 2 PDL Project Installer!   "
 echo "========================================================="
 echo
 
 # Detect Ubuntu version
 UBUNTU_VERSION=$(lsb_release -cs)
-echo "📦 Detectada versão do Ubuntu: $UBUNTU_VERSION"
+echo "📦 Detected Ubuntu version: $UBUNTU_VERSION"
 
 # Set Docker Compose command based on Ubuntu version
 if [ "$UBUNTU_VERSION" = "focal" ]; then
@@ -124,133 +124,133 @@ case $UBUNTU_VERSION in
     DOCKER_REPO="jammy"  # Ubuntu 24.04 uses jammy repository for now
     ;;
   *)
-    echo "❌ Versão do Ubuntu não suportada: $UBUNTU_VERSION"
-    echo "Por favor, use Ubuntu 20.04 (Focal), 22.04 (Jammy) ou 24.04 (Noble)"
+    echo "❌ Ubuntu version not supported: $UBUNTU_VERSION"
+    echo "Please use Ubuntu 20.04 (Focal), 22.04 (Jammy) or 24.04 (Noble)"
     exit 1
     ;;
 esac
 
 if [ -f "$INSTALL_DIR/.install_done" ]; then
-  echo "⚠️  Instalação já foi concluída anteriormente."
+  echo "⚠️  Installation was already completed previously."
   echo
-  read -p "Deseja rodar os containers (s) ou refazer a instalação (r)? (s/r): " OPCAO
+  read -p "Do you want to run containers (y) or redo installation (r)? (y/r): " OPCAO
 
-  if [[ "$OPCAO" == "s" || "$OPCAO" == "S" ]]; then
+  if [[ "$OPCAO" == "y" || "$OPCAO" == "Y" ]]; then
     pushd lineage > /dev/null
     $DOCKER_COMPOSE up -d
     popd > /dev/null
-    echo "✅ Containers iniciados."
+    echo "✅ Containers started."
     exit 0
   elif [[ "$OPCAO" == "r" || "$OPCAO" == "R" ]]; then
-    echo "🔄 Refazendo instalação..."
+    echo "🔄 Redoing installation..."
     rm -rf "$INSTALL_DIR"
     mkdir -p "$INSTALL_DIR"
   else
-    echo "❌ Opção inválida."
+    echo "❌ Invalid option."
     exit 1
   fi
 fi
 
-echo "Este script vai preparar todo o ambiente para você."
+echo "This script will prepare the entire environment for you."
 echo
-read -p "Deseja continuar com a instalação? (s/n): " CONTINUE
+read -p "Do you want to continue with the installation? (y/n): " CONTINUE
 
-if [[ "$CONTINUE" != "s" && "$CONTINUE" != "S" ]]; then
-  echo "Instalação cancelada."
+if [[ "$CONTINUE" != "y" && "$CONTINUE" != "Y" ]]; then
+  echo "Installation cancelled."
   exit 0
 fi
 
 if ! command -v git &> /dev/null; then
-  echo "❌ Git não está instalado. Instalando..."
+  echo "❌ Git is not installed. Installing..."
   sudo apt install -y git
 fi
 
 if [ ! -f "$INSTALL_DIR/system_ready" ]; then
   echo
-  echo "🔄 Atualizando pacotes e instalando dependências..."
+  echo "🔄 Updating packages and installing dependencies..."
   sudo apt update && sudo apt upgrade -y
   sudo apt install -y software-properties-common
   sudo add-apt-repository -y ppa:deadsnakes/ppa
   sudo apt update
   
-  # Verificar versão atual do Python
+  # Check current Python version
   SYSTEM_PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' 2>/dev/null || echo "0.0.0")
   PYTHON_MAJOR=$(echo "$SYSTEM_PYTHON_VERSION" | cut -d. -f1)
   PYTHON_MINOR=$(echo "$SYSTEM_PYTHON_VERSION" | cut -d. -f2)
   
-  echo "Python atual detectado: $SYSTEM_PYTHON_VERSION"
+  echo "Current Python detected: $SYSTEM_PYTHON_VERSION"
   
-  # Verificar se Python é menor que 3.11 ou instalar Python 3.13 de qualquer forma para garantir
+  # Check if Python is less than 3.11 or install Python 3.13 anyway to ensure
   INSTALL_PYTHON313=true
   if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 11 ]); then
-    echo "Python $SYSTEM_PYTHON_VERSION é menor que 3.11 (requerido para autobahn==25.11.1)"
-    echo "Instalando Python 3.13..."
+    echo "Python $SYSTEM_PYTHON_VERSION is less than 3.11 (required for autobahn==25.11.1)"
+    echo "Installing Python 3.13..."
   else
-    echo "Python $SYSTEM_PYTHON_VERSION atende aos requisitos, mas instalando Python 3.13 para garantir compatibilidade..."
+    echo "Python $SYSTEM_PYTHON_VERSION meets requirements, but installing Python 3.13 to ensure compatibility..."
   fi
   
   sudo apt install -y python3.13 python3.13-venv python3.13-dev
   sudo apt install -y apt-transport-https ca-certificates curl gettext
   
-  # Instalar bcrypt e passlib no Python do sistema para uso em scripts
-  echo "📦 Instalando bcrypt e passlib no Python do sistema..."
-  # Instalar bcrypt (versão mais recente) e passlib como fallback
+  # Install bcrypt and passlib in system Python for script usage
+  echo "📦 Installing bcrypt and passlib in system Python..."
+  # Install bcrypt (latest version) and passlib as fallback
   python3 -m pip install --user --break-system-packages bcrypt "passlib==1.7.4" 2>/dev/null || \
   python3 -m pip install --user bcrypt "passlib==1.7.4" 2>/dev/null || \
   sudo python3 -m pip install bcrypt "passlib==1.7.4" 2>/dev/null || true
   
-  # Instalar htpasswd do sistema como alternativa
+  # Install system htpasswd as alternative
   sudo apt install -y apache2-utils 2>/dev/null || true
   
   if python3 -c "import bcrypt" 2>/dev/null || python3 -c "import passlib" 2>/dev/null; then
-    echo "✅ bcrypt/passlib instalado no Python do sistema"
+    echo "✅ bcrypt/passlib installed in system Python"
   else
-    echo "⚠️  Não foi possível instalar bcrypt/passlib no Python do sistema (será instalado no venv ou usado htpasswd)"
+    echo "⚠️  Could not install bcrypt/passlib in system Python (will be installed in venv or use htpasswd)"
   fi
   
-  # NÃO configurar Python 3.13 como padrão do sistema
-  # O sistema operacional deve continuar usando Python 3.10 (ou 3.11) para ferramentas do sistema
-  # Python 3.13 será usado apenas explicitamente no virtual environment do projeto
+  # DO NOT configure Python 3.13 as system default
+  # The operating system should continue using Python 3.10 (or 3.11) for system tools
+  # Python 3.13 will only be used explicitly in the project's virtual environment
   
-  # Garantir que Python 3.10 (ou versão do sistema) continue como padrão
+  # Ensure Python 3.10 (or system version) remains as default
   SYSTEM_PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' 2>/dev/null || echo "")
   SYSTEM_PYTHON_MAJOR=$(echo "$SYSTEM_PYTHON_VERSION" | cut -d. -f1)
   SYSTEM_PYTHON_MINOR=$(echo "$SYSTEM_PYTHON_VERSION" | cut -d. -f2)
   
-  # Se Python 3.13 foi configurado como padrão anteriormente, reverter
+  # If Python 3.13 was previously configured as default, revert
   if [ "$SYSTEM_PYTHON_MAJOR" = "3" ] && [ "$SYSTEM_PYTHON_MINOR" = "13" ]; then
-    echo "⚠️  Python 3.13 está configurado como padrão do sistema"
-    echo "Revertendo para Python do sistema (3.10/3.11) para manter compatibilidade com ferramentas do sistema..."
+    echo "⚠️  Python 3.13 is configured as system default"
+    echo "Reverting to system Python (3.10/3.11) to maintain compatibility with system tools..."
     
-    # Encontrar Python do sistema (3.10 ou 3.11)
+    # Find system Python (3.10 or 3.11)
     SYSTEM_PYTHON_ORIGINAL=$(ls -1 /usr/bin/python3.* 2>/dev/null | grep -E "python3\.(10|11)" | head -1 | xargs basename 2>/dev/null || echo "python3.10")
     
     if [ -f "/usr/bin/$SYSTEM_PYTHON_ORIGINAL" ]; then
       if command -v update-alternatives &> /dev/null; then
-        # Adicionar Python do sistema como alternativa se não existir
+        # Add system Python as alternative if it doesn't exist
         sudo update-alternatives --install /usr/bin/python3 python3 "/usr/bin/$SYSTEM_PYTHON_ORIGINAL" 10 2>/dev/null || true
-        # Configurar Python do sistema como padrão
+        # Configure system Python as default
         sudo update-alternatives --set python3 "/usr/bin/$SYSTEM_PYTHON_ORIGINAL" 2>/dev/null || true
-        echo "✅ Python do sistema ($SYSTEM_PYTHON_ORIGINAL) configurado como padrão"
+        echo "✅ System Python ($SYSTEM_PYTHON_ORIGINAL) configured as default"
       else
-        # Se update-alternatives não estiver disponível, criar symlink direto
+        # If update-alternatives is not available, create direct symlink
         sudo ln -sf "/usr/bin/$SYSTEM_PYTHON_ORIGINAL" /usr/bin/python3 2>/dev/null || true
-        echo "✅ Python do sistema ($SYSTEM_PYTHON_ORIGINAL) configurado como padrão via symlink"
+        echo "✅ System Python ($SYSTEM_PYTHON_ORIGINAL) configured as default via symlink"
       fi
     fi
   fi
   
-  # Verificar versão final do Python padrão
-  FINAL_PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' 2>/dev/null || echo "desconhecida")
-  echo "ℹ️  Python padrão do sistema: $FINAL_PYTHON_VERSION (para ferramentas do sistema)"
-  echo "ℹ️  Python 3.13 instalado e disponível via 'python3.13' (será usado no virtual environment do projeto)"
+  # Check final version of default Python
+  FINAL_PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' 2>/dev/null || echo "unknown")
+  echo "ℹ️  System default Python: $FINAL_PYTHON_VERSION (for system tools)"
+  echo "ℹ️  Python 3.13 installed and available via 'python3.13' (will be used in project's virtual environment)"
   
   touch "$INSTALL_DIR/system_ready"
 fi
 
 if [ ! -f "$INSTALL_DIR/docker_ready" ]; then
   echo
-  echo "🐳 Instalando Docker e Docker Compose..."
+  echo "🐳 Installing Docker and Docker Compose..."
   
   # Remove old versions if they exist
   sudo apt remove -y docker docker-engine docker.io containerd runc || true
@@ -265,7 +265,7 @@ if [ ! -f "$INSTALL_DIR/docker_ready" ]; then
     lsb-release
 
   if [ "$UBUNTU_VERSION" = "focal" ]; then
-    echo "📦 Instalando Docker do repositório do Ubuntu para Ubuntu 20.04..."
+    echo "📦 Installing Docker from Ubuntu repository for Ubuntu 20.04..."
     sudo apt install -y docker.io
   else
     # Add Docker's official GPG key
@@ -289,22 +289,22 @@ if [ ! -f "$INSTALL_DIR/docker_ready" ]; then
 
   # Verify installation
   if ! docker info &> /dev/null; then
-    echo "❌ Docker não está rodando corretamente. Verifique a instalação."
+    echo "❌ Docker is not running correctly. Check the installation."
     exit 1
   fi
 
   # Install Docker Compose
   if ! $DOCKER_COMPOSE version &> /dev/null; then
-    echo "❌ Docker Compose não encontrado. Instalando..."
+    echo "❌ Docker Compose not found. Installing..."
     if [ "$UBUNTU_VERSION" = "focal" ]; then
-      echo "📦 Instalando Docker Compose standalone para Ubuntu 20.04..."
+      echo "📦 Installing Docker Compose standalone for Ubuntu 20.04..."
       sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
       sudo chmod +x /usr/local/bin/docker-compose
       sudo rm -f /usr/bin/docker-compose
       sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
       $DOCKER_COMPOSE --version
     else
-      echo "📦 Instalando Docker Compose plugin para Ubuntu 22.04/24.04..."
+      echo "📦 Installing Docker Compose plugin for Ubuntu 22.04/24.04..."
       sudo apt-get update
       sudo apt-get install -y docker-compose-plugin
       $DOCKER_COMPOSE version
@@ -318,43 +318,43 @@ fi
 
 if [ ! -f "$INSTALL_DIR/repo_cloned" ]; then
   echo
-  log_info "📂 Verificando repositório do projeto..."
+  log_info "📂 Checking project repository..."
   
-  # Se já estamos dentro do repositório (manage.py existe), não precisa clonar
+  # If already inside the repository (manage.py exists), no need to clone
   if [ -f "manage.py" ]; then
-    log_success "Repositório já está presente (manage.py encontrado)."
+    log_success "Repository already present (manage.py found)."
     touch "$INSTALL_DIR/repo_cloned"
   elif [ -d "lineage" ] && [ -f "lineage/manage.py" ]; then
-    log_info "Repositório encontrado em subdiretório 'lineage'."
+    log_info "Repository found in subdirectory 'lineage'."
     touch "$INSTALL_DIR/repo_cloned"
   else
-    log_info "Clonando repositório do projeto..."
+    log_info "Cloning project repository..."
     git clone https://github.com/D3NKYT0/lineage.git || {
-      log_error "Falha ao clonar repositório."
-      log_info "Certifique-se de que o Git está instalado e você tem acesso à internet."
+      log_error "Failed to clone repository."
+      log_info "Make sure Git is installed and you have internet access."
       exit 1
     }
-    log_success "Repositório clonado com sucesso."
+    log_success "Repository cloned successfully."
     touch "$INSTALL_DIR/repo_cloned"
   fi
 fi
 
-# Entrar no diretório do projeto se necessário
+# Enter project directory if needed
 if [ -d "lineage" ] && [ -f "lineage/manage.py" ] && [ ! -f "manage.py" ]; then
   pushd lineage > /dev/null
 elif [ -f "manage.py" ]; then
-  # Já estamos no diretório correto
+  # Already in the correct directory
   :
 else
-  log_error "Não foi possível encontrar o diretório do projeto."
+  log_error "Could not find project directory."
   exit 1
 fi
 
 if [ ! -f "$INSTALL_DIR/python_ready" ]; then
   echo
-  echo "🐍 Configurando ambiente Python (virtualenv)..."
+  echo "🐍 Configuring Python environment (virtualenv)..."
   
-  # Verificar se python3.13 está disponível, caso contrário usar python3
+  # Check if python3.13 is available, otherwise use python3
   if command -v python3.13 &> /dev/null; then
     PYTHON_CMD="python3.13"
   else
@@ -364,8 +364,8 @@ if [ ! -f "$INSTALL_DIR/python_ready" ]; then
     PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d. -f2)
     
     if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 11 ]); then
-      echo "❌ Python $PYTHON_VERSION é menor que 3.11 e Python 3.13 não está disponível."
-      echo "Execute o script novamente para instalar Python 3.13."
+      echo "❌ Python $PYTHON_VERSION is less than 3.11 and Python 3.13 is not available."
+      echo "Run the script again to install Python 3.13."
       exit 1
     fi
   fi
@@ -373,61 +373,61 @@ if [ ! -f "$INSTALL_DIR/python_ready" ]; then
   $PYTHON_CMD -m venv .venv
   source .venv/bin/activate
   
-  # Verificar versão do Python no venv
+  # Check Python version in venv
   VENV_PYTHON_VERSION=$(python --version 2>&1 | awk '{print $2}')
-  echo "Python no venv: $VENV_PYTHON_VERSION"
+  echo "Python in venv: $VENV_PYTHON_VERSION"
   
   pip install --upgrade pip
   pip install --upgrade setuptools wheel
 
-  # Modificar requirements.txt para incluir o repositório do GitHub
-  echo "📦 Atualizando requirements.txt..."
+  # Modify requirements.txt to include GitHub repository
+  echo "📦 Updating requirements.txt..."
   
-  # Verificar se o arquivo já está correto (UTF-8, sem caracteres nulos, tem o repositório do GitHub)
+  # Check if the file is already correct (UTF-8, no null characters, has GitHub repository)
   NEEDS_CLEANUP=false
   HAS_GITHUB_REPO=false
   
   if [ -f "requirements.txt" ]; then
-    # Verificar se tem caracteres nulos (UTF-16) - ler primeiros bytes
+    # Check for null characters (UTF-16) - read first bytes
     if python3 -c "with open('requirements.txt', 'rb') as f: data=f.read(1000); exit(0 if b'\x00' in data else 1)" 2>/dev/null; then
       NEEDS_CLEANUP=true
-      echo "⚠️  Detectado encoding UTF-16 ou caracteres inválidos, será necessário limpar o arquivo"
+      echo "⚠️  Detected UTF-16 encoding or invalid characters, file needs cleaning"
     fi
     
-    # Verificar se já tem o repositório do GitHub
+    # Check if GitHub repository is already present
     if grep -q "git+https://github.com/D3NKYT0/django-encrypted-fields.git" requirements.txt 2>/dev/null; then
       HAS_GITHUB_REPO=true
     fi
     
-    # Verificar se tem django-encrypted-fields-and-files (precisa remover)
+    # Check if has django-encrypted-fields-and-files (needs removal)
     if grep -q "django-encrypted-fields-and-files" requirements.txt 2>/dev/null; then
       NEEDS_CLEANUP=true
-      echo "ℹ️  Precisa remover django-encrypted-fields-and-files e adicionar repositório do GitHub"
+      echo "ℹ️  Need to remove django-encrypted-fields-and-files and add GitHub repository"
     fi
   fi
   
-  # Se não precisa limpar e já tem o repositório, apenas pular
+  # If no cleanup needed and already has repository, just skip
   if [ "$NEEDS_CLEANUP" = "false" ] && [ "$HAS_GITHUB_REPO" = "true" ]; then
-    echo "✅ requirements.txt já está atualizado, não é necessário modificar"
+    echo "✅ requirements.txt is already up to date, no modification needed"
   else
-    # Precisa limpar ou adicionar repositório
-    # Fazer backup do requirements.txt original
+    # Need to clean or add repository
+    # Backup original requirements.txt
     if [ ! -f "requirements.txt.bak" ]; then
       cp requirements.txt requirements.txt.bak 2>/dev/null || true
     fi
     
     if [ "$NEEDS_CLEANUP" = "true" ]; then
   
-  # Limpar o arquivo usando Python para garantir encoding correto
+  # Clean the file using Python to ensure correct encoding
   python3 << 'PYTHON_CLEAN'
 import sys
 import re
 
 def detect_encoding(file_path):
-    """Detecta o encoding do arquivo"""
+    """Detects the file encoding"""
     encodings = ['utf-8', 'utf-16', 'utf-16le', 'utf-16be', 'latin-1', 'cp1252']
     
-    # Verificar BOM (Byte Order Mark)
+    # Check BOM (Byte Order Mark)
     try:
         with open(file_path, 'rb') as f:
             bom = f.read(4)
@@ -440,7 +440,7 @@ def detect_encoding(file_path):
     except:
         pass
     
-    # Tentar cada encoding
+    # Try each encoding
     for encoding in encodings:
         try:
             with open(file_path, 'r', encoding=encoding) as f:
@@ -452,98 +452,98 @@ def detect_encoding(file_path):
     return 'utf-8'  # fallback
 
 def clean_line(line):
-    """Remove caracteres nulos e normaliza a linha"""
-    # Remover caracteres nulos (\x00)
+    """Removes null characters and normalizes the line"""
+    # Remove null characters (\x00)
     line = line.replace('\x00', '')
-    # Remover BOM se presente
+    # Remove BOM if present
     if line.startswith('\ufeff'):
         line = line[1:]
     return line.strip()
 
 def is_valid_requirement_line(line):
-    """Verifica se a linha é válida para requirements.txt"""
+    """Checks if the line is valid for requirements.txt"""
     line = clean_line(line)
-    if not line:  # Linha vazia é válida (mas vamos remover no final)
+    if not line:  # Empty line is valid (but we'll remove it at the end)
         return True
-    # Linha válida deve começar com letra, número, #, -, git+, ou http
+    # Valid line should start with letter, number, #, -, git+, or http
     if re.match(r'^[a-zA-Z0-9#\-]|^git\+|^http', line):
-        # Verificar se não contém caracteres de controle inválidos (exceto \n, \r, \t)
+        # Check if it doesn't contain invalid control characters (except \n, \r, \t)
         if all(ord(c) >= 32 or c in '\n\r\t' for c in line):
             return True
     return False
 
 try:
-    # Detectar encoding do arquivo
+    # Detect file encoding
     detected_encoding = detect_encoding('requirements.txt')
     
-    # Ler arquivo com encoding detectado
+    # Read file with detected encoding
     try:
         with open('requirements.txt', 'r', encoding=detected_encoding) as f:
             raw_content = f.read()
     except Exception as e:
-        # Se falhar, tentar com errors='replace' para substituir caracteres inválidos
+        # If it fails, try with errors='replace' to replace invalid characters
         with open('requirements.txt', 'r', encoding=detected_encoding, errors='replace') as f:
             raw_content = f.read()
     
-    # Dividir em linhas e limpar
+    # Split into lines and clean
     lines = raw_content.splitlines()
     
-    # Filtrar e limpar linhas válidas
+    # Filter and clean valid lines
     valid_lines = []
     for line in lines:
         cleaned_line = clean_line(line)
         if is_valid_requirement_line(cleaned_line):
             valid_lines.append(cleaned_line)
     
-    # Remover django-encrypted-fields-and-files se existir
+    # Remove django-encrypted-fields-and-files if exists
     valid_lines = [l for l in valid_lines if 'django-encrypted-fields-and-files' not in l]
     
-    # Remover linhas vazias no final
+    # Remove empty lines at the end
     while valid_lines and not valid_lines[-1].strip():
         valid_lines.pop()
     
-    # Adicionar linha vazia e o repositório do GitHub se não estiver presente
+    # Add empty line and GitHub repository if not present
     github_repo = "git+https://github.com/D3NKYT0/django-encrypted-fields.git"
     if github_repo not in valid_lines:
         valid_lines.append("")
         valid_lines.append(github_repo)
     
-    # Escrever arquivo limpo em UTF-8
+    # Write clean file in UTF-8
     with open('requirements.txt', 'w', encoding='utf-8', newline='\n') as f:
         for line in valid_lines:
             f.write(line + '\n')
     
-    print(f"✅ requirements.txt limpo e atualizado ({len(valid_lines)} linhas válidas, encoding convertido de {detected_encoding} para UTF-8)")
+    print(f"✅ requirements.txt cleaned and updated ({len(valid_lines)} valid lines, encoding converted from {detected_encoding} to UTF-8)")
     sys.exit(0)
 except Exception as e:
-    print(f"❌ Erro ao limpar requirements.txt: {e}", file=sys.stderr)
+    print(f"❌ Error cleaning requirements.txt: {e}", file=sys.stderr)
     import traceback
     traceback.print_exc()
     sys.exit(1)
 PYTHON_CLEAN
   
     if [ $? -ne 0 ]; then
-    log_warning "Falha ao limpar requirements.txt com Python, tentando método alternativo..."
+    log_warning "Failed to clean requirements.txt with Python, trying alternative method..."
     
-    # Método alternativo: converter encoding e limpar
+    # Alternative method: convert encoding and clean
     if [ -f "requirements.txt.bak" ]; then
-      # Tentar converter de UTF-16 para UTF-8 usando iconv (se disponível)
+      # Try to convert from UTF-16 to UTF-8 using iconv (if available)
       if command -v iconv &> /dev/null; then
-        # Tentar UTF-16LE primeiro (mais comum no Windows)
+        # Try UTF-16LE first (more common on Windows)
         iconv -f UTF-16LE -t UTF-8 requirements.txt.bak 2>/dev/null | \
           tr -d '\x00' > requirements.txt.clean 2>/dev/null || \
         iconv -f UTF-16 -t UTF-8 requirements.txt.bak 2>/dev/null | \
           tr -d '\x00' > requirements.txt.clean 2>/dev/null || true
       fi
       
-      # Se iconv não funcionou ou não está disponível, usar tr para remover \x00
+      # If iconv didn't work or is not available, use tr to remove \x00
       if [ ! -f "requirements.txt.clean" ] || [ ! -s "requirements.txt.clean" ]; then
         tr -d '\x00' < requirements.txt.bak > requirements.txt.clean 2>/dev/null || true
       fi
       
-      # Filtrar linhas válidas
+      # Filter valid lines
       if [ -f "requirements.txt.clean" ] && [ -s "requirements.txt.clean" ]; then
-        # Manter apenas linhas que começam com caracteres válidos
+        # Keep only lines that start with valid characters
         grep -E '^[a-zA-Z0-9#\-]|^git\+|^http' requirements.txt.clean | \
           grep -v 'django-encrypted-fields-and-files' > requirements.txt.tmp 2>/dev/null || true
         
@@ -551,70 +551,70 @@ PYTHON_CLEAN
           mv requirements.txt.tmp requirements.txt
           echo "" >> requirements.txt
           echo "git+https://github.com/D3NKYT0/django-encrypted-fields.git" >> requirements.txt
-          log_info "requirements.txt limpo usando método alternativo (encoding convertido)"
+          log_info "requirements.txt cleaned using alternative method (encoding converted)"
         else
-          log_error "Não foi possível extrair linhas válidas do requirements.txt"
+          log_error "Could not extract valid lines from requirements.txt"
           exit 1
         fi
       else
-        log_error "Não foi possível converter encoding do requirements.txt"
+        log_error "Could not convert encoding of requirements.txt"
         exit 1
       fi
     else
-      log_error "Backup do requirements.txt não encontrado"
+      log_error "Backup of requirements.txt not found"
       exit 1
     fi
     fi
     else
-      # Não precisa limpar, apenas adicionar repositório do GitHub se não estiver presente
+      # No cleanup needed, just add GitHub repository if not present
       if [ "$HAS_GITHUB_REPO" = "false" ]; then
-        echo "ℹ️  Adicionando repositório do GitHub ao requirements.txt..."
-        # Remover django-encrypted-fields-and-files se existir
+        echo "ℹ️  Adding GitHub repository to requirements.txt..."
+        # Remove django-encrypted-fields-and-files if exists
         sed -i '/django-encrypted-fields-and-files/d' requirements.txt 2>/dev/null || true
-        # Adicionar repositório do GitHub no final
+        # Add GitHub repository at the end
         echo "" >> requirements.txt
         echo "git+https://github.com/D3NKYT0/django-encrypted-fields.git" >> requirements.txt
-        echo "✅ Repositório do GitHub adicionado ao requirements.txt"
+        echo "✅ GitHub repository added to requirements.txt"
       fi
     fi
   fi
 
-  # Instalar dependências
-  echo "📦 Instalando dependências Python..."
+  # Install dependencies
+  echo "📦 Installing Python dependencies..."
   pip install -r requirements.txt
 
-  # Criar diretórios necessários
-  echo "📁 Criando diretórios necessários..."
+  # Create necessary directories
+  echo "📁 Creating necessary directories..."
   mkdir -p logs
   mkdir -p themes
   touch "$INSTALL_DIR/python_ready"
 else
-  # Verificar se o venv existe e se o Python é >= 3.11
+  # Check if venv exists and Python is >= 3.11
   if [ -d ".venv" ]; then
     source .venv/bin/activate
     
-    # Verificar versão do Python no venv
+    # Check Python version in venv
     VENV_PYTHON_VERSION=$(python --version 2>&1 | awk '{print $2}' 2>/dev/null || echo "0.0.0")
     VENV_MAJOR=$(echo "$VENV_PYTHON_VERSION" | cut -d. -f1)
     VENV_MINOR=$(echo "$VENV_PYTHON_VERSION" | cut -d. -f2)
     
     if [ "$VENV_MAJOR" -lt 3 ] || ([ "$VENV_MAJOR" -eq 3 ] && [ "$VENV_MINOR" -lt 11 ]); then
-      echo "⚠️  Python no venv ($VENV_PYTHON_VERSION) é menor que 3.11"
-      echo "Removendo venv antigo e recriando com Python 3.13..."
+      echo "⚠️  Python in venv ($VENV_PYTHON_VERSION) is less than 3.11"
+      echo "Removing old venv and recreating with Python 3.13..."
       deactivate 2>/dev/null || true
       rm -rf .venv
       
       if command -v python3.13 &> /dev/null; then
         python3.13 -m venv .venv
         source .venv/bin/activate
-        echo "✅ Virtual environment recriado com Python 3.13"
+        echo "✅ Virtual environment recreated with Python 3.13"
       else
-        echo "❌ Python 3.13 não encontrado. Execute o script novamente para instalar."
+        echo "❌ Python 3.13 not found. Run the script again to install."
         exit 1
       fi
     fi
   else
-    # Se não existe venv, criar com Python 3.13
+    # If venv doesn't exist, create with Python 3.13
     if command -v python3.13 &> /dev/null; then
       python3.13 -m venv .venv
       source .venv/bin/activate
@@ -627,58 +627,58 @@ fi
 
 if [ ! -f "$INSTALL_DIR/env_created" ]; then
   echo
-  log_info "⚙️ Criando arquivo .env..."
+  log_info "⚙️ Creating .env file..."
   if [ ! -f ".env" ]; then
-    log_info "Executando script de geração do .env..."
+    log_info "Running .env generation script..."
     if [ -f "setup/generate-env.sh" ]; then
       bash setup/generate-env.sh || {
-        log_error "Falha ao gerar arquivo .env"
-        log_info "Você pode executar manualmente depois com: bash setup/generate-env.sh"
+        log_error "Failed to generate .env file"
+        log_info "You can run manually later with: bash setup/generate-env.sh"
         exit 1
       }
     else
-      log_error "Script setup/generate-env.sh não encontrado!"
+      log_error "Script setup/generate-env.sh not found!"
       exit 1
     fi
   else
-    log_warning "Arquivo .env já existe. Verificando se está completo..."
+    log_warning ".env file already exists. Checking if it's complete..."
     
-    # Verificar se o .env está completo
+    # Check if .env is complete
     if ! check_env_complete ".env"; then
-      log_warning "O arquivo .env parece estar incompleto (faltam variáveis obrigatórias)."
+      log_warning "The .env file seems incomplete (missing required variables)."
       echo
-      read -p "Deseja executar o script generate-env.sh para completar o .env? (s/n): " EXEC_GENERATE
-      if [[ "$EXEC_GENERATE" =~ ^[sS]$ ]]; then
-        log_info "Executando script de geração do .env..."
+      read -p "Do you want to run the generate-env.sh script to complete .env? (y/n): " EXEC_GENERATE
+      if [[ "$EXEC_GENERATE" =~ ^[yY]$ ]]; then
+        log_info "Running .env generation script..."
         if [ -f "setup/generate-env.sh" ]; then
-          # Fazer backup do .env existente antes de executar generate-env.sh
+          # Backup existing .env before running generate-env.sh
           backup_env_file ".env"
           
-          # Executar generate-env.sh (ele vai perguntar se quer sobrescrever)
+          # Run generate-env.sh (it will ask if you want to overwrite)
           bash setup/generate-env.sh || {
-            log_error "Falha ao gerar arquivo .env"
-            log_info "Você pode executar manualmente depois com: bash setup/generate-env.sh"
+            log_error "Failed to generate .env file"
+            log_info "You can run manually later with: bash setup/generate-env.sh"
             exit 1
           }
         else
-          log_error "Script setup/generate-env.sh não encontrado!"
+          log_error "Script setup/generate-env.sh not found!"
           exit 1
         fi
       else
-        log_warning "Continuando com o .env existente. Certifique-se de que todas as variáveis necessárias estão configuradas."
+        log_warning "Continuing with existing .env. Make sure all necessary variables are configured."
       fi
     else
-      log_success "Arquivo .env parece estar completo."
+      log_success ".env file appears to be complete."
     fi
   fi
   
-  # Verificar e garantir ENCRYPTION_KEY (obrigatório)
-  # IMPORTANTE: NÃO sobrescreve chaves existentes para evitar quebrar dados criptografados
+  # Check and ensure ENCRYPTION_KEY (required)
+  # IMPORTANT: DOES NOT overwrite existing keys to avoid breaking encrypted data
   if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
-    log_warning "ENCRYPTION_KEY não encontrada no .env. Gerando..."
+    log_warning "ENCRYPTION_KEY not found in .env. Generating..."
     backup_env_file ".env"
     
-    # Usar Python do venv se disponível
+    # Use venv Python if available
     if [ -f ".venv/bin/python" ]; then
       PYTHON_ENV_CMD=".venv/bin/python"
     elif command -v python &> /dev/null; then
@@ -695,22 +695,22 @@ EOF
     if [ -n "$FERNET_KEY" ]; then
       echo "" >> .env
       echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
-      log_success "ENCRYPTION_KEY adicionada ao .env."
+      log_success "ENCRYPTION_KEY added to .env."
     else
-      log_error "Não foi possível gerar ENCRYPTION_KEY."
-      log_error "Adicione manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
+      log_error "Could not generate ENCRYPTION_KEY."
+      log_error "Add manually to .env: ENCRYPTION_KEY='your_key_here'"
       exit 1
     fi
   else
-    log_info "ENCRYPTION_KEY já existe no .env (não será sobrescrita para preservar dados criptografados)."
+    log_info "ENCRYPTION_KEY already exists in .env (will not be overwritten to preserve encrypted data)."
   fi
   
-  # Verificar se SECRET_KEY existe no .env
+  # Check if SECRET_KEY exists in .env
   if ! grep -q "^SECRET_KEY=" .env 2>/dev/null; then
-    log_warning "SECRET_KEY não encontrada no .env. Gerando..."
+    log_warning "SECRET_KEY not found in .env. Generating..."
     backup_env_file ".env"
     
-    # Usar Python do venv se disponível
+    # Use venv Python if available
     if [ -f ".venv/bin/python" ]; then
       PYTHON_ENV_CMD=".venv/bin/python"
     elif command -v python &> /dev/null; then
@@ -726,27 +726,27 @@ EOF
 )
     if [ -n "$SECRET_KEY" ]; then
       sed -i "1i SECRET_KEY=$SECRET_KEY" .env
-      log_success "SECRET_KEY adicionada ao .env."
+      log_success "SECRET_KEY added to .env."
     fi
   fi
   
-  # Validação final - garantir que ENCRYPTION_KEY existe
+  # Final validation - ensure ENCRYPTION_KEY exists
   if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
-    log_error "ENCRYPTION_KEY não foi criada corretamente!"
+    log_error "ENCRYPTION_KEY was not created correctly!"
     exit 1
   fi
   
   touch "$INSTALL_DIR/env_created"
-  log_success "Arquivo .env criado e validado com sucesso."
+  log_success ".env file created and validated successfully."
 fi
 
-# Garantir ENCRYPTION_KEY mesmo se .env já existia (para casos onde foi criado manualmente)
-# IMPORTANTE: Só adiciona se não existir, NUNCA substitui chaves existentes
+# Ensure ENCRYPTION_KEY even if .env already existed (for cases where it was created manually)
+# IMPORTANT: Only adds if it doesn't exist, NEVER replaces existing keys
 if [ -f ".env" ] && ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
-  log_warning "ENCRYPTION_KEY não encontrada no .env existente. Gerando..."
+  log_warning "ENCRYPTION_KEY not found in existing .env. Generating..."
   backup_env_file ".env"
   
-  # Usar Python do venv se disponível
+  # Use venv Python if available
   if [ -f ".venv/bin/python" ]; then
     PYTHON_ENV_CMD=".venv/bin/python"
   elif command -v python &> /dev/null; then
@@ -763,60 +763,60 @@ EOF
   if [ -n "$FERNET_KEY" ]; then
     echo "" >> .env
     echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
-    log_success "ENCRYPTION_KEY adicionada ao .env existente."
+    log_success "ENCRYPTION_KEY added to existing .env."
   else
-    log_error "Não foi possível gerar ENCRYPTION_KEY."
-    log_error "Adicione manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
+    log_error "Could not generate ENCRYPTION_KEY."
+    log_error "Add manually to .env: ENCRYPTION_KEY='your_key_here'"
     exit 1
   fi
 elif [ -f ".env" ] && grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
-  log_info "ENCRYPTION_KEY já existe no .env (preservada para manter dados criptografados)."
+  log_info "ENCRYPTION_KEY already exists in .env (preserved to maintain encrypted data)."
 fi
 
 if [ ! -f "$INSTALL_DIR/htpasswd_created" ]; then
   echo
-  echo "🔐 Configurando autenticação básica (.htpasswd)..."
+  echo "🔐 Configuring basic authentication (.htpasswd)..."
   
-  # Garantir que o venv está ativado
+  # Ensure venv is activated
   if [ -d ".venv" ]; then
     source .venv/bin/activate 2>/dev/null || true
   fi
   
-  # Determinar qual Python usar e garantir que bcrypt/passlib está disponível
+  # Determine which Python to use and ensure bcrypt/passlib is available
   PYTHON_CMD=""
   
-  # Tentar Python do venv primeiro (verificar bcrypt primeiro, mais confiável)
+  # Try venv Python first (check bcrypt first, more reliable)
   if [ -f ".venv/bin/python" ] && .venv/bin/python -c "import bcrypt" 2>/dev/null; then
     PYTHON_CMD=".venv/bin/python"
-    echo "ℹ️  Usando Python do virtual environment (bcrypt disponível)"
+    echo "ℹ️  Using Python from virtual environment (bcrypt available)"
   elif [ -f ".venv/bin/python" ] && .venv/bin/python -c "import passlib" 2>/dev/null; then
     PYTHON_CMD=".venv/bin/python"
-    echo "ℹ️  Usando Python do virtual environment (passlib disponível)"
+    echo "ℹ️  Using Python from virtual environment (passlib available)"
   elif command -v python &> /dev/null && python -c "import bcrypt" 2>/dev/null; then
     PYTHON_CMD="python"
-    echo "ℹ️  Usando Python do venv (ativado, bcrypt disponível)"
+    echo "ℹ️  Using venv Python (activated, bcrypt available)"
   elif command -v python &> /dev/null && python -c "import passlib" 2>/dev/null; then
     PYTHON_CMD="python"
-    echo "ℹ️  Usando Python do venv (ativado, passlib disponível)"
+    echo "ℹ️  Using venv Python (activated, passlib available)"
   elif python3 -c "import bcrypt" 2>/dev/null; then
     PYTHON_CMD="python3"
-    echo "ℹ️  Usando Python do sistema (bcrypt disponível)"
+    echo "ℹ️  Using system Python (bcrypt available)"
   elif python3 -c "import passlib" 2>/dev/null; then
     PYTHON_CMD="python3"
-    echo "ℹ️  Usando Python do sistema (passlib disponível)"
+    echo "ℹ️  Using system Python (passlib available)"
   else
-    # bcrypt/passlib não está disponível, tentar instalar
-    echo "📦 bcrypt/passlib não encontrado, instalando..."
+    # bcrypt/passlib is not available, try to install
+    echo "📦 bcrypt/passlib not found, installing..."
     
-    # Tentar instalar no venv primeiro
+    # Try to install in venv first
     if [ -f ".venv/bin/python" ]; then
       .venv/bin/python -m pip install bcrypt "passlib==1.7.4" 2>/dev/null && \
       (.venv/bin/python -c "import bcrypt" 2>/dev/null || .venv/bin/python -c "import passlib" 2>/dev/null) && \
       PYTHON_CMD=".venv/bin/python" && \
-      echo "✅ bcrypt/passlib instalado no virtual environment"
+      echo "✅ bcrypt/passlib installed in virtual environment"
     fi
     
-    # Se não funcionou, tentar instalar no sistema
+    # If it didn't work, try to install in system
     if [ -z "$PYTHON_CMD" ]; then
       python3 -m pip install --user --break-system-packages bcrypt "passlib==1.7.4" 2>/dev/null || \
       python3 -m pip install --user bcrypt "passlib==1.7.4" 2>/dev/null || \
@@ -824,53 +824,53 @@ if [ ! -f "$INSTALL_DIR/htpasswd_created" ]; then
       
       if python3 -c "import bcrypt" 2>/dev/null || python3 -c "import passlib" 2>/dev/null; then
         PYTHON_CMD="python3"
-        echo "✅ bcrypt/passlib instalado no Python do sistema"
+        echo "✅ bcrypt/passlib installed in system Python"
       else
-        # Fallback: usar htpasswd do sistema
+        # Fallback: use system htpasswd
         if command -v htpasswd &> /dev/null; then
           PYTHON_CMD="htpasswd"
-          echo "ℹ️  Usando htpasswd do sistema como alternativa"
+          echo "ℹ️  Using system htpasswd as alternative"
         else
-          log_error "Não foi possível instalar bcrypt/passlib. Instale manualmente: pip install bcrypt passlib"
+          log_error "Could not install bcrypt/passlib. Install manually: pip install bcrypt passlib"
           exit 1
         fi
       fi
     fi
   fi
   
-  read -p "👤 Digite o login para o admin: " ADMIN_USER
-  read -s -p "🔒 Digite a senha para o admin: " ADMIN_PASS
+  read -p "👤 Enter the admin login: " ADMIN_USER
+  read -s -p "🔒 Enter the admin password: " ADMIN_PASS
   echo
   mkdir -p nginx
   
-  # Gerar hash da senha
+  # Generate password hash
   if [ "$PYTHON_CMD" = "htpasswd" ]; then
-    # Usar htpasswd do sistema
+    # Use system htpasswd
     echo "$ADMIN_PASS" | htpasswd -ciB nginx/.htpasswd "$ADMIN_USER" 2>/dev/null || \
     htpasswd -cbB nginx/.htpasswd "$ADMIN_USER" "$ADMIN_PASS" 2>/dev/null
     if [ $? -eq 0 ]; then
-      echo "✅ Hash gerado usando htpasswd do sistema"
+      echo "✅ Hash generated using system htpasswd"
     else
-      log_error "Falha ao gerar hash com htpasswd"
+      log_error "Failed to generate hash with htpasswd"
       exit 1
     fi
   else
-    # Usar Python - tentar bcrypt direto primeiro (mais confiável)
+    # Use Python - try bcrypt directly first (more reliable)
     HASHED_PASS=$($PYTHON_CMD - <<EOF
 import sys
 try:
-    # Tentar usar bcrypt diretamente (mais confiável e compatível)
+    # Try to use bcrypt directly (more reliable and compatible)
     import bcrypt
     salt = bcrypt.gensalt(rounds=10)
     hashed = bcrypt.hashpw("$ADMIN_PASS".encode('utf-8'), salt)
     print(hashed.decode('utf-8'))
 except ImportError:
-    # Se bcrypt não estiver disponível, tentar passlib
+    # If bcrypt is not available, try passlib
     try:
         from passlib.hash import bcrypt as passlib_bcrypt
         print(passlib_bcrypt.using(rounds=10).hash("$ADMIN_PASS"))
     except Exception as e2:
-        print(f"ERROR: Não foi possível importar bcrypt ou passlib: {e2}", file=sys.stderr)
+        print(f"ERROR: Could not import bcrypt or passlib: {e2}", file=sys.stderr)
         sys.exit(1)
 except Exception as e:
     print(f"ERROR: {e}", file=sys.stderr)
@@ -879,34 +879,34 @@ EOF
 )
     
     if [ -z "$HASHED_PASS" ] || echo "$HASHED_PASS" | grep -q "ERROR"; then
-      log_error "Falha ao gerar hash da senha. Tentando com htpasswd do sistema..."
+      log_error "Failed to generate password hash. Trying with system htpasswd..."
       if command -v htpasswd &> /dev/null; then
         echo "$ADMIN_PASS" | htpasswd -ciB nginx/.htpasswd "$ADMIN_USER" 2>/dev/null || \
         htpasswd -cbB nginx/.htpasswd "$ADMIN_USER" "$ADMIN_PASS" 2>/dev/null
         if [ $? -ne 0 ]; then
-          log_error "Falha ao gerar hash da senha com ambos os métodos."
+          log_error "Failed to generate password hash with both methods."
           exit 1
         fi
       else
-        log_error "Falha ao gerar hash da senha e htpasswd não está disponível."
+        log_error "Failed to generate password hash and htpasswd is not available."
         exit 1
       fi
     else
       echo "$ADMIN_USER:$HASHED_PASS" > nginx/.htpasswd
     fi
   fi
-  echo "✅ Arquivo nginx/.htpasswd criado."
+  echo "✅ nginx/.htpasswd file created."
   touch "$INSTALL_DIR/htpasswd_created"
 fi
 
 if [ ! -f "$INSTALL_DIR/fernet_key_generated" ]; then
-  # Verificar se ENCRYPTION_KEY já foi gerado pelo generate-env.sh
-  # IMPORTANTE: NÃO substitui chaves existentes para evitar quebrar dados criptografados
-  # Só substitui a chave placeholder padrão na primeira instalação (quando não há dados ainda)
+  # Check if ENCRYPTION_KEY was already generated by generate-env.sh
+  # IMPORTANT: DOES NOT replace existing keys to avoid breaking encrypted data
+  # Only replaces the default placeholder key on first installation (when there's no data yet)
   if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
-    log_info "ENCRYPTION_KEY não encontrada. Gerando..."
+    log_info "ENCRYPTION_KEY not found. Generating..."
     
-    # Usar Python do venv se disponível
+    # Use venv Python if available
     if [ -f ".venv/bin/python" ]; then
       PYTHON_ENV_CMD=".venv/bin/python"
     elif command -v python &> /dev/null; then
@@ -923,14 +923,14 @@ EOF
     if [ -n "$FERNET_KEY" ]; then
       echo "" >> .env
       echo "ENCRYPTION_KEY = '$FERNET_KEY'" >> .env
-      log_success "ENCRYPTION_KEY adicionada ao .env."
+      log_success "ENCRYPTION_KEY added to .env."
     else
-      log_warning "Não foi possível gerar ENCRYPTION_KEY."
+      log_warning "Could not generate ENCRYPTION_KEY."
     fi
   elif grep -qE "^ENCRYPTION_KEY\s*=\s*['\"]?iOg0mMfE54rqvAOZKxhmb-Rq0sgmRC4p1TBGu_JqHac=" .env 2>/dev/null; then
-    # Só substitui se for a chave padrão/placeholder E se for a primeira instalação
-    # Verificar se já foi feita instalação anterior (se sim, não substituir!)
-    # Verificar também se há containers Docker rodando (instalação antiga)
+    # Only replace if it's the default/placeholder key AND if it's first installation
+    # Check if previous installation was done (if yes, don't replace!)
+    # Also check if there are running Docker containers (old installation)
     local has_running_containers=false
     if command -v docker &> /dev/null; then
       if docker ps --format '{{.Names}}' 2>/dev/null | grep -qE "(site_http|site_wsgi|postgres|celery)"; then
@@ -938,18 +938,18 @@ EOF
       fi
     fi
     
-    # Verificar se há chave preservada no install.sh
+    # Check if there's a preserved key in install.sh
     local has_preserved_key=false
     if [ -f "$INSTALL_DIR/.encryption_key_preserved" ]; then
       has_preserved_key=true
     fi
     
-    # Verificar se é primeira instalação (não há instalação anterior)
+    # Check if it's first installation (no previous installation)
     if [ ! -f "$INSTALL_DIR/.install_done" ] && [ ! -f "$INSTALL_DIR/build_executed" ] && [ "$has_running_containers" = "false" ] && [ "$has_preserved_key" = "false" ]; then
-      log_warning "ENCRYPTION_KEY é a chave padrão/placeholder. Gerando nova chave (primeira instalação)..."
+      log_warning "ENCRYPTION_KEY is the default/placeholder key. Generating new key (first installation)..."
       backup_env_file ".env"
       
-      # Usar Python do venv se disponível
+      # Use venv Python if available
       if [ -f ".venv/bin/python" ]; then
         PYTHON_ENV_CMD=".venv/bin/python"
       elif command -v python &> /dev/null; then
@@ -965,59 +965,59 @@ EOF
 )
       if [ -n "$FERNET_KEY" ]; then
         sed -i "/^ENCRYPTION_KEY\s*=/c\ENCRYPTION_KEY='$FERNET_KEY'" .env
-        log_success "ENCRYPTION_KEY atualizada no .env (chave padrão substituída)."
+        log_success "ENCRYPTION_KEY updated in .env (default key replaced)."
       else
-        log_warning "Não foi possível gerar ENCRYPTION_KEY. Mantendo valor padrão."
+        log_warning "Could not generate ENCRYPTION_KEY. Keeping default value."
       fi
     else
-      log_warning "ENCRYPTION_KEY é a chave padrão, mas foi detectada instalação anterior."
+      log_warning "ENCRYPTION_KEY is the default key, but previous installation detected."
       if [ "$has_running_containers" = "true" ]; then
-        log_warning "Containers Docker estão rodando - preservando chave para manter dados criptografados."
+        log_warning "Docker containers are running - preserving key to maintain encrypted data."
       fi
       if [ "$has_preserved_key" = "true" ]; then
-        log_warning "Chave preservada detectada - não será substituída."
+        log_warning "Preserved key detected - will not be replaced."
       fi
-      log_warning "NÃO será substituída para preservar dados criptografados."
-      log_info "Se você realmente precisa substituir, faça backup do banco primeiro e remova os arquivos de status!"
+      log_warning "Will NOT be replaced to preserve encrypted data."
+      log_info "If you really need to replace it, backup the database first and remove status files!"
     fi
   else
-    log_info "ENCRYPTION_KEY já foi configurada (não será sobrescrita para preservar dados criptografados)."
+    log_info "ENCRYPTION_KEY already configured (will not be overwritten to preserve encrypted data)."
   fi
   touch "$INSTALL_DIR/fernet_key_generated"
 fi
 
 if [ ! -f "$INSTALL_DIR/build_executed" ]; then
   echo
-  log_info "🔨 Preparando build.sh..."
+  log_info "🔨 Preparing build.sh..."
   
-  # Validar que .env existe e tem ENCRYPTION_KEY antes de executar build.sh
+  # Validate that .env exists and has ENCRYPTION_KEY before running build.sh
   if [ ! -f ".env" ]; then
-    log_error "Arquivo .env não encontrado! Execute primeiro: bash setup/generate-env.sh"
+    log_error ".env file not found! Run first: bash setup/generate-env.sh"
     exit 1
   fi
   
-  # Verificar se ENCRYPTION_KEY existe (não gerar aqui, já foi verificado antes)
+  # Check if ENCRYPTION_KEY exists (don't generate here, already checked before)
   if ! grep -qE "^ENCRYPTION_KEY\s*=" .env 2>/dev/null; then
-    log_error "ENCRYPTION_KEY não encontrada no .env!"
-    log_error "A chave deve ter sido gerada anteriormente. Verifique o .env."
-    log_info "Você pode adicionar manualmente ao .env: ENCRYPTION_KEY='sua_chave_aqui'"
+    log_error "ENCRYPTION_KEY not found in .env!"
+    log_error "The key should have been generated previously. Check .env."
+    log_info "You can add manually to .env: ENCRYPTION_KEY='your_key_here'"
     exit 1
   fi
   
-  # Não copia mais o build.sh, apenas referencia
-  # O build.sh deve ser executado da pasta setup/
+  # No longer copies build.sh, just references it
+  # build.sh should be executed from setup/ folder
   if [ ! -f "setup/build.sh" ]; then
-    log_error "Arquivo setup/build.sh não encontrado!"
+    log_error "File setup/build.sh not found!"
     exit 1
   fi
   
   chmod +x setup/build.sh || true
 
   echo
-  log_info "🚀 Executando build.sh..."
+  log_info "🚀 Running build.sh..."
   bash setup/build.sh || { 
-    log_error "Falha ao executar build.sh"
-    log_info "Você pode executar manualmente depois com: bash setup/build.sh"
+    log_error "Failed to execute build.sh"
+    log_info "You can run manually later with: bash setup/build.sh"
     exit 1
   }
 
@@ -1026,19 +1026,19 @@ fi
 
 if [ ! -f "$INSTALL_DIR/superuser_created" ]; then
   echo
-  log_info "👤 Criando usuário administrador no Django..."
+  log_info "👤 Creating Django administrator user..."
   
-  # Perguntar se deseja criar o superuser agora
-  read -p "Deseja criar o usuário administrador agora? (s/n): " CREATE_SUPERUSER
+  # Ask if you want to create the superuser now
+  read -p "Do you want to create the administrator user now? (y/n): " CREATE_SUPERUSER
   
-  if [[ ! "$CREATE_SUPERUSER" =~ ^[sS]$ ]]; then
-    log_info "Criação do superuser pulada. Você pode criar depois com:"
+  if [[ ! "$CREATE_SUPERUSER" =~ ^[yY]$ ]]; then
+    log_info "Superuser creation skipped. You can create later with:"
     echo "  $DOCKER_COMPOSE exec site_http python3 manage.py createsuperuser"
     touch "$INSTALL_DIR/superuser_created"
-  # Verificar se os containers estão rodando
+  # Check if containers are running
   elif ! $DOCKER_COMPOSE ps | grep -q "site_http.*Up"; then
-    log_warning "Containers não estão rodando. Pulando criação de superuser."
-    log_info "Você pode criar o superuser depois com:"
+    log_warning "Containers are not running. Skipping superuser creation."
+    log_info "You can create the superuser later with:"
     echo "  $DOCKER_COMPOSE exec site_http python3 manage.py createsuperuser"
     touch "$INSTALL_DIR/superuser_created"
   else
@@ -1046,15 +1046,15 @@ if [ ! -f "$INSTALL_DIR/superuser_created" ]; then
     read -p "Email: " DJANGO_SUPERUSER_EMAIL
     read -s -p "Password: " DJANGO_SUPERUSER_PASSWORD
     echo
-    read -s -p "Confirme a senha: " DJANGO_SUPERUSER_PASSWORD_CONFIRM
+    read -s -p "Confirm password: " DJANGO_SUPERUSER_PASSWORD_CONFIRM
     echo
 
     if [ "$DJANGO_SUPERUSER_PASSWORD" != "$DJANGO_SUPERUSER_PASSWORD_CONFIRM" ]; then
-      log_error "As senhas não conferem. Abortando."
+      log_error "Passwords don't match. Aborting."
       exit 1
     fi
 
-    # Detectar qual serviço usar
+    # Detect which service to use
     APP_SERVICE=""
     APP_CANDIDATES=("site_http" "site_wsgi" "app" "web" "site" "django" "backend")
     for svc in "${APP_CANDIDATES[@]}"; do
@@ -1067,11 +1067,11 @@ if [ ! -f "$INSTALL_DIR/superuser_created" ]; then
     done
 
     if [ -z "$APP_SERVICE" ]; then
-      log_warning "Não foi possível detectar o serviço Django. Pulando criação de superuser."
-      log_info "Você pode criar manualmente depois com:"
+      log_warning "Could not detect Django service. Skipping superuser creation."
+      log_info "You can create manually later with:"
       echo "  $DOCKER_COMPOSE exec site_http python3 manage.py createsuperuser"
     else
-      log_info "Usando serviço: $APP_SERVICE"
+      log_info "Using service: $APP_SERVICE"
       if $DOCKER_COMPOSE exec -T "$APP_SERVICE" python3 manage.py shell <<PYTHON_SCRIPT
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -1081,15 +1081,15 @@ if not User.objects.filter(username='$DJANGO_SUPERUSER_USERNAME').exists():
         email='$DJANGO_SUPERUSER_EMAIL',
         password='$DJANGO_SUPERUSER_PASSWORD'
     )
-    print('✅ Superuser \"$DJANGO_SUPERUSER_USERNAME\" criado com sucesso.')
+    print('✅ Superuser \"$DJANGO_SUPERUSER_USERNAME\" created successfully.')
 else:
-    print('ℹ️ O usuário \"$DJANGO_SUPERUSER_USERNAME\" já existe.')
+    print('ℹ️ User \"$DJANGO_SUPERUSER_USERNAME\" already exists.')
 PYTHON_SCRIPT
       then
-        log_success "Superuser criado ou já existente."
+        log_success "Superuser created or already exists."
       else
-        log_warning "Falha ao criar superuser via script. Tente manualmente."
-        log_info "Você pode criar manualmente depois com:"
+        log_warning "Failed to create superuser via script. Try manually."
+        log_info "You can create manually later with:"
         echo "  $DOCKER_COMPOSE exec $APP_SERVICE python3 manage.py createsuperuser"
       fi
     fi
@@ -1098,7 +1098,7 @@ PYTHON_SCRIPT
   touch "$INSTALL_DIR/superuser_created"
 fi
 
-# Voltar ao diretório anterior se necessário
+# Return to previous directory if necessary
 if [ "$(pwd)" != "$(dirname "$INSTALL_DIR")" ] && [ -d "lineage" ]; then
   popd > /dev/null 2>&1 || true
 fi
@@ -1106,14 +1106,14 @@ fi
 touch "$INSTALL_DIR/.install_done"
 
 echo
-log_success "🎉 Instalação concluída com sucesso!"
+log_success "🎉 Installation completed successfully!"
 echo
-log_info "Informações importantes:"
-echo "  - Acesse: http://localhost:6085"
-echo "  - Para atualizar: bash setup/build.sh"
-echo "  - Para parar: $DOCKER_COMPOSE down"
-echo "  - Para iniciar: $DOCKER_COMPOSE up -d"
+log_info "Important information:"
+echo "  - Access: http://localhost:6085"
+echo "  - To update: bash setup/build.sh"
+echo "  - To stop: $DOCKER_COMPOSE down"
+echo "  - To start: $DOCKER_COMPOSE up -d"
 echo
-log_info "Para configurar domínio personalizado:"
-echo "  - Execute: sudo bash setup/nginx-proxy.sh"
+log_info "To configure custom domain:"
+echo "  - Run: sudo bash setup/nginx-proxy.sh"
 echo
