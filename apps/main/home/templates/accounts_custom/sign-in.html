@@ -34,9 +34,11 @@
 
 <div class="min-h-screen flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
   <div class="w-full max-w-xl">
-    <div class="auth-panel p-6 sm:p-10">
+    <div class="auth-panel p-4 sm:p-10">
       <div class="text-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">{% trans "Entre no Reino" %}</h1>
+        <h1 class="text-3xl font-bold text-gray-800">
+          <span class="title-primary">{% trans "Entre" %}</span> {% trans "no Reino" %}
+        </h1>
         <p class="mt-2 text-sm text-gray-600">{% trans "Acesse sua conta épica" %}</p>
       </div>
       <form method="post" class="space-y-6">
@@ -82,7 +84,7 @@
                 <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
               </svg>
             </div>
-            {{ form.username|add_class:"pl-10 w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" }}
+            {{ form.username|add_class:"input-with-icon w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" }}
           </div>
         </div>
 
@@ -95,7 +97,7 @@
                   <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
                 </svg>
               </div>
-              {{ form.password|add_class:"pl-10 w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" }}
+              {{ form.password|add_class:"input-with-icon w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" }}
               <button type="button" class="password-toggle" onclick="togglePassword('id_password')">
                 <svg class="h-5 w-5" id="eye-icon-password" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
@@ -111,8 +113,8 @@
             <input id="remember" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
             <label for="remember" class="ml-2 block text-sm text-gray-700">{% trans "Lembrar de mim" %}</label>
           </div>
-          <div class="text-sm">
-            <a href="{% url 'password_reset' %}" class="font-medium text-primary hover:text-primary-dark transition-colors">{% trans "Esqueceu a senha?" %}</a>
+          <div>
+            <a href="{% url 'password_reset' %}" class="link-text font-medium text-primary hover:text-primary-dark transition-colors">{% trans "Esqueceu a senha?" %}</a>
           </div>
         </div>
 
@@ -197,12 +199,12 @@
       <div class="mt-6 text-center">
         <p class="text-sm text-gray-600">
           {% trans "Ainda não tem conta?" %}
-          <a href="{% url 'register' %}" class="font-medium text-primary hover:text-primary-dark transition-colors">{% trans "Forje seu destino" %}</a>
+          <a href="{% url 'register' %}" class="link-text font-medium text-primary hover:text-primary-dark transition-colors">{% trans "Forje seu destino" %}</a>
         </p>
       </div>
 
       <div class="mt-4 text-center">
-        <a href="https://l2horizon.com" class="text-sm text-gray-500 hover:text-primary transition-colors">
+        <a href="https://l2horizon.com" class="link-text text-gray-500 hover:text-primary transition-colors">
           ← {% trans "Voltar para o início" %}
         </a>
       </div>

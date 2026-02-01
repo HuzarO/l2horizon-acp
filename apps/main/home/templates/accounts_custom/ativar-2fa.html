@@ -6,9 +6,11 @@
 {% block content %}
 <div class="min-h-screen flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
   <div class="w-full max-w-xl">
-    <div class="auth-panel p-6 sm:p-10">
+    <div class="auth-panel p-4 sm:p-10">
       <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-800">{% trans "Ativar Autenticação em 2 Etapas" %}</h1>
+        <h1 class="text-3xl font-bold text-gray-800">
+          <span class="title-primary">{% trans "Ativar" %}</span> {% trans "Autenticação em 2 Etapas" %}
+        </h1>
         <p class="mt-2 text-sm text-gray-600">{% trans "Escaneie o QR Code abaixo com o Google Authenticator ou similar." %}</p>
       </div>
 

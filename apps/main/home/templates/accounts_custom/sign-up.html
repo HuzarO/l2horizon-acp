@@ -7,9 +7,11 @@
 
 <div class="min-h-screen flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
   <div class="w-full max-w-xl">
-    <div class="auth-panel p-6 sm:p-10">
+    <div class="auth-panel p-4 sm:p-10">
       <div class="text-center mb-8">
-        <h2 class="text-3xl font-bold text-gray-800">{% trans "Crie sua conta mestre" %}</h2>
+        <h2 class="text-3xl font-bold text-gray-800">
+          <span class="title-primary">{% trans "Crie" %}</span> {% trans "sua conta mestre" %}
+        </h2>
         <p class="mt-2 text-sm text-gray-600">{% trans "Preencha os campos abaixo para se juntar à aventura." %}</p>
       </div>
       <form method="post" class="space-y-5">
@@ -80,7 +82,7 @@
       <div class="mt-6 text-center">
         <p class="text-sm text-gray-600">
           {% trans "Já tem conta?" %}
-          <a href="{% url 'login' %}" class="font-medium text-primary hover:text-primary-dark transition-colors">{% trans "Faça login" %}</a>
+          <a href="{% url 'login' %}" class="link-text font-medium text-primary hover:text-primary-dark transition-colors">{% trans "Faça login" %}</a>
         </p>
       </div>
     </div>
