@@ -937,7 +937,7 @@ EOF
     # Only replace if it's the default/placeholder key AND if it's first installation
     # Check if previous installation was done (if yes, don't replace!)
     # Also check if there are running Docker containers (old installation)
-    local has_running_containers=false
+    has_running_containers=false
     if command -v docker &> /dev/null; then
       if docker ps --format '{{.Names}}' 2>/dev/null | grep -qE "(site_http|site_wsgi|postgres|celery)"; then
         has_running_containers=true
@@ -945,7 +945,7 @@ EOF
     fi
     
     # Check if there's a preserved key in install.sh
-    local has_preserved_key=false
+    has_preserved_key=false
     if [ -f "$INSTALL_DIR/.encryption_key_preserved" ]; then
       has_preserved_key=true
     fi
