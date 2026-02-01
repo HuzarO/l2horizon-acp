@@ -1,66 +1,66 @@
-## 📖 Workflow de Desenvolvimento — Lineage Project
+## 📖 Development Workflow — Lineage Project
 
-Este documento descreve o fluxo de trabalho utilizado no projeto para organizar o desenvolvimento, releases e manutenção.
+This document describes the workflow used in the project to organize development, releases and maintenance.
 
 ---
 
-### 🚀 Branches Principais
+### 🚀 Main Branches
 
 - **`main`**  
-  Branch estável, onde ficam as versões prontas para produção.  
-  Recebe merges somente em releases.
+  Stable branch, where production-ready versions reside.  
+  Receives merges only on releases.
 
 - **`develop`**  
-  Branch de desenvolvimento contínuo.  
-  Todo desenvolvimento, novos recursos e correções devem ser feitos aqui.
+  Continuous development branch.  
+  All development, new features and fixes should be done here.
 
 ---
 
-### 🛠️ Como Trabalhar
+### 🛠️ How to Work
 
-#### 📌 1. Desenvolvendo
-Sempre faça commits e pushes diretamente na `develop`:
+#### 📌 1. Developing
+Always make commits and pushes directly to `develop`:
 
 ```bash
 git checkout develop
-# editar arquivos
+# edit files
 git add .
-git commit -m "Descrição do que foi feito"
+git commit -m "Description of what was done"
 git push
 ```
 
 ---
 
-#### 📌 2. Criando uma nova release
-Quando o projeto estiver pronto para uma nova versão estável:
+#### 📌 2. Creating a new release
+When the project is ready for a new stable version:
 
 ```bash
 git checkout main
 git merge develop
-git tag -a vX.X.X -m "Descrição da release"
+git tag -a vX.X.X -m "Release description"
 git push origin main --tags
 ```
 
-- **vX.X.X** → siga o padrão `v1.0.1`, `v1.1.0`, etc.
+- **vX.X.X** → follow the pattern `v1.0.1`, `v1.1.0`, etc.
 
 ---
 
-#### 📌 3. Retornando ao desenvolvimento
-Depois da release:
+#### 📌 3. Returning to development
+After the release:
 
 ```bash
 git checkout develop
 ```
 
-E continue desenvolvendo.
+And continue developing.
 
 ---
 
-### ✅ Dicas Extras
+### ✅ Extra Tips
 
-- Antes de começar qualquer coisa:
+- Before starting anything:
   ```bash
   git pull
   ```
-- Use mensagens de commit claras e objetivas.
-- Mantenha o `main` limpo, só com releases estáveis.
+- Use clear and objective commit messages.
+- Keep `main` clean, only with stable releases.
