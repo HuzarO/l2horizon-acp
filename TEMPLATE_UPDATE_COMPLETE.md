@@ -1,14 +1,29 @@
 # L2Horizon Authentication Templates - Complete Update Summary
 
 ## Overview
-All 12 HTML templates in the `accounts_custom` folder have been successfully updated to match the design system from the `l2horizon-website` project.
+All 12 HTML templates in the `accounts_custom` folder have been successfully updated to match the design system from the `l2horizon-website` project. **All shared styles are now centralized in `base-auth.html`** to avoid duplication and improve maintainability.
+
+## Architecture Changes
+
+### Shared Styles (base-auth.html)
+All authentication templates now inherit shared styles from `/templates/layouts/base-auth.html`:
+- **Tailwind CSS CDN** - Loaded once in base template
+- **Google Fonts** (Cinzel & Montserrat) - Loaded once in base template  
+- **Tailwind Configuration** - Theme colors and fonts configured globally
+- **Common Components** - `.auth-panel`, `.btn-medieval`, `.password-toggle` styles
+
+### Individual Templates
+Each template now contains:
+- **Minimal `{% block extrastyle %}`** - Empty or template-specific styles only
+- **Clean Content Block** - No duplicated CSS or script imports
+- **Improved Layout** - Wider containers (`max-w-xl` vs `max-w-md`) and better spacing
 
 ## Design System Implementation
 
 ### Typography
 - **Headings**: Cinzel (serif) - Medieval/fantasy aesthetic
 - **Body**: Montserrat (sans-serif) - Modern readability
-- Both loaded via Google Fonts CDN
+- Both loaded via Google Fonts CDN in base template
 
 ### Color Palette
 - **Background**: #eee9e0 (parchment cream)
@@ -18,88 +33,87 @@ All 12 HTML templates in the `accounts_custom` folder have been successfully upd
 - **Text**: Gray scale from Tailwind
 
 ### Framework
-- Tailwind CSS via CDN
+- Tailwind CSS via CDN (loaded in base template)
 - Responsive design with mobile-first approach
 - Utility-first CSS classes
+
+## Layout Improvements
+
+### Container Widths
+- **Before**: `max-w-md` (448px) - Too narrow
+- **After**: `max-w-xl` (576px) - Better spacing and readability
+
+### Padding
+- **Main Auth Forms**: `p-6 sm:p-10` - Responsive padding (24px mobile, 40px desktop)
+- **Success Messages**: `p-8` - Consistent padding for simpler pages
+- **Outer Container**: `py-8` (reduced from `py-12`) - Better vertical spacing
 
 ## Updated Files (12/12 Complete)
 
 ### ✅ Main Authentication Flow
-1. **sign-in.html** (16KB)
+1. **sign-in.html**
    - Social login buttons (Google, Discord, GitHub)
    - Password toggle with SVG icons
    - hCaptcha integration
-   - Error/warning alerts
+   - Wider container and responsive padding
 
-2. **sign-up.html** (8KB)
+2. **sign-up.html**
    - Registration form with dual password fields
    - Terms & conditions checkbox
-   - hCaptcha integration
+   - Improved spacing and layout
 
-3. **forgot-password.html** (3.6KB)
+3. **forgot-password.html**
    - Email recovery form
-   - Medieval button styling
+   - Cleaner, more spacious design
 
-4. **reset-password.html** (7.8KB)
+4. **reset-password.html**
    - Two password fields with individual toggles
-   - SVG eye icons for password visibility
+   - Better form spacing
 
-5. **password-change.html** (~8KB)
+5. **password-change.html**
    - Three password fields (old, new1, new2)
    - Independent toggle for each field
-   - Authenticated user flow
 
 ### ✅ 2FA Authentication
 6. **ativar-2fa.html**
-   - QR Code display with border styling
+   - QR Code display
    - Token input field
-   - Medieval button for activation
+   - No duplicated styles
 
 7. **verify-2fa.html**
    - User avatar display
-   - 6-digit code input with icon
+   - 6-digit code input
    - Error message handling
-   - Back to dashboard link
 
 ### ✅ Lock Screen
 8. **lock.html**
-   - User avatar display (24x24, rounded)
-   - Username display
+   - User avatar display
    - Password unlock field with toggle
    - Logout option
 
 ### ✅ Success/Completion Messages
 9. **password-reset-done.html**
    - Green success icon
-   - "Email Enviado" message
    - Clean, centered layout
 
 10. **password-reset-complete.html**
-    - Green success icon
-    - "Senha Redefinida" confirmation
+    - Password reset confirmation
     - Login CTA button
 
 11. **password-change-done.html**
-    - Green success icon
-    - "Senha Alterada" confirmation
+    - Password change confirmation
     - Dashboard CTA button
 
 12. **registration_success.html**
-    - Green success icon
-    - "Registro Concluído" message
+    - Registration success message
     - Login CTA button
 
-## Key Components
+## Key Components (Defined in base-auth.html)
 
 ### Medieval Button
 ```css
 .btn-medieval {
   background: linear-gradient(180deg, #8b3a3a 0%, #6b2a2a 50%, #5b1a1a 100%);
-  border: 2px solid #4a1515;
-  color: #f0e6d2;
-  font-family: 'Cinzel', serif;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
   clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), 
                       calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px);
 }
@@ -110,16 +124,19 @@ All 12 HTML templates in the `accounts_custom` folder have been successfully upd
 .auth-panel {
   background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(245,240,230,0.98) 100%);
   border: 1px solid #c5b8a5;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.5);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 ```
 
 ### Password Toggle
-- SVG icons for eye/eye-slash
-- JavaScript toggle function
-- Smooth transitions
-- Individual IDs for multiple password fields
+```css
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  cursor: pointer;
+}
+```
 
 ## Features Preserved
 
@@ -138,6 +155,47 @@ All 12 HTML templates in the `accounts_custom` folder have been successfully upd
 - Avatar display
 - Background image support
 
+## Benefits of New Structure
+
+### Code Maintenance
+- **DRY Principle**: No duplicated styles across 12 files
+- **Single Source of Truth**: All shared styles in base-auth.html
+- **Easy Updates**: Change once in base template, applies everywhere
+- **Smaller File Sizes**: Individual templates are much lighter
+
+### Performance
+- **Faster Page Loads**: Styles cached from base template
+- **Reduced Bandwidth**: No repeated CSS in every page
+- **Better Browser Caching**: Shared resources cached efficiently
+
+### Developer Experience
+- **Cleaner Templates**: Each file focuses on its specific content
+- **Easier Debugging**: Less code to search through
+- **Clear Separation**: Shared vs. template-specific styles clearly defined
+
+## File Structure
+
+```
+/templates/
+  └── layouts/
+      └── base-auth.html          # ← All shared styles here
+
+/apps/main/home/templates/
+  └── accounts_custom/
+      ├── sign-in.html            # ← Minimal extrastyle blocks
+      ├── sign-up.html            # ← Only template-specific CSS
+      ├── forgot-password.html    # ← Clean, focused content
+      ├── reset-password.html
+      ├── password-change.html
+      ├── ativar-2fa.html
+      ├── verify-2fa.html
+      ├── lock.html
+      ├── password-reset-done.html
+      ├── password-reset-complete.html
+      ├── password-change-done.html
+      └── registration_success.html
+```
+
 ## Browser Compatibility
 - Modern browsers (Chrome, Firefox, Safari, Edge)
 - Responsive design (mobile, tablet, desktop)
@@ -145,17 +203,20 @@ All 12 HTML templates in the `accounts_custom` folder have been successfully upd
 
 ## Migration Notes
 
-### From Old Design
-- **Before**: Dark theme with rgba(15,15,15,0.92) panels, golden (#e0c36b) accents
-- **After**: Light parchment theme with burgundy accents, medieval styling
+### Before
+- Each template had 80-100 lines of duplicated CSS
+- Narrow containers (max-w-md = 448px)
+- Heavy padding (p-8 = 32px all sides)
+- Hard to maintain consistency
 
-### Breaking Changes
-- Bootstrap classes removed (replaced with Tailwind)
-- Bootstrap Icons removed (replaced with inline SVG)
-- Dark theme removed (light theme only)
+### After
+- Shared styles in base template
+- Wider containers (max-w-xl = 576px)
+- Responsive padding (p-6 sm:p-10)
+- Easy to maintain and update
 
 ## Testing Checklist
-- [ ] Test all forms submit correctly
+- [ ] All forms submit correctly
 - [ ] Password toggles work on all fields
 - [ ] Social login buttons redirect properly
 - [ ] hCaptcha loads and validates
@@ -163,29 +224,12 @@ All 12 HTML templates in the `accounts_custom` folder have been successfully upd
 - [ ] Avatar images load
 - [ ] Error messages display properly
 - [ ] Success pages redirect correctly
-- [ ] Mobile responsiveness verified
+- [ ] Mobile responsiveness verified (wider containers look good)
 - [ ] All translations load
-
-## Next Steps
-1. Test all templates in development environment
-2. Verify Django form integration
-3. Check responsive behavior on mobile devices
-4. Validate accessibility (ARIA labels, keyboard navigation)
-5. Test with real user flows
-6. Deploy to staging environment
-
-## File Locations
-- **Templates**: `/Users/bartf/Projects/l2horizon-acp/apps/main/home/templates/accounts_custom/`
-- **Website Reference**: `/Users/bartf/Projects/l2horizon-website/`
-
-## Credits
-- Design System: L2Horizon Website
-- Framework: Tailwind CSS
-- Fonts: Google Fonts (Cinzel, Montserrat)
-- Icons: Heroicons (via inline SVG)
+- [ ] Shared styles load from base-auth.html
 
 ---
 
-**Status**: ✅ All 12 templates successfully updated
-**Date**: 2024
-**Version**: 1.0
+**Status**: ✅ All 12 templates successfully updated with centralized styles
+**Date**: February 2026
+**Version**: 2.0 (Centralized Architecture)
